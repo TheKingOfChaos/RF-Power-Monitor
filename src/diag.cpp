@@ -88,7 +88,7 @@ void diagBegin() {
 }
 
 void diagPoll() {
-    rp2040.wdt_reset();
+    // Feeding is left to watchdogPoll(), which also checks core 1
     watchdog_hw->scratch[1] = stackWatchNeverUsed();
 }
 #endif

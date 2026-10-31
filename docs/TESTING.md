@@ -324,6 +324,11 @@ Uses `test/settings_a.json` and `test/settings_b.json`, never the real settings.
 - No traps when the destination is off; trap counter on the status screen; SNMP keeps answering
 - mainsPowerLost and mainsPowerRestored with real mains: correct version, source, varbinds, change counter and time-stamps (needs a mains switch)
 
+### `test/hil/test_watchdog.py`: the hardware watchdog
+- The hidden menu commands `stall0` and `stall1` hang core 0 (interrupts off) or core 1 for good; the device restarts within 8 s (core 1: 9 s), and the status screen shows `Last restart: watchdog` with the watchdog restart count one higher
+- A menu reboot (option 2, DHCP unchanged) shows `Last restart: reboot` and does not count; twice the watchdog timeout of normal running restarts nothing
+- Each test restarts the device once; settings are not touched (the reboot test skips in static mode)
+
 ### `test/hil/test_factory_reset.py`: the reset button (manual, `RFUPS_MANUAL_BUTTON=1`)
 - A ~3 s press is released without reset, the log shows how long it was held, and SNMP keeps answering while it is held
 - A 10 s hold resets after 10000-10100 ms (SNMP keeps answering with the community set before the hold), defaults are saved in under 2 s, the device reboots with DHCP, `public`, default sysName, no trap destination and default stored static IP
@@ -344,7 +349,7 @@ Uses `test/settings_a.json` and `test/settings_b.json`, never the real settings.
 
 ## Diagnosing a hang or crash on the device
 
-A firmware that freezes takes USB serial with it, so neither the menu nor `pio run -t upload` reach it (then: hold BOOTSEL while plugging in). The diagnosis build avoids that:
+Every build has a hardware watchdog (8 s, `src/watchdog.cpp`, armed at the end of `setup()`): a hang in `loop()` or on core 1 restarts the device, and the status screen shows `Last restart: watchdog`. It does not say where it hung, and a hang during `setup()` still freezes the device with USB serial (then: hold BOOTSEL while plugging in). The diagnosis build tells you where:
 
 ```powershell
 $env:PLATFORMIO_BUILD_FLAGS = '-DRFUPS_DIAG -Wl,--wrap=panic'
@@ -352,7 +357,7 @@ $env:PLATFORMIO_BUILD_FLAGS = '-DRFUPS_DIAG -Wl,--wrap=panic'
 Remove-Item Env:PLATFORMIO_BUILD_FLAGS
 ```
 
-It arms the hardware watchdog (4 s), writes the step of `loop()` and of the frame hooks into watchdog scratch registers, records the program counter of a hard fault and the message of a `panic()` (lwIP asserts end there), and prints all of it after the watchdog restart: `DIAG: previous run PANICKED (called from 0x10025129): lwip`. Look the address up with `arm-none-eabi-addr2line -f -e .pio\build\pico\firmware.elf <address>`. This found the IPv6 timer-pool panic in `sys_timeout_abs` and the hard fault in `pbuf_free` caused by the core's UDP helper buffer.
+It arms the watchdog early in `setup()` (4 s, the normal 8 s from the end of `setup()`), writes the step of `loop()` and of the frame hooks into watchdog scratch registers, records the program counter of a hard fault and the message of a `panic()` (lwIP asserts end there), and prints all of it after the watchdog restart: `DIAG: previous run PANICKED (called from 0x10025129): lwip`. Look the address up with `arm-none-eabi-addr2line -f -e .pio\build\pico\firmware.elf <address>`. This found the IPv6 timer-pool panic in `sys_timeout_abs` and the hard fault in `pbuf_free` caused by the core's UDP helper buffer.
 
 ## Troubleshooting
 

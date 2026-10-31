@@ -8,12 +8,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 - Traps to an IPv6 destination: menu option 4 accepts a global or ULA IPv6 address (stored in RFC 5952 form) as well as IPv4, `-` and `dhcp`. IPv6 destinations get v2c traps only (a v1 Trap-PDU's agent-addr is IPv4); the menu refuses trap version 1 with an IPv6 destination and the settings check rejects that combination. Link-local, multicast and `::/8` addresses are refused. `snmpTrapAddress.0` keeps carrying the device's IPv4 address. Settings files from older firmware load unchanged; older firmware rejects a file with an IPv6 trap destination and falls back to the other copy or defaults.
+- Hardware watchdog in every build (8 s, armed at the end of start-up): core 0 feeds it only while core 1's heartbeat moves, so a hang on either core restarts the device. The boot log and status screen show `Last restart:` (power-on, reset pin, reboot or watchdog) and the watchdog restarts since power-on. The `RFUPS_DIAG` build no longer feeds the watchdog itself. Hidden menu commands `stall0` / `stall1` hang a core for the HIL test.
 
 ### Changed
 - Mains detection requirement is now 80 ms from mains changing to detection (was 10 ms): the carrier board's detector holds a loss 30-50 ms to bridge the zero crossings. The firmware's own share, from GPIO27 changing to detection, stays within 10 ms. No firmware change.
 
 ### Fixed
 - Trap HIL tests skip with a clear message when UDP 162 is taken (the LibreNMS snmptrapd container) instead of failing and leaving COM4 open, which made the next suite fail too.
+- HIL `test_snmp_settings_are_validated_and_cancel_keeps_them` expected the old "is not a valid IPv4 address" message for a bad trap destination; the message is now "not a valid IPv4 or IPv6 address".
 
 ## [2.5.1] - 2026-10-31
 

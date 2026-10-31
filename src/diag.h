@@ -20,7 +20,7 @@
 
 /// Start the watchdog and report what the previous run left behind. Call first in setup().
 void diagBegin();
-/// Feed the watchdog and record the stack high-water mark; call every loop()
+/// Record the stack high-water mark; call every loop() (watchdogPoll() feeds the watchdog)
 void diagPoll();
 /// What diagBegin() found (shown on the status screen)
 const char* diagReport();

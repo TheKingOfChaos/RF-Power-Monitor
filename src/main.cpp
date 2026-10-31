@@ -5,6 +5,7 @@
 #include <mains_input.h>
 #include "cli.h"
 #include "diag.h"
+#include "watchdog.h"
 #include "ambient_temp.h"
 #include "cpu_temp.h"
 #include "factory_reset.h"
@@ -165,6 +166,7 @@ void setup() {
     uint32_t serialWait = millis();
     while (!Serial && millis() - serialWait < 3000) delay(10);
     Serial.println("\nRF-UPS-Monitor " FIRMWARE_VERSION " starting...");
+    watchdogBegin();  // restart cause, before diagBegin() arms its own early watchdog
     diagBegin();  // only with -DRFUPS_DIAG
     cpuTempBegin();
     ambientTempBegin();
@@ -215,9 +217,13 @@ void setup() {
 
     // Serial configuration menu
     cliBegin();
+
+    // From here on a hang on either core restarts the device
+    watchdogArm();
 }
 
 void loop() {
+    watchdogPoll();
     diagPoll();
     DIAG_MARK(1);
     // Report when the address is obtained, changed or lost
@@ -281,5 +287,6 @@ void setup1() {
 void loop1() {
     mainsSample();
     factoryResetSample();
+    watchdogCore1Beat();
     delay(1);
 }

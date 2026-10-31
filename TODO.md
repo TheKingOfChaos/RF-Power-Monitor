@@ -177,7 +177,7 @@ An item is only ticked when it is implemented **and** its tests exist and pass (
 - [x] Stage 2: IPv6 trap destination (v2c only; global or ULA, refused with v1) — native `test_netconfig` (`test_trap_target_*`), `test_settings_codec` (`test_ipv6_trap_target_*`, `test_trap_version_fits_target`), sanitizers; HIL `test_v2c_trap_reaches_an_ipv6_destination`, `test_menu_refuses_*` (passed 2026-10-31; a VPN such as Cisco AnyConnect blocks IPv6 to the device)
 - [x] Static IPv6 address (/64) and gateway, serial menu option 9 and web page, next to SLAAC (2.4.0) — native `test_netconfig` (parse/format/validate, truncation), `test_settings_codec`, `test_web_ui`; HIL `test_ipv6_static.py` (opt-in `RFUPS_STATIC_IPV6`)
 - [ ] DHCPv6 address assignment (if needed)
-- [ ] Consider a hardware watchdog in normal builds (the IPv6 panic would have recovered by itself)
+- [x] Hardware watchdog in normal builds (8 s; core 0 feeds only while core 1's heartbeat moves; restart cause and count on the status screen) — native `test_watchdog_logic`, sanitizers, HIL `test_watchdog.py` (core 0 and core 1 stalls restart the device, menu reboot not counted; passed 2026-10-31)
 - [ ] Simplify with lwIP options now that lwIP is known to compile with our flags: `DHCP_ADD_EXTRA_REQUEST_OPTIONS` + `LWIP_HOOK_DHCP_PARSE_OPTION` instead of editing DHCP frames, `SO_REUSE=1` instead of dropping TIME-WAIT entries
 
 ## 12. Web on/off, DHCP trap destination, logo (2.2.0)

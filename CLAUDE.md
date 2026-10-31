@@ -45,6 +45,7 @@ Details and setup are in `docs/TESTING.md`.
 - `lib/snmp_agent`: SNMP v1/v2c messages, MIB table, request handling, traps (pure); `src/snmp_service.cpp` runs it on UDP 161. MIB docs in `docs/MIB.md`
 - `lib/if_stats` (pure): frame counting and PHY decoding; `src/net_stats.cpp` hooks the lwIP netif and reads the W5500 PHY; `src/cpu_temp.cpp` reads the RP2040 temperature; `lib/tmp1075` (pure) and `src/ambient_temp.cpp` read the carrier's TMP1075 on I2C0
 - `lib/power_monitor` (pure: mains debouncer, reset button) and `lib/mains_input` (GPIO27 on core 1, `setup1()`/`loop1()` in `main.cpp`); `src/factory_reset.cpp` samples GPIO22 on core 1
+- `lib/watchdog_logic` (pure): core 1 heartbeat check and restart count; `src/watchdog.cpp` runs the hardware watchdog (8 s, fed by core 0 only while core 1 is alive; hidden menu commands `stall0`/`stall1` for its HIL test)
 - `lib/access_control` (pure): SNMP rate limiter and access log, keyed by `SourceKey` (full IPv4 or IPv6 address, 128 bits; `src/source_key.h`)
 - `lib/dhcp_option` (pure): asks for and reads DHCP option 224 (trap destination) by editing/reading frames in `src/net_stats.cpp`
 - `lib/web_ui` (pure): web page HTTP parser, login/sessions, pages; `src/web_service.cpp` serves it on TCP 80 (non-blocking); `src/stack_watch.cpp` core 0 stack high-water mark; `src/hostname.cpp` hostname (= sysName) for DHCP and mDNS; `src/ipv6_static.cpp` static IPv6 address and gateway (lwIP `LWIP_HOOK_ND6_GET_GW`)

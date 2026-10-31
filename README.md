@@ -137,6 +137,7 @@ Hostname: rf-ups-monitor (DHCP, mDNS rf-ups-monitor.local)
 Web interface: on (TCP port 80)
 Web login: user admin, default password "k7wqz3mtd9" (change with option 6)
 Core 0 stack: 2520 bytes never used
+Last restart: reboot (0 watchdog restarts since power-on)
 Mode: DHCP
 Stored static IP: 10.10.6.249 / 255.255.0.0, gateway 10.10.0.1
 Stored static IPv6: fd16:d833:4f0e:3ece::249/64, gateway from router advertisements
@@ -347,6 +348,12 @@ Mains power: present (2 changes, last change 37 s ago)
 
 The input must be a clean DC level from an isolated circuit (optocoupler with filtering). An unfiltered optocoupler on AC toggles at 100 Hz and would be read as constant power loss and restore; `pio test -e pico -f embedded/test_mains_input -v` prints the raw toggle rate to check this. On the current hardware it reads 0 toggles/s.
 
+## Watchdog
+
+The RP2040's hardware watchdog restarts the device if the firmware hangs. Core 0 feeds it from its main loop, but only while core 1 (mains sampling, reset button) shows it is alive, so a hang on either core restarts the device: core 0 within 8 s, core 1 within about 9 s. It is armed at the end of start-up.
+
+After the restart the device sends a coldStart trap as after any start, and the boot log and status screen show why it started: `Last restart: watchdog (1 watchdog restarts since power-on)`. Other causes are `power-on`, `reset pin` and `reboot` (menu, web page, factory reset, flashing). The count is kept in RAM, so it survives restarts and starts over when power is removed.
+
 ## Factory reset
 
 1. Press and hold the button on GPIO22. The onboard LED blinks slowly (2 Hz) while it is held, and the serial log prints `Factory reset button pressed`.
@@ -430,11 +437,13 @@ src/stack_watch.cpp         Core 0 stack high-water mark for the status screen
 src/hostname.cpp            Hostname for DHCP and mDNS (name.local), applied without restart
 src/source_key.h            Source address -> rate-limit key (full IPv4 or IPv6 address)
 src/ipv6_static.cpp         Static IPv6 address and gateway (lwIP hook in include/lwip_hooks.h)
-src/diag.cpp                Hang diagnosis build (-DRFUPS_DIAG): watchdog, crash and panic capture
+src/watchdog.cpp            Hardware watchdog (both cores), restart cause and count
+src/diag.cpp                Hang diagnosis build (-DRFUPS_DIAG): crash and panic capture
 lib/netconfig/              IPv4/IPv6 parsing, formatting and validation, hostnames (pure C++)
 lib/settings_codec/         Settings JSON, validation, A/B selection (pure C++)
 lib/settings/               LittleFS storage on top of settings_codec
 lib/power_monitor/          Mains input debouncer, reset button logic (pure C++)
+lib/watchdog_logic/         Core 1 heartbeat check, restart record (pure C++)
 lib/tmp1075/                TMP1075 conversion and read state (pure C++)
 lib/access_control/         Rate limiter and access log, IPv4 and IPv6 sources (pure C++)
 lib/mains_input/            GPIO27 sampler on core 1, seqlock hand-over to core 0

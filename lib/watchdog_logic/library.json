@@ -1,0 +1,20 @@
+{
+    "name": "watchdog_logic",
+    "version": "1.0.0",
+    "description": "Watchdog decisions: core 1 heartbeat and restart count (pure C++, host testable)",
+    "keywords": "watchdog, restart",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/TheKingOfChaos/RF-UPS-Monitor-v3.git"
+    },
+    "authors": [
+        {
+            "name": "kenneth Foli Jørgensen",
+            "email": "kenneth@tkoc.dk",
+            "maintainer": true
+        }
+    ],
+    "license": "MIT",
+    "frameworks": "*",
+    "platforms": "*"
+}

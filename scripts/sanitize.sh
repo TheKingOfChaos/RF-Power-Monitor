@@ -34,6 +34,7 @@ declare -A SUITES=(
     [test_access_control]="access_control netconfig"
     [test_web_ui]="web_ui settings_codec netconfig access_control"
     [test_tmp1075]="tmp1075"
+    [test_watchdog_logic]="watchdog_logic"
 )
 
 failed=0

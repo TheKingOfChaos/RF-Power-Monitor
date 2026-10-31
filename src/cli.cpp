@@ -10,6 +10,7 @@
 #include "net_stats.h"
 #include "snmp_service.h"
 #include "stack_watch.h"
+#include "watchdog.h"
 #include "web_service.h"
 #include <web_auth.h>
 
@@ -188,6 +189,8 @@ static void printStatus() {
         Serial.println("Web login: user admin, own password (option 6)");
     }
     Serial.printf("Core 0 stack: %u bytes never used\n", (unsigned)stackWatchNeverUsed());
+    Serial.printf("Last restart: %s (%lu watchdog restarts since power-on)\n",
+                  restartCauseName(watchdogRestartCause()), (unsigned long)watchdogRestarts());
     if (diagReport()) Serial.println(diagReport());
 
     Serial.printf("Mode: %s\n", currentSettings.dhcpEnabled ? "DHCP" : "Static");
@@ -470,6 +473,14 @@ static void handleLine(const char* line) {
             Serial.println("The address is used as a /64 next to the automatic (SLAAC) address.");
             Serial.println("Press Enter to keep the value in brackets.");
             promptIPv6Address();
+        } else if (strcmp(line, "stall0") == 0 || strcmp(line, "stall1") == 0) {
+            // Hidden test command (docs/TESTING.md): hang one core so the watchdog restarts the device
+            uint8_t core = line[5] - '0';
+            Serial.printf("Stalling core %u, the watchdog restarts the device within %lu s\n", core,
+                          (unsigned long)(WATCHDOG_TIMEOUT_MS + CoreHeartbeatCheck::DEFAULT_STALE_MS) / 1000 + 1);
+            Serial.flush();
+            delay(200);  // USB is serviced by interrupts, which a core 0 stall switches off
+            watchdogStall(core);
         } else if (line[0] == '\0') {
             Serial.print("> ");
         } else {
