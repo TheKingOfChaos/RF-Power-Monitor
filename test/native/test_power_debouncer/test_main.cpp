@@ -48,7 +48,7 @@ static void test_change_is_accepted_after_debounce_time() {
 }
 
 static void test_detection_meets_10ms_requirement() {
-    // .clinerules: power state changes must be detected within 10 ms
+    // .clinerules: the firmware's share of mains detection (GPIO27 change to detection) is 10 ms
     PowerDebouncer d(DEBOUNCE_MS);
     d.begin(true, 0);
     uint32_t detectedAt = 0;

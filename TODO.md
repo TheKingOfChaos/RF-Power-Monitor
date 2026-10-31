@@ -195,11 +195,13 @@ An item is only ticked when it is implemented **and** its tests exist and pass (
 
 ## 14. Hardware: carrier board (`hardware/pico-poe-mains-carrier`)
 - [x] Carrier PCB for the W5500-EVB-Pico-PoE: isolated mains detector on GP27, LEDs, TMP1075; KiCad 10, ERC/DRC, fab files (documented in the README)
-- [ ] Order and assemble the first boards; run the mains HIL tests (Dirigera) on the carrier
+- [x] First boards ordered and assembled; mains loss/restore on the carrier seen on the serial menu — HIL `test_mains_loss_and_restore_are_reported` (Dirigera, passed 2026-10-31)
+- [x] SNMP and trap HIL tests on the carrier incl. real mains (`test_snmp.py` 41 tests, `test_snmp_traps.py` v1 and v2c; community `public`, LibreNMS snmptrapd stopped while they ran) — passed 2026-10-31
 - [x] Read the TMP1075 (I2C0, GP4/GP5, 0x48) in the firmware: `ambientTemperature` (63050.5), absent without the sensor; the RP2040 sensor is now `cpuTemperature` — native, net-snmp, HIL
 - [x] Factory reset button: SW1 (XKB TS-1187A) from GP22 to GND on the carrier, board v1.1; ERC/DRC clean. Tested with the real button (HIL `test_factory_reset.py`)
 - [x] Fuse in the mains input: F1 SETfuse SCT1032T1A250V (LCSC C19712559), T 1 A, 250 VAC, in the single series loop; ERC/DRC clean
-- [ ] Mains loss timing: the carrier's RC delays the loss by about 30-50 ms against the 10 ms in `.clinerules`; measure it on the board and decide (smaller RC, or change the requirement)
+- [x] Mains loss timing: the carrier's RC delays the loss by about 30-50 ms; requirement changed to 80 ms from mains to detection, firmware share still 10 ms (decided 2026-10-31, `.clinerules`)
+- [ ] Optional: confirm the RC delay with a scope (last optocoupler pulse to SENSE rising) on an assembled board
 
 ## Notes
 - SNMP must be v1 and v2c (no v3) and our own code; networking may use libraries

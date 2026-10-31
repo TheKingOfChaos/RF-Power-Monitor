@@ -6,6 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Changed
+- Mains detection requirement is now 80 ms from mains changing to detection (was 10 ms): the carrier board's detector holds a loss 30-50 ms to bridge the zero crossings. The firmware's own share, from GPIO27 changing to detection, stays within 10 ms. No firmware change.
+
+### Fixed
+- Trap HIL tests skip with a clear message when UDP 162 is taken (the LibreNMS snmptrapd container) instead of failing and leaving COM4 open, which made the next suite fail too.
+
 ## [2.5.1] - 2026-10-31
 
 ### Added

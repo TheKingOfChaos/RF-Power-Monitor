@@ -172,7 +172,10 @@ See docs/TESTING.md for how to run each layer.
 1. Response Times
    - SNMP requests must be handled within 100ms
    - CLI must respond within 50ms
-   - Power state changes must be detected within 10ms
+   - Power state changes must be detected within 80ms of mains changing
+     (decided 2026-10-31: the carrier's detector holds a loss 30-50ms to
+     bridge zero crossings); the firmware's share, from GPIO27 changing
+     to detection, stays within 10ms
    - Factory reset must complete within 2 seconds
 
 2. Resource Usage

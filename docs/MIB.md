@@ -32,7 +32,7 @@ The device runs an SNMP agent on UDP port 161 and sends traps. Every object is r
 
 `ambientTemperature` comes from the TMP1075 on the carrier board (I2C0, GP4/GP5, address 0x48), accurate to ±1 °C. It reads the air at the board, several degrees below `cpuTemperature` (27 °C against 34 °C on the bench). Without the carrier board, or after three failed reads in a row (6 s), the object has no instance: v2c Get returns noSuchInstance, v1 Get noSuchName, and walks skip it. It comes back on the next good read.
 
-`mainsPowerStatus` is debounced: a change must last 5 ms to count and is reported within 10 ms. To detect an outage between two polls, compare `mainsPowerChanges` with the previous poll; `mainsPowerLastChange` tells you when it happened.
+`mainsPowerStatus` is debounced: a change must last 5 ms to count and is reported within 10 ms of the input changing. On the carrier board the detector holds the input 30-50 ms after mains is lost, so a loss shows within 80 ms of mains going off. To detect an outage between two polls, compare `mainsPowerChanges` with the previous poll; `mainsPowerLastChange` tells you when it happened.
 
 ## Interfaces (IF-MIB)
 

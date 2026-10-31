@@ -181,7 +181,11 @@ class TrapListener:
     def __init__(self, port=162):
         import threading
         self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.sock.bind(("0.0.0.0", port))
+        try:
+            self.sock.bind(("0.0.0.0", port))
+        except OSError:
+            self.sock.close()
+            raise
         self.sock.settimeout(0.2)
         self.traps = []
         self._lock = threading.Lock()

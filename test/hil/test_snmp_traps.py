@@ -5,6 +5,8 @@ once with v2c (SNMPv2-Trap). The trap destination is set to this PC for the
 duration of the tests; destination and version are restored afterwards.
 Traps are received on UDP 162 here, so Windows Firewall must allow inbound
 UDP for PlatformIO's Python (the "Allow" prompt the first time it listens).
+If another receiver holds UDP 162 (the LibreNMS snmptrapd container), the
+tests are skipped; stop it while they run.
 
 Run:
     %USERPROFILE%\\.platformio\\penv\\Scripts\\python.exe -m unittest discover -s test/hil -p "test_snmp_traps.py" -v
@@ -47,7 +49,11 @@ class TrapTests:
         cls.ip = st["ip"]
         cls.original = (st["trapTarget"], st["trapVersion"])
         cls.pc = local_ip_towards(cls.ip)
-        cls.listener = TrapListener()
+        try:
+            cls.listener = TrapListener()
+        except OSError as e:
+            cls.dev.close()
+            raise unittest.SkipTest("cannot listen on UDP 162 (LibreNMS snmptrapd in Docker?): %s" % e)
         cls.dev.set_trap_target(cls.pc, cls.TRAP_VERSION)
 
     @classmethod
