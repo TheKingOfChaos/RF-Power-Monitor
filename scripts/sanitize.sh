@@ -37,6 +37,7 @@ declare -A SUITES=(
     [test_watchdog_logic]="watchdog_logic"
     [test_dhcp6_message]="dhcp6_client"
     [test_dhcp6_frame]="dhcp6_client"
+    [test_dhcp6_client]="dhcp6_client"
 )
 
 failed=0
@@ -60,7 +61,8 @@ for suite in "${!SUITES[@]}"; do
     fi
 done
 
-for suite in test/native/*/; do
+# Suites are the test_* folders (as for PlatformIO); others hold shared fixtures
+for suite in test/native/test_*/; do
     name=$(basename "$suite")
     [ -n "${SUITES[$name]+x}" ] || { echo "MISSING  $name is not listed in scripts/sanitize.sh"; failed=1; }
 done
