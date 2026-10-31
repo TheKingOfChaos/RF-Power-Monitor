@@ -96,6 +96,13 @@ struct DhcpTrapInfo {
 };
 
 /**
+ * @brief Send a complete Ethernet frame through the driver, bypassing lwIP (DHCPv6 client:
+ *        lwIP's stateless DHCPv6 owns UDP 546). Counted like any other frame. Takes the driver lock.
+ * @return false before netStatsBegin(), without memory, or if the driver refused it
+ */
+bool netStatsSendFrame(const uint8_t* frame, size_t len);
+
+/**
  * @brief Ask for option 224 in every DHCP DISCOVER/REQUEST (or stop asking)
  *
  * Switching it on renews the lease at once, so the answer arrives in seconds.

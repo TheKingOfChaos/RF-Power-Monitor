@@ -8,6 +8,7 @@
 #include "watchdog.h"
 #include "ambient_temp.h"
 #include "cpu_temp.h"
+#include "dhcp6_service.h"
 #include "factory_reset.h"
 #include "hostname.h"
 #include "ipv6_static.h"
@@ -57,14 +58,15 @@ void printNetworkInfo() {
     Serial.print("Subnet: ");  Serial.println(eth.subnetMask());
     Serial.print("Gateway: "); Serial.println(eth.gatewayIP());
 #if LWIP_IPV6
-    // Link-local, router-advertised (SLAAC) and static addresses; "tentative" while duplicate detection runs
+    // Link-local, router-advertised (SLAAC), static and DHCPv6 addresses; "tentative" while duplicate detection runs
     netif* nif = eth.getNetIf();
     bool any = false;
     for (int i = 0; i < LWIP_IPV6_NUM_ADDRESSES; i++) {
         u8_t state = netif_ip6_addr_state(nif, i);
         if (ip6_addr_isinvalid(state)) continue;
         any = true;
-        Serial.printf("IPv6: %s%s%s\n", ip6addr_ntoa(netif_ip6_addr(nif, i)), ipv6StaticIsSlot(i) ? " (static)" : "",
+        Serial.printf("IPv6: %s%s%s\n", ip6addr_ntoa(netif_ip6_addr(nif, i)),
+                      ipv6StaticIsSlot(i) ? " (static)" : dhcp6IsSlot(i) ? " (dhcpv6)" : "",
                       ip6_addr_istentative(state)    ? " (tentative)"
                       : ip6_addr_isdeprecated(state) ? " (deprecated)"
                       : ip6_addr_isduplicated(state) ? " (DUPLICATE: another host uses it, not in use)"
@@ -210,6 +212,7 @@ void setup() {
     if (startEthernet()) {
         netStatsBegin(eth.getNetIf());
         ipv6StaticBegin(eth.getNetIf());
+        dhcp6Begin(eth.getNetIf());  // waits for a router advertisement with the M flag
         netStatsRequestDhcpTrapTarget(currentSettings.trapFromDhcp);  // before the first DISCOVER
         snmpBegin();
         webBegin();
@@ -255,6 +258,7 @@ void loop() {
     // Link state for IF-MIB, CPU and ambient temperature
     DIAG_MARK(3);
     netStatsPoll(snmpUptimeTicks());
+    dhcp6Poll();
     DIAG_MARK(4);
     cpuTempPoll();
     ambientTempPoll();

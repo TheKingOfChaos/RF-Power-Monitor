@@ -7,6 +7,7 @@
 #include <string.h>
 #include <lwip/dhcp.h>
 #include <lwip/prot/dhcp.h>
+#include "dhcp6_service.h"
 #include "diag.h"
 #include "pins.h"
 
@@ -26,6 +27,7 @@ static PhyStatus phy = {false, false, false};
 static uint32_t lastChangeTicks = 0;
 static uint8_t mac[6] = {0};
 static bool started = false;
+static netif* statsNetif = nullptr;
 // DHCP option 224 (trap destination): requested in our DHCP messages, read from ACKs to us
 static volatile bool dhcpRequestOn = false;
 static DhcpTrapInfo dhcpTrap = {};
@@ -74,6 +76,7 @@ static err_t countingInput(struct pbuf* p, struct netif* nif) {
     if (p == nullptr) return originalInput(p, nif);
     DIAG_HOOK(100);
     ifCountReceived(counters, (const uint8_t*)p->payload, p->len, LWIP_IPV6 != 0);
+    dhcp6InspectFrame((const uint8_t*)p->payload, p->len);  // router advertisements, DHCPv6 replies; lwIP still gets it
     err_t err = inputWithDhcpAck(p, nif);
     DIAG_HOOK(101);
     return err;
@@ -124,7 +127,19 @@ void netStatsBegin(netif* nif) {
     nif->input = countingInput;
     nif->linkoutput = countingLinkOutput;
     memcpy(mac, nif->hwaddr, 6);
+    statsNetif = nif;
     started = true;
+}
+
+bool netStatsSendFrame(const uint8_t* frame, size_t len) {
+    DriverLock lock;
+    if (!started || len == 0 || len > 0xFFFF) return false;
+    pbuf* p = pbuf_alloc(PBUF_RAW, (u16_t)len, PBUF_RAM);
+    if (p == nullptr) return false;
+    pbuf_take(p, frame, (u16_t)len);
+    err_t err = countingLinkOutput(statsNetif, p);  // counted like every other frame
+    pbuf_free(p);
+    return err == ERR_OK;
 }
 
 void netStatsPoll(uint32_t uptimeTicks) {
