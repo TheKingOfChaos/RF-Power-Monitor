@@ -170,7 +170,7 @@ class SerialMenuTest(unittest.TestCase):
         d.send("-", expect=r"sysLocation \[.*\]: $")                # '-' clears sysContact
         d.send('Rack "4", \\shelf', expect=r"Trap destination IP or dhcp \[.*\]: $")
         out = d.send("10.10.6.300", expect=r"Trap destination IP or dhcp \[.*\]: $")
-        self.assertIn("is not a valid IPv4 address", out)
+        self.assertIn("not a valid IPv4 or IPv6 address", out)
         d.send("10.10.6.99", expect=r"Trap version \(1/2c\) \[.*\]: $")
         out = d.send("3", expect=r"Trap version \(1/2c\) \[.*\]: $")
         self.assertIn("Enter 1 or 2c", out)
