@@ -19,7 +19,9 @@
  *   1.3.6.1.4.1.63050.1.0  mainsPowerStatus      INTEGER 0 = lost, 1 = present
  *   1.3.6.1.4.1.63050.2.0  mainsPowerChanges     Counter32
  *   1.3.6.1.4.1.63050.3.0  mainsPowerLastChange  TimeTicks (sysUpTime at the last change)
- *   1.3.6.1.4.1.63050.4.0  boardTemperature      INTEGER, tenths of a degree Celsius (RP2040 die)
+ *   1.3.6.1.4.1.63050.4.0  cpuTemperature        INTEGER, tenths of a degree Celsius (RP2040 die)
+ *   1.3.6.1.4.1.63050.5.0  ambientTemperature    INTEGER, tenths of a degree Celsius (TMP1075),
+ *                                                absent while the sensor does not answer
  *
  * The ifHC* columns are Counter64. SNMPv1 cannot carry Counter64, so in v1
  * they do not exist (RFC 3584 4.2.2): Get returns noSuchName and GetNext
@@ -60,7 +62,9 @@ struct SnmpDeviceState {
     const char* sysName;
     const char* sysLocation;
     SnmpInterfaceState iface;      ///< IF-MIB data
-    int32_t boardTempDeciC;        ///< RP2040 die temperature, tenths of a degree Celsius
+    int32_t cpuTempDeciC;          ///< RP2040 die temperature, tenths of a degree Celsius
+    bool ambientTempValid;         ///< TMP1075 answers; false makes ambientTemperature absent
+    int32_t ambientTempDeciC;      ///< TMP1075 temperature, tenths of a degree Celsius
 };
 
 /**

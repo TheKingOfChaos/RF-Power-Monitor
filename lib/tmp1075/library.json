@@ -1,0 +1,20 @@
+{
+    "name": "tmp1075",
+    "version": "1.0.0",
+    "description": "TMP1075 temperature conversion and sensor state (pure C++, host testable)",
+    "keywords": "tmp1075, temperature",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/TheKingOfChaos/RF-UPS-Monitor-v3.git"
+    },
+    "authors": [
+        {
+            "name": "kenneth Foli Jørgensen",
+            "email": "kenneth@tkoc.dk",
+            "maintainer": true
+        }
+    ],
+    "license": "MIT",
+    "frameworks": "*",
+    "platforms": "*"
+}

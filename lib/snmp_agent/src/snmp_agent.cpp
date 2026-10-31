@@ -83,13 +83,32 @@ size_t SnmpAgent::handle(const uint8_t* request, size_t length, uint8_t* respons
     return handleV1(response, capacity, state);
 }
 
+// ---- objects without an instance ----
+
+/**
+ * @brief true if the object has an instance now. A getter reports a missing
+ *        instance (ambientTemperature without its sensor) as noSuchInstance
+ */
+static bool present(const MibEntry* e, const SnmpDeviceState& state) {
+    return e != nullptr && e->get(state).type != BerTag::NoSuchInstance;
+}
+
+/// Next object after oid that has an instance now, for GetNext and GetBulk
+static const MibEntry* mibNextPresent(const Oid& oid, const SnmpDeviceState& state) {
+    const MibEntry* e = mibNext(oid);
+    while (e != nullptr && !present(e, state)) e = mibNext(e->oid);
+    return e;
+}
+
 // ---- v1 (RFC 1157) ----
 
 /**
- * @brief Counter64 objects do not exist for v1 (RFC 3584 4.2.2.1): v1 cannot encode them
+ * @brief Counter64 objects do not exist for v1 (RFC 3584 4.2.2.1): v1 cannot encode them.
+ *        Neither do objects without an instance (noSuchName)
  */
 static bool v1Visible(const MibEntry* e, const SnmpDeviceState& state) {
-    return e != nullptr && e->get(state).type != BerTag::Counter64;
+    if (!present(e, state)) return false;
+    return e->get(state).type != BerTag::Counter64;
 }
 
 /// Next object after oid that v1 may see
@@ -145,7 +164,7 @@ size_t SnmpAgent::handleV2c(uint8_t* response, size_t capacity, const SnmpDevice
         const Oid& name = _req.names[i];
         bool added;
         if (getNext) {
-            const MibEntry* e = mibNext(name);
+            const MibEntry* e = mibNextPresent(name, state);
             added = e ? builder.add(e->oid, e->get(state))
                       : builder.add(name, SnmpValue::makeException(BerTag::EndOfMibView));
         } else {
@@ -179,7 +198,7 @@ size_t SnmpAgent::handleGetBulk(uint8_t* response, size_t capacity, const SnmpDe
             full = true;
             break;
         }
-        const MibEntry* e = mibNext(_req.names[i]);
+        const MibEntry* e = mibNextPresent(_req.names[i], state);
         bool added = e ? builder.tryAdd(e->oid, e->get(state))
                        : builder.tryAdd(_req.names[i], SnmpValue::makeException(BerTag::EndOfMibView));
         full = !added;
@@ -194,7 +213,7 @@ size_t SnmpAgent::handleGetBulk(uint8_t* response, size_t capacity, const SnmpDe
                 full = true;
                 break;
             }
-            const MibEntry* e = mibNext(_cursor[j]);
+            const MibEntry* e = mibNextPresent(_cursor[j], state);
             bool added;
             if (e) {
                 added = builder.tryAdd(e->oid, e->get(state));

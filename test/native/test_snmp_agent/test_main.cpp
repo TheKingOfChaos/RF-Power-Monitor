@@ -37,7 +37,9 @@ void setUp() {
     state.iface.counters.inDiscards = 5;
     state.iface.counters.inErrors = 6;
     state.iface.counters.inUnknownProtos = 7;
-    state.boardTempDeciC = 287;
+    state.cpuTempDeciC = 287;
+    state.ambientTempValid = true;
+    state.ambientTempDeciC = 271;
 }
 
 void tearDown() {}
@@ -207,14 +209,14 @@ static void test_mib_is_strictly_sorted() {
 }
 
 static void test_mib_contains_expected_objects() {
-    // system 1-7, ifNumber, ifTable 1-22, ifXTable 1-19, enterprise 1-4
+    // system 1-7, ifNumber, ifTable 1-22, ifXTable 1-19, enterprise 1-5
     char expected[64][40];
     uint8_t n = 0;
     for (int i = 1; i <= 7; i++) snprintf(expected[n++], 40, "1.3.6.1.2.1.1.%d.0", i);
     snprintf(expected[n++], 40, "1.3.6.1.2.1.2.1.0");
     for (int i = 1; i <= 22; i++) snprintf(expected[n++], 40, "1.3.6.1.2.1.2.2.1.%d.1", i);
     for (int i = 1; i <= 19; i++) snprintf(expected[n++], 40, "1.3.6.1.2.1.31.1.1.1.%d.1", i);
-    for (int i = 1; i <= 4; i++) snprintf(expected[n++], 40, "1.3.6.1.4.1.63050.%d.0", i);
+    for (int i = 1; i <= 5; i++) snprintf(expected[n++], 40, "1.3.6.1.4.1.63050.%d.0", i);
     TEST_ASSERT_EQUAL_UINT8(n, mibSize());
     for (uint8_t i = 0; i < n; i++) TEST_ASSERT_EQUAL_STRING(expected[i], str(mibEntry(i).oid));
 }
@@ -353,15 +355,71 @@ static void test_v1_walk_has_every_object_except_counter64() {
     TEST_ASSERT_EQUAL_UINT8(mibSize() - 8, visited);
 }
 
-static void test_board_temperature() {
+static void test_cpu_temperature() {
     SnmpAgent agent("public");
     const char* oids[] = {"1.3.6.1.4.1.63050.4.0"};
     Reply r = request(agent, BerTag::GetRequest, oids, 1);
     TEST_ASSERT_EQUAL_HEX8(BerTag::Integer, r.tags[0]);
     TEST_ASSERT_EQUAL_INT32(287, r.ints[0]);
-    state.boardTempDeciC = -55;
+    state.cpuTempDeciC = -55;
     r = request(agent, BerTag::GetRequest, oids, 1);
     TEST_ASSERT_EQUAL_INT32(-55, r.ints[0]);
+}
+
+static void test_ambient_temperature_when_the_sensor_answers() {
+    SnmpAgent agent("public");
+    const char* oids[] = {"1.3.6.1.4.1.63050.5.0"};
+    Reply r = request(agent, BerTag::GetRequest, oids, 1);
+    TEST_ASSERT_EQUAL_INT32(0, r.errorStatus);
+    TEST_ASSERT_EQUAL_HEX8(BerTag::Integer, r.tags[0]);
+    TEST_ASSERT_EQUAL_INT32(271, r.ints[0]);
+    state.ambientTempDeciC = -400;
+    r = requestV2c(agent, BerTag::GetRequest, oids, 1);
+    TEST_ASSERT_EQUAL_INT32(-400, r.ints[0]);
+}
+
+static void test_ambient_temperature_absent_v1_get_is_no_such_name() {
+    SnmpAgent agent("public");
+    state.ambientTempValid = false;
+    const char* oids[] = {"1.3.6.1.4.1.63050.4.0", "1.3.6.1.4.1.63050.5.0"};
+    Reply r = request(agent, BerTag::GetRequest, oids, 2);
+    TEST_ASSERT_EQUAL_INT32((int32_t)SnmpError::NoSuchName, r.errorStatus);
+    TEST_ASSERT_EQUAL_INT32(2, r.errorIndex);
+}
+
+static void test_ambient_temperature_absent_v2c_get_is_no_such_instance() {
+    SnmpAgent agent("public");
+    state.ambientTempValid = false;
+    const char* oids[] = {"1.3.6.1.4.1.63050.5.0", "1.3.6.1.4.1.63050.4.0"};
+    Reply r = requestV2c(agent, BerTag::GetRequest, oids, 2);
+    TEST_ASSERT_EQUAL_INT32(0, r.errorStatus);
+    TEST_ASSERT_EQUAL_HEX8(BerTag::NoSuchInstance, r.tags[0]);
+    TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050.5.0", str(r.names[0]));
+    TEST_ASSERT_EQUAL_INT32(287, r.ints[1]);  // the CPU temperature is still there
+}
+
+static void test_ambient_temperature_absent_is_skipped_by_getnext() {
+    SnmpAgent agent("public");
+    state.ambientTempValid = false;
+    const char* oids[] = {"1.3.6.1.4.1.63050.4.0"};
+    Reply r = requestV2c(agent, BerTag::GetNextRequest, oids, 1);
+    TEST_ASSERT_EQUAL_HEX8(BerTag::EndOfMibView, r.tags[0]);
+    r = request(agent, BerTag::GetNextRequest, oids, 1);
+    TEST_ASSERT_EQUAL_INT32((int32_t)SnmpError::NoSuchName, r.errorStatus);
+    const char* before[] = {"1.3.6.1.4.1.63050.3.0"};
+    r = requestV2c(agent, BerTag::GetNextRequest, before, 1);
+    TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050.4.0", str(r.names[0]));
+}
+
+static void test_ambient_temperature_absent_is_skipped_by_getbulk() {
+    SnmpAgent agent("public");
+    state.ambientTempValid = false;
+    const char* oids[] = {"1.3.6.1.4.1.63050.3.0", "1.3.6.1.4.1.63050.4.0"};
+    Reply r = bulk(agent, 1, 2, oids, 2);
+    TEST_ASSERT_EQUAL_INT32(0, r.errorStatus);
+    TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050.4.0", str(r.names[0]));  // non-repeater
+    TEST_ASSERT_EQUAL_HEX8(BerTag::EndOfMibView, r.tags[1]);              // repeater ends at once
+    for (uint8_t i = 0; i < r.count; i++) TEST_ASSERT_NOT_EQUAL(BerTag::NoSuchInstance, r.tags[i]);
 }
 
 static void test_no_such_instance_for_wrong_if_index() {
@@ -381,7 +439,8 @@ static void test_mib_find_and_next() {
     TEST_ASSERT_EQUAL_STRING("1.3.6.1.2.1.2.1.0", str(mibNext(oid("1.3.6.1.2.1.1.7.0"))->oid));
     TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050.1.0", str(mibNext(oid("1.3.6.1.4.1.63050"))->oid));
     TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050.4.0", str(mibNext(oid("1.3.6.1.4.1.63050.3.0"))->oid));
-    TEST_ASSERT_NULL(mibNext(oid("1.3.6.1.4.1.63050.4.0")));
+    TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050.5.0", str(mibNext(oid("1.3.6.1.4.1.63050.4.0"))->oid));
+    TEST_ASSERT_NULL(mibNext(oid("1.3.6.1.4.1.63050.5.0")));
     TEST_ASSERT_NULL(mibNext(oid("2.0")));
 }
 
@@ -518,7 +577,7 @@ static void test_getnext_with_several_varbinds() {
 
 static void test_getnext_past_end_reports_index_of_that_varbind() {
     SnmpAgent agent("public");
-    const char* oids[] = {"1.3.6.1.2.1.1.1.0", "1.3.6.1.4.1.63050.4.0"};
+    const char* oids[] = {"1.3.6.1.2.1.1.1.0", "1.3.6.1.4.1.63050.5.0"};
     Reply r = request(agent, BerTag::GetNextRequest, oids, 2);
     TEST_ASSERT_EQUAL_INT32((int32_t)SnmpError::NoSuchName, r.errorStatus);
     TEST_ASSERT_EQUAL_INT32(2, r.errorIndex);
@@ -603,12 +662,12 @@ static void test_v2c_get_reports_exceptions_per_varbind_without_error_status() {
 
 static void test_v2c_getnext_past_end_is_end_of_mib_view() {
     SnmpAgent agent("public");
-    const char* oids[] = {"1.3.6.1.2.1.1.7.0", "1.3.6.1.4.1.63050.4.0"};
+    const char* oids[] = {"1.3.6.1.2.1.1.7.0", "1.3.6.1.4.1.63050.5.0"};
     Reply r = requestV2c(agent, BerTag::GetNextRequest, oids, 2);
     TEST_ASSERT_EQUAL_INT32(0, r.errorStatus);
     TEST_ASSERT_EQUAL_STRING("1.3.6.1.2.1.2.1.0", str(r.names[0]));   // ifNumber follows the system group
     TEST_ASSERT_EQUAL_HEX8(BerTag::EndOfMibView, r.tags[1]);
-    TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050.4.0", str(r.names[1]));
+    TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050.5.0", str(r.names[1]));
 }
 
 static void test_v2c_walk_ends_with_end_of_mib_view() {
@@ -644,7 +703,7 @@ static void test_v1_behaviour_is_unchanged_for_the_same_requests() {
     SnmpAgent agent("public");
     const char* unknown[] = {"1.3.6.1.2.1.1.99.0"};
     TEST_ASSERT_EQUAL_INT32((int32_t)SnmpError::NoSuchName, request(agent, BerTag::GetRequest, unknown, 1).errorStatus);
-    const char* last[] = {"1.3.6.1.4.1.63050.4.0"};
+    const char* last[] = {"1.3.6.1.4.1.63050.5.0"};
     TEST_ASSERT_EQUAL_INT32((int32_t)SnmpError::NoSuchName, request(agent, BerTag::GetNextRequest, last, 1).errorStatus);
     const char* name[] = {"1.3.6.1.2.1.1.5.0"};
     Reply r = request(agent, BerTag::SetRequest, name, 1);
@@ -981,7 +1040,12 @@ int main() {
     RUN_TEST(test_link_down_shows_down_and_speed_zero);
     RUN_TEST(test_counter64_does_not_exist_for_v1);
     RUN_TEST(test_v1_walk_has_every_object_except_counter64);
-    RUN_TEST(test_board_temperature);
+    RUN_TEST(test_cpu_temperature);
+    RUN_TEST(test_ambient_temperature_when_the_sensor_answers);
+    RUN_TEST(test_ambient_temperature_absent_v1_get_is_no_such_name);
+    RUN_TEST(test_ambient_temperature_absent_v2c_get_is_no_such_instance);
+    RUN_TEST(test_ambient_temperature_absent_is_skipped_by_getnext);
+    RUN_TEST(test_ambient_temperature_absent_is_skipped_by_getbulk);
     RUN_TEST(test_no_such_instance_for_wrong_if_index);
     RUN_TEST(test_get_netsnmp_request_returns_sysdescr);
     RUN_TEST(test_get_every_object_value_and_type);

@@ -25,9 +25,12 @@ The device runs an SNMP agent on UDP port 161 and sends traps. Every object is r
 | `1.3.6.1.4.1.63050.1.0` | mainsPowerStatus | INTEGER | `1` = present, `0` = lost |
 | `1.3.6.1.4.1.63050.2.0` | mainsPowerChanges | Counter32 | Mains changes since boot (2 per outage) |
 | `1.3.6.1.4.1.63050.3.0` | mainsPowerLastChange | TimeTicks | sysUpTime at the last change, 0 if none |
-| `1.3.6.1.4.1.63050.4.0` | boardTemperature | Integer32 | RP2040 die temperature in 0.1 °C (`392` = 39.2 °C), average of 8 readings, updated every 2 s |
+| `1.3.6.1.4.1.63050.4.0` | cpuTemperature | Integer32 | RP2040 die temperature in 0.1 °C (`392` = 39.2 °C), average of 8 readings, updated every 2 s |
+| `1.3.6.1.4.1.63050.5.0` | ambientTemperature | Integer32 | TMP1075 temperature in 0.1 °C (`271` = 27.1 °C), read every 2 s; absent without the sensor |
 
-`boardTemperature` comes from the RP2040's internal sensor. It measures the chip, which runs a few degrees above the air around it, and the sensor is only accurate to a few degrees: use it to spot an overheating enclosure, not as a room thermometer.
+`cpuTemperature` comes from the RP2040's internal sensor. It measures the chip, which runs a few degrees above the air around it, and the sensor is only accurate to a few degrees: use it to spot an overheating chip, not as a room thermometer. It was named `boardTemperature` before; the OID and value are unchanged, only the name in the MIB file.
+
+`ambientTemperature` comes from the TMP1075 on the carrier board (I2C0, GP4/GP5, address 0x48), accurate to ±1 °C. It reads the air at the board, several degrees below `cpuTemperature` (27 °C against 34 °C on the bench). Without the carrier board, or after three failed reads in a row (6 s), the object has no instance: v2c Get returns noSuchInstance, v1 Get noSuchName, and walks skip it. It comes back on the next good read.
 
 `mainsPowerStatus` is debounced: a change must last 5 ms to count and is reported within 10 ms. To detect an outage between two polls, compare `mainsPowerChanges` with the previous poll; `mainsPowerLastChange` tells you when it happened.
 
@@ -223,7 +226,8 @@ This needs the standard IETF MIBs, which Debian/Ubuntu ship separately: `sudo ap
 | MIB table, Get/GetNext/Set handling | `lib/snmp_agent/snmp_mib`, `snmp_agent` | `test/native/test_snmp_agent` |
 | Frame counting, PHY decoding | `lib/if_stats` | `test/native/test_if_stats` |
 | Counters and PHY on the device | `src/net_stats.cpp` | `test/hil/test_snmp.py` |
-| Board temperature | `src/board_temp.cpp` | `test/hil/test_snmp.py` |
+| CPU temperature | `src/cpu_temp.cpp` | `test/hil/test_snmp.py` |
+| Ambient temperature (TMP1075) | `lib/tmp1075`, `src/ambient_temp.cpp` | `test/native/test_tmp1075`, `test/native/test_snmp_agent`, `test/hil/test_snmp.py` |
 | Trap encoding (v1 and v2c), throttle | `lib/snmp_agent/snmp_trap` | `test/native/test_snmp_trap` (byte-exact vs net-snmp `snmptrap -v1` and `-v2c`) |
 | Rate limiter, access log | `lib/access_control` | `test/native/test_access_control` |
 | Traps on the device | `src/snmp_service.cpp` | `test/hil/test_snmp_traps.py` |

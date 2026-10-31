@@ -47,6 +47,9 @@ public:
     /// How long the current press has lasted, 0 if not pressed
     uint32_t heldMs(uint32_t nowMs) const;
 
+    /// How long the last press lasted, set when it is released (heldMs() is 0 by then); 0 before any release
+    uint32_t lastPressMs() const { return _lastPressMs; }
+
     /// true once the reset has been triggered (until the next begin())
     bool triggered() const { return _triggered; }
 
@@ -61,4 +64,5 @@ private:
     bool _triggered = false;
     uint32_t _pressStartMs = 0;
     uint32_t _triggerMs = 0;
+    uint32_t _lastPressMs = 0;
 };

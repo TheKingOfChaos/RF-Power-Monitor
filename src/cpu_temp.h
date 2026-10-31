@@ -1,7 +1,7 @@
 #pragma once
 
 /**
- * @file board_temp.h
+ * @file cpu_temp.h
  * @brief RP2040 on-chip temperature sensor (ADC channel 4).
  *
  * Measures the die, not the air: it reads a few degrees above ambient and is
@@ -15,14 +15,14 @@
 /**
  * @brief Take the first reading. Call once from setup() on core 0.
  */
-void boardTempBegin();
+void cpuTempBegin();
 
 /**
  * @brief Sample every 2 s. Call from loop() on core 0.
  */
-void boardTempPoll();
+void cpuTempPoll();
 
 /**
  * @brief Averaged die temperature in tenths of a degree Celsius
  */
-int32_t boardTempDeciC();
+int32_t cpuTempDeciC();

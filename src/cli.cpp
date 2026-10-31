@@ -4,7 +4,8 @@
 #include <mains_input.h>
 #include <netconfig.h>
 #include <settings.h>
-#include "board_temp.h"
+#include "ambient_temp.h"
+#include "cpu_temp.h"
 #include "hostname.h"
 #include "net_stats.h"
 #include "snmp_service.h"
@@ -87,6 +88,15 @@ static void printMenu() {
 }
 
 /**
+ * @brief One status line with a temperature in tenths of a degree, e.g. "-0.5 C"
+ */
+static void printTemperature(const char* name, int32_t deciC) {
+    uint32_t a = (uint32_t)(deciC < 0 ? -deciC : deciC);
+    Serial.printf("%s: %s%lu.%lu C\n", name, deciC < 0 ? "-" : "", (unsigned long)(a / 10),
+                  (unsigned long)(a % 10));
+}
+
+/**
  * @brief Show the stored settings and the live interface addresses
  */
 static void printStatus() {
@@ -113,8 +123,12 @@ static void printStatus() {
     Serial.printf("SNMP v2c: %lu requests, %lu getbulk\n", (unsigned long)snmp.inV2cRequests,
                   (unsigned long)snmp.inGetBulkRequests);
 
-    int32_t t = boardTempDeciC();
-    Serial.printf("Board temperature: %ld.%ld C\n", (long)(t / 10), (long)abs(t % 10));
+    printTemperature("CPU temperature", cpuTempDeciC());
+    if (ambientTempValid()) {
+        printTemperature("Ambient temperature", ambientTempDeciC());
+    } else {
+        Serial.print("Ambient temperature: no sensor (TMP1075 at 0x48 on GP4/GP5)\n");
+    }
     SnmpInterfaceState ifs;
     netStatsCapture(ifs);
     Serial.printf("Ethernet: link %s, %lu Mbit/s, in %llu bytes / %llu packets, out %llu bytes / %llu packets\n",

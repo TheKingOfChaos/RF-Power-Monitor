@@ -1,6 +1,6 @@
 # LibreNMS
 
-The device works in LibreNMS as a plain SNMP device out of the box: it answers SNMPv2c, has the system group and the standard IF-MIB, so LibreNMS discovers it, graphs the Ethernet port's traffic and shows its uptime. To also get the mains power state and the board temperature as sensors, and the device recognised as an RF-UPS-Monitor, add the definitions in [librenms/](../librenms/) to your LibreNMS installation.
+The device works in LibreNMS as a plain SNMP device out of the box: it answers SNMPv2c, has the system group and the standard IF-MIB, so LibreNMS discovers it, graphs the Ethernet port's traffic and shows its uptime. To also get the mains power state and the CPU and ambient temperature as sensors, and the device recognised as an RF-UPS-Monitor, add the definitions in [librenms/](../librenms/) to your LibreNMS installation.
 
 > **Status:** tested with LibreNMS 26.9.1 (Docker, [librenms/test/compose.yml](../librenms/test/compose.yml)) against the real device running firmware 1.0.1: OS, version and hardware detected, all three sensors created with the right values and limits, the port polled with traffic rates, and a mains trap logged. The definition files also validate against LibreNMS's JSON schemas.
 
@@ -11,11 +11,12 @@ The device works in LibreNMS as a plain SNMP device out of the box: it answers S
 | OS "RF-UPS-Monitor", type power, version (e.g. `1.0.2`) and hardware (`RP2040, W5500`) | sysObjectID `1.3.6.1.4.1.63050`, sysDescr |
 | Port `eth0` with traffic, packets, speed and status | IF-MIB (64-bit counters over v2c) |
 | State sensor "Mains power": present (OK) / lost (critical) | `mainsPowerStatus` |
-| Temperature sensor "Board (RP2040 die)", warning at 60 °C, critical at 70 °C, low limit −20 °C | `boardTemperature` / 10 |
+| Temperature sensor "CPU (RP2040 die)", warning at 60 °C, critical at 70 °C, low limit −20 °C | `cpuTemperature` / 10 |
+| Temperature sensor "Ambient (TMP1075)", warning at 40 °C, critical at 50 °C, low limit −20 °C; only with the carrier board | `ambientTemperature` / 10 |
 | Count sensor "Mains power changes since boot" | `mainsPowerChanges` |
 | Uptime, reboot detection | sysUpTime |
 
-The temperature sensor sets its low limit explicitly to −20 °C (the RP2040's minimum rating): without it LibreNMS sets a low limit 10 °C below the first reading (29.4 °C in the test), which alarms as soon as the room cools down.
+The temperature sensors set their low limit explicitly to −20 °C (the RP2040's minimum rating): without it LibreNMS sets a low limit 10 °C below the first reading (29.4 °C in the test), which alarms as soon as the room cools down. The CPU sensor keeps the index `boardTemperature.0` from before the MIB object was renamed `cpuTemperature`, so an existing installation keeps its graph after updating the definitions; replace the MIB file in LibreNMS together with the YAML files. The ambient limits suit a room with equipment; change them per device in LibreNMS if the box sits somewhere warmer.
 
 A mains outage turns the state sensor critical (generic state 2). To be alerted, add the "State Sensor Critical" rule from LibreNMS's rule collection (Alerts → Alert Rules → Create rule from collection); a fresh installation has no alert rules. Tested with a real mains cut: the alert opened on the first poll after mains went off and recovered on the first poll after it came back. Polling runs every 5 minutes by default; a short outage between two polls still shows up as a step in "Mains power changes". For immediate notice, send the device's traps to LibreNMS's snmptrapd (below).
 
@@ -53,7 +54,7 @@ The device answers SNMP over IPv6 too (see the README's IPv6 section). To poll i
 ./lnms device:add --v2c -c <community> -t udp6 <device IPv6 address>
 ```
 
-or choose transport `udp6` in Devices → Add Device. Checked with LibreNMS 26.9.1 in the Docker setup below: added with `-t udp6`, the device is detected as RF-UPS-Monitor, and discovery and polling over IPv6 give the mains state, change counter, board temperature and the `eth0` port. If LibreNMS already has the device by its IPv4 address, it refuses a second entry with the same sysName (`--force` skips that check). A static IPv6 address (serial menu option 9) gives the device an address that does not change with the router's prefix, which suits a monitoring system.
+or choose transport `udp6` in Devices → Add Device. Checked with LibreNMS 26.9.1 in the Docker setup below: added with `-t udp6`, the device is detected as RF-UPS-Monitor, and discovery and polling over IPv6 give the mains state, change counter, temperature and the `eth0` port. If LibreNMS already has the device by its IPv4 address, it refuses a second entry with the same sysName (`--force` skips that check). A static IPv6 address (serial menu option 9) gives the device an address that does not change with the router's prefix, which suits a monitoring system.
 
 ## Traps
 
@@ -85,4 +86,4 @@ The compose network has IPv6 (`enable_ipv6`, NATed by Docker), so the containers
 | [librenms/os_discovery/rfupsmonitor.yaml](../librenms/os_discovery/rfupsmonitor.yaml) | Version and hardware from sysDescr; the state, temperature and count sensors |
 | [mibs/RF-UPS-MONITOR-MIB.txt](../mibs/RF-UPS-MONITOR-MIB.txt) | Lets LibreNMS resolve the `RF-UPS-MONITOR-MIB::` names |
 
-If you change the MIB, keep the object names used in the discovery file. The temperature sensor's divisor (10) matches the MIB's units of 0.1 °C.
+If you change the MIB, keep the object names used in the discovery file. The temperature sensors' divisor (10) matches the MIB's units of 0.1 °C.

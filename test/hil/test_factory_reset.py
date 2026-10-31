@@ -16,7 +16,10 @@ import time
 import unittest
 
 from device import Device
-from snmp_tools import raw_get
+from snmp_tools import GET_SYSDESCR, raw_get
+
+# Community set before the hold; as long as "public", so the captured request only needs the name swapped
+RESET_COMMUNITY = "hilrst"
 
 
 @unittest.skipUnless(os.environ.get("RFUPS_MANUAL_BUTTON"),
@@ -40,8 +43,8 @@ class FactoryResetTest(unittest.TestCase):
     def tearDownClass(cls):
         cls.dev.close()
 
-    def _wait_log(self, pattern, timeout, poll_snmp=False):
-        """Read the serial log until pattern; optionally check SNMP answers meanwhile."""
+    def _wait_log(self, pattern, timeout, poll_snmp=None):
+        """Read the serial log until pattern; meanwhile check SNMP answers with community poll_snmp, if given."""
         deadline = time.time() + timeout
         buf, snmp_ok, snmp_tries = "", 0, 0
         regex = re.compile(pattern)
@@ -55,7 +58,8 @@ class FactoryResetTest(unittest.TestCase):
                 return m, buf, snmp_ok, snmp_tries
             if poll_snmp:
                 snmp_tries += 1
-                if raw_get(self.before["ip"], snmp_tries, timeout=0.3)[0] is not None:
+                packet = GET_SYSDESCR.replace(b"public", poll_snmp.encode())
+                if raw_get(self.before["ip"], snmp_tries, timeout=0.3, packet=packet)[0] is not None:
                     snmp_ok += 1
         self.fail("not seen within %d s: %r\n%s" % (timeout, pattern, buf[-2000:]))
 
@@ -63,7 +67,7 @@ class FactoryResetTest(unittest.TestCase):
         print("\n>>> Press and HOLD the reset button for about 3 seconds, then release (30 s)...",
               flush=True)
         self._wait_log(r"Factory reset button pressed", 30)
-        m, log, snmp_ok, tries = self._wait_log(r"released after (\d+) ms, no reset", 20, poll_snmp=True)
+        m, log, snmp_ok, tries = self._wait_log(r"released after (\d+) ms, no reset", 20, poll_snmp="public")
         held = int(m.group(1))
         self.assertGreater(held, 1000)
         self.assertLess(held, 10000)
@@ -77,11 +81,12 @@ class FactoryResetTest(unittest.TestCase):
         d = self.dev
         try:
             # Non-default values so the reset is visible
-            d.set_snmp("hil-reset", "hil-before-reset", "x@example.com", "bench")
+            d.set_snmp(RESET_COMMUNITY, "hil-before-reset", "x@example.com", "bench")
             print("\n>>> Press and HOLD the reset button for 12 seconds; the LED blinks fast at 10 s (40 s)...",
                   flush=True)
             self._wait_log(r"Factory reset button pressed", 40)
-            m, log, snmp_ok, tries = self._wait_log(r"Factory reset after (\d+) ms hold", 20, poll_snmp=True)
+            m, log, snmp_ok, tries = self._wait_log(r"Factory reset after (\d+) ms hold", 20,
+                                                    poll_snmp=RESET_COMMUNITY)
             held = int(m.group(1))
             self.assertGreaterEqual(held, 10000)
             self.assertLessEqual(held, 10100, "reset fired late")
@@ -105,7 +110,8 @@ class FactoryResetTest(unittest.TestCase):
 
     def _restore(self):
         d, b = self.dev, self.before
-        d.wait_for_menu(timeout=40)
+        # Also after a failed check: the reset may have rebooted the device and dropped the port
+        d.reconnect_after_reboot()
         d.set_snmp(b["community"], b["sysName"], b["sysContact"], b["sysLocation"], b["trapTarget"], b["trapVersion"])
         if self.stored_static and not re.search(
                 r"Stored static IP: %s / %s, gateway %s" % tuple(map(re.escape, self.stored_static)),

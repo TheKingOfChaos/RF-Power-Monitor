@@ -1,6 +1,6 @@
 # RF-UPS-Monitor
 
-A mains power monitor built on a Raspberry Pi Pico with a W5500 Ethernet module. It reports whether mains power is present over SNMP v1 and v2c, including traps, together with standard interface statistics (IF-MIB) and the board temperature, so it can be monitored by LibreNMS or any other SNMP manager. It is configured through a menu on the USB serial port.
+A mains power monitor built on a Raspberry Pi Pico with a W5500 Ethernet module. It reports whether mains power is present over SNMP v1 and v2c, including traps, together with standard interface statistics (IF-MIB), the CPU temperature and the ambient temperature (TMP1075 on the carrier board), so it can be monitored by LibreNMS or any other SNMP manager. It is configured through a menu on the USB serial port.
 
 Current version: **2.4.2** (see [CHANGELOG.md](CHANGELOG.md)).
 
@@ -34,7 +34,8 @@ More diagrams (firmware architecture, SNMP request flow, mains flow, settings, t
 | Static IPv6 address and gateway (serial menu or web page), next to SLAAC | Working |
 | SNMP trap destination from DHCP option 224 | Working, tested with Kea 2.2.0; in your network once the DHCP server has option 224 |
 | Interface statistics (IF-MIB ifTable/ifXTable, 64-bit counters) | Working, counted by the firmware |
-| Board temperature (RP2040 internal sensor) | Working |
+| CPU temperature (RP2040 internal sensor) | Working |
+| Ambient temperature (TMP1075 on the carrier board, I2C) | Working |
 | LibreNMS OS definition (mains state, temperature, change counter) | Working, tested with LibreNMS 26.9.1 |
 
 See [TODO.md](TODO.md) for the detailed plan.
@@ -63,7 +64,7 @@ See [TODO.md](TODO.md) for the detailed plan.
 
 ![Carrier board with the W5500-EVB-Pico-PoE soldered on](hardware/pico-poe-mains-carrier/images/iso.png)
 
-[hardware/pico-poe-mains-carrier/](hardware/pico-poe-mains-carrier/README.md) is a 2-layer carrier PCB (KiCad 10, 80 x 51.5 mm) for the W5500-EVB-Pico-PoE; the module is soldered flat by its castellated edges or plugged into two 1x20 female headers. It carries the isolated mains detector: 230 VAC on a screw terminal, a T 100 mA fuse, four 68 k 200 V resistors, an LTV-814S AC optocoupler (5 kVrms), an RC that bridges the zero crossings and a 74LVC1G14 Schmitt inverter driving GPIO27 (HIGH = mains present) and two LEDs (green = mains on, red = off, without firmware). It also has a TMP1075 temperature sensor on I2C0 and the factory reset button on GPIO22. Mains copper keeps at least 6.5 mm clearance and 6.4 mm creepage to the low-voltage side, enforced as DRC rules, with a slot under the optocoupler. Gerbers, BOM and placement files for JLCPCB, the schematic PDF and STEP/GLB models are in [hardware/pico-poe-mains-carrier/fab/](hardware/pico-poe-mains-carrier/fab/README.md) and `3d/`; `tools/generate.py` generates the whole KiCad project.
+[hardware/pico-poe-mains-carrier/](hardware/pico-poe-mains-carrier/README.md) is a 2-layer carrier PCB (KiCad 10, 80 x 51.5 mm) for the W5500-EVB-Pico-PoE; the module is soldered flat by its castellated edges or plugged into two 1x20 female headers. It carries the isolated mains detector: 230 VAC on a screw terminal, a T 1 A fuse, four 68 k 200 V resistors, an LTV-814S AC optocoupler (5 kVrms), an RC that bridges the zero crossings and a 74LVC1G14 Schmitt inverter driving GPIO27 (HIGH = mains present) and two LEDs (green = mains on, red = off, without firmware). It also has a TMP1075 temperature sensor on I2C0 and the factory reset button on GPIO22. Mains copper keeps at least 6.5 mm clearance and 6.4 mm creepage to the low-voltage side, enforced as DRC rules, with a slot under the optocoupler. Gerbers, BOM and placement files for JLCPCB, the schematic PDF and STEP/GLB models are in [hardware/pico-poe-mains-carrier/fab/](hardware/pico-poe-mains-carrier/fab/README.md) and `3d/`; `tools/generate.py` generates the whole KiCad project.
 
 How the carrier and the firmware fit together:
 
@@ -72,7 +73,7 @@ How the carrier and the firmware fit together:
 | Mains detection | MAINS_OK on GP27, HIGH = present | GPIO27, HIGH = present: matches |
 | W5500 | On the module, GP16-GP21 | `include/pins.h` GP16-GP21: matches |
 | Power | PoE through the module, 3V3(OUT) feeds the carrier | No dependency |
-| Temperature | TMP1075 on I2C0 (GP4 SDA, GP5 SCL, address 0x48) | Not read yet: boardTemperature is the RP2040's internal sensor (TODO) |
+| Temperature | TMP1075 on I2C0 (GP4 SDA, GP5 SCL, address 0x48) | `ambientTemperature` (63050.5), read every 2 s; absent without the carrier |
 | Factory reset button | SW1 from GP22 to GND, below the module (board v1.1) | Reads GPIO22 with the internal pull-up, hold 10 s: matches |
 | Mains loss timing | The RC holds the signal about 30-50 ms after mains is lost (bridges zero crossings) | The firmware sees the loss that much later; `.clinerules` asks for 10 ms (TODO) |
 
@@ -88,7 +89,7 @@ All assignments are in [include/pins.h](include/pins.h).
 | GPIO19 | W5500 MOSI | SPI0 TX |
 | GPIO20 | W5500 RST | Pulsed low at boot |
 | GPIO21 | W5500 INT | Interrupt-driven receive |
-| GPIO4 / GPIO5 | I2C0 SDA / SCL | TMP1075 on the carrier board, address 0x48; not used by the firmware yet |
+| GPIO4 / GPIO5 | I2C0 SDA / SCL | TMP1075 on the carrier board, address 0x48 (ambient temperature) |
 | GPIO22 | Factory reset | Active low, internal pull-up |
 | GPIO27 | Mains power detection | HIGH = power present, internal pull-down |
 | LED | Onboard LED | Status / reset feedback |
@@ -112,7 +113,7 @@ Connect to the Pico's USB serial port (`COM16` here) at **115200 baud, 8N1**, wi
 >
 ```
 
-**1. Show status** prints the mains power state, the board temperature, the Ethernet link speed, traffic and drop counters, the SNMP counters and settings (community, sysName, sysContact, sysLocation), the configured network mode, the stored static settings, and the live interface: state, MAC, IP, subnet, gateway and DNS.
+**1. Show status** prints the mains power state, the CPU and ambient temperature (`no sensor` without the TMP1075), the Ethernet link speed, traffic and drop counters, the SNMP counters and settings (community, sysName, sysContact, sysLocation), the configured network mode, the stored static settings, and the live interface: state, MAC, IP, subnet, gateway and DNS.
 
 ```
 > 1
@@ -120,7 +121,8 @@ Connect to the Pico's USB serial port (`COM16` here) at **115200 baud, 8N1**, wi
 Mains power: present (22 changes, last change 1053 s ago)
 SNMP: 802 packets, 802 responses (get 437, getnext 0, set 0), bad community 0, bad version 0, malformed 0
 SNMP v2c: 792 requests, 365 getbulk
-Board temperature: 40.4 C
+CPU temperature: 40.4 C
+Ambient temperature: 27.1 C
 Ethernet: link up, 100 Mbit/s, in 184054263 bytes / 1351415 packets, out 149671 bytes / 1002 packets
 Ethernet drops: 0 discarded (no buffer), 0 errors, 211829 unknown protocol, 0 send errors
 SNMP security: 0 rate limited, 0 access log events
@@ -253,7 +255,7 @@ The device serves a small configuration page on **http://&lt;device IP&gt;/** (p
 
 - **Login:** user `admin`. Until you set your own password, the password is the device's **default password**: 10 random characters generated on first boot, different for every device, and shown only on the serial status screen (menu option 1): `Web login: user admin, default password "k7wqz3mtd9"`. A factory reset does not change it; menu option 7 replaces it with a new random one.
 - **Own password:** serial menu option 6 sets one (8-32 characters, no spaces; typed characters are shown as `*`), or `-` goes back to the device default. Changing it logs every browser out. The password is stored as a salted SHA-256 hash (2000 rounds), never as text; checking it takes about half a second, done in small steps so SNMP keeps answering meanwhile. It can only be changed from the serial menu, so someone who learns it cannot lock you out.
-- **Status:** mains power (green or red badge) and change count, uptime, board temperature, Ethernet link, hostname and `.local` name, IP address, IPv6 address and link-local address (when the device has them), MAC address, network mode, static IPv6 address (when set), firmware version (top bar).
+- **Status:** mains power (green or red badge) and change count, uptime, CPU and ambient temperature, Ethernet link, hostname and `.local` name, IP address, IPv6 address and link-local address (when the device has them), MAC address, network mode, static IPv6 address (when set), firmware version (top bar). With DHCP the Network card's boxes show the address, subnet mask and gateway the DHCP server gave (and the DNS server below them); choosing Static and saving keeps that address.
 - **Device name:** the hostname (also SNMP sysName and mDNS name), active immediately.
 - **Network:** DHCP or static IP (address, mask and gateway are checked as in the serial menu). Saving restarts the device; the page tells you the new address.
 - **IPv6:** static IPv6 address and gateway, checked as in the serial menu (option 9); empty fields remove them. Saving restarts the device.
@@ -432,6 +434,7 @@ lib/netconfig/              IPv4/IPv6 parsing, formatting and validation, hostna
 lib/settings_codec/         Settings JSON, validation, A/B selection (pure C++)
 lib/settings/               LittleFS storage on top of settings_codec
 lib/power_monitor/          Mains input debouncer, reset button logic (pure C++)
+lib/tmp1075/                TMP1075 conversion and read state (pure C++)
 lib/access_control/         Rate limiter and access log, IPv4 and IPv6 sources (pure C++)
 lib/mains_input/            GPIO27 sampler on core 1, seqlock hand-over to core 0
 lib/snmp_ber/               ASN.1 BER codec and OIDs for SNMP (pure C++)
@@ -441,7 +444,8 @@ lib/web_ui/                 Web page: HTTP parser, login, sessions, pages, SHA-2
 lib/dhcp_option/            Ask for and read DHCP option 224 in Ethernet frames (pure C++)
 src/snmp_service.cpp        UDP port 161, device state for the MIB
 src/net_stats.cpp           Counts frames at the lwIP driver, reads the W5500 PHY register
-src/board_temp.cpp          RP2040 die temperature, averaged
+src/cpu_temp.cpp            RP2040 die temperature, averaged
+src/ambient_temp.cpp        TMP1075 ambient temperature over I2C0
 mibs/                       RF-UPS-MONITOR-MIB
 hardware/                   Carrier PCB for the W5500-EVB-Pico-PoE (KiCad project, fab files, 3D, renders)
 logo/                       RF logo (SVG), used on the web page
@@ -481,7 +485,8 @@ An SNMP agent runs on UDP port 161 and answers SNMPv1 and SNMPv2c, each request 
   .1.0  mainsPowerStatus      INTEGER 1 = present, 0 = lost
   .2.0  mainsPowerChanges     Counter32
   .3.0  mainsPowerLastChange  TimeTicks
-  .4.0  boardTemperature      Integer32, 0.1 degrees Celsius
+  .4.0  cpuTemperature        Integer32, 0.1 degrees Celsius (RP2040 die)
+  .5.0  ambientTemperature    Integer32, 0.1 degrees Celsius (TMP1075, only when present)
 ```
 
 The interface counters are kept by the firmware: every Ethernet frame the W5500 receives or sends is counted (octets, unicast, multicast, broadcast), since the W5500 in MAC-raw mode has no counters of its own. Link state and speed come from the W5500 PHY register. The board temperature is the RP2040's internal sensor, which reads the chip temperature: a few degrees above the air around it.

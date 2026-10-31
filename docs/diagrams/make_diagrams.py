@@ -155,13 +155,15 @@ def system_overview():
     d.zone("z-board", 420, 80, 650, 640, "RF-UPS-Monitor board", ZONE_BLUE)
     d.box("flash", 470, 140, 300, 90, "Internal flash (LittleFS)\nsettings_a / settings_b.json", GREEN, 16)
     d.box("pico", 470, 290, 300, 220,
-          "Raspberry Pi Pico\n(RP2040)\n\nCore 0: network, SNMP, menu\nCore 1: GPIO27 + GPIO22, 1 kHz\ndie temperature sensor",
+          "Raspberry Pi Pico\n(RP2040)\n\nCore 0: network, SNMP, menu\nCore 1: GPIO27 + GPIO22, 1 kHz\nCPU temperature sensor",
           BLUE, 17)
     d.box("w5500", 880, 330, 170, 150, "W5500\nEthernet\nSPI0: GPIO16-19\nRST 20, INT 21", CYAN, 16)
+    d.box("tmp", 880, 540, 170, 100, "TMP1075\nambient temp.\nI2C0, 0x48", ORANGE, 16)
     d.box("button", 470, 590, 140, 90, "Reset button\nGPIO22 to GND", GRAY, 16)
     d.box("led", 640, 590, 130, 90, "Onboard LED\nstatus, reset", YELLOW, 16)
     d.arrow("pico", "top", "flash", "bottom", both=True)
     d.arrow("pico", "right", "w5500", "left", "SPI", both=True)
+    d.arrow("pico", "right", "tmp", "left", "GPIO4/5", a_frac=0.9, b_frac=0.5, both=True)
     d.arrow("button", "top", "pico", "bottom", a_frac=0.5, b_frac=0.23)
     d.arrow("pico", "bottom", "led", "top", a_frac=0.77)
     d.arrow("det", "right", "pico", "left", "GPIO27\nHIGH = mains", a_frac=0.4, b_frac=0.4)
@@ -190,7 +192,7 @@ def firmware_architecture():
     d.zone("z-src", 40, 100, 1650, 200, "src/  firmware on the Pico (Arduino)", ZONE_BLUE)
     cols = [70, 300, 530, 760, 990, 1220, 1450]
     src = [("main", "main.cpp\nboot, Ethernet,\nloop, starts core 1"), ("cli", "cli.cpp\nserial menu"),
-           ("svc", "snmp_service.cpp\nUDP 161, traps,\ndevice state"), ("temp", "board_temp.cpp\nRP2040 die\ntemperature"),
+           ("svc", "snmp_service.cpp\nUDP 161, traps,\ndevice state"), ("temp", "cpu_temp.cpp\nambient_temp.cpp\nRP2040, TMP1075"),
            ("net", "net_stats.cpp\nframe counters,\nW5500 PHY"), ("reset", "factory_reset.cpp\nGPIO22 on core 1"),
            ("web", "web_service.cpp\nweb page, TCP 80,\nnon-blocking")]
     for x, (eid, text) in zip(cols, src):
@@ -206,6 +208,7 @@ def firmware_architecture():
         d.box(eid, x, 400, 210, 110, text, GREEN, 16)
     d.box("ber", 530, 560, 210, 90, "snmp_ber\nBER codec, OIDs,\nCounter64", GREEN, 16)
     d.box("dhcpopt", 990, 548, 210, 72, "dhcp_option\nask for / read\nDHCP option 224", GREEN, 16)
+    d.box("tmp1075", 760, 548, 200, 72, "tmp1075\nregister to 0.1 C,\nread state", GREEN, 16)
 
     d.zone("z-hw", 40, 710, 1650, 170, "lib/  hardware layers", ZONE_YELLOW, title_at="bottom")
     d.box("settings", 70, 740, 210, 90, "settings\nLittleFS A/B slots", YELLOW, 16)
@@ -223,6 +226,7 @@ def firmware_architecture():
     d.arrow("agent", "bottom", "ber", "top")
     d.arrow("net", "bottom", "ifst", "top", a_frac=0.4, b_frac=0.4)
     d.arrow("net", "bottom", "dhcpopt", "top", a_frac=0.95, b_frac=0.95, via=[(1210, 300), (1210, 530)])
+    d.arrow("temp", "bottom", "tmp1075", "top", a_frac=0.95, b_frac=0.95, via=[(980, 300), (980, 530)])
     d.arrow("reset", "bottom", "power", "top")
     d.arrow("web", "bottom", "webui", "top")
     d.arrow("settings", "top", "codec", "bottom")

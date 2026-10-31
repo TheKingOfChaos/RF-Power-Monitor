@@ -1,4 +1,4 @@
-#include "board_temp.h"
+#include "cpu_temp.h"
 
 static const uint32_t SAMPLE_INTERVAL_MS = 2000;
 static const uint8_t SAMPLES = 8;
@@ -15,13 +15,13 @@ static int32_t readDeciC() {
     return (int32_t)(c * 10.0f + (c >= 0 ? 0.5f : -0.5f));
 }
 
-void boardTempBegin() {
+void cpuTempBegin() {
     int32_t first = readDeciC();
     for (uint8_t i = 0; i < SAMPLES; i++) samples[i] = first;
     average = first;
 }
 
-void boardTempPoll() {
+void cpuTempPoll() {
     static uint32_t lastSample = 0;
     if (millis() - lastSample < SAMPLE_INTERVAL_MS) return;
     lastSample = millis();
@@ -33,6 +33,6 @@ void boardTempPoll() {
     average = sum / SAMPLES;
 }
 
-int32_t boardTempDeciC() {
+int32_t cpuTempDeciC() {
     return average;
 }

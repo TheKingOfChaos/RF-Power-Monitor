@@ -12,6 +12,9 @@ Environment variables:
     RFUPS_PORT          Serial port, default COM16
     RFUPS_WSL_DISTRO    WSL distribution with net-snmp, default Ubuntu-24.04
     RFUPS_MAINS_SWITCH / RFUPS_MANUAL_MAINS  Mains tests, see mains_switch.py
+    RFUPS_NO_TMP1075    Set when the device has no TMP1075 (no carrier board):
+                        the ambient temperature tests are skipped and walks
+                        expect no ambientTemperature
 
 The device must use community "public"; tests that change the SNMP
 settings restore them afterwards.
@@ -31,6 +34,10 @@ from snmp_tools import (GET_SYSDESCR, REQUEST_ID_OFFSET, garbage_packets, local_
                         raw_get, response_request_id, send_raw)
 
 ENTERPRISE = "1.3.6.1.4.1.63050"
+# Set when the device has no TMP1075 (module without the carrier board)
+NO_TMP1075 = bool(os.environ.get("RFUPS_NO_TMP1075"))
+# Last enterprise object: ambientTemperature (.5) exists only with the TMP1075
+LAST_ENTERPRISE = 4 if NO_TMP1075 else 5
 
 
 def all_oids(v1):
@@ -39,7 +46,7 @@ def all_oids(v1):
     oids += [".1.3.6.1.2.1.2.1.0"]
     oids += [".1.3.6.1.2.1.2.2.1.%d.1" % i for i in range(1, 23)]
     oids += [".1.3.6.1.2.1.31.1.1.1.%d.1" % i for i in range(1, 20) if not (v1 and 6 <= i <= 13)]
-    oids += ["." + ENTERPRISE + ".%d.0" % i for i in range(1, 5)]
+    oids += ["." + ENTERPRISE + ".%d.0" % i for i in range(1, LAST_ENTERPRISE + 1)]
     return oids
 
 
@@ -140,15 +147,16 @@ class SnmpAgentTest(unittest.TestCase):
 
     def test_walk_enterprise_subtree(self):
         rc, out = self.snmp("snmpwalk", ENTERPRISE)
-        self.assertEqual(4, sum(1 for l in out.splitlines() if " = " in l), out)
+        self.assertEqual(LAST_ENTERPRISE, sum(1 for l in out.splitlines() if " = " in l), out)
 
     def test_walk_system_group(self):
         rc, out = self.snmp("snmpwalk", "1.3.6.1.2.1.1")
         self.assertEqual(7, sum(1 for l in out.splitlines() if " = " in l), out)
 
     def test_getnext_past_end(self):
-        rc, out = self.snmp("snmpgetnext", ENTERPRISE + ".4.0")
-        self.assertRegex(out, NO_SUCH + r"\." + ENTERPRISE.replace(".", r"\.") + r"\.4\.0")
+        last = "%s.%d.0" % (ENTERPRISE, LAST_ENTERPRISE)
+        rc, out = self.snmp("snmpgetnext", last)
+        self.assertRegex(out, NO_SUCH + r"\." + last.replace(".", r"\."))
 
     # ---- rejected requests ----
 
@@ -225,7 +233,7 @@ class SnmpAgentTest(unittest.TestCase):
         rc, out = self.snmp("snmpbulkget", "-Cn0", "-Cr1000", ENTERPRISE, version="2c")
         self.assertEqual(0, rc, out)
         self.assertIn("No more variables left in this MIB View", out)
-        self.assertEqual(4, sum(1 for l in out.splitlines() if " = " in l and "No more" not in l))
+        self.assertEqual(LAST_ENTERPRISE, sum(1 for l in out.splitlines() if " = " in l and "No more" not in l))
 
     # ---- IF-MIB ----
 
@@ -309,15 +317,33 @@ class SnmpAgentTest(unittest.TestCase):
         rc, out = self.snmp("snmpget", "1.3.6.1.2.1.31.1.1.1.6.1")
         self.assertRegex(out, NO_SUCH + r"\.1\.3\.6\.1\.2\.1\.31\.1\.1\.1\.6\.1")
 
-    # ---- board temperature ----
+    # ---- CPU and ambient temperature ----
 
-    def test_board_temperature_is_plausible_and_matches_status(self):
+    def test_cpu_temperature_is_plausible_and_matches_status(self):
         rc, out = self.snmp("snmpget", ENTERPRISE + ".4.0", version="2c")
         deci = int(re.search(r"63050\.4\.0 = INTEGER: (-?\d+)", out).group(1))
         self.assertGreater(deci, 100, "below 10 C")
         self.assertLess(deci, 850, "above 85 C")
-        status_c = self.dev.status()["boardTempC"]
+        status_c = self.dev.status()["cpuTempC"]
         self.assertAlmostEqual(deci / 10.0, status_c, delta=2.0)
+
+    @unittest.skipIf(NO_TMP1075, "RFUPS_NO_TMP1075 set: no carrier board")
+    def test_ambient_temperature_is_plausible_and_matches_status(self):
+        rc, out = self.snmp("snmpget", ENTERPRISE + ".5.0", version="2c")
+        m = re.search(r"63050\.5\.0 = INTEGER: (-?\d+)", out)
+        self.assertIsNotNone(m, out)
+        deci = int(m.group(1))
+        self.assertGreater(deci, 50, "below 5 C")
+        self.assertLess(deci, 500, "above 50 C")
+        status_c = self.dev.status()["ambientTempC"]
+        self.assertIsNotNone(status_c, "status screen says no sensor")
+        # Read every 2 s: allow for a change between the two reads
+        self.assertAlmostEqual(deci / 10.0, status_c, delta=0.5)
+
+    @unittest.skipIf(NO_TMP1075, "RFUPS_NO_TMP1075 set: no carrier board")
+    def test_ambient_temperature_is_below_the_cpu_die(self):
+        st = self.dev.status()
+        self.assertLess(st["ambientTempC"], st["cpuTempC"])
 
     def test_v2c_set_is_not_writable(self):
         rc, out = self.snmp("snmpset", "1.3.6.1.2.1.1.5.0", "s", "hacked", version="2c")

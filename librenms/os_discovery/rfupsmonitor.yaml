@@ -16,9 +16,10 @@ modules:
         temperature:
             data:
                 -
-                    oid: RF-UPS-MONITOR-MIB::boardTemperature
+                    oid: RF-UPS-MONITOR-MIB::cpuTemperature
                     num_oid: '.1.3.6.1.4.1.63050.4.{{ $index }}'
-                    descr: 'Board (RP2040 die)'
+                    descr: 'CPU (RP2040 die)'
+                    # The object was named boardTemperature; the old index keeps the graph history
                     index: 'boardTemperature.{{ $index }}'
                     divisor: 10
                     # Without low_limit LibreNMS sets one 10 degrees below the first reading,
@@ -26,6 +27,16 @@ modules:
                     low_limit: -20
                     warn_limit: 60
                     high_limit: 70
+                -
+                    # Only discovered when the TMP1075 answers (carrier board)
+                    oid: RF-UPS-MONITOR-MIB::ambientTemperature
+                    num_oid: '.1.3.6.1.4.1.63050.5.{{ $index }}'
+                    descr: 'Ambient (TMP1075)'
+                    index: 'ambientTemperature.{{ $index }}'
+                    divisor: 10
+                    low_limit: -20
+                    warn_limit: 40
+                    high_limit: 50
         count:
             data:
                 -

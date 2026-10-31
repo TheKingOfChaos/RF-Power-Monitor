@@ -68,6 +68,19 @@ static void badgeRow(TextBuffer& b, const char* name, const char* value, const c
     b.add("</span></td></tr>");
 }
 
+/// A status row with a temperature in tenths of a degree, e.g. "-0.5 °C"
+static void tempRow(TextBuffer& b, const char* name, int32_t deciC) {
+    char num[16];
+    TextBuffer nb(num, sizeof(num));
+    if (deciC < 0) nb.add("-");
+    uint32_t a = (uint32_t)(deciC < 0 ? -deciC : deciC);
+    nb.addUnsigned(a / 10);
+    nb.add(".");
+    nb.addUnsigned(a % 10);
+    nb.add(" \xC2\xB0" "C");
+    row(b, name, num);
+}
+
 static void textInput(TextBuffer& b, const char* label, const char* name, const char* value, size_t maxLen,
                       const char* help = nullptr) {
     b.add("<div class=\"mb-3\"><label class=\"form-label\" for=\"f-");
@@ -229,15 +242,12 @@ const char* WebApp::mainPage(int code, const char* reason, size_t slot, WebBacke
     nb.addUnsigned(up / 60 % 60);
     nb.add(" min");
     row(b, "Uptime", num);
-    nb = TextBuffer(num, sizeof(num));
-    int32_t t = st.boardTempDeciC;
-    if (t < 0) nb.add("-");
-    uint32_t at = (uint32_t)(t < 0 ? -t : t);
-    nb.addUnsigned(at / 10);
-    nb.add(".");
-    nb.addUnsigned(at % 10);
-    nb.add(" \xC2\xB0" "C");
-    row(b, "Board temperature", num);
+    tempRow(b, "CPU temperature", st.cpuTempDeciC);
+    if (st.ambientTempValid) {
+        tempRow(b, "Ambient temperature", st.ambientTempDeciC);
+    } else {
+        badgeRow(b, "Ambient temperature", "no sensor", "secondary");
+    }
     nb = TextBuffer(num, sizeof(num));
     if (st.linkUp) {
         nb.add("up, ");
@@ -286,12 +296,24 @@ const char* WebApp::mainPage(int code, const char* reason, size_t slot, WebBacke
     if (!st.dhcp) b.add(" checked");
     b.add("><label class=\"form-check-label\" for=\"m-static\">Static</label></div></div>"
           "<div class=\"row g-2\"><div class=\"col-sm-4\">");
-    textInput(b, "IP address", "ip", st.staticIP, 15);
+    // With DHCP the boxes show the address in use. Saving with DHCP keeps the stored static values
+    // (handleNetwork); choosing Static saves what the boxes hold, so the DHCP address is a starting point
+    bool fromDhcp = st.dhcp && st.liveMask[0];
+    textInput(b, "IP address", "ip", fromDhcp ? st.ip : st.staticIP, 15);
     b.add("</div><div class=\"col-sm-4\">");
-    textInput(b, "Subnet mask", "mask", st.subnetMask, 15);
+    textInput(b, "Subnet mask", "mask", fromDhcp ? st.liveMask : st.subnetMask, 15);
     b.add("</div><div class=\"col-sm-4\">");
-    textInput(b, "Gateway", "gateway", st.gateway, 15);
-    b.add("</div></div><button class=\"btn btn-primary\" type=\"submit\">Save and restart</button>"
+    textInput(b, "Gateway", "gateway", fromDhcp ? st.liveGateway : st.gateway, 15);
+    b.add("</div></div>");
+    if (fromDhcp) {
+        b.add("<p class=\"form-text mt-0\">From DHCP");
+        if (st.dns[0]) {
+            b.add(", DNS server ");
+            b.addEscaped(st.dns);
+        }
+        b.add(". Choose Static and save to keep this address.</p>");
+    }
+    b.add("<button class=\"btn btn-primary\" type=\"submit\">Save and restart</button>"
           "<span class=\"form-text ms-2\">Saving restarts the device.</span></form></div></div>");
 
     cardStart(b, "IPv6", "mt-4");

@@ -37,10 +37,15 @@ struct WebStatus {
     bool mainsKnown;
     bool mainsPresent;
     uint32_t mainsChanges;
-    int32_t boardTempDeciC;
+    int32_t cpuTempDeciC;     ///< RP2040 die, tenths of a degree Celsius
+    bool ambientTempValid;    ///< TMP1075 answers
+    int32_t ambientTempDeciC; ///< TMP1075, tenths of a degree Celsius
     bool linkUp;
     uint32_t linkMbps;
     char ip[16];
+    char liveMask[16];    ///< Subnet mask in use (from DHCP or static), empty without an address
+    char liveGateway[16]; ///< Gateway in use, empty without an address
+    char dns[16];         ///< DNS server in use, empty without an address
     char ipv6[46];        ///< Global (SLAAC) IPv6 address, else link-local, empty without IPv6
     char ipv6LinkLocal[46];  ///< fe80:: address, empty without IPv6
     char mac[18];
@@ -84,7 +89,8 @@ public:
     virtual void log(const SourceKey& source, WebEvent event) = 0;
 };
 
-static const size_t WEB_BODY_MAX = 8192;
+/// Largest page; the status page with the longest values is 8354 bytes (test_longest_values_still_fit_the_page)
+static const size_t WEB_BODY_MAX = 8704;
 /// Longest Cookie header read; browsers send every cookie of the host, not only ours
 static const size_t WEB_COOKIE_HEADER_MAX = 1024;
 static const size_t WEB_RESPONSE_MAX = WEB_BODY_MAX + 768;

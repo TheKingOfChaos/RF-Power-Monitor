@@ -106,8 +106,14 @@ static SnmpValue getMainsLastChange(const SnmpDeviceState& s) {
     return SnmpValue::makeUnsigned(BerTag::TimeTicks, s.mainsLastChangeTicks);
 }
 
-static SnmpValue getBoardTemperature(const SnmpDeviceState& s) {
-    return SnmpValue::makeInteger(s.boardTempDeciC);
+static SnmpValue getCpuTemperature(const SnmpDeviceState& s) {
+    return SnmpValue::makeInteger(s.cpuTempDeciC);
+}
+
+/// No instance while the TMP1075 does not answer (no carrier board): the agent skips it
+static SnmpValue getAmbientTemperature(const SnmpDeviceState& s) {
+    if (!s.ambientTempValid) return SnmpValue::makeException(BerTag::NoSuchInstance);
+    return SnmpValue::makeInteger(s.ambientTempDeciC);
 }
 
 // ---- table, must be sorted by OID (checked by tests) ----
@@ -174,7 +180,8 @@ static const MibEntry MIB[] = {
     {PRIVATE(1), getMainsStatus},
     {PRIVATE(2), getMainsChanges},
     {PRIVATE(3), getMainsLastChange},
-    {PRIVATE(4), getBoardTemperature},
+    {PRIVATE(4), getCpuTemperature},
+    {PRIVATE(5), getAmbientTemperature},
 };
 
 static const uint8_t MIB_SIZE = sizeof(MIB) / sizeof(MIB[0]);

@@ -7,6 +7,7 @@ void ResetButton::begin(bool pressed, uint32_t nowMs) {
     _triggered = false;
     _pressStartMs = nowMs;
     _triggerMs = 0;
+    _lastPressMs = 0;
 }
 
 ResetButtonEvent ResetButton::update(bool pressed, uint32_t nowMs) {
@@ -19,6 +20,7 @@ ResetButtonEvent ResetButton::update(bool pressed, uint32_t nowMs) {
             if (_armed) return ResetButtonEvent::Pressed;
         } else {
             bool wasArmed = _armed;
+            _lastPressMs = nowMs - _pressStartMs;
             _armed = true;  // Any release arms the button, including one held since boot
             if (wasArmed && !_firedThisPress) return ResetButtonEvent::Released;
         }

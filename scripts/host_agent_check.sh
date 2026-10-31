@@ -59,11 +59,11 @@ check "get unknown is noSuchName" "${NO_SUCH}\.1\.3\.6\.1\.2\.1\.1\.99\.0" snmpg
 check "get 2nd unknown names it" "${NO_SUCH}\.1\.3\.6\.1\.9\.0" \
       snmpget $SNMP_OPTS $TARGET 1.3.6.1.2.1.1.1.0 1.3.6.1.9.0
 check "getnext enterprise"      '63050\.1\.0 = INTEGER: 1' snmpgetnext $SNMP_OPTS $TARGET 1.3.6.1.4.1.63050
-check "getnext past end"        "${NO_SUCH}\.1\.3\.6\.1\.4\.1\.63050\.4\.0" snmpgetnext $SNMP_OPTS $TARGET 1.3.6.1.4.1.63050.4.0
-check "v1 walk all, 45 objects" '^45$' bash -c "snmpwalk $SNMP_OPTS $TARGET .1 | grep -c ' = '"
+check "getnext past end"        "${NO_SUCH}\.1\.3\.6\.1\.4\.1\.63050\.5\.0" snmpgetnext $SNMP_OPTS $TARGET 1.3.6.1.4.1.63050.5.0
+check "v1 walk all, 46 objects" '^46$' bash -c "snmpwalk $SNMP_OPTS $TARGET .1 | grep -c ' = '"
 check "walk order"              '1\.1\.0.*1\.2\.0.*1\.3\.0.*1\.4\.0.*1\.5\.0.*1\.6\.0.*1\.7\.0.*63050\.1\.0.*63050\.2\.0.*63050\.3\.0' \
       bash -c "snmpwalk $SNMP_OPTS $TARGET .1 | cut -d' ' -f1 | tr '\n' ' '"
-check "walk enterprise, 4 objects" '^4$' bash -c "snmpwalk $SNMP_OPTS $TARGET 1.3.6.1.4.1.63050 | grep -c ' = '"
+check "walk enterprise, 5 objects" '^5$' bash -c "snmpwalk $SNMP_OPTS $TARGET 1.3.6.1.4.1.63050 | grep -c ' = '"
 check "set is rejected"         "${NO_SUCH}\.1\.3\.6\.1\.2\.1\.1\.5\.0" \
       snmpset $SNMP_OPTS $TARGET 1.3.6.1.2.1.1.5.0 s newname
 check "sysName unchanged"       'STRING: "host-agent"' snmpget $SNMP_OPTS $TARGET 1.3.6.1.2.1.1.5.0
@@ -76,13 +76,13 @@ check "v2c noSuchInstance"      '1\.1\.5 = No Such Instance currently exists at 
       snmpget $V2 $TARGET 1.3.6.1.2.1.1.1.5
 check "v2c mixed get, no error" '1\.5\.0 = STRING: "host-agent".*1\.99\.0 = No Such Object' \
       snmpget $V2 $TARGET 1.3.6.1.2.1.1.5.0 1.3.6.1.2.1.1.99.0
-check "v2c getnext past end"    '63050\.4\.0 = No more variables left in this MIB View' \
-      snmpgetnext $V2 $TARGET 1.3.6.1.4.1.63050.4.0
-check "v2c walk all, 53 objects" '^53$' bash -c "snmpwalk $V2 $TARGET .1 | grep ' = ' | grep -vc 'No more variables'"
+check "v2c getnext past end"    '63050\.5\.0 = No more variables left in this MIB View' \
+      snmpgetnext $V2 $TARGET 1.3.6.1.4.1.63050.5.0
+check "v2c walk all, 54 objects" '^54$' bash -c "snmpwalk $V2 $TARGET .1 | grep ' = ' | grep -vc 'No more variables'"
 check "v2c walk ends at view end" 'No more variables left in this MIB View' snmpwalk $V2 $TARGET .1
 check "v2c walk order"          '1\.1\.0.*1\.7\.0.*63050\.1\.0.*63050\.3\.0' \
       bash -c "snmpwalk $V2 $TARGET .1 | cut -d' ' -f1 | tr '\n' ' '"
-check "bulkwalk all, 53 objects" '^53$' bash -c "snmpbulkwalk $V2 $TARGET .1 | grep ' = ' | grep -vc 'No more variables'"
+check "bulkwalk all, 54 objects" '^54$' bash -c "snmpbulkwalk $V2 $TARGET .1 | grep ' = ' | grep -vc 'No more variables'"
 check "bulkwalk = walk"         '^same$' bash -c "diff <(snmpwalk $V2 $TARGET .1 | grep ' = ' | cut -d' ' -f1) <(snmpbulkwalk $V2 $TARGET .1 | cut -d' ' -f1) >/dev/null && echo same"
 check "bulkget n1 r3"           '1\.1\.4\.0 = STRING.*1\.1\.1\.0 = STRING.*1\.1\.2\.0 = OID.*1\.1\.3\.0 = Timeticks' \
       snmpbulkget $V2 -Cn1 -Cr3 $TARGET 1.3.6.1.2.1.1.3.0 1.3.6.1.2.1.1
@@ -103,7 +103,8 @@ check "receive drops and errors" 'ifInDiscards\.1 = Counter32: 3.*ifInErrors\.1 
 check "v1: Counter64 absent"    'noSuchName' snmpget $SNMP_OPTS $TARGET 1.3.6.1.2.1.31.1.1.1.6.1
 check "v1 ifX walk, no Counter64" '^0 11$' bash -c "o=\$(snmpwalk $SNMP_OPTS $TARGET 1.3.6.1.2.1.31); echo \$(echo \"\$o\" | grep -c Counter64) \$(echo \"\$o\" | grep -c ' = ')"
 check "v2c ifX walk, 19 columns" '^19$' bash -c "snmpwalk $V2 $TARGET 1.3.6.1.2.1.31 | grep ' = ' | grep -vc 'No more'"
-check "boardTemperature"        '63050\.4\.0 = INTEGER: 250' snmpget $V2 $TARGET 1.3.6.1.4.1.63050.4.0
+check "cpuTemperature"          '63050\.4\.0 = INTEGER: 250' snmpget $V2 $TARGET 1.3.6.1.4.1.63050.4.0
+check "ambientTemperature"      '63050\.5\.0 = INTEGER: 215' snmpget $V2 $TARGET 1.3.6.1.4.1.63050.5.0
 check "v2c set notWritable"     'notWritable.*Failed object: \.1\.3\.6\.1\.2\.1\.1\.5\.0' \
       snmpset $V2 $TARGET 1.3.6.1.2.1.1.5.0 s newname
 check "v2c set noCreation"      'noCreation.*Failed object: \.1\.3\.6\.1\.2\.1\.1\.99\.0' \
@@ -128,8 +129,10 @@ if snmptranslate -M "$MIBDIRS" -m SNMPv2-MIB -On SNMPv2-MIB::sysDescr >/dev/null
           snmptranslate -M "$MIBDIRS" -m +RF-UPS-MONITOR-MIB -On RF-UPS-MONITOR-MIB::mainsPowerLost
     check "MIB notification mainsPowerRestored" '^\.1\.3\.6\.1\.4\.1\.63050\.0\.2$' \
           snmptranslate -M "$MIBDIRS" -m +RF-UPS-MONITOR-MIB -On RF-UPS-MONITOR-MIB::mainsPowerRestored
-    check "MIB boardTemperature with units" 'RF-UPS-MONITOR-MIB::boardTemperature\.0 = INTEGER: 250 0\.1 degrees Celsius' \
+    check "MIB cpuTemperature with units" 'RF-UPS-MONITOR-MIB::cpuTemperature\.0 = INTEGER: 250 0\.1 degrees Celsius' \
           snmpget -v2c -c public -r0 -t1 -M "$MIBDIRS" -m +RF-UPS-MONITOR-MIB $TARGET 1.3.6.1.4.1.63050.4.0
+    check "MIB ambientTemperature with units" 'RF-UPS-MONITOR-MIB::ambientTemperature\.0 = INTEGER: 215 0\.1 degrees Celsius' \
+          snmpget -v2c -c public -r0 -t1 -M "$MIBDIRS" -m +RF-UPS-MONITOR-MIB $TARGET 1.3.6.1.4.1.63050.5.0
     check "MIB names in walk"       'RF-UPS-MONITOR-MIB::mainsPowerStatus\.0 = INTEGER: present\(1\)' \
           snmpget -v1 -c public -r0 -t1 -M "$MIBDIRS" -m +RF-UPS-MONITOR-MIB $TARGET 1.3.6.1.4.1.63050.1.0
 else

@@ -70,7 +70,9 @@ int main(int argc, char** argv) {
         state.iface.counters.inDiscards = 3;
         state.iface.counters.inErrors = 2;
         state.iface.counters.inUnknownProtos = 17;
-        state.boardTempDeciC = 250;
+        state.cpuTempDeciC = 250;
+        state.ambientTempValid = true;
+        state.ambientTempDeciC = 215;
 
         size_t len = agent.handle(in, (size_t)n, out, sizeof(out), state);
         if (len) sendto(fd, out, len, 0, (sockaddr*)&peer, peerLen);

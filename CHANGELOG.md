@@ -6,6 +6,22 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+- **Ambient temperature** from the TMP1075 on the carrier board (I2C0, GP4/GP5, address 0x48), read every 2 s: SNMP `ambientTemperature` (`1.3.6.1.4.1.63050.5.0`, 0.1 °C), the status screen, the web page and a LibreNMS sensor "Ambient (TMP1075)" (warning 40 °C, critical 50 °C). Without the sensor (module without the carrier board, or three failed reads in a row) the object has no instance: v2c Get answers noSuchInstance, v1 Get noSuchName, and walks skip it; the status screen and the web page say "no sensor".
+- Web page: with DHCP the Network card's boxes show the IP address, subnet mask and gateway in use (from the DHCP server), with the DNS server below them; choosing Static and saving keeps that address. Saving with DHCP still keeps the stored static settings. Before, the boxes showed the stored static settings, which are not in use with DHCP.
+- Hardware: 3D-printable case for the module on the carrier: Fusion 360 design `hardware/Case/Power Case.f3z`, STEP files for the case and the lid, and the print project `hardware/pico-poe-mains-carrier/3d/Power Case.3mf`.
+
+### Fixed
+- Factory reset button: "released after ... ms, no reset" always said 0 ms; it now gives how long the button was held.
+- HIL factory reset test: during the 10 s hold it polled SNMP with "public" after changing the community, so it never got a reply; it uses the community it set, and it reconnects before restoring the settings when the device rebooted mid-test.
+
+### Changed
+- The RP2040 die temperature is called the **CPU temperature**: status screen, web page, LibreNMS sensor "CPU (RP2040 die)", and the MIB object `boardTemperature` is renamed `cpuTemperature`. The OID (`63050.4.0`) and the value are unchanged, so numeric polling keeps working; scripts that use the name `RF-UPS-MONITOR-MIB::boardTemperature` need the new name. The LibreNMS sensor keeps its index, so its graph history stays.
+- Factory reset button tested on the carrier board (SW1 on GP22): a short press is ignored, a 10 s hold resets after 10000-10100 ms and reboots within 2 s.
+- The status screen prints temperatures between 0 and -1 °C with their minus sign (it showed -0.5 °C as 0.5 °C).
+- Web page buffers (`WEB_BODY_MAX`) 8192 -> 8704 bytes for the temperature rows; the largest status page is 8354 bytes. RAM use 42.2 %.
+- Hardware: F1 is a SETfuse SCT1032 (T 1 A, 250 VAC, 100 A breaking capacity, LCSC C19712559) on the same Schurter UMT 250 footprint, so JLCPCB can place it; it was a Schurter T 100 mA without an LCSC part. Fab files, renders and 3D models regenerated.
+
 ## [2.4.2] - 2026-10-19
 
 The firmware is unchanged apart from its version number.

@@ -1,6 +1,6 @@
 # RF-UPS-Monitor
 
-Raspberry Pi Pico (RP2040) with a W5500 Ethernet module: a mains power monitor read over SNMP v1/v2c (traps, IF-MIB counters, board temperature; LibreNMS definitions in `librenms/`), configured over a USB serial menu. The version is in `include/version.h`; record changes in `CHANGELOG.md`.
+Raspberry Pi Pico (RP2040) with a W5500 Ethernet module: a mains power monitor read over SNMP v1/v2c (traps, IF-MIB counters, CPU and ambient temperature; LibreNMS definitions in `librenms/`), configured over a USB serial menu. The version is in `include/version.h`; record changes in `CHANGELOG.md`.
 
 The project rules are in `.clinerules` and apply to all work here, including its testing rules:
 
@@ -43,7 +43,7 @@ Details and setup are in `docs/TESTING.md`.
 - `lib/settings`: LittleFS A/B storage on top of `settings_codec`
 - `lib/snmp_ber`: BER codec and OIDs (pure, host tested, sanitizer checked)
 - `lib/snmp_agent`: SNMP v1/v2c messages, MIB table, request handling, traps (pure); `src/snmp_service.cpp` runs it on UDP 161. MIB docs in `docs/MIB.md`
-- `lib/if_stats` (pure): frame counting and PHY decoding; `src/net_stats.cpp` hooks the lwIP netif and reads the W5500 PHY; `src/board_temp.cpp` reads the RP2040 temperature
+- `lib/if_stats` (pure): frame counting and PHY decoding; `src/net_stats.cpp` hooks the lwIP netif and reads the W5500 PHY; `src/cpu_temp.cpp` reads the RP2040 temperature; `lib/tmp1075` (pure) and `src/ambient_temp.cpp` read the carrier's TMP1075 on I2C0
 - `lib/power_monitor` (pure: mains debouncer, reset button) and `lib/mains_input` (GPIO27 on core 1, `setup1()`/`loop1()` in `main.cpp`); `src/factory_reset.cpp` samples GPIO22 on core 1
 - `lib/access_control` (pure): SNMP rate limiter and access log, keyed by `SourceKey` (full IPv4 or IPv6 address, 128 bits; `src/source_key.h`)
 - `lib/dhcp_option` (pure): asks for and reads DHCP option 224 (trap destination) by editing/reading frames in `src/net_stats.cpp`

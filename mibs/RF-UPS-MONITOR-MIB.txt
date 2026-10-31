@@ -7,7 +7,7 @@ IMPORTS
         FROM SNMPv2-CONF;
 
 rfUpsMonitor MODULE-IDENTITY
-    LAST-UPDATED "202610170100Z"
+    LAST-UPDATED "202610260000Z"
     ORGANIZATION "RF-UPS-Monitor project"
     CONTACT-INFO
         "https://github.com/TheKingOfChaos/RF-UPS-Monitor-v3
@@ -17,6 +17,10 @@ rfUpsMonitor MODULE-IDENTITY
          Ethernet module. The agent speaks SNMPv1 only and all objects
          are read-only. The standard system group (RFC 1213) is also
          implemented."
+    REVISION "202610260000Z"
+    DESCRIPTION
+        "boardTemperature renamed cpuTemperature (same OID, same value).
+         Added ambientTemperature from the TMP1075 on the carrier board."
     REVISION "202610170100Z"
     DESCRIPTION
         "Added boardTemperature (firmware 1.0.0)."
@@ -81,7 +85,7 @@ mainsPowerLastChange OBJECT-TYPE
          the state has not changed since the agent started."
     ::= { rfUpsMonitor 3 }
 
-boardTemperature OBJECT-TYPE
+cpuTemperature OBJECT-TYPE
     SYNTAX      Integer32 (-400..1250)
     UNITS       "0.1 degrees Celsius"
     MAX-ACCESS  read-only
@@ -91,8 +95,21 @@ boardTemperature OBJECT-TYPE
          tenths of a degree Celsius (287 = 28.7 C), averaged over the
          last 16 seconds. This is the die temperature: it reads a few
          degrees above the air around the board and is accurate to a
-         few degrees."
+         few degrees. Named boardTemperature before 2026-10-26."
     ::= { rfUpsMonitor 4 }
+
+ambientTemperature OBJECT-TYPE
+    SYNTAX      Integer32 (-400..1250)
+    UNITS       "0.1 degrees Celsius"
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Air temperature at the carrier board, from its TMP1075 sensor
+         (I2C, accurate to 1 C), in tenths of a degree Celsius
+         (271 = 27.1 C), read every 2 seconds. The instance does not
+         exist while the sensor does not answer (no carrier board, or
+         three failed reads in a row)."
+    ::= { rfUpsMonitor 5 }
 
 -- Conformance
 
@@ -108,11 +125,18 @@ rfUpsMonitorMainsGroup OBJECT-GROUP
     ::= { rfUpsMonitorGroups 1 }
 
 rfUpsMonitorBoardGroup OBJECT-GROUP
-    OBJECTS     { boardTemperature }
+    OBJECTS     { cpuTemperature }
     STATUS      current
     DESCRIPTION
         "Board health objects."
     ::= { rfUpsMonitorGroups 3 }
+
+rfUpsMonitorAmbientGroup OBJECT-GROUP
+    OBJECTS     { ambientTemperature }
+    STATUS      current
+    DESCRIPTION
+        "Ambient temperature from the carrier board's sensor."
+    ::= { rfUpsMonitorGroups 4 }
 
 rfUpsMonitorMainsNotificationGroup NOTIFICATION-GROUP
     NOTIFICATIONS { mainsPowerLost, mainsPowerRestored }
@@ -125,10 +149,13 @@ rfUpsMonitorCompliance MODULE-COMPLIANCE
     STATUS      current
     DESCRIPTION
         "Every RF-UPS-Monitor agent implements all objects and
-         notifications."
+         notifications; ambientTemperature only with the sensor."
     MODULE      -- this module
         MANDATORY-GROUPS { rfUpsMonitorMainsGroup, rfUpsMonitorMainsNotificationGroup,
                            rfUpsMonitorBoardGroup }
+        GROUP       rfUpsMonitorAmbientGroup
+        DESCRIPTION
+            "Only on the carrier board with the TMP1075."
     ::= { rfUpsMonitorCompliances 1 }
 
 END

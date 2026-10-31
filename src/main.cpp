@@ -5,7 +5,8 @@
 #include <mains_input.h>
 #include "cli.h"
 #include "diag.h"
-#include "board_temp.h"
+#include "ambient_temp.h"
+#include "cpu_temp.h"
 #include "factory_reset.h"
 #include "hostname.h"
 #include "ipv6_static.h"
@@ -165,7 +166,8 @@ void setup() {
     while (!Serial && millis() - serialWait < 3000) delay(10);
     Serial.println("\nRF-UPS-Monitor " FIRMWARE_VERSION " starting...");
     diagBegin();  // only with -DRFUPS_DIAG
-    boardTempBegin();
+    cpuTempBegin();
+    ambientTempBegin();
 
     // Initialize pins (POWER_PIN and FACTORY_RESET_PIN are configured on core 1)
     pinMode(LED_PIN, OUTPUT);
@@ -244,11 +246,12 @@ void loop() {
         snmpNotifyMainsChange();
     }
 
-    // Link state for IF-MIB, board temperature
+    // Link state for IF-MIB, CPU and ambient temperature
     DIAG_MARK(3);
     netStatsPoll(snmpUptimeTicks());
     DIAG_MARK(4);
-    boardTempPoll();
+    cpuTempPoll();
+    ambientTempPoll();
 
     // SNMP requests
     DIAG_MARK(5);

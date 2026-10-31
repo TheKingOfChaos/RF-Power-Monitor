@@ -118,6 +118,25 @@ static void test_held_ms_counts_from_debounced_press() {
     TEST_ASSERT_EQUAL_UINT32(0, b.heldMs(pressedAt + 4100));
 }
 
+// The serial log reports this at the Released event, when heldMs() is already 0
+static void test_released_press_reports_how_long_it_lasted() {
+    ResetButton b;
+    b.begin(false, 0);
+    feed(b, true, 1000, 3999);
+    uint32_t releasedAt = 0;
+    TEST_ASSERT_EQUAL(ResetButtonEvent::Released, feed(b, false, 4000, 4100, &releasedAt));
+    TEST_ASSERT_EQUAL_UINT32(0, b.heldMs(releasedAt));
+    TEST_ASSERT_EQUAL_UINT32(3000, b.lastPressMs());
+}
+
+static void test_last_press_ms_is_zero_before_any_release() {
+    ResetButton b;
+    b.begin(false, 0);
+    TEST_ASSERT_EQUAL_UINT32(0, b.lastPressMs());
+    feed(b, true, 0, 2000);
+    TEST_ASSERT_EQUAL_UINT32(0, b.lastPressMs());
+}
+
 static void test_led_blinks_slowly_while_held_and_fast_after_trigger() {
     ResetButton b;
     b.begin(false, 0);
@@ -163,6 +182,8 @@ int main() {
     RUN_TEST(test_trigger_is_within_spec_of_the_physical_press);
     RUN_TEST(test_short_press_releases_without_reset);
     RUN_TEST(test_release_just_before_hold_time_does_not_trigger);
+    RUN_TEST(test_released_press_reports_how_long_it_lasted);
+    RUN_TEST(test_last_press_ms_is_zero_before_any_release);
     RUN_TEST(test_contact_bounce_does_not_restart_or_trigger);
     RUN_TEST(test_button_held_at_boot_must_be_released_first);
     RUN_TEST(test_held_ms_counts_from_debounced_press);

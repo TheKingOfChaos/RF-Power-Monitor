@@ -192,9 +192,9 @@ Flashing an embedded test replaces the firmware, so always reflash with `pio run
 - `test_snmp_trap`: v2c coldStart and mainsPowerLost byte-exact against `snmptrap -v2c`, trap OIDs for all four traps
 - `test_settings_codec`: trap version default v2c, round trip, invalid values rejected
 
-### IF-MIB and board temperature in the native suites
+### IF-MIB and temperatures in the native suites
 - `test_if_stats` (`lib/if_stats`): frame classification (unicast, multicast, broadcast, runt frames), receive verdicts (IPv4/ARP delivered, IPv6 only when enabled, other EtherTypes unknown, length boundaries 13/14/1514/1515), each received frame in exactly one counter, discards, octet and packet counting, 64-bit counters past 2^32, W5500 PHYCFGR decoding (link, 10/100, duplex) and speed in bit/s
-- `test_snmp_agent`: ifTable and ifXTable values from the device state, ifInDiscards/ifInErrors/ifInUnknownProtos, ifPhysAddress is the MAC, Counter64 values, link down shows `down` and speed 0, no such instance for interface 2, Counter64 objects do not exist for v1 (Get and walk, RFC 3584), a v1 walk returns every other object, board temperature
+- `test_snmp_agent`: ifTable and ifXTable values from the device state, ifInDiscards/ifInErrors/ifInUnknownProtos, ifPhysAddress is the MAC, Counter64 values, link down shows `down` and speed 0, no such instance for interface 2, Counter64 objects do not exist for v1 (Get and walk, RFC 3584), a v1 walk returns every other object, CPU temperature; ambient temperature when the sensor answers, and without it noSuchInstance (v2c Get), noSuchName (v1 Get) and skipped by GetNext, GetBulk and walks
 - `test_snmp_agent` GetBulk: a walk returns the whole MIB then endOfMibView, replies are capped at 16 varbinds (no amplification), a GetBulk does not make its source trusted
 
 ### `test/native/test_web_ui`: the web page (`lib/web_ui`)
@@ -220,6 +220,10 @@ Flashing an embedded test replaces the firmware, so always reflash with `pio run
 - Log newest-first, folding of repeats with first/last time and count, new entry on a different source or event, ring buffer keeps the newest 16, clamped index
 - Event names, IPv4 formatting
 
+### `test/native/test_tmp1075`: TMP1075 conversion and read state (`lib/tmp1075`)
+- Conversion of the temperature register: values read from the carrier's sensor, 0, rounding (half away from zero), negative values, the datasheet's -40/-25/125 °C and the register's limits
+- Read state: invalid before the first reading, valid after one, last value kept through two failed reads, invalid after three in a row, a good read restarts the count, recovery, read errors counted
+
 ### `test/native/test_reset_button`: factory reset button logic
 - Idle button: no events, LED off
 - 10 s hold triggers exactly once, counted from the debounced press, within DEBOUNCE_MS of the physical press
@@ -227,6 +231,7 @@ Flashing an embedded test replaces the firmware, so always reflash with `pio run
 - Contact bounce filtered; button held at boot must be released before it can trigger
 - LED pattern: slow blink while held, fast after trigger, also after release
 - millis() wrap-around, configurable hold time
+- A released press reports how long it lasted (`lastPressMs()`), for the serial log
 
 ### `test/native/test_power_debouncer`: `lib/power_monitor`
 - Initial state not counted as a change, stable input never changes
@@ -269,9 +274,10 @@ Uses `test/settings_a.json` and `test/settings_b.json`, never the real settings.
 ### `test/hil/test_snmp.py`: the SNMP agent on the device
 - `snmpget` of sysDescr, sysObjectID, several varbinds in order; sysUpTime advances ~100 ticks per second
 - Mains objects present and consistent with the serial status screen
-- `snmpwalk` of everything (45 objects in v1 in order, End of MIB; v1 does not see the eight Counter64 columns), the system group (7) and the enterprise subtree (4)
+- `snmpwalk` of everything (46 objects in v1 in order, End of MIB; v1 does not see the eight Counter64 columns), the system group (7) and the enterprise subtree (5; 4 with `RFUPS_NO_TMP1075`)
 - IF-MIB: ifDescr, ifType, ifMtu, admin/oper status, ifName; ifSpeed, ifHighSpeed and ifPhysAddress match the status screen; 20 requests raise the 64-bit packet and octet counters; ifInOctets is the low half of ifHCInOctets; the receive drop counters match the status screen; Counter64 is noSuchName in v1
-- boardTemperature between 10 and 85 °C and within 2 °C of the status screen
+- cpuTemperature between 10 and 85 °C and within 2 °C of the status screen
+- ambientTemperature between 5 and 50 °C, within 0.5 °C of the status screen and below the CPU temperature (skipped with `RFUPS_NO_TMP1075=1`, for a module without the carrier board)
 - noSuchName for unknown OIDs and past the end; `snmpset` rejected and nothing changed
 - Wrong community and v2c get no reply and are counted on the status screen
 - SNMP settings set from the menu show up in `snmpget` immediately (no reboot), the old community is refused, and they survive a reboot; the originals are restored afterwards
@@ -319,8 +325,8 @@ Uses `test/settings_a.json` and `test/settings_b.json`, never the real settings.
 - mainsPowerLost and mainsPowerRestored with real mains: correct version, source, varbinds, change counter and time-stamps (needs a mains switch)
 
 ### `test/hil/test_factory_reset.py`: the reset button (manual, `RFUPS_MANUAL_BUTTON=1`)
-- A ~3 s press is released without reset, and SNMP keeps answering while it is held
-- A 10 s hold resets after 10000-10100 ms, defaults are saved in under 2 s, the device reboots with DHCP, `public`, default sysName, no trap destination and default stored static IP
+- A ~3 s press is released without reset, the log shows how long it was held, and SNMP keeps answering while it is held
+- A 10 s hold resets after 10000-10100 ms (SNMP keeps answering with the community set before the hold), defaults are saved in under 2 s, the device reboots with DHCP, `public`, default sysName, no trap destination and default stored static IP
 - Your previous SNMP settings and stored static IP are restored afterwards
 - 30 requests: every reply echoes its request id, worst case under 100 ms
 - 300 malformed packets in bursts: agent keeps answering; oversized packet ignored; 5 simultaneous requests all answered

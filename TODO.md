@@ -120,7 +120,7 @@ An item is only ticked when it is implemented **and** its tests exist and pass (
 - [x] 10 s hold counted from the debounced press, triggers once, release just before 10 s cancels, button held at boot ignored — native
 - [x] LED feedback: slow blink while held, fast after trigger — native
 - [x] Defaults saved (incl. trap destination), reboot within 2 s of the trigger
-- [ ] Test with the real button: timing, LED, SNMP keeps answering, settings restored — HIL `test_factory_reset.py` (manual, `RFUPS_MANUAL_BUTTON=1`)
+- [x] Test with the real button (SW1 on the carrier): timing, LED, SNMP keeps answering, settings restored — HIL `test_factory_reset.py` (manual, `RFUPS_MANUAL_BUTTON=1`), passed 2026-10-26
 
 ## 7. Testing infrastructure
 - [x] `native` environment, MinGW-w64 on Windows, `-Wall -Wextra -Werror`
@@ -193,9 +193,9 @@ An item is only ticked when it is implemented **and** its tests exist and pass (
 ## 14. Hardware: carrier board (`hardware/pico-poe-mains-carrier`)
 - [x] Carrier PCB for the W5500-EVB-Pico-PoE: isolated mains detector on GP27, LEDs, TMP1075; KiCad 10, ERC/DRC, fab files (documented in the README)
 - [ ] Order and assemble the first boards; run the mains HIL tests (Dirigera) on the carrier
-- [ ] Read the TMP1075 (I2C0, GP4/GP5, 0x48) in the firmware, e.g. as a second temperature object, and keep the RP2040 sensor
-- [x] Factory reset button: SW1 (XKB TS-1187A) from GP22 to GND on the carrier, board v1.1; ERC/DRC clean. Test it with the real button once boards are built
-- [x] Fuse in the mains input: F1 Schurter UMT 250, T 100 mA, 250 VAC, in the single series loop; ERC/DRC clean
+- [x] Read the TMP1075 (I2C0, GP4/GP5, 0x48) in the firmware: `ambientTemperature` (63050.5), absent without the sensor; the RP2040 sensor is now `cpuTemperature` — native, net-snmp, HIL
+- [x] Factory reset button: SW1 (XKB TS-1187A) from GP22 to GND on the carrier, board v1.1; ERC/DRC clean. Tested with the real button (HIL `test_factory_reset.py`)
+- [x] Fuse in the mains input: F1 SETfuse SCT1032T1A250V (LCSC C19712559), T 1 A, 250 VAC, in the single series loop; ERC/DRC clean
 - [ ] Mains loss timing: the carrier's RC delays the loss by about 30-50 ms against the 10 ms in `.clinerules`; measure it on the board and decide (smaller RC, or change the requirement)
 
 ## Notes

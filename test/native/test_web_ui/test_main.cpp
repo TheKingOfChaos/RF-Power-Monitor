@@ -531,10 +531,15 @@ public:
         st.mainsKnown = true;
         st.mainsPresent = true;
         st.mainsChanges = 4;
-        st.boardTempDeciC = 404;
+        st.cpuTempDeciC = 404;
+        st.ambientTempValid = true;
+        st.ambientTempDeciC = 271;
         st.linkUp = true;
         st.linkMbps = 100;
         strcpy(st.ip, "10.10.6.111");
+        strcpy(st.liveMask, "255.255.252.0");
+        strcpy(st.liveGateway, "10.132.0.1");
+        strcpy(st.dns, "10.4.0.7");
         strcpy(st.ipv6, "fd16:d833:4f0e:3ece:1cb2:cfff:fe4e:a22c");
         strcpy(st.ipv6LinkLocal, "fe80::1cb2:cfff:fe4e:a22c");
         strcpy(st.mac, "1E:B2:CF:4E:A2:2C");
@@ -717,7 +722,7 @@ static void test_five_failures_lock_logins_for_30_s() {
 static void test_status_page_shows_device_values_escaped() {
     webSetUp();
     strcpy(fb->st.community, "a<b>\"c'&");
-    fb->st.boardTempDeciC = -5;
+    fb->st.cpuTempDeciC = -5;
     std::string csrf;
     std::string page = get("/", logIn(csrf));
     TEST_ASSERT_TRUE(page.find("&middot; v2.0.0") != std::string::npos);
@@ -731,6 +736,93 @@ static void test_status_page_shows_device_values_escaped() {
     TEST_ASSERT_TRUE(page.find("value=\"a&lt;b&gt;&quot;c&#39;&amp;\"") != std::string::npos);
     TEST_ASSERT_TRUE(page.find("a<b>") == std::string::npos);
     TEST_ASSERT_TRUE(page.find("value=\"dhcp\" checked") != std::string::npos);
+}
+
+static const char* const ROW_TH = "<tr><th scope=\"row\" class=\"ps-3 fw-normal text-secondary\">";
+
+/// The value of the Network card's text box with this name
+static std::string fieldValue(const std::string& page, const char* name) {
+    std::string key = std::string("id=\"f-") + name + "\"";
+    size_t at = page.find(key);
+    TEST_ASSERT_TRUE_MESSAGE(at != std::string::npos, name);
+    size_t v = page.find("value=\"", at) + 7;
+    return page.substr(v, page.find('"', v) - v);
+}
+
+// With DHCP the boxes show the addresses in use, not the stored static ones (10.10.6.249, 255.255.0.0, 10.10.0.1)
+static void test_network_fields_show_the_addresses_from_dhcp() {
+    webSetUp();
+    std::string csrf;
+    std::string page = get("/", logIn(csrf));
+    TEST_ASSERT_EQUAL_STRING("10.10.6.111", fieldValue(page, "ip").c_str());
+    TEST_ASSERT_EQUAL_STRING("255.255.252.0", fieldValue(page, "mask").c_str());
+    TEST_ASSERT_EQUAL_STRING("10.132.0.1", fieldValue(page, "gateway").c_str());
+    TEST_ASSERT_TRUE(page.find("From DHCP, DNS server 10.4.0.7.") != std::string::npos);
+    TEST_ASSERT_TRUE(page.find("10.10.6.249") == std::string::npos);
+}
+
+static void test_network_fields_show_the_stored_values_without_an_address() {
+    webSetUp();
+    fb->st.liveMask[0] = fb->st.liveGateway[0] = fb->st.dns[0] = '\0';
+    std::string csrf;
+    std::string page = get("/", logIn(csrf));
+    TEST_ASSERT_EQUAL_STRING("10.10.6.249", fieldValue(page, "ip").c_str());
+    TEST_ASSERT_EQUAL_STRING("255.255.0.0", fieldValue(page, "mask").c_str());
+    TEST_ASSERT_EQUAL_STRING("10.10.0.1", fieldValue(page, "gateway").c_str());
+    TEST_ASSERT_TRUE(page.find("From DHCP") == std::string::npos);
+}
+
+static void test_network_fields_show_the_stored_values_in_static_mode() {
+    webSetUp();
+    fb->st.dhcp = false;
+    std::string csrf;
+    std::string page = get("/", logIn(csrf));
+    TEST_ASSERT_EQUAL_STRING("10.10.6.249", fieldValue(page, "ip").c_str());
+    TEST_ASSERT_EQUAL_STRING("255.255.0.0", fieldValue(page, "mask").c_str());
+    TEST_ASSERT_EQUAL_STRING("10.10.0.1", fieldValue(page, "gateway").c_str());
+    TEST_ASSERT_TRUE(page.find("From DHCP") == std::string::npos);
+}
+
+// Saving with DHCP keeps the stored static values, not the DHCP ones shown in the boxes
+static void test_saving_dhcp_keeps_the_stored_static_values_not_the_shown_ones() {
+    webSetUp();
+    std::string csrf;
+    std::string cookie = logIn(csrf);
+    post("/network", "mode=dhcp&ip=10.10.6.111&mask=255.255.252.0&gateway=10.132.0.1&csrf=" + csrf, cookie);
+    TEST_ASSERT_EQUAL(1, fb->networkSaves);
+    TEST_ASSERT_TRUE(fb->savedDhcp);
+    TEST_ASSERT_EQUAL_STRING("10.10.6.249", fb->savedIP.c_str());
+    TEST_ASSERT_EQUAL_STRING("255.255.0.0", fb->savedMask.c_str());
+    TEST_ASSERT_EQUAL_STRING("10.10.0.1", fb->savedGateway.c_str());
+}
+
+static void test_status_page_shows_cpu_and_ambient_temperature() {
+    webSetUp();
+    std::string csrf;
+    std::string page = get("/", logIn(csrf));
+    TEST_ASSERT_TRUE(page.find(std::string(ROW_TH) + "CPU temperature</th><td>40.4 \xC2\xB0" "C</td>") !=
+                     std::string::npos);
+    TEST_ASSERT_TRUE(page.find(std::string(ROW_TH) + "Ambient temperature</th><td>27.1 \xC2\xB0" "C</td>") !=
+                     std::string::npos);
+    TEST_ASSERT_TRUE(page.find("Board temperature") == std::string::npos);
+}
+
+static void test_status_page_ambient_temperature_without_sensor() {
+    webSetUp();
+    fb->st.ambientTempValid = false;
+    std::string csrf;
+    std::string page = get("/", logIn(csrf));
+    TEST_ASSERT_TRUE(page.find(std::string(ROW_TH) + "Ambient temperature</th><td><span class=\"badge text-bg-secondary\">"
+                               "no sensor</span></td>") != std::string::npos);
+    TEST_ASSERT_TRUE(page.find("27.1") == std::string::npos);
+}
+
+static void test_status_page_ambient_temperature_below_zero() {
+    webSetUp();
+    fb->st.ambientTempDeciC = -123;
+    std::string csrf;
+    std::string page = get("/", logIn(csrf));
+    TEST_ASSERT_TRUE(page.find("Ambient temperature</th><td>-12.3 \xC2\xB0" "C</td>") != std::string::npos);
 }
 
 static void test_ipv6_rows_only_when_the_device_has_ipv6() {
@@ -1101,6 +1193,10 @@ static void test_longest_values_still_fit_the_page() {
     strcpy(fb->st.staticIPv6, "fd16:d833:4f0e:3ece:ffff:ffff:ffff:fffe");
     strcpy(fb->st.ipv6Gateway, "fd16:d833:4f0e:3ece:ffff:ffff:ffff:ffff");
     strcpy(fb->st.ipv6, "fd16:d833:4f0e:3ece:ffff:ffff:ffff:fffe");
+    strcpy(fb->st.ip, "255.255.255.255");
+    strcpy(fb->st.liveMask, "255.255.255.255");
+    strcpy(fb->st.liveGateway, "255.255.255.255");
+    strcpy(fb->st.dns, "255.255.255.255");
     std::string csrf;
     std::string page = get("/", logIn(csrf));
     TEST_ASSERT_EQUAL(200, statusCode(page));
@@ -1228,6 +1324,13 @@ int main() {
     RUN_TEST(test_wrong_password_or_user_is_refused_and_logged);
     RUN_TEST(test_five_failures_lock_logins_for_30_s);
     RUN_TEST(test_status_page_shows_device_values_escaped);
+    RUN_TEST(test_network_fields_show_the_addresses_from_dhcp);
+    RUN_TEST(test_network_fields_show_the_stored_values_without_an_address);
+    RUN_TEST(test_network_fields_show_the_stored_values_in_static_mode);
+    RUN_TEST(test_saving_dhcp_keeps_the_stored_static_values_not_the_shown_ones);
+    RUN_TEST(test_status_page_shows_cpu_and_ambient_temperature);
+    RUN_TEST(test_status_page_ambient_temperature_without_sensor);
+    RUN_TEST(test_status_page_ambient_temperature_below_zero);
     RUN_TEST(test_ipv6_rows_only_when_the_device_has_ipv6);
     RUN_TEST(test_actions_need_a_session);
     RUN_TEST(test_actions_need_the_session_csrf_token);

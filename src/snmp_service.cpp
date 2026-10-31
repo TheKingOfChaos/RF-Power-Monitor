@@ -6,7 +6,8 @@
 #include <netconfig.h>
 #include <settings.h>
 #include <snmp_trap.h>
-#include "board_temp.h"
+#include "ambient_temp.h"
+#include "cpu_temp.h"
 #include "net_stats.h"
 #include "source_key.h"
 #include "version.h"
@@ -54,7 +55,9 @@ static SnmpDeviceState captureState() {
     s.sysName = currentSettings.sysName;
     s.sysLocation = currentSettings.sysLocation;
     netStatsCapture(s.iface);
-    s.boardTempDeciC = boardTempDeciC();
+    s.cpuTempDeciC = cpuTempDeciC();
+    s.ambientTempValid = ambientTempValid();
+    s.ambientTempDeciC = ambientTempDeciC();
 
     MainsSnapshot mains;
     if (mainsRead(mains)) {

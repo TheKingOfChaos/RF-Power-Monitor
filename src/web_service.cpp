@@ -7,7 +7,8 @@
 #include <mains_input.h>
 #include <settings.h>
 #include <web_app.h>
-#include "board_temp.h"
+#include "ambient_temp.h"
+#include "cpu_temp.h"
 #include "hostname.h"
 #include "net_stats.h"
 #include "snmp_service.h"
@@ -101,12 +102,19 @@ public:
         st.mainsKnown = mainsRead(mains);
         st.mainsPresent = st.mainsKnown && mains.present;
         st.mainsChanges = st.mainsKnown ? mains.changes : 0;
-        st.boardTempDeciC = boardTempDeciC();
+        st.cpuTempDeciC = cpuTempDeciC();
+        st.ambientTempValid = ambientTempValid();
+        st.ambientTempDeciC = ambientTempDeciC();
         SnmpInterfaceState ifs;
         netStatsCapture(ifs);
         st.linkUp = ifs.linkUp;
         st.linkMbps = ifs.speedBps / 1000000;
         formatIP(eth.connected() ? eth.localIP() : IPAddress(0, 0, 0, 0), st.ip, sizeof(st.ip));
+        if (eth.connected()) {
+            formatIP(eth.subnetMask(), st.liveMask, sizeof(st.liveMask));
+            formatIP(eth.gatewayIP(), st.liveGateway, sizeof(st.liveGateway));
+            formatIP(eth.dnsIP(), st.dns, sizeof(st.dns));
+        }
 #if LWIP_IPV6
         netif* nif = eth.getNetIf();
         for (int i = 0; i < LWIP_IPV6_NUM_ADDRESSES; i++) {

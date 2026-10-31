@@ -142,6 +142,11 @@ class WebPageTest(unittest.TestCase):
         self.assertIn('">%s</span></td></tr>' % st["mains"], page)  # mains badge
         self.assertIn('value="public"', page)
         self.assertIn('value="dhcp" checked', page)
+        # Network card: with DHCP the boxes hold the addresses in use, as on the status screen
+        self.assertEqual("DHCP", st["mode"])
+        for name, key in (("ip", "ip"), ("mask", "subnet"), ("gateway", "gateway")):
+            self.assertRegex(page, r'id="f-%s"[^>]*value="%s"' % (name, re.escape(st[key])))
+        self.assertIn("From DHCP, DNS server ", page)
 
     def test_five_failed_logins_lock_out_for_30_s(self):
         self.wait_lockout_over()

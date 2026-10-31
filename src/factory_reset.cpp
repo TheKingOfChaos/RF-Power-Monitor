@@ -15,7 +15,7 @@ static bool ledState = false;
 // atomic on the RP2040; barriers order them against the event counter.
 static volatile uint32_t eventCount = 0;           // Incremented for every button event
 static volatile uint8_t lastEvent = (uint8_t)ResetButtonEvent::None;
-static volatile uint32_t lastEventHeldMs = 0;      // Hold duration at that event
+static volatile uint32_t lastEventHeldMs = 0;      // Hold duration at that event (whole press for Released)
 static volatile bool resetRequested = false;
 
 /**
@@ -40,7 +40,7 @@ void factoryResetSample() {
 
     if (e == ResetButtonEvent::None) return;
     lastEvent = (uint8_t)e;
-    lastEventHeldMs = button.heldMs(now);
+    lastEventHeldMs = e == ResetButtonEvent::Released ? button.lastPressMs() : button.heldMs(now);
     if (e == ResetButtonEvent::Triggered) resetRequested = true;
     __dmb();
     eventCount = eventCount + 1;
