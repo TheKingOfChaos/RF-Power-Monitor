@@ -11,6 +11,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Hardware watchdog in every build (8 s, armed at the end of start-up): core 0 feeds it only while core 1's heartbeat moves, so a hang on either core restarts the device. The boot log and status screen show `Last restart:` (power-on, reset pin, reboot or watchdog) and the watchdog restarts since power-on. The `RFUPS_DIAG` build no longer feeds the watchdog itself. Hidden menu commands `stall0` / `stall1` hang a core for the HIL test.
 
 ### Changed
+- The PlatformIO platform is pinned to commit `24f5f5b` (Arduino-Pico 5.4.3, lwIP 2.2.1, GCC 14.2), the versions every release so far was built and tested with. Before, a fresh install or CI cache miss took the platform's newest commit, by now Arduino-Pico 6.x with GCC 16. Same firmware as before.
 - Mains detection requirement is now 80 ms from mains changing to detection (was 10 ms): the carrier board's detector holds a loss 30-50 ms to bridge the zero crossings. The firmware's own share, from GPIO27 changing to detection, stays within 10 ms. No firmware change.
 
 ### Fixed
