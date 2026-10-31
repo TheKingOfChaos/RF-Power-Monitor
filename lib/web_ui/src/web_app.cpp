@@ -263,6 +263,19 @@ const char* WebApp::mainPage(int code, const char* reason, size_t slot, WebBacke
     row(b, "IP address", st.ip);
     if (st.ipv6[0]) row(b, "IPv6 address", st.ipv6);
     if (st.ipv6LinkLocal[0] && strcmp(st.ipv6LinkLocal, st.ipv6) != 0) row(b, "IPv6 link-local", st.ipv6LinkLocal);
+    if (st.ipv6Dhcp[0]) {
+        char line[IPV6_TEXT_MAX + 24];  // address + " (valid 4294967294 s)"
+        TextBuffer lb(line, sizeof(line));
+        lb.add(st.ipv6Dhcp);
+        if (st.ipv6DhcpValidS == 0xFFFFFFFFu) {
+            lb.add(" (valid forever)");
+        } else {
+            lb.add(" (valid ");
+            lb.addUnsigned(st.ipv6DhcpValidS);
+            lb.add(" s)");
+        }
+        row(b, "IPv6 (DHCPv6)", line);
+    }
     row(b, "MAC address", st.mac);
     row(b, "Network mode", st.dhcp ? "DHCP" : "static");
     if (st.staticIPv6[0]) row(b, "Static IPv6", st.staticIPv6);

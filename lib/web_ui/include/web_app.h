@@ -48,6 +48,8 @@ struct WebStatus {
     char dns[16];         ///< DNS server in use, empty without an address
     char ipv6[46];        ///< Global (SLAAC) IPv6 address, else link-local, empty without IPv6
     char ipv6LinkLocal[46];  ///< fe80:: address, empty without IPv6
+    char ipv6Dhcp[IPV6_TEXT_MAX];  ///< Address leased by DHCPv6, empty without one
+    uint32_t ipv6DhcpValidS;       ///< Its remaining valid lifetime, 0xFFFFFFFF = infinite
     char mac[18];
     bool dhcp;            ///< Configured mode
     char staticIP[16];    ///< Stored static configuration (form defaults)

@@ -835,6 +835,32 @@ static void test_ipv6_rows_only_when_the_device_has_ipv6() {
     TEST_ASSERT_TRUE(page.find("Static IPv6</th>") == std::string::npos);
 }
 
+static void test_status_page_shows_dhcpv6_address_when_present() {
+    webSetUp();
+    strcpy(fb->st.ipv6Dhcp, "fd54:b56a:26e1:2183::d600:1");
+    fb->st.ipv6DhcpValidS = 90;
+    std::string csrf;
+    std::string page = get("/", logIn(csrf));
+    TEST_ASSERT_TRUE(page.find("IPv6 (DHCPv6)</th><td>fd54:b56a:26e1:2183::d600:1 (valid 90 s)</td>") !=
+                     std::string::npos);
+}
+
+static void test_status_page_dhcpv6_infinite_lifetime() {
+    webSetUp();
+    strcpy(fb->st.ipv6Dhcp, "fd54:b56a:26e1:2183::d600:1");
+    fb->st.ipv6DhcpValidS = 0xFFFFFFFFu;
+    std::string csrf;
+    std::string page = get("/", logIn(csrf));
+    TEST_ASSERT_TRUE(page.find("fd54:b56a:26e1:2183::d600:1 (valid forever)</td>") != std::string::npos);
+}
+
+static void test_status_page_has_no_dhcpv6_row_without_address() {
+    webSetUp();
+    std::string csrf;
+    std::string page = get("/", logIn(csrf));
+    TEST_ASSERT_TRUE(page.find("DHCPv6") == std::string::npos);
+}
+
 static void test_actions_need_a_session() {
     webSetUp();
     const char* paths[] = {"/community", "/network", "/reboot", "/logout", "/hostname", "/disable", "/ipv6"};
@@ -1332,6 +1358,9 @@ int main() {
     RUN_TEST(test_status_page_ambient_temperature_without_sensor);
     RUN_TEST(test_status_page_ambient_temperature_below_zero);
     RUN_TEST(test_ipv6_rows_only_when_the_device_has_ipv6);
+    RUN_TEST(test_status_page_shows_dhcpv6_address_when_present);
+    RUN_TEST(test_status_page_dhcpv6_infinite_lifetime);
+    RUN_TEST(test_status_page_has_no_dhcpv6_row_without_address);
     RUN_TEST(test_actions_need_a_session);
     RUN_TEST(test_actions_need_the_session_csrf_token);
     RUN_TEST(test_change_community);

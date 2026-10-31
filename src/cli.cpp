@@ -6,6 +6,7 @@
 #include <settings.h>
 #include "ambient_temp.h"
 #include "cpu_temp.h"
+#include "dhcp6_service.h"
 #include "hostname.h"
 #include "net_stats.h"
 #include "snmp_service.h"
@@ -201,6 +202,23 @@ static void printStatus() {
                       currentSettings.ipv6Gateway[0] ? currentSettings.ipv6Gateway : "from router advertisements");
     } else {
         Serial.println("Stored static IPv6: none (option 9)");
+    }
+    Dhcp6Status d6;
+    dhcp6GetStatus(d6);
+    if (d6.state == Dhcp6State::Idle) {
+        Serial.println("DHCPv6: off (no router asked for it)");
+    } else {
+        Serial.printf("DHCPv6: %s", dhcp6StateName(d6.state));
+        if (d6.address[0]) {
+            if (d6.validLeftS == 0xFFFFFFFFu) {
+                Serial.printf(", %s (valid forever)", d6.address);
+            } else {
+                Serial.printf(", %s (valid %lu s)", d6.address, (unsigned long)d6.validLeftS);
+            }
+        }
+        Serial.printf(", %lu sent, %lu accepted, %lu ignored\n", (unsigned long)d6.sent, (unsigned long)d6.accepted,
+                      (unsigned long)d6.ignored);
+        if (d6.problem[0]) Serial.printf("DHCPv6: address not in use (%s)\n", d6.problem);
     }
     Serial.println("Live interface:");
     printNetworkInfo();

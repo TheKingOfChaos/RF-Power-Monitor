@@ -9,6 +9,7 @@
 #include <web_app.h>
 #include "ambient_temp.h"
 #include "cpu_temp.h"
+#include "dhcp6_service.h"
 #include "hostname.h"
 #include "net_stats.h"
 #include "snmp_service.h"
@@ -118,7 +119,7 @@ public:
 #if LWIP_IPV6
         netif* nif = eth.getNetIf();
         for (int i = 0; i < LWIP_IPV6_NUM_ADDRESSES; i++) {
-            if (!ip6_addr_isvalid(netif_ip6_addr_state(nif, i))) continue;
+            if (!ip6_addr_isvalid(netif_ip6_addr_state(nif, i)) || dhcp6IsSlot(i)) continue;  // DHCPv6 has its own row
             const ip6_addr_t* a = netif_ip6_addr(nif, i);
             char* dest = ip6_addr_islinklocal(a) ? st.ipv6LinkLocal : st.ipv6;
             if (dest[0] == '\0') ip6addr_ntoa_r(a, dest, sizeof(st.ipv6));
@@ -126,6 +127,12 @@ public:
         for (char* c = st.ipv6; *c; c++) *c = (char)tolower(*c);
         for (char* c = st.ipv6LinkLocal; *c; c++) *c = (char)tolower(*c);
         if (st.ipv6[0] == '\0') strlcpy(st.ipv6, st.ipv6LinkLocal, sizeof(st.ipv6));
+        Dhcp6Status d6;
+        dhcp6GetStatus(d6);
+        if (d6.hasAddress) {
+            strlcpy(st.ipv6Dhcp, d6.address, sizeof(st.ipv6Dhcp));
+            st.ipv6DhcpValidS = d6.validLeftS;
+        }
 #endif
         snprintf(st.mac, sizeof(st.mac), "%02X:%02X:%02X:%02X:%02X:%02X", ifs.mac[0], ifs.mac[1], ifs.mac[2],
                  ifs.mac[3], ifs.mac[4], ifs.mac[5]);

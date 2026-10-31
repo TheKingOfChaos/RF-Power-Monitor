@@ -135,6 +135,9 @@ class Device:
         info["state"] = m.group(1) if m else None
         m = re.search(r"Mains power: (\w+)", out)
         info["mains"] = m.group(1) if m else None
+        m = re.search(r"^DHCPv6: (off|[a-z]+)(?:, ([0-9a-f:]+) \(valid (\d+ s|forever)\))?", out, re.MULTILINE)
+        info["dhcp6State"] = m.group(1) if m else None
+        info["dhcp6Address"] = m.group(2) if m else None
         m = re.search(r"^Last restart: (.+) \((\d+) watchdog restarts since power-on\)\r?$", out, re.MULTILINE)
         info["lastRestart"] = m.group(1) if m else None
         info["watchdogRestarts"] = int(m.group(2)) if m else None
