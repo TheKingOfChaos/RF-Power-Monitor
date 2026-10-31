@@ -12,6 +12,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Hardware: 3D-printable case for the module on the carrier: Fusion 360 design `hardware/Case/Power Case.f3z`, STEP files for the case and the lid, and the print project `hardware/pico-poe-mains-carrier/3d/Power Case.3mf`.
 
 ### Fixed
+- CI firmware build (Linux), failing since 2.3.0: the build flag `MEMP_NUM_SYS_TIMEOUT=(LWIP_NUM_SYS_TIMEOUT_INTERNAL+12)` broke the shell command over its parentheses. It is now written without them; the timer pool is the same size.
 - Factory reset button: "released after ... ms, no reset" always said 0 ms; it now gives how long the button was held.
 - HIL factory reset test: during the 10 s hold it polled SNMP with "public" after changing the community, so it never got a reply; it uses the community it set, and it reconnects before restoring the settings when the device rebooted mid-test.
 
