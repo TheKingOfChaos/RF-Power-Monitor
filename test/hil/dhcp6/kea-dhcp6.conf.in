@@ -1,0 +1,32 @@
+{
+  "Dhcp6": {
+    "interfaces-config": { "interfaces": [ "@IFACE@" ] },
+    "lease-database": { "type": "memfile", "persist": false },
+    "valid-lifetime": @VALID@,
+    "preferred-lifetime": @PREFERRED@,
+    "renew-timer": @RENEW@,
+    "rebind-timer": @REBIND@,
+    "client-classes": [
+      { "name": "DROP", "test": "not (pkt.src == 0x@DEVLLHEX@)" },
+      { "name": "rfups-device", "test": "option[1].hex == 0x@DUID@" }
+    ],
+    "subnet6": [
+      {
+        "id": 1,
+        "subnet": "@SUBNET@",
+        "interface": "@IFACE@",
+        "client-class": "rfups-device",
+        "pools": [ { "pool": "@POOL@" } ],
+        "option-data": [ { "name": "dns-servers", "data": "@DNS@" } ]
+      }
+    ],
+    "loggers": [
+      {
+        "name": "kea-dhcp6",
+        "output_options": [ { "output": "stdout" } ],
+        "severity": "DEBUG",
+        "debuglevel": 40
+      }
+    ]
+  }
+}
