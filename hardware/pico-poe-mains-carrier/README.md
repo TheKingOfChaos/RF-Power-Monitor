@@ -39,7 +39,7 @@ Trim any header pins under the module flush before soldering it down.
 ## Circuit
 
 - 230 VAC goes in on J1 (L/N, 5.08 mm screw terminal on the right edge; the wires enter from the same end as the USB port).
-- F1 (Schurter UMT 250, T 100 mA, 250 VAC) follows J1 in L. The mains side is a single series loop (L, F1, R1, optocoupler, R4, R3, R2, N), so F1 carries any fault current on the board, whichever way L and N are wired. It does not replace the upstream fuse.
+- F1 (SETfuse SCT1032T1A250V, T 1 A, 250 VAC, 100 A breaking capacity) follows J1 in L. The mains side is a single series loop (L, F1, R1, optocoupler, R4, R3, R2, N), so F1 carries any fault current on the board, whichever way L and N are wired. The loop carries only about 1.2 mA and a single shorted resistor still leaves at least 204 k, so F1 is there for hard faults (an arc-over, L and N bridged), which a T 1 A fuse clears as well as a smaller one. It does not replace the upstream fuse.
 - Four 68 k 1206 resistors rated 200 V (R1 in L, R2 to R4 in N) limit the current to about 1.2 mA peak, about 50 mW per resistor.
 - An LTV-814S AC-input optocoupler (5 kVrms) pulls SENSE low on both half-cycles.
 - C1 (1 µF) with R5 (47 k) bridges the zero crossings, so SENSE goes high about 30 to 50 ms after mains is lost.
@@ -65,14 +65,14 @@ The mains area is on the right, below the module's USB end, outlined on silkscre
 
 - Socketed: fit 2x 1x20 female headers (not in the BOM). Flat: solder the castellated edges, no headers needed.
 - The module (U1) is excluded from the BOM and CPL.
-- F1 has no LCSC part number: order Schurter 3403.0156.11 through JLCPCB's global sourcing or solder it by hand (Mouser, DigiKey). SW1 is LCSC C318884.
+- F1 is LCSC C19712559 (SETfuse SCT1032, 10.3 x 3.3 mm) on the Schurter UMT 250 footprint (10.1 x 3.1 mm); check it in JLCPCB's placement preview. A Schurter 3403.0156.11 (T 100 mA) fits the same pads. SW1 is LCSC C318884.
 - Check the rotation of U2, U3 and U4 in JLCPCB's placement preview before ordering.
 - The temperature reading includes some self-heating from the board and module. For true ambient, mount the board vertically or add an offset in firmware.
 - Mains wiring must be done by a qualified person. The board must sit in a closed enclosure, and the supply must be fused upstream.
 
 ## Firmware
 
-The firmware in this repository (C++, see the [main README](../../README.md)) runs on the module unchanged: it reads MAINS_OK on GP27 (HIGH = mains present) and uses the on-board W5500 on GP16-GP21. It does not read the TMP1075 yet. Its 10 s factory reset reads SW1 on GP22 (active low).
+The firmware in this repository (C++, see the [main README](../../README.md)) runs on the module unchanged: it reads MAINS_OK on GP27 (HIGH = mains present) and uses the on-board W5500 on GP16-GP21. It reads the TMP1075 every 2 s as `ambientTemperature` (SNMP 63050.5, status screen, web page). Its 10 s factory reset reads SW1 on GP22 (active low).
 
 ## Firmware sketch (MicroPython)
 

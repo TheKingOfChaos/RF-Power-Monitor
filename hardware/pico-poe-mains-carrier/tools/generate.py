@@ -94,8 +94,10 @@ PARTS = [
     ("J1", "Screw_Terminal_2", "230VAC L/N", "TerminalBlock_Phoenix:TerminalBlock_Phoenix_MKDS-1,5-2-5.08_1x02_P5.08mm_Horizontal",
      74.8, YL, 90, {"1": "AC_L", "2": "AC_N"}, {"MPN": "Phoenix 1715721 (MKDS 1,5/2-5,08)"}),
     # one series loop L -> F1 -> R1 -> opto -> R4 -> R3 -> R2 -> N: F1 carries any fault current
-    ("F1", "Fuse", "T100mA 250VAC", "Fuse:Fuse_Schurter_UMT250", 63.3, YL, 0,
-     {"1": "L_FUSED", "2": "AC_L"}, {"MPN": "Schurter 3403.0156.11 (UMT 250, T 100 mA, 250 VAC)"}),
+    # SETfuse SCT1032 (10.3 x 3.3 mm) on the UMT 250 footprint (10.1 x 3.1 mm); T1A is the smallest
+    # stocked at JLCPCB, and the loop only carries ~1.2 mA, so it acts on hard faults either way
+    ("F1", "Fuse", "T1A 250VAC", "Fuse:Fuse_Schurter_UMT250", 63.3, YL, 0,
+     {"1": "L_FUSED", "2": "AC_L"}, {"LCSC": "C19712559", "MPN": "SETfuse SCT1032T1A250V (T 1 A, 250 VAC, 100 A breaking)"}),
     ("R1", "R", "68k 1206 200V", "Resistor_SMD:R_1206_3216Metric", 55.0, YL, 0,
      {"1": "OPTO_A", "2": "L_FUSED"}, {"LCSC": "C2889820"}),
     ("R2", "R", "68k 1206 200V", "Resistor_SMD:R_1206_3216Metric", 66.6, YN, 0,
@@ -136,7 +138,8 @@ PARTS = [
      {"1": "FACTORY_RESET", "2": "GND"}, {"LCSC": "C318884", "MPN": "XKB TS-1187A-B-A-B"}),
 ]
 REF_POS = {"C3": (30.4, 36.75), "D2": (27.5, 28.9), "C2": (21.3, 47.475), "H1": (4.0, 29.6), "H3": (71.3, 46.0),
-           "F1": (63.3, 37.9), "R2": (66.6, 32.0), "SW1": (11.5, 28.9)}
+           "F1": (63.3, 37.9), "R2": (66.6, 32.0), "SW1": (11.5, 28.9),
+           "U2": (42.3, 28.4)}  # U2: left of the slot, which hides the default spot
 HOLES = [("H1", 4.0, 25.5), ("H2", 4.0, 46.0), ("H3", 76.0, 46.0),
          # under the module, between the header rows: reachable only with the module on headers
          ("H4", 30.0, 10.5), ("H5", 66.5, 10.5)]  # board coords
@@ -373,6 +376,11 @@ def gr_arc(s, m, e, layer, w=0.1):
             f'\t\t(stroke\n\t\t\t(width {w})\n\t\t\t(type solid)\n\t\t)\n\t\t(layer "{layer}")\n\t\t(uuid "{U()}")\n\t)\n')
 
 
+def gr_dot(x, y, r, layer="F.SilkS"):
+    return (f'\t(gr_circle\n\t\t(center {f(x)} {f(y)})\n\t\t(end {f(x + r)} {f(y)})\n\t\t(stroke\n\t\t\t(width 0)\n\t\t\t(type solid)\n\t\t)\n'
+            f'\t\t(fill yes)\n\t\t(layer "{layer}")\n\t\t(uuid "{U()}")\n\t)\n')
+
+
 def gr_text(t, x, y, layer="F.SilkS", size=1.0, rot=0, bold=False, justify=None):
     j = f"\n\t\t\t(justify {justify})" if justify else ""
     b = "\n\t\t\t\t(bold yes)" if bold else ""
@@ -528,6 +536,9 @@ def make_board(sym_uuids):
     o.append(gr_text("L", *P(68.4, 37.9), size=1.2, bold=True))
     o.append(gr_text("N", *P(67.6, 28.0), size=1.2, bold=True))
     o.append(gr_text("RESET 10s", *P(15.6, 24.875), size=0.8, justify="left"))
+    # U2 pin 1: the slot cuts away the footprint's notch, so mark it with a dot just below pad 1
+    # (U2 is rotated 180: pad 1 at local (-4.765, -1.27) lands right of centre, below it)
+    o.append(gr_dot(*P(OPTO[0] + 4.765, OPTO[1] + 1.27 + 1.75), 0.35))
     o.append(gr_text("230VAC IN", *P(74.6, 39.9), size=1.0))
     o.append(gr_text("ON", *P(24.0, 38.0), size=0.8))
     o.append(gr_text("OFF", *P(29.0, 32.4), size=0.8, justify="left"))
@@ -632,7 +643,7 @@ def build_symbols():
     S["Fuse"] = symdef("Fuse", "F", rect_g(-0.762, 2.54, 0.762, -2.54, "none") + " " + poly_g([(0, 2.54), (0, -2.54)]),
                        [P_("passive", 0, 3.81, 270, 1, length=1.27), P_("passive", 0, -3.81, 90, 2, length=1.27)],
                        [prop("Reference", "F", 2.032, 1.27), prop("Value", "Fuse", 2.032, -1.27), prop("Footprint", "", 0, 0, True),
-                        prop("Datasheet", "https://www.schurter.com/en/datasheet/typ_UMT_250.pdf", 0, 0, True),
+                        prop("Datasheet", "https://www.setfuse.com/Pr_d_gci_92_id_128.html", 0, 0, True),
                         prop("Description", "Fuse", 0, 0, True)],
                        pin_names_hidden=True, pin_numbers_hidden=True, offset=0)
     S["SW_Push"] = symdef("SW_Push", "SW", "(circle (center 0 2.032) (radius 0.508) (stroke (width 0) (type default)) (fill (type none))) "
@@ -859,7 +870,7 @@ def make_schematic(symbols):
     sch.text("GP16..GP21 are used by the on-board W5500 - do not use.\nGP27 (pin 32) = MAINS_OK input: HIGH = 230VAC present.\nGP4/GP5 = I2C0 SDA/SCL to TMP1075 (address 0x48).\nGP22 (pin 29) = SW1 to GND: hold 10 s for a factory reset (internal pull-up).\n+3V3 comes from the module's 3V3(OUT) pin 36 (PoE powered).", 22.86, 158.75)
     sch.rect(20.32, 182.88, 147.32, 259.08)
     sch.text("HAZARDOUS VOLTAGE - 230VAC MAINS SENSE", 22.86, 187.96, 2, True)
-    sch.text("F1 T100mA 250VAC in the only current loop. 4x 68k 1206 (>=200V): ~1.2 mA peak, ~50 mW each.\nLTV-814S AC-input optocoupler, 5 kVrms. PCB: >=6.5 mm clearance, >=6.4 mm creepage + routed slot.", 22.86, 254.0)
+    sch.text("F1 T1A 250VAC in the only current loop. 4x 68k 1206 (>=200V): ~1.2 mA peak, ~50 mW each.\nLTV-814S AC-input optocoupler, 5 kVrms. PCB: >=6.5 mm clearance, >=6.4 mm creepage + routed slot.", 22.86, 254.0)
     sch.rect(152.4, 182.88, 330.2, 259.08)
     sch.text("Mains detect + LED indication (works without firmware)", 154.94, 187.96, 2, True)
     sch.text("Opto pulls SENSE low while mains is present; C1 holds it low over the zero crossings (47k x 1uF = 47 ms).\nMAINS_OK = NOT SENSE: green LED on = mains ON, red LED on = mains OFF.", 154.94, 254.0)

@@ -13,8 +13,9 @@ cd "$P"
 kicad-cli pcb export gerbers --layers "F.Cu,B.Cu,F.Paste,F.SilkS,B.SilkS,F.Mask,B.Mask,Edge.Cuts" --subtract-soldermask -o "$F/gerber/" $N.kicad_pcb >/dev/null
 kicad-cli pcb export drill --format excellon --excellon-separate-th --generate-map --map-format gerberx2 -o "$F/gerber/" $N.kicad_pcb >/dev/null
 (cd "$F/gerber" && zip -q -r "../${N}-gerbers.zip" .)
+# JLCPCB needs every designator listed (R1,R2,R3,R4), not ranges (R1-R4)
 kicad-cli sch export bom --fields "Reference,Value,Footprint,LCSC,MPN,\${QUANTITY}" --labels "Designator,Comment,Footprint,LCSC Part #,MPN,Quantity" \
-  --group-by "Value,Footprint,LCSC,MPN" --exclude-dnp -o "$F/${N}-bom.csv" $N.kicad_sch >/dev/null
+  --group-by "Value,Footprint,LCSC,MPN" --ref-delimiter "," --ref-range-delimiter "" --exclude-dnp -o "$F/${N}-bom.csv" $N.kicad_sch >/dev/null
 # the module is plugged in by hand, not assembled
 python3 - "$F/${N}-bom.csv" <<'PY'
 import sys
