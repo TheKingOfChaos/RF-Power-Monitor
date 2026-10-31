@@ -205,7 +205,7 @@ static void test_worst_case_escaped_settings_fit_and_round_trip() {
     in.sysContact[SYS_TEXT_MAX_LENGTH] = '\0';
     memset(in.sysLocation, '\\', SYS_TEXT_MAX_LENGTH);
     in.sysLocation[SYS_TEXT_MAX_LENGTH] = '\0';
-    strcpy(in.trapTarget, "255.255.255.255");
+    strcpy(in.trapTarget, "fd16:d833:4f0e:3ece:ffff:ffff:ffff:fffd");
     strcpy(in.staticIP, "255.255.255.254");
     strcpy(in.subnetMask, "255.255.255.254");
     strcpy(in.gateway, "255.255.255.255");
@@ -400,9 +400,55 @@ static void test_rejects_invalid_trap_target() {
     withField(json, sizeof(json), "\"trapTarget\":\"10.10.6.256\"");
     TEST_ASSERT_EQUAL(SettingsParseError::BadTrapTarget, settingsFromJson(json, s));
     withField(json, sizeof(json), "\"trapTarget\":\"255.255.255.255.1\"");
+    TEST_ASSERT_EQUAL(SettingsParseError::BadTrapTarget, settingsFromJson(json, s));
+    withField(json, sizeof(json), "\"trapTarget\":\"fd16:d833:4f0e:3ece:ffff:ffff:ffff:ffff0\"");  // 40 characters
     TEST_ASSERT_EQUAL(SettingsParseError::FieldTooLong, settingsFromJson(json, s));
     withField(json, sizeof(json), "\"trapTarget\":\"\"");
     TEST_ASSERT_EQUAL(SettingsParseError::None, settingsFromJson(json, s));
+}
+
+static void test_ipv6_trap_target_round_trips() {
+    Settings in = staticSettings();
+    strcpy(in.trapTarget, "fd16:d833:4f0e:3ece:ffff:ffff:ffff:fffe");  // longest text
+    char json[SETTINGS_JSON_MAX];
+    TEST_ASSERT_GREATER_THAN(0, settingsToJson(in, json, sizeof(json)));
+    Settings out;
+    TEST_ASSERT_EQUAL(SettingsParseError::None, settingsFromJson(json, out));
+    TEST_ASSERT_EQUAL_STRING("fd16:d833:4f0e:3ece:ffff:ffff:ffff:fffe", out.trapTarget);
+    TEST_ASSERT_TRUE(settingsEqual(in, out));
+}
+
+static void test_rejects_unusable_ipv6_trap_target() {
+    char json[SETTINGS_JSON_MAX];
+    Settings s;
+    const char* bad[] = {"\"trapTarget\":\"fe80::1\"", "\"trapTarget\":\"ff02::1\"", "\"trapTarget\":\"::1\"",
+                         "\"trapTarget\":\"2001:db8::1/64\""};
+    for (const char* field : bad) {
+        withField(json, sizeof(json), field);
+        TEST_ASSERT_EQUAL_MESSAGE(SettingsParseError::BadTrapTarget, settingsFromJson(json, s), field);
+    }
+}
+
+static void test_ipv6_trap_target_needs_v2c() {
+    char json[SETTINGS_JSON_MAX];
+    Settings s;
+    withField(json, sizeof(json), "\"trapTarget\":\"2001:db8::162\",\"trapVersion\":1");
+    TEST_ASSERT_EQUAL(SettingsParseError::TrapIPv6NeedsV2c, settingsFromJson(json, s));
+    withField(json, sizeof(json), "\"trapTarget\":\"2001:db8::162\",\"trapVersion\":2");
+    TEST_ASSERT_EQUAL(SettingsParseError::None, settingsFromJson(json, s));
+    // While DHCP option 224 is used, the kept fixed address is not sent to
+    withField(json, sizeof(json), "\"trapTarget\":\"2001:db8::162\",\"trapVersion\":1,\"trapFromDhcp\":true");
+    TEST_ASSERT_EQUAL(SettingsParseError::None, settingsFromJson(json, s));
+    withField(json, sizeof(json), "\"trapTarget\":\"10.132.0.45\",\"trapVersion\":1");
+    TEST_ASSERT_EQUAL(SettingsParseError::None, settingsFromJson(json, s));
+}
+
+static void test_trap_version_fits_target() {
+    TEST_ASSERT_TRUE(trapVersionFitsTarget("", false, TRAP_VERSION_V1));
+    TEST_ASSERT_TRUE(trapVersionFitsTarget("10.132.0.45", false, TRAP_VERSION_V1));
+    TEST_ASSERT_TRUE(trapVersionFitsTarget("2001:db8::162", false, TRAP_VERSION_V2C));
+    TEST_ASSERT_FALSE(trapVersionFitsTarget("2001:db8::162", false, TRAP_VERSION_V1));
+    TEST_ASSERT_TRUE(trapVersionFitsTarget("2001:db8::162", true, TRAP_VERSION_V1));
 }
 
 static void test_trap_version_defaults_to_v2c_and_round_trips() {
@@ -437,7 +483,7 @@ static void test_rejects_invalid_trap_version() {
 }
 
 static void test_every_parse_error_has_a_message() {
-    for (uint8_t e = 0; e <= (uint8_t)SettingsParseError::BadStaticIPv6; e++) {
+    for (uint8_t e = 0; e <= (uint8_t)SettingsParseError::TrapIPv6NeedsV2c; e++) {
         TEST_ASSERT_TRUE_MESSAGE(strcmp("unknown error", settingsParseErrorMessage((SettingsParseError)e)) != 0,
                                  "error code has no message");
     }
@@ -592,6 +638,10 @@ int main() {
     RUN_TEST(test_trap_target_defaults_to_off);
     RUN_TEST(test_trap_target_round_trip);
     RUN_TEST(test_rejects_invalid_trap_target);
+    RUN_TEST(test_ipv6_trap_target_round_trips);
+    RUN_TEST(test_rejects_unusable_ipv6_trap_target);
+    RUN_TEST(test_ipv6_trap_target_needs_v2c);
+    RUN_TEST(test_trap_version_fits_target);
     RUN_TEST(test_trap_version_defaults_to_v2c_and_round_trips);
     RUN_TEST(test_rejects_invalid_trap_version);
     RUN_TEST(test_every_parse_error_has_a_message);

@@ -1,5 +1,6 @@
 #include "netconfig.h"
 
+#include <stdio.h>
 #include <string.h>
 
 bool parseIPv4(const char* text, uint8_t out[4]) {
@@ -265,6 +266,38 @@ const char* staticIPv6ErrorMessage(StaticIPv6Error error) {
     case StaticIPv6Error::GatewayNotOnLink: return "IPv6 gateway must be link-local (fe80::...) or in the address's /64";
     case StaticIPv6Error::GatewayIsHost:    return "IPv6 gateway must differ from the address";
     case StaticIPv6Error::GatewayWithoutAddress: return "An IPv6 gateway needs a static IPv6 address";
+    }
+    return "Unknown error";
+}
+
+TrapTargetError parseTrapTarget(const char* text, TrapAddress& out) {
+    uint8_t a[16];
+    if (parseIPv4(text, a)) {
+        out.ipv6 = false;
+        memcpy(out.addr, a, 4);
+        return TrapTargetError::None;
+    }
+    if (!parseIPv6(text, a)) return TrapTargetError::Invalid;
+    // ::/8 holds unspecified, loopback and IPv4-mapped addresses; link-local would need a zone
+    if (a[0] == 0 || a[0] == 0xFF || isLinkLocal6(a)) return TrapTargetError::NotUsable;
+    out.ipv6 = true;
+    memcpy(out.addr, a, 16);
+    return TrapTargetError::None;
+}
+
+void formatTrapAddress(const TrapAddress& address, char* out) {
+    if (address.ipv6) {
+        formatIPv6(address.addr, out);
+    } else {
+        snprintf(out, IPV6_TEXT_MAX, "%u.%u.%u.%u", address.addr[0], address.addr[1], address.addr[2], address.addr[3]);
+    }
+}
+
+const char* trapTargetErrorMessage(TrapTargetError error) {
+    switch (error) {
+    case TrapTargetError::None:      return "OK";
+    case TrapTargetError::Invalid:   return "not a valid IPv4 or IPv6 address";
+    case TrapTargetError::NotUsable: return "IPv6 trap destination must be a global or ULA unicast address";
     }
     return "Unknown error";
 }

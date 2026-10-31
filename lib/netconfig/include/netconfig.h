@@ -144,3 +144,40 @@ StaticIPv6Error validateStaticIPv6(const char* address, const char* gateway);
  * @brief Human-readable message for a static IPv6 error, for the serial menu and web page
  */
 const char* staticIPv6ErrorMessage(StaticIPv6Error error);
+
+// ---- Trap destination ----
+
+/**
+ * @brief A trap destination: IPv4 (addr[0..3]) or IPv6 (addr[0..15], network order)
+ */
+struct TrapAddress {
+    bool ipv6;
+    uint8_t addr[16];
+};
+
+/**
+ * @brief Result of parsing a trap destination
+ */
+enum class TrapTargetError : uint8_t {
+    None = 0,   ///< Valid
+    Invalid,    ///< Neither IPv4 nor IPv6 text (empty included)
+    NotUsable   ///< IPv6 in ::/8, link-local or multicast
+};
+
+/**
+ * @brief Parse a trap destination: any IPv4 address (as parseIPv4), or a global or
+ *        ULA unicast IPv6 address (as parseIPv6; link-local would need a zone)
+ * @param out Receives the address only when the result is None
+ */
+TrapTargetError parseTrapTarget(const char* text, TrapAddress& out);
+
+/**
+ * @brief Format a trap destination: dotted quad, or RFC 5952 text for IPv6
+ * @param out At least IPV6_TEXT_MAX bytes
+ */
+void formatTrapAddress(const TrapAddress& address, char* out);
+
+/**
+ * @brief Human-readable message for a trap destination error, for the serial menu
+ */
+const char* trapTargetErrorMessage(TrapTargetError error);

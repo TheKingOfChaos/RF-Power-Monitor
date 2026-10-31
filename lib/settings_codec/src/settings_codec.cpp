@@ -144,8 +144,10 @@ SettingsParseError settingsFromJson(const char* json, Settings& out) {
         (err = readOptionalText(doc["ipv6Gateway"], s.ipv6Gateway, sizeof(s.ipv6Gateway))) != SettingsParseError::None) {
         return err;
     }
-    uint8_t trapAddr[4];
-    if (s.trapTarget[0] != '\0' && !parseIPv4(s.trapTarget, trapAddr)) return SettingsParseError::BadTrapTarget;
+    TrapAddress trapAddr;
+    if (s.trapTarget[0] != '\0' && parseTrapTarget(s.trapTarget, trapAddr) != TrapTargetError::None) {
+        return SettingsParseError::BadTrapTarget;
+    }
     if (validateStaticIPv6(s.ipv6Address, s.ipv6Gateway) != StaticIPv6Error::None) return SettingsParseError::BadStaticIPv6;
 
     JsonVariantConst webPassword = doc["webPassword"];
@@ -169,6 +171,7 @@ SettingsParseError settingsFromJson(const char* json, Settings& out) {
         if (v != TRAP_VERSION_V1 && v != TRAP_VERSION_V2C) return SettingsParseError::BadTrapVersion;
         s.trapVersion = (uint8_t)v;
     }
+    if (!trapVersionFitsTarget(s.trapTarget, s.trapFromDhcp, s.trapVersion)) return SettingsParseError::TrapIPv6NeedsV2c;
 
     s.dhcpEnabled = doc["dhcpEnabled"];
     if (!s.dhcpEnabled &&
@@ -198,8 +201,15 @@ const char* settingsParseErrorMessage(SettingsParseError error) {
     case SettingsParseError::BadTrapVersion:  return "invalid trap version";
     case SettingsParseError::BadWebPassword:  return "invalid web password hash";
     case SettingsParseError::BadStaticIPv6:   return "invalid static IPv6 configuration";
+    case SettingsParseError::TrapIPv6NeedsV2c: return "IPv6 trap destination needs trap version 2c";
     }
     return "unknown error";
+}
+
+bool trapVersionFitsTarget(const char* trapTarget, bool trapFromDhcp, uint8_t trapVersion) {
+    TrapAddress t;
+    bool fixedIPv6 = !trapFromDhcp && parseTrapTarget(trapTarget, t) == TrapTargetError::None && t.ipv6;
+    return !fixedIPv6 || trapVersion == TRAP_VERSION_V2C;
 }
 
 bool settingsEqual(const Settings& a, const Settings& b) {

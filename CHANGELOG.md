@@ -6,6 +6,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+- Traps to an IPv6 destination: menu option 4 accepts a global or ULA IPv6 address (stored in RFC 5952 form) as well as IPv4, `-` and `dhcp`. IPv6 destinations get v2c traps only (a v1 Trap-PDU's agent-addr is IPv4); the menu refuses trap version 1 with an IPv6 destination and the settings check rejects that combination. Link-local, multicast and `::/8` addresses are refused. `snmpTrapAddress.0` keeps carrying the device's IPv4 address. Settings files from older firmware load unchanged; older firmware rejects a file with an IPv6 trap destination and falls back to the other copy or defaults.
+
 ### Changed
 - Mains detection requirement is now 80 ms from mains changing to detection (was 10 ms): the carrier board's detector holds a loss 30-50 ms to bridge the zero crossings. The firmware's own share, from GPIO27 changing to detection, stays within 10 ms. No firmware change.
 

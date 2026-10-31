@@ -53,7 +53,7 @@ static char newCommunity[COMMUNITY_MAX_LENGTH + 1];
 static char newSysName[SYS_TEXT_MAX_LENGTH + 1];
 static char newSysContact[SYS_TEXT_MAX_LENGTH + 1];
 static char newSysLocation[SYS_TEXT_MAX_LENGTH + 1];
-static char newTrapTarget[16];
+static char newTrapTarget[IPV6_TEXT_MAX];
 static bool newTrapFromDhcp;
 static uint8_t newTrapVersion;
 
@@ -150,9 +150,9 @@ static void printStatus() {
     Serial.printf("sysContact: \"%s\"\n", currentSettings.sysContact);
     Serial.printf("sysLocation: \"%s\"\n", currentSettings.sysLocation);
     // The destination in use first, then where it comes from
-    uint8_t trap[4];
-    char trapText[16] = "";
-    if (snmpTrapTarget(trap)) snprintf(trapText, sizeof(trapText), "%u.%u.%u.%u", trap[0], trap[1], trap[2], trap[3]);
+    TrapAddress trap;
+    char trapText[IPV6_TEXT_MAX] = "";
+    if (snmpTrapTarget(trap)) formatTrapAddress(trap, trapText);
     Serial.printf("Trap destination: \"%s\" (%lu sent, %lu failed)\n", trapText, (unsigned long)svc.trapsSent,
                   (unsigned long)svc.trapsFailed);
     if (!currentSettings.trapFromDhcp) {
@@ -300,7 +300,7 @@ static void promptSnmp() {
 
 /**
  * @brief Accept the trap destination: empty keeps, "-" turns traps off, "dhcp" takes it from
- *        DHCP option 224, else an IPv4 address
+ *        DHCP option 224, else an IPv4 or IPv6 address (IPv6 stored in RFC 5952 form)
  */
 static bool takeTrapTarget(const char* input) {
     // The fixed address is kept while DHCP is chosen, for switching back
@@ -318,12 +318,13 @@ static bool takeTrapTarget(const char* input) {
         newTrapTarget[0] = '\0';
         return true;
     }
-    uint8_t octets[4];
-    if (strlen(input) >= sizeof(newTrapTarget) || !parseIPv4(input, octets)) {
-        Serial.printf("'%s' is not a valid IPv4 address\n", input);
+    TrapAddress address;
+    TrapTargetError err = parseTrapTarget(input, address);
+    if (err != TrapTargetError::None) {
+        Serial.printf("'%s': %s\n", input, trapTargetErrorMessage(err));
         return false;
     }
-    strlcpy(newTrapTarget, input, sizeof(newTrapTarget));
+    formatTrapAddress(address, newTrapTarget);
     return true;
 }
 
@@ -637,6 +638,11 @@ static void handleLine(const char* line) {
             newTrapVersion = TRAP_VERSION_V2C;
         } else {
             Serial.println("Enter 1 or 2c");
+            promptSnmp();
+            break;
+        }
+        if (!trapVersionFitsTarget(newTrapTarget, newTrapFromDhcp, newTrapVersion)) {
+            Serial.println("An IPv6 trap destination needs trap version 2c (v1 traps carry an IPv4 address)");
             promptSnmp();
             break;
         }

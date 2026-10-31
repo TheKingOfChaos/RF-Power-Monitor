@@ -115,30 +115,45 @@ static size_t buildTrap(TrapKind kind, const SnmpDeviceState& state) {
     return 0;
 }
 
-bool snmpTrapTarget(uint8_t out[4]) {
+bool snmpTrapTarget(TrapAddress& out) {
     if (!currentSettings.trapFromDhcp) {
-        return currentSettings.trapTarget[0] != '\0' && parseIPv4(currentSettings.trapTarget, out);
+        // The settings were validated when loaded, so an IPv6 address here comes with v2c
+        return currentSettings.trapTarget[0] != '\0' &&
+               parseTrapTarget(currentSettings.trapTarget, out) == TrapTargetError::None;
     }
     // Only the ACK for the lease in use counts; a static IP never has one
     DhcpTrapInfo d = netStatsDhcpTrap();
     if (!currentSettings.dhcpEnabled || !d.seen || !d.hasOption || memcmp(d.yiaddr, agentAddr, 4) != 0) return false;
-    memcpy(out, d.target, 4);
+    out.ipv6 = false;
+    memcpy(out.addr, d.target, 4);
     return true;
+}
+
+/**
+ * @brief lwIP/Arduino address for a trap destination
+ */
+static IPAddress trapDestination(const TrapAddress& t) {
+    if (!t.ipv6) return IPAddress(t.addr[0], t.addr[1], t.addr[2], t.addr[3]);
+    uint32_t w[4];
+    memcpy(w, t.addr, sizeof(w));  // ip6_addr_t words are in network order
+    ip_addr_t a;
+    IP_ADDR6(&a, w[0], w[1], w[2], w[3]);  // global or ULA only (parseTrapTarget), so no zone
+    return IPAddress(a);
 }
 
 /**
  * @brief Send an encoded trap to the destination in use, if any
  */
 static void sendTrap(size_t len, const char* what) {
-    uint8_t target[4];
+    TrapAddress target;
     if (!snmpTrapTarget(target)) return;
-    char targetText[16];
-    snprintf(targetText, sizeof(targetText), "%u.%u.%u.%u", target[0], target[1], target[2], target[3]);
+    char targetText[IPV6_TEXT_MAX];
+    formatTrapAddress(target, targetText);
     if (len == 0) {
         serviceStats.trapsFailed++;
         return;
     }
-    IPAddress dest(target[0], target[1], target[2], target[3]);
+    IPAddress dest = trapDestination(target);
     bool ok = udp.beginPacket(dest, SNMP_TRAP_PORT) == 1 && udp.write(outBuf, len) == len && udp.endPacket() == 1;
     if (ok) {
         serviceStats.trapsSent++;

@@ -12,6 +12,7 @@
 
 #include <IPAddress.h>
 #include <access_control.h>
+#include <netconfig.h>
 #include <snmp_agent.h>
 
 /// Standard SNMP agent port
@@ -73,7 +74,7 @@ void snmpCommunityChanged();
  *        (only from the ACK for the current lease)
  * @return false if traps are off or no destination is known
  */
-bool snmpTrapTarget(uint8_t out[4]);
+bool snmpTrapTarget(TrapAddress& out);
 
 /**
  * @brief Send mainsPowerLost or mainsPowerRestored for the current mains state

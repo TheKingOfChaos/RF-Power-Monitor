@@ -174,7 +174,7 @@ An item is only ticked when it is implemented **and** its tests exist and pass (
 - [ ] Report the `PBUF_HELPER_FLAG 0xff` bug to arduino-pico (UdpContext.h), then `LWIP_IPV6_FRAG` could go back on
 - [x] Each core gets its own 8 KB stack (`core1_separate_stack`): with IPv6 only ~660 bytes of core 0's 4 KB were left after a page-load burst; now ~5.3 KB stay unused — HIL `test_page_load_burst_keeps_snmp_fast_and_stack_headroom`
 - [x] Rate limiter and access log keyed per full IPv4 or IPv6 address (`SourceKey`, 128 bits), ::/32 sources dropped; not per /64, so trust does not pass to other hosts in a manager's /64 — native `test_access_control`, HIL `test_wrong_community_over_ipv6_is_logged_with_the_full_pc_address`
-- [ ] Stage 2: IPv6 trap destination (v2c only)
+- [x] Stage 2: IPv6 trap destination (v2c only; global or ULA, refused with v1) — native `test_netconfig` (`test_trap_target_*`), `test_settings_codec` (`test_ipv6_trap_target_*`, `test_trap_version_fits_target`), sanitizers; HIL `test_v2c_trap_reaches_an_ipv6_destination`, `test_menu_refuses_*` (passed 2026-10-31; a VPN such as Cisco AnyConnect blocks IPv6 to the device)
 - [x] Static IPv6 address (/64) and gateway, serial menu option 9 and web page, next to SLAAC (2.4.0) — native `test_netconfig` (parse/format/validate, truncation), `test_settings_codec`, `test_web_ui`; HIL `test_ipv6_static.py` (opt-in `RFUPS_STATIC_IPV6`)
 - [ ] DHCPv6 address assignment (if needed)
 - [ ] Consider a hardware watchdog in normal builds (the IPv6 panic would have recovered by itself)

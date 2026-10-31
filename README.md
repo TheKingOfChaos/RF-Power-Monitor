@@ -208,8 +208,8 @@ SNMP settings saved and active
 - Community: 1-31 printable ASCII characters. After saving, requests with the old community get no answer.
 - Hostname (sysName): 1-32 letters, digits and `-`, not starting or ending with `-`; `-` does not clear it. Active immediately for DHCP and mDNS too.
 - sysContact, sysLocation: 0-63 printable ASCII characters.
-- Trap destination: an IPv4 address that receives traps on UDP 162, `-` for no traps, or `dhcp` to take it from DHCP option 224 (see [docs/MIB.md](docs/MIB.md#trap-destination-from-dhcp)). Choosing `dhcp` keeps the fixed address for switching back.
-- Trap version: `1` (SNMPv1 Trap-PDU) or `2c` (SNMPv2-Trap, default).
+- Trap destination: an IPv4 or IPv6 address that receives traps on UDP 162, `-` for no traps, or `dhcp` to take it from DHCP option 224 (see [docs/MIB.md](docs/MIB.md#trap-destination-from-dhcp)). Choosing `dhcp` keeps the fixed address for switching back. An IPv6 destination must be a global or ULA address (not link-local) and is stored in its short form (`2001:db8::162`).
+- Trap version: `1` (SNMPv1 Trap-PDU) or `2c` (SNMPv2-Trap, default). An IPv6 destination needs `2c`: a v1 trap carries the device's address in an IPv4-only field, so the menu refuses `1` with an IPv6 destination.
 - Saved to flash and active immediately, no reboot. A factory reset restores `public`, `rf-ups-monitor`, empty contact and location, no trap destination and v2c traps.
 
 **5. Access log** lists the most recent rejected SNMP requests, newest first: wrong community, SNMPv3, malformed packets, rate-limited sources and SetRequests. Repeats from the same source are counted on one line:
@@ -326,7 +326,8 @@ The device runs IPv4 and IPv6 side by side (dual stack):
 - **SNMP** answers over IPv6 on UDP 161 like over IPv4 (replies up to 1452 bytes, one Ethernet frame: the device does not fragment IPv6 packets), e.g. `snmpget -v2c -c public udp6:[fd16:d833:4f0e:3ece:1cb2:cfff:fe4e:a22c] 1.3.6.1.2.1.1.1.0`. LibreNMS polls it over IPv6 when added with transport `udp6` (tested with LibreNMS 26.9.1, see [docs/LIBRENMS.md](docs/LIBRENMS.md#ipv6)).
 - **Web page:** `http://[<IPv6 address>]/`; **mDNS:** `rf-ups-monitor.local` resolves to the IPv6 address too.
 - **Rate limiting and access log:** per full source address, as for IPv4; the access log shows the address (`fd16:d833:4f0e:3ece:9000:9aaa:490a:3189`). Not per /64: on a LAN every host shares one /64, and a manager's trust must not pass to its neighbours. A host that rotates through many IPv6 addresses is held by the shared limit for untrusted sources, like faked IPv4 addresses.
-- **Still IPv4 only:** traps (the trap destination is an IPv4 address; v1 traps cannot carry an IPv6 agent address anyway), DHCP option 224, and the IP and IF tables in the MIB stay as they are. There is no DHCPv6 address assignment.
+- **Traps** can go to an IPv6 destination (menu option 4), as v2c only. `snmpTrapAddress.0` in the trap still holds the device's IPv4 address, and is left out while it has none.
+- **Still IPv4 only:** DHCP option 224, and the IP and IF tables in the MIB stay as they are. There is no DHCPv6 address assignment.
 
 Turning IPv6 off needs a firmware build without `PIO_FRAMEWORK_ARDUINO_ENABLE_IPV6` in `platformio.ini`.
 
@@ -373,7 +374,7 @@ Settings are stored as JSON on the Pico's internal flash (LittleFS) in two copie
 | `community` | SNMP community string, 1-31 printable characters |
 | `sysName` | Hostname and SNMP sysName (new values: a valid hostname; older free text still loads); optional, default `rf-ups-monitor` |
 | `sysContact`, `sysLocation` | SNMP system group text, 0-63 printable characters; optional, default empty |
-| `trapTarget` | IPv4 address that receives traps, empty = no traps; optional |
+| `trapTarget` | IPv4 or IPv6 address that receives traps, empty = no traps; IPv6 only with `trapVersion` 2 (unless `trapFromDhcp`); optional. Firmware before 2.6.0 rejects a file with an IPv6 address here and uses the other copy or defaults |
 | `trapVersion` | `1` = SNMPv1 Trap-PDU, `2` = SNMPv2-Trap (default); optional |
 | `trapFromDhcp` | `true` = trap destination from DHCP option 224 (`trapTarget` is kept for switching back); optional, default `false` |
 | `webEnabled` | `false` = web interface off; optional, default `true` |

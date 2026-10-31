@@ -101,7 +101,7 @@ With net-snmp, v2c shows these as `No Such Object available on this agent at thi
 
 ## Traps
 
-Traps are sent to the trap destination set in menu option 4 (a fixed address, or `dhcp`: see [Trap destination from DHCP](#trap-destination-from-dhcp)) (UDP 162, community = the configured community), in the trap version chosen there: **v2c (default)** or v1. With no destination set, no traps are sent.
+Traps are sent to the trap destination set in menu option 4 (a fixed address, or `dhcp`: see [Trap destination from DHCP](#trap-destination-from-dhcp)) (UDP 162, community = the configured community), in the trap version chosen there: **v2c (default)** or v1. With no destination set, no traps are sent. The fixed address can be IPv4 or IPv6 (global or ULA); an IPv6 destination gets v2c traps only, since the v1 Trap-PDU's agent-addr is an IPv4 field.
 
 | Trap | v1: generic / specific | v2c: snmpTrapOID.0 | Variable bindings | When |
 |---|---|---|---|---|

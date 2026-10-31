@@ -53,7 +53,7 @@ struct Settings {
     char sysName[SYS_TEXT_MAX_LENGTH + 1];      ///< SNMP sysName, 0-63 printable characters
     char sysContact[SYS_TEXT_MAX_LENGTH + 1];   ///< SNMP sysContact, 0-63 printable characters
     char sysLocation[SYS_TEXT_MAX_LENGTH + 1];  ///< SNMP sysLocation, 0-63 printable characters
-    char trapTarget[16];  ///< SNMP trap destination (IPv4, UDP 162), empty = traps off
+    char trapTarget[IPV6_TEXT_MAX];  ///< SNMP trap destination (IPv4 or IPv6, UDP 162), empty = traps off
     uint8_t trapVersion;  ///< TRAP_VERSION_V1 or TRAP_VERSION_V2C
     bool trapFromDhcp;    ///< true: trap destination from DHCP option 224 instead of trapTarget
     bool webEnabled;      ///< false: no web server on TCP 80 (serial menu only)
@@ -81,11 +81,20 @@ enum class SettingsParseError : uint8_t {
     BadCommunity,     ///< Community string empty or contains non-printable characters
     BadStaticConfig,  ///< DHCP disabled but static configuration is invalid
     BadSysText,       ///< sysName/sysContact/sysLocation contains non-printable characters
-    BadTrapTarget,    ///< trapTarget is neither empty nor an IPv4 address
+    BadTrapTarget,    ///< trapTarget is neither empty nor accepted by parseTrapTarget()
     BadTrapVersion,   ///< trapVersion is not 1 or 2
     BadWebPassword,   ///< webPassword is neither empty nor a well-formed salted hash
-    BadStaticIPv6     ///< ipv6Address / ipv6Gateway fail validateStaticIPv6()
+    BadStaticIPv6,    ///< ipv6Address / ipv6Gateway fail validateStaticIPv6()
+    TrapIPv6NeedsV2c  ///< A fixed IPv6 trapTarget with trapVersion 1 (see trapVersionFitsTarget)
 };
+
+/**
+ * @brief Whether the trap version can be sent to the destination: a v1 Trap-PDU carries an
+ *        IPv4 agent-addr, so a fixed IPv6 destination needs v2c. With trapFromDhcp the
+ *        fixed address is only kept, not used, so anything fits.
+ * @param trapTarget Destination text, assumed already checked (empty = traps off)
+ */
+bool trapVersionFitsTarget(const char* trapTarget, bool trapFromDhcp, uint8_t trapVersion);
 
 /**
  * @brief Which stored copy to use

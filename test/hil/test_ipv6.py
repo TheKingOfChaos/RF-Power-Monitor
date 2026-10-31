@@ -3,6 +3,8 @@
 The device always has a link-local address (fe80::, from its MAC). If a router
 on the LAN announces a prefix, it also gets a SLAAC address; the tests use it
 when present. The PC needs IPv6 on the interface towards the device.
+The IPv6 trap test also needs UDP 162 free on this PC (stop the LibreNMS
+snmptrapd container while it runs); it is skipped otherwise.
 
 Run:
     %USERPROFILE%\\.platformio\\penv\\Scripts\\python.exe -m unittest discover -s test/hil -p "test_ipv6.py" -v
@@ -18,9 +20,10 @@ import time
 import unittest
 
 from device import Device
-from snmp_tools import GET_SYSDESCR, local_ip_towards, net_snmp
+from snmp_tools import GET_SYSDESCR, TrapListener, local_ip_towards, net_snmp, send_raw
 
 SNMP_PORT = 161
+AUTH_TRAP_INTERVAL = 10.0  # the device sends at most one authenticationFailure trap per 10 s
 
 
 def bad_community_request():
@@ -196,6 +199,64 @@ class Ipv6Test(unittest.TestCase):
             s.sendto(GET_SYSDESCR, (self.ip4, SNMP_PORT))
             data, _ = s.recvfrom(2048)
         self.assertIn(b"RF-UPS-Monitor", data)
+
+    # ---- traps to an IPv6 destination ----
+
+    def test_v2c_trap_reaches_an_ipv6_destination(self):
+        glob = [a for a in self.addresses if not a.startswith("fe80:")]
+        if not glob:
+            self.skipTest("no IPv6 router on this LAN: the device has no global or ULA address to send from")
+        pc6 = str(self.pc_address_v6())
+        if pc6.startswith("fe80:"):
+            self.skipTest("this PC has no global or ULA IPv6 address towards the device")
+        try:
+            listener = TrapListener(family=socket.AF_INET6)
+        except OSError as e:
+            self.skipTest("cannot listen on UDP 162 over IPv6 (LibreNMS snmptrapd in Docker?): %s" % e)
+        st = self.dev.status()
+        original = (st["trapTarget"], st["trapVersion"])
+        try:
+            self.dev.set_trap_target(pc6, "2c")
+            self.assertEqual(pc6, self.dev.status()["trapTarget"], "status must show the IPv6 destination in use")
+            time.sleep(AUTH_TRAP_INTERVAL + 0.5)  # let an earlier auth trap's throttle expire
+            send_raw(self.ip4, [bad_community_request()])
+            trap = listener.wait_for(lambda t: t["kind"] == "authenticationFailure", timeout=3)
+            self.assertIsNotNone(trap, "no authenticationFailure trap over IPv6")
+            self.assertEqual(1, trap["version"], "an IPv6 destination gets v2c traps")
+            self.assertEqual("public", trap["community"])
+            self.assertIn(trap["source"].split("%")[0].lower(), glob)
+            self.assertEqual(self.ip4, trap["agent"], "snmpTrapAddress.0 still carries the IPv4 address")
+        finally:
+            self.dev.wait_for_menu(timeout=10)
+            self.dev.set_trap_target(*original)
+            listener.close()
+
+    def enter_trap_target(self, target):
+        """Menu option 4 up to the trap destination, keeping the other settings; returns the output."""
+        self.dev.send("4", expect=r"Community \[.*\]: $")
+        self.dev.send("", expect=r"\(sysName\) \[.*\]: $")
+        self.dev.send("", expect=r"sysContact \[.*\]: $")
+        self.dev.send("", expect=r"sysLocation \[.*\]: $")
+        self.dev.send("", expect=r"Trap destination IP or dhcp \[.*\]: $")
+        return self.dev.send(target,expect=r"(Trap destination IP or dhcp|Trap version \(1/2c\)) \[.*\]: $")
+
+    def test_menu_refuses_v1_traps_to_an_ipv6_destination(self):
+        before = self.dev.status()["trapTarget"]
+        self.enter_trap_target("2001:db8::162")
+        out = self.dev.send("1", expect=r"Trap version \(1/2c\) \[.*\]: $")
+        self.assertIn("needs trap version 2c", out)
+        self.dev.send("2c", expect=r"Save\? \(y/n\): $")
+        self.dev.send("n", expect=r"Cancelled[\s\S]*> $")
+        self.assertEqual(before, self.dev.status()["trapTarget"])
+
+    def test_menu_refuses_a_link_local_trap_destination(self):
+        before = self.dev.status()["trapTarget"]
+        out = self.enter_trap_target("fe80::1")
+        self.assertIn("global or ULA", out)
+        self.dev.send("-", expect=r"Trap version \(1/2c\) \[.*\]: $")  # finish the dialog and cancel it
+        self.dev.send("", expect=r"Save\? \(y/n\): $")
+        self.dev.send("n", expect=r"Cancelled[\s\S]*> $")
+        self.assertEqual(before, self.dev.status()["trapTarget"])
 
     def test_zz_device_did_not_restart_during_the_tests(self):
         # The first IPv6 build panicked seconds after boot (lwIP timer pool empty)

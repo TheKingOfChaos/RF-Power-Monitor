@@ -176,13 +176,13 @@ def decode_trap(data):
 
 
 class TrapListener:
-    """Collects SNMP traps on UDP 162 in a background thread."""
+    """Collects SNMP traps on UDP 162 in a background thread (IPv4, or IPv6 with family=AF_INET6)."""
 
-    def __init__(self, port=162):
+    def __init__(self, port=162, family=socket.AF_INET):
         import threading
-        self.sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.sock = socket.socket(family, socket.SOCK_DGRAM)
         try:
-            self.sock.bind(("0.0.0.0", port))
+            self.sock.bind(("::" if family == socket.AF_INET6 else "0.0.0.0", port))
         except OSError:
             self.sock.close()
             raise

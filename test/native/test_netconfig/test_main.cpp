@@ -342,6 +342,78 @@ static void test_every_ipv6_error_has_a_message() {
     }
 }
 
+// ---- Trap destination ----
+
+static void test_trap_target_accepts_ipv4() {
+    TrapAddress t;
+    TEST_ASSERT_EQUAL(TrapTargetError::None, parseTrapTarget("10.132.0.45", t));
+    TEST_ASSERT_FALSE(t.ipv6);
+    const uint8_t want[4] = {10, 132, 0, 45};
+    TEST_ASSERT_EQUAL_UINT8_ARRAY(want, t.addr, 4);
+}
+
+static void test_trap_target_accepts_global_and_ula_ipv6() {
+    TrapAddress t;
+    TEST_ASSERT_EQUAL(TrapTargetError::None, parseTrapTarget("2001:db8::162", t));
+    TEST_ASSERT_TRUE(t.ipv6);
+    const uint8_t want[16] = {0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x01, 0x62};
+    TEST_ASSERT_EQUAL_UINT8_ARRAY(want, t.addr, 16);
+    TEST_ASSERT_EQUAL(TrapTargetError::None, parseTrapTarget("fd16:d833:4f0e:3ece::45", t));
+    TEST_ASSERT_TRUE(t.ipv6);
+    TEST_ASSERT_EQUAL(TrapTargetError::None, parseTrapTarget("fec0::1", t));  // just outside fe80::/10
+}
+
+static void test_trap_target_rejects_unusable_ipv6() {
+    TrapAddress t;
+    const char* unusable[] = {"::", "::1", "::ffff:a0a:641", "fe80::1", "febf::1", "ff02::1", "ff0e::162"};
+    for (const char* a : unusable) TEST_ASSERT_EQUAL_MESSAGE(TrapTargetError::NotUsable, parseTrapTarget(a, t), a);
+}
+
+static void test_trap_target_rejects_malformed_text() {
+    TrapAddress t;
+    const char* bad[] = {"", "dhcp", "-", "10.132.0", "10.132.0.256", "fd00::1/64", "fe80::1%eth0",
+                         "::ffff:10.132.0.45", " 10.132.0.45", "2001:db8::1 "};
+    for (const char* a : bad) TEST_ASSERT_EQUAL_MESSAGE(TrapTargetError::Invalid, parseTrapTarget(a, t), a);
+    TEST_ASSERT_EQUAL(TrapTargetError::Invalid, parseTrapTarget(nullptr, t));
+}
+
+static void test_trap_target_leaves_output_untouched_on_failure() {
+    TrapAddress t;
+    memset(&t, 0xAA, sizeof(t));
+    TrapAddress before = t;
+    TEST_ASSERT_NOT_EQUAL(TrapTargetError::None, parseTrapTarget("ff02::1", t));
+    TEST_ASSERT_EQUAL_MEMORY(&before, &t, sizeof(t));
+}
+
+static void test_trap_target_survives_every_truncation() {
+    const char* full = "fd16:d833:4f0e:3ece:1234:5678:9abc:def0";
+    char buf[IPV6_TEXT_MAX];
+    TrapAddress t;
+    for (size_t n = 0; n < strlen(full); n++) {
+        memcpy(buf, full, n);
+        buf[n] = '\0';
+        parseTrapTarget(buf, t);  // must not crash or read past the end (sanitizers)
+    }
+    TEST_ASSERT_EQUAL(TrapTargetError::None, parseTrapTarget(full, t));
+}
+
+static void test_format_trap_address_ipv4_and_ipv6() {
+    TrapAddress t;
+    char text[IPV6_TEXT_MAX];
+    TEST_ASSERT_EQUAL(TrapTargetError::None, parseTrapTarget("255.255.255.255", t));
+    formatTrapAddress(t, text);
+    TEST_ASSERT_EQUAL_STRING("255.255.255.255", text);
+    TEST_ASSERT_EQUAL(TrapTargetError::None, parseTrapTarget("2001:DB8:0:0:0:0:0:0162", t));
+    formatTrapAddress(t, text);
+    TEST_ASSERT_EQUAL_STRING("2001:db8::162", text);
+}
+
+static void test_every_trap_target_error_has_a_message() {
+    for (uint8_t e = 0; e <= (uint8_t)TrapTargetError::NotUsable; e++) {
+        TEST_ASSERT_TRUE(strcmp("Unknown error", trapTargetErrorMessage((TrapTargetError)e)) != 0);
+    }
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_parse_valid_addresses);
@@ -377,5 +449,13 @@ int main() {
     RUN_TEST(test_validate_ipv6_rejects_unusable_addresses);
     RUN_TEST(test_validate_ipv6_gateway_rules);
     RUN_TEST(test_every_ipv6_error_has_a_message);
+    RUN_TEST(test_trap_target_accepts_ipv4);
+    RUN_TEST(test_trap_target_accepts_global_and_ula_ipv6);
+    RUN_TEST(test_trap_target_rejects_unusable_ipv6);
+    RUN_TEST(test_trap_target_rejects_malformed_text);
+    RUN_TEST(test_trap_target_leaves_output_untouched_on_failure);
+    RUN_TEST(test_trap_target_survives_every_truncation);
+    RUN_TEST(test_format_trap_address_ipv4_and_ipv6);
+    RUN_TEST(test_every_trap_target_error_has_a_message);
     return UNITY_END();
 }
