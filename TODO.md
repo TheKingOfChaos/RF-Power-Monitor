@@ -131,7 +131,7 @@ An item is only ticked when it is implemented **and** its tests exist and pass (
 - [x] HIL tests in `test/hil` (Python, pyserial from PlatformIO)
 - [x] Test rules in `.clinerules`, guide in `docs/TESTING.md`
 - [x] CI (GitHub Actions): native tests, sanitizers, net-snmp check, firmware + test program build — dry run in a clean WSL copy
-- [ ] First CI run on GitHub (after push)
+- [x] First CI run on GitHub (after push) — green since 2.5.1 (2026-10-31)
 
 ## 8. Security
 - [x] Request rate limiting: 50/s per source, burst 100, 8 sources tracked (`lib/access_control`) — native + HIL
