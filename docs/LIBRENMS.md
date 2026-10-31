@@ -63,9 +63,11 @@ or choose transport `udp6` in Devices → Add Device. Checked with LibreNMS 26.9
 
 Set the device's trap destination (menu option 4) to the LibreNMS server and the trap version to `2c` (or enter `dhcp` and let the DHCP server hand out the LibreNMS address in option 224, see [MIB.md](MIB.md#trap-destination-from-dhcp)), and set up snmptrapd on the server as described in the LibreNMS documentation (SNMP Trap Handler). LibreNMS has no trap handler for the RF-UPS-MONITOR-MIB notifications, so it logs them as unhandled traps: the device's event log shows an entry of type `trap` with the message `RF-UPS-MONITOR-MIB::mainsPowerLost` (or `...Restored`), checked with LibreNMS 26.9.1. The sensors change on the next poll.
 
+LibreNMS finds the device for a trap by the address the trap came from. If something between the device and snmptrapd rewrites that address (NAT, such as Docker Desktop's port forwarding), LibreNMS logs "Could not find device for trap" in snmptrapd's output and drops the trap; the Docker setup below works around that.
+
 ## Trying it in Docker
 
-[librenms/test/compose.yml](../librenms/test/compose.yml) starts a throw-away LibreNMS (MariaDB, Redis, LibreNMS, poller) with the definition files, the MIB and the logos mounted in, on http://localhost:8070:
+[librenms/test/compose.yml](../librenms/test/compose.yml) starts a throw-away LibreNMS (MariaDB, Redis, LibreNMS, poller, trap receiver) with the definition files, the MIB and the logos mounted in, on http://localhost:8070:
 
 ```bash
 cd librenms/test
@@ -79,6 +81,24 @@ docker compose down -v                   # remove everything again
 
 The poller polls every 5 minutes; traffic rates appear after the second poll. The device gets the RF icon at its first poll (LibreNMS stores the icon when it polls), so after updating the definitions on an existing installation the icon changes at the next poll.
 
+### Traps in Docker
+
+The `snmptrapd` container receives traps on UDP 162 of the PC. Set the device's trap destination to the PC's address (menu option 4); both trap versions work. Docker Desktop replaces the sender's address with its own (172.18.0.1), so LibreNMS alone could not find the device ("Could not find device for trap"). The device's traps also carry its address, v1 in agent-addr and v2c (from firmware 2.5.1) in `snmpTrapAddress.0`, which snmptrapd shows for both; [librenms/test/snmptrap-agent-addr.php](../librenms/test/snmptrap-agent-addr.php), mounted over LibreNMS's `snmptrap.php`, puts that address back before LibreNMS handles the trap. Without NAT in between, on a normal LibreNMS server, the script is not needed. Only traps with the community in `TRAP_COMMUNITY` (default `public`) are accepted, e.g. `TRAP_COMMUNITY=mycommunity docker compose up -d`.
+
+**Alerts from traps:** LibreNMS only logs these traps; alerts come from the sensors. After a mainsPowerLost or mainsPowerRestored trap, the same script polls the device's sensors, which runs its alert rules, so "State Sensor Critical" opens when mains goes and recovers when it returns within seconds instead of at the next 5-minute poll. On a LibreNMS server without this script the alert comes with the next poll.
+
+With WSL in mirrored networking mode (below), a firewall in front of WSL (the Hyper-V firewall) drops traps from the network until UDP 162 is allowed, once, in an administrator PowerShell:
+
+```powershell
+New-NetFirewallHyperVRule -Name "RFUPS-SNMP-Trap" -DisplayName "RF-UPS-Monitor SNMP traps (WSL/Docker)" -Direction Inbound -VMCreatorId '{40E0AC32-46A5-438A-A0B2-2B479E8F2E90}' -Protocol UDP -LocalPorts 162 -Action Allow
+```
+
+Checked on 2026-10-31 with v2c traps: coldStart, authenticationFailure, mainsPowerLost and mainsPowerRestored were matched to the device, and the mains sensor changed 2 s after each mains trap. With v1 traps, a 30 s mains cut (Dirigera outlet) gave `RF-UPS-MONITOR-MIB::mainsPowerLost` and `...Restored` in the device's event log, and the "State Sensor Critical" alert opened 3.4 s after mains went off and recovered 3.4 s after it came back; and a wrong community an "SNMP Trap: Authentication Failure" entry. Traps a test sends from the PC itself (`snmptrap` in WSL) arrive without the firewall rule, so they do not show whether the device's traps get through.
+
+To keep the setup running, a `compose.override.yml` next to `compose.yml` (loaded by `docker compose` on its own) can add `restart: unless-stopped` to each service and the community; `librenms/test/compose.override.yml` is gitignored for that.
+
+### IPv6
+
 The compose network has IPv6 (`enable_ipv6`, NATed by Docker), so the containers can poll the device over IPv6 (`./lnms device:add --v2c -c public -t udp6 <device IPv6 address>`). In WSL this needs mirrored networking (`networkingMode=mirrored` under `[wsl2]` in `%USERPROFILE%\.wslconfig`, then `wsl --shutdown`); with the default NAT networking WSL has no IPv6 route to the LAN. WSL stops when no terminal uses it, and the containers do not restart on their own: run `docker compose up -d` again after that.
 
 ## Files
@@ -88,6 +108,7 @@ The compose network has IPv6 (`enable_ipv6`, NATed by Docker), so the containers
 | [librenms/os_detection/rfupsmonitor.yaml](../librenms/os_detection/rfupsmonitor.yaml) | Matches sysObjectID `.1.3.6.1.4.1.63050`; OS name, type, icon, MIB directory, overview graphs |
 | [librenms/os_discovery/rfupsmonitor.yaml](../librenms/os_discovery/rfupsmonitor.yaml) | Version and hardware from sysDescr; the state, temperature and count sensors |
 | [mibs/RF-UPS-MONITOR-MIB.txt](../mibs/RF-UPS-MONITOR-MIB.txt) | Lets LibreNMS resolve the `RF-UPS-MONITOR-MIB::` names |
+| [librenms/test/snmptrap-agent-addr.php](../librenms/test/snmptrap-agent-addr.php) | Docker setup only: matches traps to the device by the address in them (v1 agent-addr, v2c snmpTrapAddress.0), which Docker's port forwarding would otherwise hide, and polls the sensors after a mains trap so the alert follows within seconds |
 | [librenms/images/os/rfupsmonitor.svg](../librenms/images/os/rfupsmonitor.svg), [librenms/images/logos/rfupsmonitor.svg](../librenms/images/logos/rfupsmonitor.svg) | The RF logo (from [logo/](../logo/)): square icon for device lists, wider logo for the device page. Named by `icon:` in the detection file; without them LibreNMS shows the generic icon |
 
 If you change the MIB, keep the object names used in the discovery file. The temperature sensors' divisor (10) matches the MIB's units of 0.1 °C.

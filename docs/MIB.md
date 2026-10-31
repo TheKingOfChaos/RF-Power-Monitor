@@ -111,7 +111,7 @@ Traps are sent to the trap destination set in menu option 4 (a fixed address, or
 | mainsPowerRestored | 6 (enterpriseSpecific) / 2 | `1.3.6.1.4.1.63050.0.2` | same | Mains restored |
 
 - **v1** traps carry enterprise `1.3.6.1.4.1.63050` and the device's IP as agent-addr.
-- **v2c** traps start with `sysUpTime.0` and `snmpTrapOID.0`, as RFC 3416 requires, then the variable bindings above. Each trap has its own request-id.
+- **v2c** traps start with `sysUpTime.0` and `snmpTrapOID.0`, as RFC 3416 requires, then the variable bindings above, and end with `snmpTrapAddress.0` (`1.3.6.1.6.3.18.1.3.0`, IpAddress, RFC 3584): the device's IPv4 address, as the v1 agent-addr. A manager behind NAT, such as LibreNMS in Docker Desktop, sees another sender address and can find the device by this one. It is left out while the device has no IPv4 address. Each trap has its own request-id.
 - The time (v1 time-stamp, v2c sysUpTime.0) of a mains trap is the moment of the change, equal to mainsPowerLastChange, not when the trap was sent.
 - In the MIB file the mains traps are the notifications `mainsPowerLost` (`63050.0.1`) and `mainsPowerRestored` (`63050.0.2`); RFC 3584 maps them to the v1 traps above.
 

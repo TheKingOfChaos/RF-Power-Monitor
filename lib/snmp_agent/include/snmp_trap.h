@@ -94,28 +94,33 @@ size_t snmpBuildMainsTrap(const char* community, const uint8_t agentAddr[4], con
 //   authenticationFailure  1.3.6.1.6.3.1.1.5.5
 //   mainsPowerLost         1.3.6.1.4.1.63050.0.1
 //   mainsPowerRestored     1.3.6.1.4.1.63050.0.2
+// Every v2c trap ends with snmpTrapAddress.0 (1.3.6.1.6.3.18.1.3.0, RFC 3584), the
+// device's IPv4 address, as the v1 agent-addr: a manager behind NAT (e.g. LibreNMS in
+// Docker Desktop) sees another sender address and can find the device by this one.
+// It is left out while the device has no IPv4 address (agentAddr 0.0.0.0).
 
 /**
  * @brief Encode a v2c coldStart trap
+ * @param agentAddr The device's IPv4 address for snmpTrapAddress.0; 0.0.0.0 leaves it out
  * @param requestId Any value; unique per trap helps managers spot duplicates
  */
-size_t snmpBuildColdStartTrapV2c(const char* community, uint32_t uptimeTicks, int32_t requestId,
-                                 uint8_t* out, size_t capacity);
+size_t snmpBuildColdStartTrapV2c(const char* community, const uint8_t agentAddr[4], uint32_t uptimeTicks,
+                                 int32_t requestId, uint8_t* out, size_t capacity);
 
 /**
  * @brief Encode a v2c authenticationFailure trap
  */
-size_t snmpBuildAuthFailureTrapV2c(const char* community, uint32_t uptimeTicks, int32_t requestId,
-                                   uint8_t* out, size_t capacity);
+size_t snmpBuildAuthFailureTrapV2c(const char* community, const uint8_t agentAddr[4], uint32_t uptimeTicks,
+                                   int32_t requestId, uint8_t* out, size_t capacity);
 
 /**
  * @brief Encode a v2c mainsPowerLost / mainsPowerRestored trap, chosen by state.mainsPresent
  *
  * sysUpTime.0 is state.mainsLastChangeTicks, the moment of the change, as the
- * v1 time-stamp. The mains objects follow snmpTrapOID.0.
+ * v1 time-stamp. The mains objects follow snmpTrapOID.0, then snmpTrapAddress.0.
  */
-size_t snmpBuildMainsTrapV2c(const char* community, const SnmpDeviceState& state, int32_t requestId,
-                             uint8_t* out, size_t capacity);
+size_t snmpBuildMainsTrapV2c(const char* community, const uint8_t agentAddr[4], const SnmpDeviceState& state,
+                             int32_t requestId, uint8_t* out, size_t capacity);
 
 /**
  * @brief Allows at most one event per interval (wrap-around safe)

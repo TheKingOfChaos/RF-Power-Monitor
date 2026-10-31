@@ -6,3 +6,4 @@
 __pycache__/
 platformio.local*.ini
 CLAUDE.local.md
+librenms/test/compose.override.yml

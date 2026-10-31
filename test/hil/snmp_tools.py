@@ -91,6 +91,8 @@ TRAP_OIDS_V2C = {
     "1.3.6.1.4.1.63050.0.1": "mainsPowerLost",
     "1.3.6.1.4.1.63050.0.2": "mainsPowerRestored",
 }
+# snmpTrapAddress.0 (RFC 3584): the device's address in its v2c traps, as the v1 agent-addr
+SNMP_TRAP_ADDRESS = "1.3.6.1.6.3.18.1.3.0"
 TRAPS_V1 = {(0, 0): "coldStart", (4, 0): "authenticationFailure",
             (6, 1): "mainsPowerLost", (6, 2): "mainsPowerRestored"}
 
@@ -104,6 +106,8 @@ def _varbinds(vbl):
         vtag, value, r = _ber(vb, r)
         if vtag == 0x06:
             v = _oid(value)
+        elif vtag == 0x40:
+            v = ".".join(map(str, value))
         else:
             v = int.from_bytes(value, "big", signed=(vtag == 0x02))
         out.append((_oid(name), vtag, v))
@@ -114,8 +118,9 @@ def decode_trap(data):
     """Decode an SNMPv1 Trap-PDU or SNMPv2-Trap into a dict (raises on anything else).
 
     Both give: version (0 = v1, 1 = v2c), community, kind (coldStart, authenticationFailure,
-    mainsPowerLost, mainsPowerRestored), timestamp (TimeTicks) and varbinds {oid: (tag, value)}
-    without the v2c sysUpTime.0 / snmpTrapOID.0 header.
+    mainsPowerLost, mainsPowerRestored), timestamp (TimeTicks), agent (v1 agent-addr, v2c
+    snmpTrapAddress.0, None if absent) and varbinds {oid: (tag, value)} without the v2c
+    sysUpTime.0 / snmpTrapOID.0 header and without snmpTrapAddress.0.
     """
     tag, msg, _ = _ber(data, 0)
     assert tag == 0x30
@@ -152,7 +157,13 @@ def decode_trap(data):
         vbs = _varbinds(vbl)
         assert vbs[0][0] == "1.3.6.1.2.1.1.3.0" and vbs[0][1] == 0x43, "first varbind must be sysUpTime.0"
         assert vbs[1][0] == "1.3.6.1.6.3.1.1.4.1.0" and vbs[1][1] == 0x06, "second must be snmpTrapOID.0"
+        agent = None
+        if vbs[-1][0] == SNMP_TRAP_ADDRESS:
+            assert vbs[-1][1] == 0x40, "snmpTrapAddress.0 must be an IpAddress"
+            agent = vbs.pop()[2]
+        assert all(o != SNMP_TRAP_ADDRESS for o, _, _ in vbs), "snmpTrapAddress.0 must be the last varbind"
         result.update({
+            "agent": agent,
             "requestId": int.from_bytes(request_id, "big", signed=True),
             "trapOid": vbs[1][2],
             "kind": TRAP_OIDS_V2C.get(vbs[1][2], "unknown"),

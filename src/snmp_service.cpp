@@ -108,9 +108,9 @@ static size_t buildTrap(TrapKind kind, const SnmpDeviceState& state) {
     }
     int32_t id = nextTrapRequestId++;
     switch (kind) {
-    case TrapKind::ColdStart:   return snmpBuildColdStartTrapV2c(c, state.uptimeTicks, id, outBuf, sizeof(outBuf));
-    case TrapKind::AuthFailure: return snmpBuildAuthFailureTrapV2c(c, state.uptimeTicks, id, outBuf, sizeof(outBuf));
-    case TrapKind::Mains:       return snmpBuildMainsTrapV2c(c, state, id, outBuf, sizeof(outBuf));
+    case TrapKind::ColdStart:   return snmpBuildColdStartTrapV2c(c, agentAddr, state.uptimeTicks, id, outBuf, sizeof(outBuf));
+    case TrapKind::AuthFailure: return snmpBuildAuthFailureTrapV2c(c, agentAddr, state.uptimeTicks, id, outBuf, sizeof(outBuf));
+    case TrapKind::Mains:       return snmpBuildMainsTrapV2c(c, agentAddr, state, id, outBuf, sizeof(outBuf));
     }
     return 0;
 }

@@ -6,6 +6,15 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [2.5.1] - 2026-10-31
+
+### Added
+- v2c traps end with `snmpTrapAddress.0` (`1.3.6.1.6.3.18.1.3.0`, RFC 3584), the device's IPv4 address, as v1 traps carry it in agent-addr. A manager behind NAT (LibreNMS in Docker Desktop) sees another sender address and can find the device by this one; checked with LibreNMS in Docker. Left out while the device has no IPv4 address.
+- LibreNMS Docker setup receives the device's traps: a `snmptrapd` container on UDP 162 that accepts only `TRAP_COMMUNITY`, and `librenms/test/snmptrap-agent-addr.php`, which matches traps to the device by the address in them (v1 agent-addr, v2c snmpTrapAddress.0) because Docker Desktop hides the sender's address. After a mains trap it polls the device's sensors, so the "State Sensor Critical" alert opens and recovers within seconds instead of at the next 5-minute poll. Checked with a real 30 s mains cut: the alert opened 3.4 s after mains went off and recovered 3.4 s after it came back. With WSL in mirrored mode, UDP 162 has to be allowed in the Hyper-V firewall (docs/LIBRENMS.md).
+
+### Fixed
+- LibreNMS Docker setup: the poller container has the logo files too; LibreNMS checks the icon file when it polls, so scheduled polls set the generic icon again.
+
 ## [2.5.0] - 2026-10-31
 
 ### Added
@@ -172,7 +181,8 @@ First release.
 - The network stack queues 5 UDP packets; larger bursts are dropped (SNMP managers retry).
 - Not yet tested with the real hardware: mains traps with real mains, the factory reset button, the "no link" and "no DHCP server" states. The LibreNMS definitions are validated against the schema but not yet tried in a running LibreNMS (done after 1.0.1).
 
-[Unreleased]: https://github.com/TheKingOfChaos/RF-UPS-Monitor-v3/compare/v2.5.0...HEAD
+[Unreleased]: https://github.com/TheKingOfChaos/RF-UPS-Monitor-v3/compare/v2.5.1...HEAD
+[2.5.1]: https://github.com/TheKingOfChaos/RF-UPS-Monitor-v3/compare/v2.5.0...v2.5.1
 [2.5.0]: https://github.com/TheKingOfChaos/RF-UPS-Monitor-v3/compare/v2.4.2...v2.5.0
 [2.4.2]: https://github.com/TheKingOfChaos/RF-UPS-Monitor-v3/compare/v2.4.1...v2.4.2
 [2.4.1]: https://github.com/TheKingOfChaos/RF-UPS-Monitor-v3/compare/v2.4.0...v2.4.1

@@ -74,9 +74,10 @@ class TrapTests:
         self.assertEqual(self.expected_version, trap["version"], "trap sent in the wrong version")
         self.assertEqual("public", trap["community"])
         self.assertEqual(self.ip, trap["source"])
+        # v1 agent-addr or v2c snmpTrapAddress.0: managers behind NAT find the device by it
+        self.assertEqual(self.ip, trap["agent"])
         if trap["version"] == 0:
             self.assertEqual(ENTERPRISE, trap["enterprise"])
-            self.assertEqual(self.ip, trap["agent"])
 
     # ---- coldStart ----
 

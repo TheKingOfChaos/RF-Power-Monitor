@@ -70,6 +70,8 @@ An item is only ticked when it is implemented **and** its tests exist and pass (
 - [x] Real mains cut (Dirigera outlet) raises LibreNMS's "State Sensor Critical" alert on the next poll, recovers after mains returns
 - [x] Temperature low limit set to -20 C (LibreNMS's automatic one was 10 C below the first reading)
 - [x] RF logo as LibreNMS device icon and device page logo (`librenms/images/`) — LibreNMS in Docker, after a poll
+- [x] v2c traps carry snmpTrapAddress.0 (RFC 3584) — native byte-exact vs net-snmp, HIL decoder, LibreNMS in Docker
+- [x] Traps into the Docker LibreNMS (snmptrapd container, the trap's own address for Docker's NAT) — real mains cut, mainsPowerLost/Restored in the event log; a mains trap polls the sensors, so the alert opens/recovers in ~3 s
 - [ ] Optional: LibreNMS trap handler for mainsPowerLost/Restored (PHP, would have to go upstream)
 - [x] ifInDiscards (driver drops for lack of a buffer, via `CountingW5500`), ifInErrors (impossible lengths), ifInUnknownProtos (EtherType) — native `test_if_stats`, `test_if_receive_discards_errors_and_unknown_protocols`, net-snmp, HIL `test_receive_drop_counters_match_the_status_screen`
 - [ ] Not possible with the W5500: CRC errors and W5500 receive-buffer overflows (no counters in the chip); ifOutDiscards (lwIP drops before the driver)
