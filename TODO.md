@@ -69,6 +69,7 @@ An item is only ticked when it is implemented **and** its tests exist and pass (
 - [x] Tried in LibreNMS 26.9.1 (Docker, `librenms/test/compose.yml`) against the device: OS/version/hardware, three sensors, port and rates, unhandled trap in the event log
 - [x] Real mains cut (Dirigera outlet) raises LibreNMS's "State Sensor Critical" alert on the next poll, recovers after mains returns
 - [x] Temperature low limit set to -20 C (LibreNMS's automatic one was 10 C below the first reading)
+- [x] RF logo as LibreNMS device icon and device page logo (`librenms/images/`) — LibreNMS in Docker, after a poll
 - [ ] Optional: LibreNMS trap handler for mainsPowerLost/Restored (PHP, would have to go upstream)
 - [x] ifInDiscards (driver drops for lack of a buffer, via `CountingW5500`), ifInErrors (impossible lengths), ifInUnknownProtos (EtherType) — native `test_if_stats`, `test_if_receive_discards_errors_and_unknown_protocols`, net-snmp, HIL `test_receive_drop_counters_match_the_status_screen`
 - [ ] Not possible with the W5500: CRC errors and W5500 receive-buffer overflows (no counters in the chip); ifOutDiscards (lwIP drops before the driver)

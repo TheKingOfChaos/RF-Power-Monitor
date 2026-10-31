@@ -41,6 +41,8 @@ services:
       - ${REPO:-../..}/librenms/os_detection/rfupsmonitor.yaml:/opt/librenms/resources/definitions/os_detection/rfupsmonitor.yaml:ro
       - ${REPO:-../..}/librenms/os_discovery/rfupsmonitor.yaml:/opt/librenms/resources/definitions/os_discovery/rfupsmonitor.yaml:ro
       - ${REPO:-../..}/mibs/RF-UPS-MONITOR-MIB.txt:/opt/librenms/mibs/rfupsmonitor/RF-UPS-MONITOR-MIB:ro
+      - ${REPO:-../..}/librenms/images/os/rfupsmonitor.svg:/opt/librenms/html/images/os/rfupsmonitor.svg:ro
+      - ${REPO:-../..}/librenms/images/logos/rfupsmonitor.svg:/opt/librenms/html/images/logos/rfupsmonitor.svg:ro
 
   dispatcher:
     image: librenms/librenms:latest

@@ -1,8 +1,8 @@
 # LibreNMS
 
-The device works in LibreNMS as a plain SNMP device out of the box: it answers SNMPv2c, has the system group and the standard IF-MIB, so LibreNMS discovers it, graphs the Ethernet port's traffic and shows its uptime. To also get the mains power state and the CPU and ambient temperature as sensors, and the device recognised as an RF-UPS-Monitor, add the definitions in [librenms/](../librenms/) to your LibreNMS installation.
+The device works in LibreNMS as a plain SNMP device out of the box: it answers SNMPv2c, has the system group and the standard IF-MIB, so LibreNMS discovers it, graphs the Ethernet port's traffic and shows its uptime. To also get the mains power state and the CPU and ambient temperature as sensors, and the device recognised as an RF-UPS-Monitor with the RF logo, add the definitions in [librenms/](../librenms/) to your LibreNMS installation.
 
-> **Status:** tested with LibreNMS 26.9.1 (Docker, [librenms/test/compose.yml](../librenms/test/compose.yml)) against the real device running firmware 1.0.1: OS, version and hardware detected, all three sensors created with the right values and limits, the port polled with traffic rates, and a mains trap logged. The definition files also validate against LibreNMS's JSON schemas.
+> **Status:** tested with LibreNMS 26.9.1 (Docker, [librenms/test/compose.yml](../librenms/test/compose.yml)) against the real device running firmware 1.0.1: OS, version and hardware detected, all three sensors created with the right values and limits, the port polled with traffic rates, and a mains trap logged. The RF logo as device icon and device page logo was checked with LibreNMS (Docker, `latest`) on 2026-10-31 against the device. The definition files also validate against LibreNMS's JSON schemas.
 
 ## What you get
 
@@ -32,6 +32,9 @@ cp <this repo>/librenms/os_discovery/rfupsmonitor.yaml resources/definitions/os_
 # MIB, in the directory named by mib_dir in the detection file
 mkdir -p mibs/rfupsmonitor
 cp <this repo>/mibs/RF-UPS-MONITOR-MIB.txt mibs/rfupsmonitor/RF-UPS-MONITOR-MIB
+# RF logo: icon in device lists, logo on the device page
+cp <this repo>/librenms/images/os/rfupsmonitor.svg html/images/os/
+cp <this repo>/librenms/images/logos/rfupsmonitor.svg html/images/logos/
 ```
 
 Then add the device with SNMP v2c and its community (menu option 4 on the device; change it from `public`):
@@ -62,7 +65,7 @@ Set the device's trap destination (menu option 4) to the LibreNMS server and the
 
 ## Trying it in Docker
 
-[librenms/test/compose.yml](../librenms/test/compose.yml) starts a throw-away LibreNMS (MariaDB, Redis, LibreNMS, poller) with the definition files and the MIB mounted in, on http://localhost:8070:
+[librenms/test/compose.yml](../librenms/test/compose.yml) starts a throw-away LibreNMS (MariaDB, Redis, LibreNMS, poller) with the definition files, the MIB and the logos mounted in, on http://localhost:8070:
 
 ```bash
 cd librenms/test
@@ -74,7 +77,7 @@ docker compose exec -u librenms librenms ./lnms device:poll <device ip>
 docker compose down -v                   # remove everything again
 ```
 
-The poller polls every 5 minutes; traffic rates appear after the second poll.
+The poller polls every 5 minutes; traffic rates appear after the second poll. The device gets the RF icon at its first poll (LibreNMS stores the icon when it polls), so after updating the definitions on an existing installation the icon changes at the next poll.
 
 The compose network has IPv6 (`enable_ipv6`, NATed by Docker), so the containers can poll the device over IPv6 (`./lnms device:add --v2c -c public -t udp6 <device IPv6 address>`). In WSL this needs mirrored networking (`networkingMode=mirrored` under `[wsl2]` in `%USERPROFILE%\.wslconfig`, then `wsl --shutdown`); with the default NAT networking WSL has no IPv6 route to the LAN. WSL stops when no terminal uses it, and the containers do not restart on their own: run `docker compose up -d` again after that.
 
@@ -85,5 +88,6 @@ The compose network has IPv6 (`enable_ipv6`, NATed by Docker), so the containers
 | [librenms/os_detection/rfupsmonitor.yaml](../librenms/os_detection/rfupsmonitor.yaml) | Matches sysObjectID `.1.3.6.1.4.1.63050`; OS name, type, icon, MIB directory, overview graphs |
 | [librenms/os_discovery/rfupsmonitor.yaml](../librenms/os_discovery/rfupsmonitor.yaml) | Version and hardware from sysDescr; the state, temperature and count sensors |
 | [mibs/RF-UPS-MONITOR-MIB.txt](../mibs/RF-UPS-MONITOR-MIB.txt) | Lets LibreNMS resolve the `RF-UPS-MONITOR-MIB::` names |
+| [librenms/images/os/rfupsmonitor.svg](../librenms/images/os/rfupsmonitor.svg), [librenms/images/logos/rfupsmonitor.svg](../librenms/images/logos/rfupsmonitor.svg) | The RF logo (from [logo/](../logo/)): square icon for device lists, wider logo for the device page. Named by `icon:` in the detection file; without them LibreNMS shows the generic icon |
 
 If you change the MIB, keep the object names used in the discovery file. The temperature sensors' divisor (10) matches the MIB's units of 0.1 °C.

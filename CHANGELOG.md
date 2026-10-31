@@ -6,9 +6,12 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [2.5.0] - 2026-10-31
+
 ### Added
 - **Ambient temperature** from the TMP1075 on the carrier board (I2C0, GP4/GP5, address 0x48), read every 2 s: SNMP `ambientTemperature` (`1.3.6.1.4.1.63050.5.0`, 0.1 °C), the status screen, the web page and a LibreNMS sensor "Ambient (TMP1075)" (warning 40 °C, critical 50 °C). Without the sensor (module without the carrier board, or three failed reads in a row) the object has no instance: v2c Get answers noSuchInstance, v1 Get noSuchName, and walks skip it; the status screen and the web page say "no sensor".
 - Web page: with DHCP the Network card's boxes show the IP address, subnet mask and gateway in use (from the DHCP server), with the DNS server below them; choosing Static and saving keeps that address. Saving with DHCP still keeps the stored static settings. Before, the boxes showed the stored static settings, which are not in use with DHCP.
+- LibreNMS: the device shows the RF logo (from `logo/`) instead of the generic icon (`librenms/images/os/` and `images/logos/`, `icon: rfupsmonitor`); checked with LibreNMS in Docker. Copy the two SVGs when installing (docs/LIBRENMS.md); the icon changes on the next poll.
 - Hardware: 3D-printable case for the module on the carrier: Fusion 360 design `hardware/Case/Power Case.f3z`, STEP files for the case and the lid, and the print project `hardware/pico-poe-mains-carrier/3d/Power Case.3mf`.
 
 ### Fixed
@@ -169,7 +172,8 @@ First release.
 - The network stack queues 5 UDP packets; larger bursts are dropped (SNMP managers retry).
 - Not yet tested with the real hardware: mains traps with real mains, the factory reset button, the "no link" and "no DHCP server" states. The LibreNMS definitions are validated against the schema but not yet tried in a running LibreNMS (done after 1.0.1).
 
-[Unreleased]: https://github.com/TheKingOfChaos/RF-UPS-Monitor-v3/compare/v2.4.2...HEAD
+[Unreleased]: https://github.com/TheKingOfChaos/RF-UPS-Monitor-v3/compare/v2.5.0...HEAD
+[2.5.0]: https://github.com/TheKingOfChaos/RF-UPS-Monitor-v3/compare/v2.4.2...v2.5.0
 [2.4.2]: https://github.com/TheKingOfChaos/RF-UPS-Monitor-v3/compare/v2.4.1...v2.4.2
 [2.4.1]: https://github.com/TheKingOfChaos/RF-UPS-Monitor-v3/compare/v2.4.0...v2.4.1
 [2.4.0]: https://github.com/TheKingOfChaos/RF-UPS-Monitor-v3/compare/v2.3.0...v2.4.0

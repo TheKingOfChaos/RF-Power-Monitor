@@ -2,7 +2,7 @@
 
 A mains power monitor built on a Raspberry Pi Pico with a W5500 Ethernet module. It reports whether mains power is present over SNMP v1 and v2c, including traps, together with standard interface statistics (IF-MIB), the CPU temperature and the ambient temperature (TMP1075 on the carrier board), so it can be monitored by LibreNMS or any other SNMP manager. It is configured through a menu on the USB serial port.
 
-Current version: **2.4.2** (see [CHANGELOG.md](CHANGELOG.md)).
+Current version: **2.5.0** (see [CHANGELOG.md](CHANGELOG.md)).
 
 ## Overview
 
@@ -448,8 +448,8 @@ src/cpu_temp.cpp            RP2040 die temperature, averaged
 src/ambient_temp.cpp        TMP1075 ambient temperature over I2C0
 mibs/                       RF-UPS-MONITOR-MIB
 hardware/                   Carrier PCB for the W5500-EVB-Pico-PoE (KiCad project, fab files, 3D, renders)
-logo/                       RF logo (SVG), used on the web page
-librenms/                   LibreNMS OS detection and discovery definitions, Docker test setup
+logo/                       RF logo (SVG), used on the web page and for the LibreNMS icons
+librenms/                   LibreNMS OS detection and discovery definitions, RF logo icons, Docker test setup
 test/host/                  Host build of the agent for net-snmp checks
 test/native/                Unit tests, run on the PC
 test/embedded/              Unity tests, run on the Pico

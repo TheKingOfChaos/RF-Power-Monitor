@@ -1,7 +1,7 @@
 os: rfupsmonitor
 text: 'RF-UPS-Monitor'
 type: power
-icon: generic
+icon: rfupsmonitor
 mib_dir: rfupsmonitor
 over:
     - { graph: device_bits, text: 'Device Traffic' }
