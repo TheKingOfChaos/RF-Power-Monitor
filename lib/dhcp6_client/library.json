@@ -1,0 +1,20 @@
+{
+    "name": "dhcp6_client",
+    "version": "1.0.0",
+    "description": "Stateful DHCPv6 client: messages, frames, router advertisement flags, RFC 8415 state machine (pure C++, host testable)",
+    "keywords": "dhcpv6, ipv6",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/TheKingOfChaos/RF-UPS-Monitor-v3.git"
+    },
+    "authors": [
+        {
+            "name": "kenneth Foli Jørgensen",
+            "email": "kenneth@tkoc.dk",
+            "maintainer": true
+        }
+    ],
+    "license": "MIT",
+    "frameworks": "*",
+    "platforms": "*"
+}
