@@ -469,7 +469,7 @@ def logo_polys(cx, cy, width, layer="F.SilkS"):
 def make_board(sym_uuids):
     o = []
     o.append(f'(kicad_pcb\n\t(version 20260206)\n\t(generator "pcbnew")\n\t(generator_version "10.0")\n\t(general\n\t\t(thickness 1.6)\n\t\t(legacy_teardrops no)\n\t)\n\t(paper "A4")\n')
-    o.append('\t(title_block\n\t\t(title "RF.Power-Monitor carrier for the W5500-EVB-Pico-PoE")\n\t\t(date "2026")\n\t\t(rev "1.1")\n\t\t(company "Kenneth Foli Jørgensen")\n\t)\n')
+    o.append('\t(title_block\n\t\t(title "RF-Power-Monitor carrier for the W5500-EVB-Pico-PoE")\n\t\t(date "2026")\n\t\t(rev "1.1")\n\t\t(company "Kenneth Foli Jørgensen")\n\t)\n')
     demo = open(os.path.join(STOCK, "board_header.txt")).read()
     o.append(demo)
     for ref, sym, val, fp, x, y, rot, nets, props in PARTS:
@@ -546,7 +546,7 @@ def make_board(sym_uuids):
     o.append(gr_text("GP27=MAINS_OK (1=ON)", *P(29.0, 42.6), size=0.8, justify="left"))
     # logo, project name and maker in the free strip along the bottom edge
     o.append(logo_polys(28.0, 46.4, 8.0))
-    o.append(gr_text("RF.Power-Monitor v1.1", *P(33.2, 44.9), size=1.2, bold=True, justify="left"))
+    o.append(gr_text("RF-Power-Monitor v1.1", *P(33.2, 44.9), size=1.2, bold=True, justify="left"))
     o.append(gr_text("Made by Kenneth Foli Jørgensen 2026", *P(33.2, 46.7), size=0.8, justify="left"))
     o.append(gr_text("I2C 0x48 GP4/GP5", *P(33.2, 48.3), size=0.8, justify="left"))
     # tracks + vias
@@ -881,7 +881,7 @@ def make_schematic(symbols):
     lib_syms = "(lib_symbols " + " ".join(
         sch.S[n][0].replace(f'(symbol "{n}"', f'(symbol "{LIB}:{n}"', 1) for n in sorted(sch.used)) + ")"
     out = (f'(kicad_sch (version 20260101) (generator "eeschema") (generator_version "10.0") (uuid "{root}") (paper "A3") '
-           f'(title_block (title "RF.Power-Monitor carrier for the W5500-EVB-Pico-PoE") (date "2026") (rev "1.1") (company "Kenneth Foli Jørgensen") (comment 1 "Mains detect on GP27, LED status, TMP1075 temperature, factory reset button on GP22")) '
+           f'(title_block (title "RF-Power-Monitor carrier for the W5500-EVB-Pico-PoE") (date "2026") (rev "1.1") (company "Kenneth Foli Jørgensen") (comment 1 "Mains detect on GP27, LED status, TMP1075 temperature, factory reset button on GP22")) '
            + lib_syms + " " + " ".join(sch.items) +
            ' (sheet_instances (path "/" (page "1"))) (embedded_fonts no))\n')
     return out, uids, root
