@@ -67,6 +67,16 @@ static bool slotHolds(const uint8_t addr[16]) {
                                        (const uint8_t*)netif_ip6_addr(dhcpNetif, slot)->addr, addr);
 }
 
+/// The slot (after 0) that holds addr, -1 if none. Driver lock held
+static int findSlot(const uint8_t addr[16]) {
+    for (int i = 1; i < LWIP_IPV6_NUM_ADDRESSES; i++) {
+        if (dhcp6SlotHolds(netif_ip6_addr_state(dhcpNetif, i), (const uint8_t*)netif_ip6_addr(dhcpNetif, i)->addr, addr)) {
+            return i;
+        }
+    }
+    return -1;
+}
+
 static void toLwip(const uint8_t bytes[16], ip6_addr_t& out) {
     uint32_t w[4];
     memcpy(w, bytes, sizeof(w));  // ip6_addr_t words are in network order
@@ -98,11 +108,47 @@ static void addAddress(const Dhcp6Action& a) {
     netif_ip6_addr_set_state(dhcpNetif, slot, dhcp6RefreshedState(netif_ip6_addr_state(dhcpNetif, slot), a.preferred));
 }
 
+/// Remove addr: the leased address, or one the server moved us away from
 static void removeAddress(const Dhcp6Action& a) {
     DriverLock lock;
-    if (slotHolds(a.addr)) netif_ip6_addr_set_state(dhcpNetif, slot, IP6_ADDR_INVALID);
-    slot = -1;
-    problem = "";
+    int i = findSlot(a.addr);
+    if (i >= 0) netif_ip6_addr_set_state(dhcpNetif, i, IP6_ADDR_INVALID);
+    if (i == slot || !slotHolds(client->lease().addr)) {
+        slot = -1;
+        problem = "";
+    }
+}
+
+/// The server moved us away from addr: no longer preferred, gone after a.valid seconds
+static void deprecateAddress(const Dhcp6Action& a) {
+    DriverLock lock;
+    int i = findSlot(a.addr);
+    if (i < 0) return;
+    if (a.valid == 0) {
+        netif_ip6_addr_set_state(dhcpNetif, i, IP6_ADDR_INVALID);
+        return;
+    }
+    netif_ip6_addr_set_valid_life(dhcpNetif, i, a.valid);  // lwIP expires it; the client removes it then too
+    netif_ip6_addr_set_pref_life(dhcpNetif, i, 0);
+    netif_ip6_addr_set_state(dhcpNetif, i, dhcp6RefreshedState(netif_ip6_addr_state(dhcpNetif, i), 0));
+    if (i == slot) slot = -1;
+}
+
+/**
+ * @brief Set the leased address's lifetimes and state in lwIP to the client's, once a second: a router
+ * advertisement for the same prefix can overwrite them when no SLAAC address sits in a lower slot
+ */
+static void keepLifetimes(uint32_t now) {
+    static uint32_t last = 0;
+    if (now - last < 1000) return;
+    last = now;
+    uint32_t valid = client->validLeftS(now), preferred = client->preferredLeftS(now);
+    if (valid == 0) return;  // 0 would mean "static" to lwIP; the client removes the address now anyway
+    DriverLock lock;
+    if (!slotHolds(client->lease().addr)) return;
+    netif_ip6_addr_set_valid_life(dhcpNetif, slot, valid);
+    netif_ip6_addr_set_pref_life(dhcpNetif, slot, preferred);
+    netif_ip6_addr_set_state(dhcpNetif, slot, dhcp6RefreshedState(netif_ip6_addr_state(dhcpNetif, slot), preferred));
 }
 
 static void send(size_t len) {
@@ -136,13 +182,15 @@ void dhcp6Poll() {
     if (haveMsg) client->received(msg, now);
     if (duplicate) client->addressDuplicate(now);
 
-    for (int i = 0; i < 8; i++) {  // at most a remove, an add and a send per call
+    for (int i = 0; i < 8; i++) {  // at most two removes, a deprecate, an add and a send per call
         Dhcp6Action a = client->poll(now, message, sizeof(message));
         if (a.kind == Dhcp6Action::None) break;
         if (a.kind == Dhcp6Action::Send) send(a.len);
         if (a.kind == Dhcp6Action::AddAddress) addAddress(a);
         if (a.kind == Dhcp6Action::RemoveAddress) removeAddress(a);
+        if (a.kind == Dhcp6Action::DeprecateAddress) deprecateAddress(a);
     }
+    keepLifetimes(now);
 }
 
 bool dhcp6IsSlot(int i) {

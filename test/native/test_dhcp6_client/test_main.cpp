@@ -417,6 +417,48 @@ static void test_renew_reply_extends_lease() {
     TEST_ASSERT_TRUE(c.hasLease());
 }
 
+static void test_moved_address_is_deprecated_then_removed_at_its_valid_end() {
+    // The server moves us to ADDR_B at the first Renew: ADDR_A lives out its valid lifetime (RFC 8415 18.2.10.1)
+    Dhcp6Client c(MAC, fakeRandom);
+    uint32_t tb = bindWith(c, 0, 20, 40, 6, 12);
+    next(c, tb + 6000);  // Renew
+    c.received(serverMsg(DHCP6_REPLY, sentXid(), SRV_A, 0, ADDR_B, 20, 40, 6, 12), tb + 6000);
+    Dhcp6Action a = next(c, tb + 6000);
+    TEST_ASSERT_EQUAL(Dhcp6Action::DeprecateAddress, a.kind);
+    TEST_ASSERT_EQUAL_HEX8_ARRAY(ADDR_A, a.addr, 16);
+    TEST_ASSERT_EQUAL_UINT32(34, a.valid);  // what is left of ADDR_A's 40 s
+    a = next(c, tb + 6000);
+    TEST_ASSERT_EQUAL(Dhcp6Action::AddAddress, a.kind);
+    TEST_ASSERT_EQUAL_HEX8_ARRAY(ADDR_B, a.addr, 16);
+    uint32_t now = tb + 6010;
+    a = until(c, &now, 40000, Dhcp6Action::RemoveAddress);
+    TEST_ASSERT_EQUAL(Dhcp6Action::RemoveAddress, a.kind);
+    TEST_ASSERT_EQUAL_HEX8_ARRAY(ADDR_A, a.addr, 16);
+    TEST_ASSERT_EQUAL_UINT32(tb + 40000, now);
+    TEST_ASSERT_TRUE(c.hasLease());  // ADDR_B stays
+    TEST_ASSERT_EQUAL_HEX8_ARRAY(ADDR_B, c.lease().addr, 16);
+}
+
+static void test_moving_back_to_the_old_address_does_not_remove_it() {
+    Dhcp6Client c(MAC, fakeRandom);
+    uint32_t tb = bindWith(c, 0, 20, 40, 6, 12);
+    next(c, tb + 6000);
+    c.received(serverMsg(DHCP6_REPLY, sentXid(), SRV_A, 0, ADDR_B, 20, 40, 6, 12), tb + 6000);
+    next(c, tb + 6000);  // deprecate ADDR_A
+    next(c, tb + 6000);  // add ADDR_B
+    uint32_t now = tb + 6010;
+    TEST_ASSERT_EQUAL(Dhcp6Action::Send, until(c, &now, 7000).kind);  // Renew of ADDR_B
+    c.received(serverMsg(DHCP6_REPLY, sentXid(), SRV_A, 0, ADDR_A, 20, 40, 6, 12), now);
+    for (uint32_t t = now; t <= tb + 45000; t += 100) {
+        Dhcp6Action a = next(c, t);
+        if (a.kind == Dhcp6Action::RemoveAddress) TEST_ASSERT_NOT_EQUAL(0, memcmp(ADDR_A, a.addr, 16));
+        if (a.kind == Dhcp6Action::Send && buf[0] == DHCP6_RENEW) {
+            c.received(serverMsg(DHCP6_REPLY, sentXid(), SRV_A, 0, ADDR_A, 20, 40, 6, 12), t);
+        }
+    }
+    TEST_ASSERT_EQUAL_HEX8_ARRAY(ADDR_A, c.lease().addr, 16);
+}
+
 static void test_address_removed_at_valid_end() {
     Dhcp6Client c(MAC, fakeRandom);
     uint32_t tb = bindWith(c, 0, 20, 40, 6, 12);
@@ -429,6 +471,15 @@ static void test_address_removed_at_valid_end() {
     TEST_ASSERT_EQUAL(Dhcp6State::Soliciting, c.state());
 }
 
+static void test_preferred_left_counts_down_and_stops_at_zero() {
+    Dhcp6Client c(MAC, fakeRandom);
+    TEST_ASSERT_EQUAL_UINT32(0, c.preferredLeftS(0));  // no lease
+    uint32_t tb = bindWith(c, 0, 20, 40, 30, 35);
+    TEST_ASSERT_EQUAL_UINT32(20, c.preferredLeftS(tb));
+    TEST_ASSERT_EQUAL_UINT32(5, c.preferredLeftS(tb + 15000));
+    TEST_ASSERT_EQUAL_UINT32(0, c.preferredLeftS(tb + 25000));
+}
+
 static void test_infinite_valid_lifetime_never_expires() {
     Dhcp6Client c(MAC, fakeRandom);
     uint32_t now = bindWith(c, 0, INF, INF, 0, 0);
@@ -437,6 +488,7 @@ static void test_infinite_valid_lifetime_never_expires() {
     }
     TEST_ASSERT_EQUAL(Dhcp6State::Bound, c.state());
     TEST_ASSERT_EQUAL_UINT32(INF, c.validLeftS(now));
+    TEST_ASSERT_EQUAL_UINT32(INF, c.preferredLeftS(now));
 }
 
 // ---- duplicate address ----
@@ -466,11 +518,15 @@ static void test_duplicate_address_is_declined_and_solicit_restarts() {
 
 // ---- address slots ----
 
-static void test_pick_slot_skips_link_local_and_used_slots() {
+static void test_pick_slot_takes_the_highest_free_slot() {
+    // lwIP gives an RA's lifetimes to the first address in the prefix that is not static, and SLAAC
+    // takes the first free slot: above SLAAC's address, ours keeps its own lifetimes
     const uint8_t states[4] = {0x30, 0x30, 0, 0};  // link-local, SLAAC, free, free
-    TEST_ASSERT_EQUAL_INT(2, dhcp6PickSlot(states, 4));
-    const uint8_t allFree[4] = {0, 0, 0, 0};
-    TEST_ASSERT_EQUAL_INT(1, dhcp6PickSlot(allFree, 4));  // never slot 0
+    TEST_ASSERT_EQUAL_INT(3, dhcp6PickSlot(states, 4));
+    const uint8_t lowFree[4] = {0x30, 0, 0x30, 0x30};
+    TEST_ASSERT_EQUAL_INT(1, dhcp6PickSlot(lowFree, 4));
+    const uint8_t linkLocalFree[4] = {0, 0x30, 0x30, 0x30};
+    TEST_ASSERT_EQUAL_INT(-1, dhcp6PickSlot(linkLocalFree, 4));  // never slot 0
 }
 
 static void test_pick_slot_returns_none_when_all_used() {
@@ -490,6 +546,7 @@ static void test_refresh_makes_deprecated_address_preferred_again() {
     TEST_ASSERT_EQUAL_HEX8(0x30, dhcp6RefreshedState(0x10, 60));  // deprecated, new preferred lifetime
     TEST_ASSERT_EQUAL_HEX8(0x10, dhcp6RefreshedState(0x10, 0));   // still deprecated by the server
     TEST_ASSERT_EQUAL_HEX8(0x30, dhcp6RefreshedState(0x30, 60));
+    TEST_ASSERT_EQUAL_HEX8(0x10, dhcp6RefreshedState(0x30, 0));   // preferred lifetime over (an RA had undone it)
     TEST_ASSERT_EQUAL_HEX8(0x09, dhcp6RefreshedState(0x09, 60));  // duplicate address detection continues
     TEST_ASSERT_EQUAL_HEX8(0x40, dhcp6RefreshedState(0x40, 60));  // duplicated stays duplicated
 }
@@ -523,10 +580,13 @@ int main() {
     RUN_TEST(test_lease_removed_at_valid_end_while_requesting_after_nobinding);
     RUN_TEST(test_rebind_reply_from_another_server_extends_lease);
     RUN_TEST(test_renew_reply_extends_lease);
+    RUN_TEST(test_moved_address_is_deprecated_then_removed_at_its_valid_end);
+    RUN_TEST(test_moving_back_to_the_old_address_does_not_remove_it);
     RUN_TEST(test_address_removed_at_valid_end);
+    RUN_TEST(test_preferred_left_counts_down_and_stops_at_zero);
     RUN_TEST(test_infinite_valid_lifetime_never_expires);
     RUN_TEST(test_duplicate_address_is_declined_and_solicit_restarts);
-    RUN_TEST(test_pick_slot_skips_link_local_and_used_slots);
+    RUN_TEST(test_pick_slot_takes_the_highest_free_slot);
     RUN_TEST(test_pick_slot_returns_none_when_all_used);
     RUN_TEST(test_slot_holds_our_address_only_while_lwip_keeps_it);
     RUN_TEST(test_refresh_makes_deprecated_address_preferred_again);

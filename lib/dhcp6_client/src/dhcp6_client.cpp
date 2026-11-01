@@ -108,9 +108,19 @@ static uint64_t atSeconds(uint64_t now, uint32_t s) {
 }
 
 void Dhcp6Client::bind(const Dhcp6In& m) {
+    if (_haveRetired && memcmp(_retiredAddr, m.lease.addr, 16) == 0) {
+        _haveRetired = _pendingRetire = false;  // moved back: the add refreshes it
+    }
     if (_haveLease && memcmp(_lease.addr, m.lease.addr, 16) != 0) {
-        _pendingRemove = true;  // the server moved us to another address
-        memcpy(_removeAddr, _lease.addr, 16);
+        // The server moved us to another address: the old one lives out its valid lifetime
+        // (RFC 8415 18.2.10.1); only one is kept, an older one goes now
+        if (_haveRetired) {
+            _pendingRemove = true;
+            memcpy(_removeAddr, _retiredAddr, 16);
+        }
+        _haveRetired = _pendingRetire = true;
+        memcpy(_retiredAddr, _lease.addr, 16);
+        _retiredEnd = _validEnd;
     }
     memcpy(_serverId, m.serverId, m.serverIdLen);
     _serverIdLen = m.serverIdLen;
@@ -126,6 +136,7 @@ void Dhcp6Client::bind(const Dhcp6In& m) {
     _t1At = atSeconds(_now, t1);
     _t2At = atSeconds(_now, t2);
     _validEnd = atSeconds(_now, _lease.valid);
+    _preferredEnd = atSeconds(_now, _lease.preferred);
     _state = Dhcp6State::Bound;
     _count = 0;
 }
@@ -217,12 +228,26 @@ Dhcp6Action Dhcp6Client::poll(uint32_t nowMs, uint8_t* buf, size_t size) {
         memcpy(a.addr, _removeAddr, 16);
         return a;
     }
+    if (_pendingRetire) {
+        _pendingRetire = false;
+        a.kind = Dhcp6Action::DeprecateAddress;
+        memcpy(a.addr, _retiredAddr, 16);
+        a.valid = _retiredEnd == NEVER ? INFINITY_S : _retiredEnd > t ? (uint32_t)((_retiredEnd - t) / 1000) : 0;
+        return a;
+    }
     if (_pendingAdd) {
         _pendingAdd = false;
         a.kind = Dhcp6Action::AddAddress;
         memcpy(a.addr, _lease.addr, 16);
         a.preferred = _lease.preferred;
         a.valid = _lease.valid;
+        return a;
+    }
+
+    if (_haveRetired && t >= _retiredEnd) {
+        _haveRetired = false;
+        a.kind = Dhcp6Action::RemoveAddress;
+        memcpy(a.addr, _retiredAddr, 16);
         return a;
     }
 
@@ -305,8 +330,15 @@ uint32_t Dhcp6Client::validLeftS(uint32_t nowMs) {
     return _validEnd > t ? (uint32_t)((_validEnd - t) / 1000) : 0;
 }
 
+uint32_t Dhcp6Client::preferredLeftS(uint32_t nowMs) {
+    uint64_t t = clock(nowMs);
+    if (!_haveLease) return 0;
+    if (_preferredEnd == NEVER) return INFINITY_S;
+    return _preferredEnd > t ? (uint32_t)((_preferredEnd - t) / 1000) : 0;
+}
+
 int dhcp6PickSlot(const uint8_t* states, int count) {
-    for (int i = 1; i < count; i++) {
+    for (int i = count - 1; i >= 1; i--) {
         if (states[i] == 0) return i;
     }
     return -1;
@@ -321,5 +353,7 @@ static const uint8_t STATE_DEPRECATED = 0x10;
 static const uint8_t STATE_PREFERRED = 0x30;
 
 uint8_t dhcp6RefreshedState(uint8_t state, uint32_t preferred) {
-    return state == STATE_DEPRECATED && preferred > 0 ? STATE_PREFERRED : state;
+    if (state == STATE_DEPRECATED && preferred > 0) return STATE_PREFERRED;
+    if (state == STATE_PREFERRED && preferred == 0) return STATE_DEPRECATED;
+    return state;
 }

@@ -46,7 +46,8 @@ struct Dhcp6Action {
         Send,          ///< Send the len bytes written to the poll buffer (a DHCPv6 message)
         AddAddress,    ///< Add addr with these lifetimes (seconds), or refresh them if it is already there
                        ///< (after a Renew/Rebind); a new address goes through duplicate address detection
-        RemoveAddress  ///< Remove addr
+        RemoveAddress,    ///< Remove addr
+        DeprecateAddress  ///< Keep addr only for valid more seconds, no longer preferred (the server moved us)
     } kind;
     size_t len;
     uint8_t addr[16];
@@ -88,6 +89,8 @@ public:
     const Dhcp6Lease& lease() const { return _lease; }
     /// Seconds left of the lease's valid lifetime (0 without a lease, 0xFFFFFFFF for infinity)
     uint32_t validLeftS(uint32_t nowMs);
+    /// Seconds left of the lease's preferred lifetime (0 without a lease or once deprecated, 0xFFFFFFFF for infinity)
+    uint32_t preferredLeftS(uint32_t nowMs);
 
     uint32_t sent() const { return _sent; }
     uint32_t accepted() const { return _accepted; }
@@ -128,7 +131,13 @@ private:
     uint8_t _serverIdLen = 0;
     bool _haveLease = false;
     Dhcp6Lease _lease;
-    uint64_t _t1At = 0, _t2At = 0, _validEnd = 0;
+    uint64_t _t1At = 0, _t2At = 0, _validEnd = 0, _preferredEnd = 0;
+
+    // An address the server moved us away from: kept, deprecated, until its valid end
+    bool _haveRetired = false;
+    bool _pendingRetire = false;
+    uint8_t _retiredAddr[16];
+    uint64_t _retiredEnd = 0;
 
     // Address actions waiting for poll()
     bool _pendingRemove = false;
@@ -141,7 +150,9 @@ private:
 /**
  * @brief Choose the lwIP address slot for the DHCPv6 address
  * @param states lwIP address states (0 = invalid, i.e. free), slot 0 is the link-local address
- * @return First free slot after 0, -1 if all are used (nothing is ever evicted)
+ * @return Highest free slot after 0, -1 if all are used (nothing is ever evicted). Highest because lwIP
+ *         gives a router advertisement's lifetimes to the first address in the prefix that is not static,
+ *         and SLAAC takes the first free slot
  */
 int dhcp6PickSlot(const uint8_t* states, int count);
 
@@ -154,7 +165,8 @@ int dhcp6PickSlot(const uint8_t* states, int count);
 bool dhcp6SlotHolds(uint8_t state, const uint8_t slotAddr[16], const uint8_t addr[16]);
 
 /**
- * @brief lwIP state after refreshing the lifetimes: a deprecated address with a new preferred
- * lifetime is preferred again (lwIP's timer only ever moves preferred to deprecated)
+ * @brief lwIP state for the preferred lifetime left: a deprecated address with a new preferred lifetime
+ * is preferred again (lwIP's timer only ever moves preferred to deprecated), and a preferred one whose
+ * lifetime is over is deprecated (a router advertisement for the prefix may have undone that)
  */
 uint8_t dhcp6RefreshedState(uint8_t state, uint32_t preferred);
