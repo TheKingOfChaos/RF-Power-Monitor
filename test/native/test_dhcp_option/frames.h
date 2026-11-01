@@ -1,6 +1,8 @@
 // Ethernet frames captured from the device (debug dump at the driver) on the LAN, and replies
 // from Kea 2.2.0 in Docker to the device's frames replayed with and without option 224 added.
 // Kea was configured with option 224 (ipv4-address 10.10.6.65) and sent it only when requested.
+// Captured before the project was renamed RF.Power-Monitor (3.0.0): the frames carry the
+// hostname of that time, rf-ups-monitor, which the DHCP servers echo back. Kept as captured.
 #pragma once
 #include <stdint.h>
 
