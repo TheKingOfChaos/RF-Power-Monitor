@@ -228,3 +228,25 @@ void lldpSwitchText(const LldpNeighbourTable& table, char* out, size_t cap) {
     const char* port = (n.portIdSubtype == PORT_LOCAL && n.portDescr[0]) ? n.portDescr : n.portId;
     snprintf(out, cap, "%s, port %s", name, port);
 }
+
+// ---- when to send ----
+
+bool LldpSchedule::due(uint32_t nowMs, bool linkUp, bool contentChanged) {
+    if (!linkUp) {
+        _linkUp = false;
+        return false;
+    }
+    if (!_linkUp) {
+        _linkUp = true;
+        _linkUpMs = nowMs;
+        _sentSinceLinkUp = false;
+    }
+    if (!_sentSinceLinkUp) return nowMs - _linkUpMs >= LLDP_MIN_GAP_MS;
+    uint32_t since = nowMs - _sentMs;
+    return since >= LLDP_INTERVAL_MS || (contentChanged && since >= LLDP_MIN_GAP_MS);
+}
+
+void LldpSchedule::sent(uint32_t nowMs) {
+    _sentMs = nowMs;
+    _sentSinceLinkUp = true;
+}

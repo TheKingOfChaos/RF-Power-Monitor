@@ -107,3 +107,27 @@ private:
  * description was sent, else the Port ID.
  */
 void lldpSwitchText(const LldpNeighbourTable& table, char* out, size_t cap);
+
+static const uint32_t LLDP_INTERVAL_MS = 30000;  ///< Regular send interval (802.1AB msgTxInterval)
+static const uint32_t LLDP_MIN_GAP_MS = 1000;    ///< Wait after link up, and the least time between frames
+
+/**
+ * @brief When to send: 1 s after the link comes up, every 30 s, and 1 s after
+ *        the last frame when the content changed (address or hostname)
+ */
+class LldpSchedule {
+public:
+    /**
+     * @brief Ask whether a frame should go out now (call regularly)
+     * @param contentChanged The frame differs from the last one sent
+     */
+    bool due(uint32_t nowMs, bool linkUp, bool contentChanged);
+    /// A frame went out at nowMs
+    void sent(uint32_t nowMs);
+
+private:
+    bool _linkUp = false;
+    bool _sentSinceLinkUp = false;
+    uint32_t _linkUpMs = 0;
+    uint32_t _sentMs = 0;
+};

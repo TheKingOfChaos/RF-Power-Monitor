@@ -347,6 +347,61 @@ static void test_switch_text_cut_to_cap() {
     TEST_ASSERT_EQUAL_HEX8('x', text[8]);
 }
 
+// ---- when to send ----
+
+static void test_nothing_sent_while_link_down() {
+    LldpSchedule s;
+    TEST_ASSERT_FALSE(s.due(0, false, true));
+    TEST_ASSERT_FALSE(s.due(100000, false, true));
+}
+
+static void test_link_up_sends_after_one_second() {
+    LldpSchedule s;
+    TEST_ASSERT_FALSE(s.due(5000, true, false));
+    TEST_ASSERT_FALSE(s.due(5999, true, false));
+    TEST_ASSERT_TRUE(s.due(6000, true, false));
+}
+
+static void test_sends_every_30_s() {
+    LldpSchedule s;
+    s.due(5000, true, false);
+    TEST_ASSERT_TRUE(s.due(6000, true, false));
+    s.sent(6000);
+    TEST_ASSERT_FALSE(s.due(6001, true, false));
+    TEST_ASSERT_FALSE(s.due(35999, true, false));
+    TEST_ASSERT_TRUE(s.due(36000, true, false));
+}
+
+static void test_changed_content_sends_after_one_second() {
+    LldpSchedule s;
+    s.due(5000, true, false);
+    s.sent(6000);
+    TEST_ASSERT_FALSE(s.due(6999, true, true));
+    TEST_ASSERT_TRUE(s.due(7000, true, true));
+    TEST_ASSERT_FALSE(s.due(7000, true, false));
+}
+
+static void test_link_flap_restarts_the_one_second_wait() {
+    LldpSchedule s;
+    s.due(5000, true, false);
+    s.sent(6000);
+    TEST_ASSERT_FALSE(s.due(10000, false, true));
+    TEST_ASSERT_FALSE(s.due(40000, true, false));  // link back at 40000: 30 s since the last send, but wait 1 s
+    TEST_ASSERT_FALSE(s.due(40999, true, true));
+    TEST_ASSERT_TRUE(s.due(41000, true, false));
+}
+
+static void test_schedule_handles_millis_wrap() {
+    LldpSchedule s;
+    const uint32_t up = 0xFFFFFC00u;
+    TEST_ASSERT_FALSE(s.due(up, true, false));
+    TEST_ASSERT_FALSE(s.due(up + 999u, true, false));
+    TEST_ASSERT_TRUE(s.due(up + 1000u, true, false));  // wrapped to 0
+    s.sent(up + 1000u);
+    TEST_ASSERT_FALSE(s.due(up + 30999u, true, false));
+    TEST_ASSERT_TRUE(s.due(up + 31000u, true, false));
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_build_frame_matches_expected_bytes);
@@ -375,5 +430,11 @@ int main(int, char**) {
     RUN_TEST(test_switch_text_falls_back_to_chassis_id);
     RUN_TEST(test_switch_text_when_none_seen);
     RUN_TEST(test_switch_text_cut_to_cap);
+    RUN_TEST(test_nothing_sent_while_link_down);
+    RUN_TEST(test_link_up_sends_after_one_second);
+    RUN_TEST(test_sends_every_30_s);
+    RUN_TEST(test_changed_content_sends_after_one_second);
+    RUN_TEST(test_link_flap_restarts_the_one_second_wait);
+    RUN_TEST(test_schedule_handles_millis_wrap);
     return UNITY_END();
 }
