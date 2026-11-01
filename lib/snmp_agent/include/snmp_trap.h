@@ -141,6 +141,25 @@ size_t snmpBuildMainsAlarmTrapV2c(const char* community, const uint8_t agentAddr
                                   int32_t requestId, uint8_t* out, size_t capacity);
 
 /**
+ * @brief What decides whether a held trap (mainsPowerLostTooLong) can leave now
+ */
+struct TrapPath {
+    bool agentStarted;   ///< UDP socket bound
+    bool linkUp;         ///< Ethernet link (W5500 PHY)
+    bool hasIPv4;        ///< The network is up with an IPv4 address (not the address of a lost lease)
+    bool hasIPv6;        ///< A valid global or ULA IPv6 address
+    bool targetKnown;    ///< A trap destination is set (or came from DHCP)
+    bool targetIPv6;     ///< That destination is IPv6 (v2c only)
+};
+
+/**
+ * @brief Whether a trap sent now can reach its destination: agent, link and destination, and an own
+ *        address of the destination's family. An IPv6 destination does not need IPv4 (v2c traps leave
+ *        out snmpTrapAddress.0 then)
+ */
+bool trapCanLeave(const TrapPath& p);
+
+/**
  * @brief Allows at most one event per interval (wrap-around safe)
  *
  * Used so a flood of bad-community requests cannot cause a flood of traps.

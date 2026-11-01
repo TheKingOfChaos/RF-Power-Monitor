@@ -185,6 +185,10 @@ void snmpNetworkUp(const IPAddress& localIP) {
     sendTrap(buildTrap(TrapKind::ColdStart, captureState()), "coldStart");
 }
 
+void snmpNetworkDown() {
+    memset(agentAddr, 0, sizeof(agentAddr));
+}
+
 void snmpCommunityChanged() {
     // Trust was earned with the old community and must not carry over
     limiter.clearTrust();
@@ -205,11 +209,17 @@ void snmpPollMainsAlarm() {
     if (mainsAlarm.raised() && !wasRaised) Serial.println("\nMains power lost for 60 s: alarm raised");
     if (!mainsAlarm.trapPending()) return;
 
-    // Held until a trap can actually leave: agent running, an IPv4 address (the trap's agent address),
-    // Ethernet link up and a destination. One attempt, as for every trap.
+    // Held until a trap can actually leave (trapCanLeave). One attempt, as for every trap.
     static const uint8_t NO_ADDRESS[4] = {0, 0, 0, 0};
     TrapAddress target;
-    if (!started || memcmp(agentAddr, NO_ADDRESS, 4) == 0 || !netStatsPhy().linkUp || !snmpTrapTarget(target)) return;
+    TrapPath path;
+    path.agentStarted = started;
+    path.linkUp = netStatsPhy().linkUp;
+    path.hasIPv4 = memcmp(agentAddr, NO_ADDRESS, 4) != 0;  // cleared by snmpNetworkDown()
+    path.hasIPv6 = netStatsHasRoutableIPv6();
+    path.targetKnown = snmpTrapTarget(target);
+    path.targetIPv6 = path.targetKnown && target.ipv6;
+    if (!trapCanLeave(path)) return;
     sendTrap(buildTrap(TrapKind::MainsAlarm, captureState()), "mainsPowerLostTooLong");
     mainsAlarm.trapSent();
 }

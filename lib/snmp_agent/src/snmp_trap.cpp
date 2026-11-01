@@ -191,6 +191,10 @@ size_t snmpBuildMainsAlarmTrapV2c(const char* community, const uint8_t agentAddr
                              capacity);
 }
 
+bool trapCanLeave(const TrapPath& p) {
+    return p.agentStarted && p.linkUp && p.targetKnown && (p.targetIPv6 ? p.hasIPv6 : p.hasIPv4);
+}
+
 bool TrapThrottle::allow(uint32_t nowMs) {
     if (_sentOnce && nowMs - _lastMs < _intervalMs) {
         _suppressed++;

@@ -384,6 +384,51 @@ static void test_v2c_mains_alarm_trap_without_ipv4_address_ends_with_the_alarm()
     TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050.6.0", name);   // mainsPowerAlarm
 }
 
+// ---- when a held trap can leave ----
+
+static TrapPath readyPath(bool ipv6Target) {
+    TrapPath p;
+    p.agentStarted = true;
+    p.linkUp = true;
+    p.hasIPv4 = true;
+    p.hasIPv6 = true;
+    p.targetKnown = true;
+    p.targetIPv6 = ipv6Target;
+    return p;
+}
+
+static void test_trap_can_leave_when_everything_is_ready() {
+    TEST_ASSERT_TRUE(trapCanLeave(readyPath(false)));
+    TEST_ASSERT_TRUE(trapCanLeave(readyPath(true)));
+}
+
+static void test_trap_waits_for_agent_link_and_destination() {
+    TrapPath p = readyPath(false);
+    p.agentStarted = false;
+    TEST_ASSERT_FALSE(trapCanLeave(p));
+    p = readyPath(false);
+    p.linkUp = false;
+    TEST_ASSERT_FALSE(trapCanLeave(p));
+    p = readyPath(true);
+    p.targetKnown = false;
+    TEST_ASSERT_FALSE(trapCanLeave(p));
+}
+
+static void test_ipv4_destination_waits_for_ipv4_address() {
+    // The network is down (lease lost) while the link is up again: the old address must not count
+    TrapPath p = readyPath(false);
+    p.hasIPv4 = false;
+    TEST_ASSERT_FALSE(trapCanLeave(p));
+}
+
+static void test_ipv6_destination_needs_only_an_ipv6_address() {
+    TrapPath p = readyPath(true);
+    p.hasIPv4 = false;   // IPv6-only network
+    TEST_ASSERT_TRUE(trapCanLeave(p));
+    p.hasIPv6 = false;
+    TEST_ASSERT_FALSE(trapCanLeave(p));
+}
+
 static void test_v2c_trap_fails_cleanly() {
     uint8_t buf[256];
     TEST_ASSERT_EQUAL_size_t(0, snmpBuildColdStartTrapV2c("public", AGENT, 1, 1, buf, 30));
@@ -436,6 +481,10 @@ int main() {
     RUN_TEST(test_mains_alarm_trap_matches_netsnmp_byte_for_byte);
     RUN_TEST(test_v2c_mains_alarm_trap_matches_netsnmp_byte_for_byte);
     RUN_TEST(test_v2c_mains_alarm_trap_without_ipv4_address_ends_with_the_alarm);
+    RUN_TEST(test_trap_can_leave_when_everything_is_ready);
+    RUN_TEST(test_trap_waits_for_agent_link_and_destination);
+    RUN_TEST(test_ipv4_destination_waits_for_ipv4_address);
+    RUN_TEST(test_ipv6_destination_needs_only_an_ipv6_address);
     RUN_TEST(test_throttle_allows_first_then_one_per_interval);
     RUN_TEST(test_throttle_first_event_at_time_zero_is_allowed);
     RUN_TEST(test_throttle_survives_millis_wraparound);

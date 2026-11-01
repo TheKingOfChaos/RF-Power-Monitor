@@ -60,6 +60,12 @@ bool snmpBegin();
 void snmpNetworkUp(const IPAddress& localIP);
 
 /**
+ * @brief Tell the service the device lost its IPv4 address (e.g. the lease ran out): a held trap waits
+ *        for the next snmpNetworkUp() instead of leaving with the old address
+ */
+void snmpNetworkDown();
+
+/**
  * @brief Handle pending requests. Call from loop() on core 0.
  */
 void snmpPoll();

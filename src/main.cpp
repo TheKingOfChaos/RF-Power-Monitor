@@ -241,6 +241,7 @@ void loop() {
             hostnameNetworkUp();
         } else {
             Serial.println("\nNetwork down, retrying");
+            snmpNetworkDown();
         }
     }
 

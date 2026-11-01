@@ -82,6 +82,12 @@ void netStatsCapture(SnmpInterfaceState& out);
 PhyStatus netStatsPhy();
 
 /**
+ * @brief Whether the interface has a valid (preferred or deprecated) IPv6 address beyond link-local,
+ *        i.e. one a trap to a global or ULA destination can be sent from
+ */
+bool netStatsHasRoutableIPv6();
+
+/**
  * @brief What the DHCP server said about option 224 (SNMP trap destination)
  */
 struct DhcpTrapInfo {
