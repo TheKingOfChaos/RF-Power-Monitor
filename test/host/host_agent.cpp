@@ -23,6 +23,29 @@ static uint32_t uptimeTicks() {
     return (uint32_t)((now.tv_sec - start.tv_sec) * 100 + (now.tv_nsec - start.tv_nsec) / 10000000);
 }
 
+/// The neighbour the device sees on a Juniper EX2200-C (as in test_lldp's captured frame)
+static SnmpLldpState lldpState() {
+    SnmpLldpState l = {};
+    const uint8_t mac[6] = {0x02, 0x00, 0x00, 0x00, 0x00, 0x01};
+    memcpy(l.localMac, mac, 6);
+    l.present = true;
+    LldpNeighbour& n = l.neighbour;
+    n.chassisIdSubtype = 4;
+    const uint8_t chassis[6] = {0xf8, 0xc0, 0x01, 0xc7, 0x90, 0xc0};
+    memcpy(n.chassisIdRaw, chassis, 6);
+    n.chassisIdLen = 6;
+    n.portIdSubtype = 7;
+    memcpy(n.portIdRaw, "523", 3);
+    n.portIdLen = 3;
+    strcpy(n.portDescr, "ge-0/0/9.0");
+    strcpy(n.sysName, "r169");
+    strcpy(n.sysDescr, "Juniper Networks, Inc. ex2200-c-12p-2g");
+    n.capsSupported = n.capsEnabled = 0x0014;
+    n.ttl = 120;
+    return l;
+}
+static const SnmpLldpState LLDP = lldpState();
+
 int main(int argc, char** argv) {
     if (argc < 2) {
         fprintf(stderr, "usage: %s <port> [community]\n", argv[0]);
@@ -74,6 +97,7 @@ int main(int argc, char** argv) {
         state.cpuTempDeciC = 250;
         state.ambientTempValid = true;
         state.ambientTempDeciC = 215;
+        state.lldp = &LLDP;
 
         size_t len = agent.handle(in, (size_t)n, out, sizeof(out), state);
         if (len) sendto(fd, out, len, 0, (sockaddr*)&peer, peerLen);
