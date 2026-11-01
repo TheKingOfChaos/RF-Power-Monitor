@@ -328,7 +328,8 @@ The device runs IPv4 and IPv6 side by side (dual stack):
 - **Web page:** `http://[<IPv6 address>]/`; **mDNS:** `rf-ups-monitor.local` resolves to the IPv6 address too.
 - **Rate limiting and access log:** per full source address, as for IPv4; the access log shows the address (`fd16:d833:4f0e:3ece:9000:9aaa:490a:3189`). Not per /64: on a LAN every host shares one /64, and a manager's trust must not pass to its neighbours. A host that rotates through many IPv6 addresses is held by the shared limit for untrusted sources, like faked IPv4 addresses.
 - **Traps** can go to an IPv6 destination (menu option 4), as v2c only. `snmpTrapAddress.0` in the trap still holds the device's IPv4 address, and is left out while it has none.
-- **Still IPv4 only:** DHCP option 224, and the IP and IF tables in the MIB stay as they are. There is no DHCPv6 address assignment.
+- **DHCPv6 address:** when a router advertisement carries the M flag ("take addresses from DHCPv6"), the device asks a DHCPv6 server for one address (stateful DHCPv6, RFC 8415) and uses it next to the others, after duplicate address detection. It renews and rebinds the lease on the server's timers, removes the address when the lease runs out, and declines an address another host already uses. Its client id is DUID-LL from the MAC (`00:03:00:01:1e:b2:cf:4e:a2:2c`), stable across restarts without storing anything, and it sends its hostname (Client FQDN, option 39) so the server can register it in DNS. There is no setting: on networks without the M flag (most) nothing happens. The status screen shows `DHCPv6: bound, fd54::d600:1 (valid 87 s), ...` and marks the address `(dhcpv6)`; the web page has an "IPv6 (DHCPv6)" row. If all four IPv6 address slots are taken (link-local, SLAAC, static and one more), the DHCPv6 address is not added and the status screen says so; no address is ever evicted.
+- **Still IPv4 only:** DHCP option 224, and the IP and IF tables in the MIB stay as they are.
 
 Turning IPv6 off needs a firmware build without `PIO_FRAMEWORK_ARDUINO_ENABLE_IPV6` in `platformio.ini`.
 
@@ -440,12 +441,14 @@ src/hostname.cpp            Hostname for DHCP and mDNS (name.local), applied wit
 src/source_key.h            Source address -> rate-limit key (full IPv4 or IPv6 address)
 src/ipv6_static.cpp         Static IPv6 address and gateway (lwIP hook in include/lwip_hooks.h)
 src/watchdog.cpp            Hardware watchdog (both cores), restart cause and count
+src/dhcp6_service.cpp       DHCPv6 address: runs lib/dhcp6_client, frames via the netif hooks
 src/diag.cpp                Hang diagnosis build (-DRFUPS_DIAG): crash and panic capture
 lib/netconfig/              IPv4/IPv6 parsing, formatting and validation, hostnames (pure C++)
 lib/settings_codec/         Settings JSON, validation, A/B selection (pure C++)
 lib/settings/               LittleFS storage on top of settings_codec
 lib/power_monitor/          Mains input debouncer, reset button logic (pure C++)
 lib/watchdog_logic/         Core 1 heartbeat check, restart record (pure C++)
+lib/dhcp6_client/           Stateful DHCPv6 client: messages, frames, RA flags, RFC 8415 timers (pure C++)
 lib/tmp1075/                TMP1075 conversion and read state (pure C++)
 lib/access_control/         Rate limiter and access log, IPv4 and IPv6 sources (pure C++)
 lib/mains_input/            GPIO27 sampler on core 1, seqlock hand-over to core 0

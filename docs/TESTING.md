@@ -129,6 +129,16 @@ The trap tests (`test_snmp_traps.py`) set the device's trap destination to this 
 
 Flashing an embedded test replaces the firmware, so always reflash with `pio run -e pico -t upload` before HIL tests or normal use.
 
+### DHCPv6 test network (`RFUPS_DHCP6_TEST=1`)
+
+The DHCPv6 tests (`test_dhcp6_testnet.py`, `test_dhcp6.py`) need a router that sets the M flag and a DHCPv6 server, which an ordinary LAN does not have. [test/hil/dhcp6_testnet.py](../test/hil/dhcp6_testnet.py) makes one on this PC without disturbing the LAN, in WSL (mirrored networking) as root:
+
+- [send_ra.py](../test/hil/dhcp6/send_ra.py) sends router advertisements **unicast to the device's link-local address only**, with the M (or O) flag, router lifetime 0 and no prefix, so no other host sees them and the device keeps its routes and SLAAC address.
+- Kea ([kea-dhcp6.conf.in](../test/hil/dhcp6/kea-dhcp6.conf.in)) drops every packet not sent from the device's link-local address and gives addresses only to the device's DUID, from a small pool (`<prefix>::d600:1-ff`) with short lifetimes.
+- [testnet.sh](../test/hil/dhcp6/testnet.sh) starts and stops both and, while they run, adds the `fe80::/64` route that mirrored networking leaves out (without it Kea cannot reply). The tests always stop them.
+
+One-time setup: `wsl -d Ubuntu -u root -- apt install python3-scapy kea-dhcp6-server`, then `systemctl disable --now kea-dhcp6-server` (the package starts a service; the tests run their own Kea). The tests run commands as root with `wsl -u root`. A VPN such as Cisco AnyConnect blocks IPv6 between this PC and the device ("General failure" on ping6): disconnect it for these tests and for `test_ipv6.py`.
+
 ## What is covered
 
 ### `test/native/test_netconfig`: `lib/netconfig`
@@ -323,6 +333,17 @@ Uses `test/settings_a.json` and `test/settings_b.json`, never the real settings.
 - A wrong community sends one authenticationFailure trap; five more within 10 s send none but are counted in the access log
 - No traps when the destination is off; trap counter on the status screen; SNMP keeps answering
 - mainsPowerLost and mainsPowerRestored with real mains: correct version, source, varbinds, change counter and time-stamps (needs a mains switch)
+
+### `test/native/test_dhcp6_message`, `test_dhcp6_frame`, `test_dhcp6_client`: `lib/dhcp6_client`
+- Real frames (`test/native/dhcp6_frames/frames.h`, made by [scripts/dhcp6_capture](../scripts/dhcp6_capture/README.md)): Kea 2.4.1's Advertise, Replies and NoAddrsAvail, dhcpcd 10's Solicit/Request/Renew, router advertisements with and without M, the device's own Information-request
+- Messages: built Solicit byte for byte, the same Client ID, IA_NA and FQDN encoding as dhcpcd; Advertise/Reply read for this DUID only, IAID 1 only, addresses with preferred > valid or valid 0 dropped; every truncation and single-byte corruption
+- Frames: headers and checksum identical to the device's and dhcpcd's frames; replies only for this MAC, ports 547 -> 546, valid checksum, no extension headers; router advertisements only with hop limit 255 from a link-local source
+- Client: first Solicit within 1 s, best preference wins (255 at once), Request gives up after 10, Renew at T1 and Rebind at T2 (half and 80 % of preferred when 0), lease extended by a Renew reply, address removed at the end of the valid lifetime, infinite lifetimes never expire, a duplicate is declined, wrong transaction id or server ignored, Solicit backs off to 3600 s across a `millis()` wrap
+
+### `test/hil/test_dhcp6_testnet.py`, `test_dhcp6.py`: DHCPv6 on the device (opt-in, `RFUPS_DHCP6_TEST=1`)
+- The test network works with any firmware: an O-flag advertisement makes lwIP's stateless client send an Information-request, Kea replies, and the device's SLAAC address is unchanged
+- With the M flag the device gets an address from Kea's pool, marked `(dhcpv6)`, that answers ping6 and SNMP; the lease is renewed; the address is removed when Kea stops; an address this PC already uses is declined; core 0 keeps > 1 KB of stack; this PC's IPv6 default routes are unchanged
+- Each test reboots the device first (option 2, DHCP unchanged); needs community `public`
 
 ### `test/hil/test_watchdog.py`: the hardware watchdog
 - The hidden menu commands `stall0` and `stall1` hang core 0 (interrupts off) or core 1 for good; the device restarts within 8 s (core 1: 9 s), and the status screen shows `Last restart: watchdog` with the watchdog restart count one higher
