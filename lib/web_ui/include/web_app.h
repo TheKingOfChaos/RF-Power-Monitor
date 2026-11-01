@@ -50,6 +50,7 @@ struct WebStatus {
     char ipv6LinkLocal[46];  ///< fe80:: address, empty without IPv6
     char ipv6Dhcp[IPV6_TEXT_MAX];  ///< Address leased by DHCPv6, empty without one
     uint32_t ipv6DhcpValidS;       ///< Its remaining valid lifetime, 0xFFFFFFFF = infinite
+    char ipv6DhcpProblem[40];      ///< Why a leased address could not be used, e.g. "no free IPv6 address slot"
     char mac[18];
     bool dhcp;            ///< Configured mode
     char staticIP[16];    ///< Stored static configuration (form defaults)

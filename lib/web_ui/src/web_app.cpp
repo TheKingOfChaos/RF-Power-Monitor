@@ -275,6 +275,8 @@ const char* WebApp::mainPage(int code, const char* reason, size_t slot, WebBacke
             lb.add(" s)");
         }
         row(b, "IPv6 (DHCPv6)", line);
+    } else if (st.ipv6DhcpProblem[0]) {
+        row(b, "IPv6 (DHCPv6)", st.ipv6DhcpProblem);
     }
     row(b, "MAC address", st.mac);
     row(b, "Network mode", st.dhcp ? "DHCP" : "static");

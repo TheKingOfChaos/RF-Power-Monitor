@@ -132,6 +132,8 @@ public:
         if (d6.hasAddress) {
             strlcpy(st.ipv6Dhcp, d6.address, sizeof(st.ipv6Dhcp));
             st.ipv6DhcpValidS = d6.validLeftS;
+        } else {
+            strlcpy(st.ipv6DhcpProblem, d6.problem, sizeof(st.ipv6DhcpProblem));
         }
 #endif
         snprintf(st.mac, sizeof(st.mac), "%02X:%02X:%02X:%02X:%02X:%02X", ifs.mac[0], ifs.mac[1], ifs.mac[2],

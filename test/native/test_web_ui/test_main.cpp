@@ -854,6 +854,14 @@ static void test_status_page_dhcpv6_infinite_lifetime() {
     TEST_ASSERT_TRUE(page.find("fd54:b56a:26e1:2183::d600:1 (valid forever)</td>") != std::string::npos);
 }
 
+static void test_status_page_shows_why_dhcpv6_has_no_address() {
+    webSetUp();
+    strcpy(fb->st.ipv6DhcpProblem, "no free IPv6 address slot");
+    std::string csrf;
+    std::string page = get("/", logIn(csrf));
+    TEST_ASSERT_TRUE(page.find("IPv6 (DHCPv6)</th><td>no free IPv6 address slot</td>") != std::string::npos);
+}
+
 static void test_status_page_has_no_dhcpv6_row_without_address() {
     webSetUp();
     std::string csrf;
@@ -1360,6 +1368,7 @@ int main() {
     RUN_TEST(test_ipv6_rows_only_when_the_device_has_ipv6);
     RUN_TEST(test_status_page_shows_dhcpv6_address_when_present);
     RUN_TEST(test_status_page_dhcpv6_infinite_lifetime);
+    RUN_TEST(test_status_page_shows_why_dhcpv6_has_no_address);
     RUN_TEST(test_status_page_has_no_dhcpv6_row_without_address);
     RUN_TEST(test_actions_need_a_session);
     RUN_TEST(test_actions_need_the_session_csrf_token);
