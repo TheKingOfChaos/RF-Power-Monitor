@@ -19,6 +19,7 @@
 constexpr uint8_t DHCP6_SOLICIT = 1;
 constexpr uint8_t DHCP6_ADVERTISE = 2;
 constexpr uint8_t DHCP6_REQUEST = 3;
+constexpr uint8_t DHCP6_CONFIRM = 4;
 constexpr uint8_t DHCP6_RENEW = 5;
 constexpr uint8_t DHCP6_REBIND = 6;
 constexpr uint8_t DHCP6_REPLY = 7;
@@ -51,13 +52,13 @@ struct Dhcp6Lease {
  * @brief A message to build
  */
 struct Dhcp6Out {
-    uint8_t type;              ///< DHCP6_SOLICIT, _REQUEST, _RENEW, _REBIND or _DECLINE
+    uint8_t type;              ///< DHCP6_SOLICIT, _REQUEST, _CONFIRM, _RENEW, _REBIND or _DECLINE
     uint32_t xid;              ///< Transaction id, low 24 bits used
     uint16_t elapsedCs;        ///< Elapsed Time option, hundredths of a second
     const uint8_t* serverId;   ///< Server DUID (Request, Renew, Decline), nullptr if absent
     uint8_t serverIdLen;
     const uint8_t* addr;       ///< 16-byte address in the IA_NA (all but Solicit), nullptr if absent
-    const char* hostname;      ///< Client FQDN as a partial name, nullptr or "" for none; not in Decline
+    const char* hostname;      ///< Client FQDN as a partial name, nullptr or "" for none; not in Decline or Confirm
 };
 
 /**

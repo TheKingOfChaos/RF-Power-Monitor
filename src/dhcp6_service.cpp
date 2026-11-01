@@ -179,6 +179,11 @@ void dhcp6Poll() {
     uint32_t now = millis();
     client->setHostname(hostnameCurrent());
     if (managed) client->start(now);  // no-op once started
+    // Link back up (the cable may now be on another network): Confirm the address (RFC 8415 18.2.12)
+    static bool wasUp = false;
+    bool up = netStatsPhy().linkUp;
+    if (up && !wasUp) client->linkUp(now);  // no-op before start
+    wasUp = up;
     if (haveMsg) client->received(msg, now);
     if (duplicate) client->addressDuplicate(now);
 

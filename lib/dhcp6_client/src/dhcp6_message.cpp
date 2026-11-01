@@ -74,7 +74,7 @@ struct Writer {
 
 size_t dhcp6Build(const Dhcp6Out& m, const uint8_t mac[6], uint8_t* out, size_t size) {
     size_t hostLen = m.hostname ? strlen(m.hostname) : 0;
-    bool fqdn = hostLen > 0 && m.type != DHCP6_DECLINE;
+    bool fqdn = hostLen > 0 && m.type != DHCP6_DECLINE && m.type != DHCP6_CONFIRM;
     if (hostLen > LABEL_MAX || (m.hostname && strchr(m.hostname, '.'))) return 0;
 
     Writer w{out, size};

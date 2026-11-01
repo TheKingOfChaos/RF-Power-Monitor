@@ -150,6 +150,22 @@ static void test_build_decline_has_address_and_no_fqdn() {
     TEST_ASSERT_EQUAL_HEX8_ARRAY(LEASED, ia + 16, 16);
 }
 
+static void test_build_confirm_has_address_and_no_server_id_or_fqdn() {
+    // RFC 8415 18.2.3: no Server Identifier; the FQDN is left out as in Decline
+    Dhcp6Out o = {DHCP6_CONFIRM, 3, 0, KEA_DUID, sizeof(KEA_DUID), LEASED, "rf-ups-monitor"};
+    uint8_t buf[256];
+    size_t n = dhcp6Build(o, DEVICE_MAC, buf, sizeof(buf));
+    TEST_ASSERT_GREATER_THAN(0, n);
+    TEST_ASSERT_EQUAL_UINT8(4, buf[0]);
+    uint16_t l;
+    TEST_ASSERT_NULL(findOption(buf, n, 2, &l));
+    TEST_ASSERT_NULL(findOption(buf, n, 39, &l));
+    TEST_ASSERT_NOT_NULL(findOption(buf, n, 1, &l));
+    const uint8_t* ia = findOption(buf, n, 3, &l);
+    TEST_ASSERT_NOT_NULL(ia);
+    TEST_ASSERT_EQUAL_HEX8_ARRAY(LEASED, ia + 16, 16);
+}
+
 static void test_build_returns_zero_when_buffer_too_small() {
     Dhcp6Out o = {DHCP6_SOLICIT, 1, 0, nullptr, 0, nullptr, "rf-ups-monitor"};
     uint8_t buf[256];
@@ -430,6 +446,7 @@ int main() {
     RUN_TEST(test_build_request_carries_server_id_and_address);
     RUN_TEST(test_build_rebind_has_no_server_id);
     RUN_TEST(test_build_decline_has_address_and_no_fqdn);
+    RUN_TEST(test_build_confirm_has_address_and_no_server_id_or_fqdn);
     RUN_TEST(test_build_returns_zero_when_buffer_too_small);
     RUN_TEST(test_build_rejects_hostname_that_is_not_one_label);
     RUN_TEST(test_parse_kea_advertise);

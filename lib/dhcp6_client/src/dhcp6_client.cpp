@@ -13,6 +13,10 @@ static const uint64_t REN_TIMEOUT = 10000;
 static const uint64_t REN_MAX_RT = 600000;
 static const uint64_t REB_TIMEOUT = 10000;
 static const uint64_t REB_MAX_RT = 600000;
+static const uint64_t CNF_MAX_DELAY = 1000;
+static const uint64_t CNF_TIMEOUT = 1000;
+static const uint64_t CNF_MAX_RT = 4000;
+static const uint64_t CNF_MAX_RD = 10000;
 static const uint64_t DEC_TIMEOUT = 1000;
 static const uint32_t DEC_MAX_RC = 4;
 
@@ -28,6 +32,7 @@ const char* dhcp6StateName(Dhcp6State state) {
     case Dhcp6State::Renewing:   return "renewing";
     case Dhcp6State::Rebinding:  return "rebinding";
     case Dhcp6State::Declining:  return "declining";
+    case Dhcp6State::Confirming: return "confirming";
     }
     return "?";
 }
@@ -73,6 +78,7 @@ uint64_t Dhcp6Client::nextTimeout(uint64_t prev) {
                      : _state == Dhcp6State::Requesting ? REQ_MAX_RT
                      : _state == Dhcp6State::Renewing   ? REN_MAX_RT
                      : _state == Dhcp6State::Rebinding  ? REB_MAX_RT
+                     : _state == Dhcp6State::Confirming ? CNF_MAX_RT
                                                         : 0;
     uint64_t rt = jitter(2 * prev, false);
     if (maxRt != 0 && rt > maxRt) rt = jitter(maxRt, false);
@@ -195,6 +201,19 @@ void Dhcp6Client::received(const Dhcp6In& m, uint32_t nowMs) {
         }
         return;
 
+    case Dhcp6State::Confirming:
+        if (m.type != DHCP6_REPLY) break;  // any server may answer
+        _accepted++;
+        if (m.status == DHCP6_STATUS_NOTONLINK) {
+            _haveLease = false;  // another link: the address is no use here
+            _pendingRemove = true;
+            memcpy(_removeAddr, _lease.addr, 16);
+            restartSolicit();
+        } else {
+            _state = Dhcp6State::Bound;  // the lease's timers carry on
+        }
+        return;
+
     case Dhcp6State::Declining:
         if (m.type != DHCP6_REPLY) break;
         _accepted++;
@@ -205,6 +224,16 @@ void Dhcp6Client::received(const Dhcp6In& m, uint32_t nowMs) {
         break;
     }
     _ignored++;
+}
+
+void Dhcp6Client::linkUp(uint32_t nowMs) {
+    clock(nowMs);
+    if (_state == Dhcp6State::Idle) return;
+    if (_haveLease) {
+        enter(Dhcp6State::Confirming, _now + _random32() % CNF_MAX_DELAY);
+    } else {
+        restartSolicit();  // a new link may have a server: do not wait out the backoff
+    }
 }
 
 void Dhcp6Client::addressDuplicate(uint32_t nowMs) {
@@ -253,7 +282,8 @@ Dhcp6Action Dhcp6Client::poll(uint32_t nowMs, uint8_t* buf, size_t size) {
 
     // Timers of the lease; the address also expires while the client is asking for it again
     // (Requesting after NoBinding, or Soliciting after that failed)
-    bool leased = _state == Dhcp6State::Bound || _state == Dhcp6State::Renewing || _state == Dhcp6State::Rebinding;
+    bool leased = _state == Dhcp6State::Bound || _state == Dhcp6State::Renewing || _state == Dhcp6State::Rebinding ||
+                  _state == Dhcp6State::Confirming;
     if (_haveLease && t >= _validEnd) {
         _haveLease = false;
         if (leased) restartSolicit();
@@ -269,6 +299,9 @@ Dhcp6Action Dhcp6Client::poll(uint32_t nowMs, uint8_t* buf, size_t size) {
         _lease = _best.lease;
         enter(Dhcp6State::Requesting, t);
     }
+
+    // No Reply to Confirm within CNF_MAX_RD: keep the address (RFC 8415 18.2.3)
+    if (_state == Dhcp6State::Confirming && _count > 0 && t >= _exchangeStart + CNF_MAX_RD) _state = Dhcp6State::Bound;
 
     if (_state == Dhcp6State::Idle || _state == Dhcp6State::Bound || t < _nextTx) return a;
     if ((_state == Dhcp6State::Requesting && _count >= REQ_MAX_RC) ||
@@ -291,6 +324,7 @@ Dhcp6Action Dhcp6Client::poll(uint32_t nowMs, uint8_t* buf, size_t size) {
     case Dhcp6State::Requesting: o.type = DHCP6_REQUEST; break;
     case Dhcp6State::Renewing:   o.type = DHCP6_RENEW; break;
     case Dhcp6State::Rebinding:  o.type = DHCP6_REBIND; break;
+    case Dhcp6State::Confirming: o.type = DHCP6_CONFIRM; break;
     case Dhcp6State::Declining:  o.type = DHCP6_DECLINE; break;
     default: return a;
     }
@@ -308,6 +342,7 @@ Dhcp6Action Dhcp6Client::poll(uint32_t nowMs, uint8_t* buf, size_t size) {
                        : _state == Dhcp6State::Requesting ? REQ_TIMEOUT
                        : _state == Dhcp6State::Renewing   ? REN_TIMEOUT
                        : _state == Dhcp6State::Rebinding  ? REB_TIMEOUT
+                       : _state == Dhcp6State::Confirming ? CNF_TIMEOUT
                                                           : DEC_TIMEOUT;
         // The first Solicit's RT must be strictly greater than IRT (RFC 8415 18.2.1)
         _rt = jitter(irt, _state == Dhcp6State::Soliciting);

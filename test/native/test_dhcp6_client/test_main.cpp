@@ -491,6 +491,93 @@ static void test_infinite_valid_lifetime_never_expires() {
     TEST_ASSERT_EQUAL_UINT32(INF, c.preferredLeftS(now));
 }
 
+// ---- link down and up (RFC 8415 18.2.12) ----
+
+/// Bound to ADDR_A (60/120 s), then the link comes back up; returns with the first Confirm sent
+static uint32_t confirmingWith(Dhcp6Client& c, Dhcp6Action* sent) {
+    c.setHostname("rf-ups-monitor");
+    uint32_t now = bindWith(c, 0, 60, 120, 0, 0) + 1000;
+    c.linkUp(now);
+    *sent = until(c, &now, 1100);
+    return now;
+}
+
+static void test_link_up_with_lease_sends_confirm_with_address() {
+    Dhcp6Client c(MAC, fakeRandom);
+    Dhcp6Action a;
+    confirmingWith(c, &a);
+    TEST_ASSERT_EQUAL(Dhcp6Action::Send, a.kind);
+    TEST_ASSERT_EQUAL_UINT8(DHCP6_CONFIRM, buf[0]);
+    TEST_ASSERT_EQUAL(Dhcp6State::Confirming, c.state());
+    uint16_t l;
+    TEST_ASSERT_NULL(option(a.len, 2, &l));  // to any server
+    const uint8_t* ia = option(a.len, 3, &l);
+    TEST_ASSERT_NOT_NULL(ia);
+    TEST_ASSERT_EQUAL_HEX8_ARRAY(ADDR_A, ia + 16, 16);
+}
+
+static void test_confirm_notonlink_removes_address_and_solicits() {
+    Dhcp6Client c(MAC, fakeRandom);
+    Dhcp6Action a;
+    uint32_t now = confirmingWith(c, &a);
+    Dhcp6In r = serverMsg(DHCP6_REPLY, sentXid(), SRV_B, 0, nullptr, 0, 0, 0, 0);
+    r.status = DHCP6_STATUS_NOTONLINK;
+    c.received(r, now);
+    a = next(c, now);
+    TEST_ASSERT_EQUAL(Dhcp6Action::RemoveAddress, a.kind);
+    TEST_ASSERT_EQUAL_HEX8_ARRAY(ADDR_A, a.addr, 16);
+    TEST_ASSERT_FALSE(c.hasLease());
+    a = until(c, &now, 1100);
+    TEST_ASSERT_EQUAL(Dhcp6Action::Send, a.kind);
+    TEST_ASSERT_EQUAL_UINT8(DHCP6_SOLICIT, buf[0]);
+}
+
+static void test_confirm_success_keeps_address() {
+    Dhcp6Client c(MAC, fakeRandom);
+    Dhcp6Action a;
+    uint32_t now = confirmingWith(c, &a);
+    c.received(serverMsg(DHCP6_REPLY, sentXid(), SRV_B, 0, nullptr, 0, 0, 0, 0), now);
+    TEST_ASSERT_EQUAL(Dhcp6State::Bound, c.state());
+    TEST_ASSERT_TRUE(c.hasLease());
+    TEST_ASSERT_EQUAL(Dhcp6Action::None, next(c, now).kind);
+}
+
+static void test_confirm_without_reply_keeps_address_after_10_s() {
+    Dhcp6Client c(MAC, fakeRandom);
+    Dhcp6Action a;
+    uint32_t start = confirmingWith(c, &a), now = start;
+    int confirms = 1;
+    for (; now < start + 20000; now += 10) {
+        a = next(c, now);
+        TEST_ASSERT_NOT_EQUAL(Dhcp6Action::RemoveAddress, a.kind);
+        if (a.kind == Dhcp6Action::Send && buf[0] == DHCP6_CONFIRM) {
+            TEST_ASSERT_TRUE(now - start < 10000);  // CNF_MAX_RD
+            confirms++;
+        }
+    }
+    TEST_ASSERT_TRUE(confirms >= 3);  // retransmitted (1, 2, 4 s)
+    TEST_ASSERT_EQUAL(Dhcp6State::Bound, c.state());
+    TEST_ASSERT_TRUE(c.hasLease());
+}
+
+static void test_link_up_without_lease_solicits_again_at_once() {
+    Dhcp6Client c(MAC, fakeRandom);
+    uint32_t now = 0;
+    c.start(now);
+    for (int i = 0; i < 6; i++) until(c, &now, 200000);  // backed off to tens of seconds
+    c.linkUp(now);
+    Dhcp6Action a = until(c, &now, 1100);
+    TEST_ASSERT_EQUAL(Dhcp6Action::Send, a.kind);
+    TEST_ASSERT_EQUAL_UINT8(DHCP6_SOLICIT, buf[0]);
+}
+
+static void test_link_up_before_start_does_nothing() {
+    Dhcp6Client c(MAC, fakeRandom);
+    c.linkUp(0);
+    for (uint32_t t = 0; t < 5000; t += 100) TEST_ASSERT_EQUAL(Dhcp6Action::None, next(c, t).kind);
+    TEST_ASSERT_EQUAL(Dhcp6State::Idle, c.state());
+}
+
 // ---- duplicate address ----
 
 static void test_duplicate_address_is_declined_and_solicit_restarts() {
@@ -552,7 +639,7 @@ static void test_refresh_makes_deprecated_address_preferred_again() {
 }
 
 static void test_every_state_has_a_name() {
-    for (uint8_t s = 0; s <= (uint8_t)Dhcp6State::Declining; s++) {
+    for (uint8_t s = 0; s <= (uint8_t)Dhcp6State::Confirming; s++) {
         TEST_ASSERT_TRUE(strcmp("?", dhcp6StateName((Dhcp6State)s)) != 0);
     }
     TEST_ASSERT_EQUAL_STRING("bound", dhcp6StateName(Dhcp6State::Bound));
@@ -585,6 +672,12 @@ int main() {
     RUN_TEST(test_address_removed_at_valid_end);
     RUN_TEST(test_preferred_left_counts_down_and_stops_at_zero);
     RUN_TEST(test_infinite_valid_lifetime_never_expires);
+    RUN_TEST(test_link_up_with_lease_sends_confirm_with_address);
+    RUN_TEST(test_confirm_notonlink_removes_address_and_solicits);
+    RUN_TEST(test_confirm_success_keeps_address);
+    RUN_TEST(test_confirm_without_reply_keeps_address_after_10_s);
+    RUN_TEST(test_link_up_without_lease_solicits_again_at_once);
+    RUN_TEST(test_link_up_before_start_does_nothing);
     RUN_TEST(test_duplicate_address_is_declined_and_solicit_restarts);
     RUN_TEST(test_pick_slot_takes_the_highest_free_slot);
     RUN_TEST(test_pick_slot_returns_none_when_all_used);

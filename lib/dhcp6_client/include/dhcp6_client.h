@@ -4,11 +4,11 @@
  * @file dhcp6_client.h
  * @brief Stateful DHCPv6 client for one address (IA_NA), RFC 8415.
  *
- * Driven by the caller: start() when a router advertisement has the M flag,
- * received() for every Advertise/Reply that dhcp6Parse() accepted, addressDuplicate()
- * when duplicate address detection fails, and poll() regularly, which returns what to
- * do next (send a message it wrote into the caller's buffer, add or remove the
- * address) until it returns None. Retransmission follows RFC 8415 section 15 with the
+ * Driven by the caller: start() when a router advertisement has the M flag, linkUp()
+ * when the Ethernet link comes back up, received() for every Advertise/Reply that
+ * dhcp6Parse() accepted, addressDuplicate() when duplicate address detection fails,
+ * and poll() regularly, which returns what to do next (send a message it wrote into
+ * the caller's buffer, add, deprecate or remove an address) until it returns None. Retransmission follows RFC 8415 section 15 with the
  * constants of section 7.6. Times are wrap-safe: the client extends millis() into a
  * 64-bit clock, so lifetimes up to "infinity" (0xFFFFFFFF s) work. Once started it
  * runs until reboot. Pure C++, host tested.
@@ -29,7 +29,8 @@ enum class Dhcp6State : uint8_t {
     Bound,       ///< Address leased
     Renewing,    ///< After T1: asking the same server to extend the lease
     Rebinding,   ///< After T2: asking any server to extend the lease
-    Declining    ///< The address was a duplicate: telling the server
+    Declining,   ///< The address was a duplicate: telling the server
+    Confirming   ///< The link came back up: asking whether the address still fits this link
 };
 
 /**
@@ -74,6 +75,9 @@ public:
 
     /// An Advertise or Reply for this client (from dhcp6Parse)
     void received(const Dhcp6In& m, uint32_t nowMs);
+
+    /// The link came back up (cable moved?): confirm the address, or look for a server again
+    void linkUp(uint32_t nowMs);
 
     /// Duplicate address detection failed for the leased address
     void addressDuplicate(uint32_t nowMs);
