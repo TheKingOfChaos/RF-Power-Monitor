@@ -6,6 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [2.7.0] - 2026-11-01
+
+### Added
+- LLDP-MIB over SNMP (v1 and v2c): `lldpLocPortTable` (our port: MAC, `W5500 10/100 Ethernet`) and `lldpRemTable` (one row, `0.1.1`, while the device hears a switch: chassis and port ID, port description, system name and description, capabilities). LibreNMS reads these in its normal discovery, so the device's Neighbours tab shows the switch and port without the switch being in LibreNMS; checked with LibreNMS 26.9.1 (`eth0` → `r169`, `ge-0/0/9.0`). When the switch sends a locally assigned Port ID with a port description (Junos: `523` and `ge-0/0/9.0`), the device serves the description as an interfaceName Port ID, since LibreNMS labels the port with the Port ID. docs/LIBRENMS.md recommends turning off `autodiscovery.xdp` so LibreNMS does not try to add the switch.
+
+### Changed
+- A walk from the root (`.1`) now starts with the LLDP-MIB objects (`1.0.8802...` sorts before `1.3.6.1...`): 3 objects, 12 with a neighbour (v1 59 objects, v2c 67). Walks of mib-2 or the enterprise subtree are unchanged.
+
 ## [2.6.0] - 2026-11-01
 
 ### Added

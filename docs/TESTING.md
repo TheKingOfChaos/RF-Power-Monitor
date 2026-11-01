@@ -343,9 +343,11 @@ Uses `test/settings_a.json` and `test/settings_b.json`, never the real settings.
 - Text cut to 64 characters, non-printable bytes as `?`
 - Neighbour: expires after its TTL (also across a `millis()` wrap), TTL 0 and link down forget it, the latest frame wins; display text (port description for a local port ID, else the port ID; chassis ID without a system name; `none seen`; cut to the buffer)
 - Send timing: nothing while the link is down, 1 s after link up (again after a flap), every 30 s, 1 s after a change, across a `millis()` wrap
+- LLDP-MIB (`test_snmp_agent`): lldpLocPortTable, lldpRemTable with the EX2200-C neighbour in v1 and v2c (Junos port name served as interfaceName), walks and GetBulk from `1.0` with and without a neighbour, noSuchInstance for another row (also another time mark), noSuchObject for an unknown column, mib-2 walks unchanged; `scripts/host_agent_check.sh` checks the same tables with net-snmp's tools (numeric OIDs: WSL has no LLDP-MIB)
 
 ### `test/hil/test_lldp.py`: LLDP on the device (opt-in, see above)
 - The status screen names the switch and port within 35 s (`RFUPS_LLDP_SWITCH=1`)
+- `snmpget` (v1 and v2c) of lldpRemSysName and lldpRemPortId gives the same switch and port as the status screen, lldpLocPortDesc names our port (`RFUPS_LLDP_SWITCH=1`); `test_snmp.py`'s walks from the root expect the LLDP-MIB objects first, the remote row only while the status screen shows a switch
 - The switch lists the device by MAC with its hostname, port description and IPv4 address, and the device shows the port the switch says it is on (`RFUPS_LLDP_SWITCH_CONSOLE`)
 - A new hostname reaches the switch within 5 s (fails with a firmware that sends only every 30 s); the old one is restored
 

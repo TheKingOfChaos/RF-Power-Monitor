@@ -308,7 +308,7 @@ Responses: `400` with the reason on the page for an invalid value (nothing is sa
 
 The device announces itself with LLDP (IEEE 802.1AB) every 30 s, 1 s after the Ethernet link comes up and about 1 s after its address or hostname changes, so the switch lists it as a neighbour (`show lldp neighbors` on Junos). It sends its MAC as chassis and port ID, the hostname as system name, the sysDescr text (with the firmware version) as system description, `W5500 10/100 Ethernet` as port description, "station only" as capability, and its IPv4 address and global IPv6 address (when it has them) as management addresses, with a time to live of 120 s. There is no setting; LLDP is always on.
 
-It also reads the LLDP frames the switch sends and shows the switch and the port it is plugged into: `Switch: r169, port ge-0/0/9.0` on the status screen (with the switch's management address in brackets when the switch sends one), and a "Switch" row on the web page. Junos sends the port as a number (its ifIndex) and the interface name as port description; the device shows the name. Without LLDP from the switch it shows `none seen`; the switch is forgotten when its time to live runs out or the link goes down. LLDP frames count as received multicast frames, not as unknown protocol.
+It also reads the LLDP frames the switch sends and shows the switch and the port it is plugged into: `Switch: r169, port ge-0/0/9.0` on the status screen (with the switch's management address in brackets when the switch sends one), and a "Switch" row on the web page. Junos sends the port as a number (its ifIndex) and the interface name as port description; the device shows the name. Without LLDP from the switch it shows `none seen`; the switch is forgotten when its time to live runs out or the link goes down. LLDP frames count as received multicast frames, not as unknown protocol. The same switch and port are in SNMP (LLDP-MIB `lldpRemTable`, see [docs/MIB.md](docs/MIB.md#switch-and-port-lldp-mib)), which LibreNMS shows on the device's Neighbours tab ([docs/LIBRENMS.md](docs/LIBRENMS.md#switch-and-port-lldp)).
 
 ## Hostname
 
@@ -497,6 +497,8 @@ Pure libraries have no Arduino or hardware dependency so they can be unit tested
 An SNMP agent runs on UDP port 161 and answers SNMPv1 and SNMPv2c, each request in its own version (SNMPv3 is not supported). The community is `public` by default (menu option 4 changes it, along with sysName, sysContact and sysLocation). It supports Get and GetNext, so `snmpwalk` works, and in v2c GetBulk, so `snmpbulkwalk` works too; everything is read-only.
 
 ```
+.1.0.8802.1.1.2.1.3.7.1  LLDP-MIB lldpLocPortTable: our port (subtype, MAC, description), row 1
+.1.0.8802.1.1.2.1.4.1.1  LLDP-MIB lldpRemTable: the switch, row 0.1.1, only while one is heard
 .1.3.6.1.2.1.1          system group
   .1.0  sysDescr        .2.0  sysObjectID     .3.0  sysUpTime
   .4.0  sysContact      .5.0  sysName         .6.0  sysLocation

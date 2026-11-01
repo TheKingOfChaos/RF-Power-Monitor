@@ -210,7 +210,8 @@ An item is only ticked when it is implemented **and** its tests exist and pass (
 - [x] Send LLDPDUs (chassis/port ID MAC, TTL 120, port description, system name/description, station only, IPv4/IPv6 management addresses) every 30 s, 1 s after link up and after a change — native `test_lldp` byte-exact (bytes checked with tcpdump -vv), HIL `test_switch_lists_the_device`, `test_switch_learns_new_hostname_within_5_s` (fails with a firmware that ignores changes) against a Juniper EX2200-C
 - [x] Read the switch's LLDPDUs, keep one neighbour (TTL, TTL 0, link down), show switch and port on the status screen and web page — native `test_lldp` incl. a captured EX2200-C frame, every truncation, sanitizers; `test_web_ui` escaping and longest page; HIL `test_status_shows_the_switch`
 - [x] LLDP counted as received multicast, not unknown protocol — native `test_if_stats`
-- [ ] LLDP-MIB over SNMP (lldpRemTable): not planned, LibreNMS reads the neighbour from the switch
+- [x] LLDP-MIB over SNMP (2.7.0): `lldpLocPortTable` and `lldpRemTable` (one row, Junos port name as Port ID), so LibreNMS shows the switch and port on the device's Neighbours tab without monitoring the switch — native `test_lldp`, `test_snmp_agent` (v1/v2c, walks with and without a neighbour, noSuchInstance), `host_agent_check.sh` against net-snmp, HIL `test_snmp_lldp_tables_name_the_switch`, `test_snmp.py` walks; LibreNMS discovery: link eth0 → r169 / ge-0/0/9.0 (`autodiscovery.xdp` off)
+- [ ] lldpRemManAddrTable (the switch's management address): not served, the EX2200-C sends none
 
 ## Notes
 - SNMP must be v1 and v2c (no v3) and our own code; networking may use libraries

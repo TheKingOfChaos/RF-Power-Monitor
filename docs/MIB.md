@@ -85,7 +85,28 @@ What the counters cannot see: the W5500 itself silently drops frames with a bad 
 
 The counters are 64-bit internally and start at 0 at boot. Link state and speed are read from the W5500 PHY register (`PHYCFGR`) every 500 ms; a link change is logged on the serial port.
 
-SNMPv1 has no Counter64 type, so a v1 request does not see the eight `ifHC*` columns at all (RFC 3584): a v1 Get of one is `noSuchName` and a v1 walk skips them. A v1 walk returns 45 objects, a v2c walk 53.
+SNMPv1 has no Counter64 type, so a v1 request does not see the eight `ifHC*` columns at all (RFC 3584): a v1 Get of one is `noSuchName` and a v1 walk skips them. Without the LLDP-MIB objects a v1 walk returns 47 objects, a v2c walk 55 (with them, see below).
+
+## Switch and port (LLDP-MIB)
+
+The device answers part of the standard LLDP-MIB (IEEE 802.1AB-2005 Annex F), so a manager such as LibreNMS can show which switch and port it is plugged into ([LIBRENMS.md](LIBRENMS.md#switch-and-port-lldp)). `1.0.8802...` sorts before `1.3.6.1...`, so a walk from the root (`.1`) starts with these objects; the default walk (mib-2) does not include them.
+
+| OID | Name | Type | Value |
+|---|---|---|---|
+| 1.0.8802.1.1.2.1.3.7.1.2.1 | lldpLocPortIdSubtype | INTEGER | 3 (macAddress) |
+| 1.0.8802.1.1.2.1.3.7.1.3.1 | lldpLocPortId | OCTET STRING | the device's MAC (6 bytes) |
+| 1.0.8802.1.1.2.1.3.7.1.4.1 | lldpLocPortDesc | OCTET STRING | `W5500 10/100 Ethernet` (= ifDescr) |
+| 1.0.8802.1.1.2.1.4.1.1.4.0.1.1 | lldpRemChassisIdSubtype | INTEGER | as sent by the switch (4 = MAC address) |
+| 1.0.8802.1.1.2.1.4.1.1.5.0.1.1 | lldpRemChassisId | OCTET STRING | as sent (MAC: 6 bytes), at most 64 bytes |
+| 1.0.8802.1.1.2.1.4.1.1.6.0.1.1 | lldpRemPortIdSubtype | INTEGER | as sent, but 5 (interfaceName) when the switch sent 7 (locally assigned) and a port description |
+| 1.0.8802.1.1.2.1.4.1.1.7.0.1.1 | lldpRemPortId | OCTET STRING | as sent, or in that case the port description (Junos: `ge-0/0/9.0` instead of its ifIndex `523`) |
+| 1.0.8802.1.1.2.1.4.1.1.8.0.1.1 | lldpRemPortDesc | OCTET STRING | port description, empty if not sent |
+| 1.0.8802.1.1.2.1.4.1.1.9.0.1.1 | lldpRemSysName | OCTET STRING | the switch's name |
+| 1.0.8802.1.1.2.1.4.1.1.10.0.1.1 | lldpRemSysDesc | OCTET STRING | its system description, at most 128 bytes |
+| 1.0.8802.1.1.2.1.4.1.1.11.0.1.1 | lldpRemSysCapSupported | BITS (2 bytes) | as sent (`00 14`: bridge, router) |
+| 1.0.8802.1.1.2.1.4.1.1.12.0.1.1 | lldpRemSysCapEnabled | BITS (2 bytes) | as sent |
+
+There is one remote row, index lldpRemTimeMark 0, lldpRemLocalPortNum 1, lldpRemIndex 1, and only while the device holds a neighbour (the status screen's `Switch:` line); otherwise v1 answers noSuchName and v2c noSuchInstance, and walks skip it. Text from the switch is cut to 64 characters (128 for the description) with non-printable bytes replaced by `?`. Not served: lldpRemManAddrTable (the management address; its index holds the address), lldpLocalSystemData, lldpStatistics and LLDP-V2-MIB. A v1 walk from the root returns 59 objects with a neighbour (47 without), a v2c walk 67 (55).
 
 ## v1 and v2c differences
 
