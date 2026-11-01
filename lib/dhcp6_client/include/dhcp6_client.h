@@ -115,7 +115,6 @@ private:
     uint64_t _nextTx = 0;          ///< When the next (re)transmission is due
     uint64_t _rt = 0;              ///< Current retransmission timeout
     uint64_t _exchangeStart = 0;   ///< First transmission of this exchange (Elapsed Time)
-    bool _exchangeSent = false;
     uint32_t _count = 0;           ///< Transmissions in this exchange
 
     // Soliciting: the best Advertise so far
@@ -128,7 +127,6 @@ private:
     uint8_t _serverIdLen = 0;
     bool _haveLease = false;
     Dhcp6Lease _lease;
-    uint64_t _boundAt = 0;
     uint64_t _t1At = 0, _t2At = 0, _validEnd = 0;
 
     // Address actions waiting for poll()

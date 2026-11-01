@@ -237,6 +237,20 @@ static void test_parse_reply_without_client_id_is_malformed() {
     TEST_ASSERT_EQUAL(Dhcp6Parse::Malformed, dhcp6Parse(m.b, m.len, DEVICE_MAC, in));
 }
 
+static void test_parse_reply_without_server_id_is_malformed() {
+    Msg m = payloadOf(KEA_REPLY_REQUEST, KEA_REPLY_REQUEST_LEN);
+    uint16_t len;
+    uint8_t* v = const_cast<uint8_t*>(findOption(m.b, m.len, 2, &len));
+    TEST_ASSERT_NOT_NULL(v);
+    uint8_t* opt = v - 4;
+    size_t size = 4 + (size_t)len;
+    memmove(opt, opt + size, m.len - (size_t)(opt - m.b) - size);
+    m.len -= size;
+    TEST_ASSERT_NULL(findOption(m.b, m.len, 2, &len));
+    Dhcp6In in;
+    TEST_ASSERT_EQUAL(Dhcp6Parse::Malformed, dhcp6Parse(m.b, m.len, LAB_MAC_C1, in));
+}
+
 static void test_parse_drops_address_with_preferred_above_valid() {
     Msg m = payloadOf(KEA_REPLY_REQUEST, KEA_REPLY_REQUEST_LEN);
     uint8_t* addr = iaAddress(m);
@@ -374,6 +388,7 @@ int main() {
     RUN_TEST(test_parse_rejects_reply_for_other_client);
     RUN_TEST(test_parse_rejects_client_messages);
     RUN_TEST(test_parse_reply_without_client_id_is_malformed);
+    RUN_TEST(test_parse_reply_without_server_id_is_malformed);
     RUN_TEST(test_parse_drops_address_with_preferred_above_valid);
     RUN_TEST(test_parse_drops_address_with_valid_zero);
     RUN_TEST(test_parse_prefers_address_with_nonzero_preferred_lifetime);

@@ -84,7 +84,6 @@ void Dhcp6Client::enter(Dhcp6State s, uint64_t firstTxAt) {
     _xid = _random32() & 0xFFFFFF;
     _nextTx = firstTxAt;
     _count = 0;
-    _exchangeSent = false;
 }
 
 void Dhcp6Client::restartSolicit() {
@@ -118,7 +117,6 @@ void Dhcp6Client::bind(const Dhcp6In& m) {
     _lease = m.lease;
     _haveLease = true;
     _pendingAdd = true;  // add, or refresh the lifetimes of the address lwIP already has
-    _boundAt = _now;
 
     // T1/T2 0 leave the times to us; a deprecated address (preferred 0) uses the valid lifetime,
     // or T1 would be now and the client would renew once per round trip

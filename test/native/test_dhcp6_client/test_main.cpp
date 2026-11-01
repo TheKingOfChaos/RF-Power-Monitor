@@ -358,6 +358,26 @@ static void test_lease_removed_at_valid_end_while_requesting_after_nobinding() {
     TEST_ASSERT_FALSE(c.hasLease());
 }
 
+/// Bind with lifetimes 20/40 s, T1 6 s, T2 12 s and run to the first Rebind; returns its time
+static uint32_t rebindingWith(Dhcp6Client& c, uint32_t* tb) {
+    *tb = bindWith(c, 0, 20, 40, 6, 12);
+    uint32_t now = *tb + 12000;
+    for (;; now += 10) {
+        if (next(c, now).kind == Dhcp6Action::Send && buf[0] == DHCP6_REBIND) return now;
+    }
+}
+
+static void test_rebind_reply_from_another_server_extends_lease() {
+    Dhcp6Client c(MAC, fakeRandom);
+    uint32_t tb;
+    uint32_t now = rebindingWith(c, &tb);
+    c.received(serverMsg(DHCP6_REPLY, sentXid(), SRV_B, 0, ADDR_A, 20, 40, 6, 12), now);  // any server may answer
+    Dhcp6Action a = next(c, now);
+    TEST_ASSERT_EQUAL(Dhcp6Action::AddAddress, a.kind);
+    TEST_ASSERT_EQUAL(Dhcp6State::Bound, c.state());
+    TEST_ASSERT_EQUAL_UINT32(40, c.validLeftS(now));
+}
+
 static void test_renew_reply_extends_lease() {
     Dhcp6Client c(MAC, fakeRandom);
     uint32_t tb = bindWith(c, 0, 20, 40, 6, 12);
@@ -479,6 +499,7 @@ int main() {
     RUN_TEST(test_zero_t1_t2_use_half_and_eighty_percent);
     RUN_TEST(test_preferred_zero_lease_renews_at_half_valid_not_at_once);
     RUN_TEST(test_lease_removed_at_valid_end_while_requesting_after_nobinding);
+    RUN_TEST(test_rebind_reply_from_another_server_extends_lease);
     RUN_TEST(test_renew_reply_extends_lease);
     RUN_TEST(test_address_removed_at_valid_end);
     RUN_TEST(test_infinite_valid_lifetime_never_expires);
