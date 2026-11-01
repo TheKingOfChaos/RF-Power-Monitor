@@ -32,7 +32,7 @@ const char* dhcp6StateName(Dhcp6State state) {
     return "?";
 }
 
-Dhcp6Client::Dhcp6Client(const uint8_t mac[6], uint32_t (*random32)()) : _random32(random32) {
+Dhcp6Client::Dhcp6Client(const uint8_t mac[6], uint32_t (*random32)()) : _random32(random32), _solMaxRt(SOL_MAX_RT) {
     memcpy(_mac, mac, 6);
     _hostname[0] = '\0';
     memset(&_lease, 0, sizeof(_lease));
@@ -69,7 +69,7 @@ uint64_t Dhcp6Client::jitter(uint64_t base, bool positiveOnly) {
 
 /// RFC 8415 section 15: double, then cap at the state's maximum
 uint64_t Dhcp6Client::nextTimeout(uint64_t prev) {
-    uint64_t maxRt = _state == Dhcp6State::Soliciting  ? SOL_MAX_RT
+    uint64_t maxRt = _state == Dhcp6State::Soliciting  ? _solMaxRt
                      : _state == Dhcp6State::Requesting ? REQ_MAX_RT
                      : _state == Dhcp6State::Renewing   ? REN_MAX_RT
                      : _state == Dhcp6State::Rebinding  ? REB_MAX_RT
@@ -136,6 +136,8 @@ void Dhcp6Client::received(const Dhcp6In& m, uint32_t nowMs) {
         _ignored++;
         return;
     }
+    // RFC 8415 18.2.9/18.2.10: a server's SOL_MAX_RT applies even from a message that is otherwise not used
+    if (m.solMaxRt != 0) _solMaxRt = (uint64_t)m.solMaxRt * 1000;
     bool sameServer = m.serverIdLen == _serverIdLen && memcmp(m.serverId, _serverId, _serverIdLen) == 0;
 
     switch (_state) {

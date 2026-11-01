@@ -291,6 +291,27 @@ static void test_solicit_backs_off_to_max_rt_and_survives_millis_wrap() {
     TEST_ASSERT_TRUE(lastGap >= 3600u * 900u);           // and it got there
 }
 
+static void test_sol_max_rt_from_server_caps_solicit_backoff() {
+    // RFC 8415 18.2.9: applied even from an Advertise without addresses
+    Dhcp6Client c(MAC, fakeRandom);
+    uint32_t now = 0;
+    c.start(now);
+    until(c, &now, 2000);
+    Dhcp6In none = serverMsg(DHCP6_ADVERTISE, sentXid(), SRV_A, 0, nullptr, 0, 0, 0, 0);
+    none.iaStatus = DHCP6_STATUS_NOADDRSAVAIL;
+    none.solMaxRt = 120;
+    c.received(none, now);
+    uint32_t last = now, maxGap = 0, lastGap = 0;
+    for (uint32_t i = 0; i < 3600; i++, now += 1000) {
+        if (next(c, now).kind != Dhcp6Action::Send) continue;
+        lastGap = now - last;
+        if (lastGap > maxGap) maxGap = lastGap;
+        last = now;
+    }
+    TEST_ASSERT_TRUE(maxGap <= 120u * 1100u + 1000u);  // 120 s + 10 %
+    TEST_ASSERT_TRUE(lastGap >= 120u * 900u);
+}
+
 // ---- keeping the address ----
 
 static void test_renew_at_t1_rebind_at_t2() {
@@ -495,6 +516,7 @@ int main() {
     RUN_TEST(test_ia_with_t1_above_t2_is_not_used);
     RUN_TEST(test_request_gives_up_after_max_rc);
     RUN_TEST(test_solicit_backs_off_to_max_rt_and_survives_millis_wrap);
+    RUN_TEST(test_sol_max_rt_from_server_caps_solicit_backoff);
     RUN_TEST(test_renew_at_t1_rebind_at_t2);
     RUN_TEST(test_zero_t1_t2_use_half_and_eighty_percent);
     RUN_TEST(test_preferred_zero_lease_renews_at_half_valid_not_at_once);

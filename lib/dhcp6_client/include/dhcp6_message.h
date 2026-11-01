@@ -78,6 +78,7 @@ struct Dhcp6In {
     uint8_t preference;                    ///< Preference option, 0 when absent
     uint16_t status;                       ///< Message-level Status Code, Success when absent
     uint16_t iaStatus;                     ///< Status Code inside our IA_NA, Success when absent
+    uint32_t solMaxRt;                     ///< SOL_MAX_RT option in seconds (60-86400), 0 when absent or out of range
     bool hasLease;                         ///< Our IA_NA held a usable address
     Dhcp6Lease lease;                      ///< Valid only with hasLease
 };

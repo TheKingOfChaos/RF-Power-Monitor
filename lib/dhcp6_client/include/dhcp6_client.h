@@ -116,6 +116,7 @@ private:
     uint64_t _rt = 0;              ///< Current retransmission timeout
     uint64_t _exchangeStart = 0;   ///< First transmission of this exchange (Elapsed Time)
     uint32_t _count = 0;           ///< Transmissions in this exchange
+    uint64_t _solMaxRt;            ///< Solicit's maximum retransmission timeout (a server may set it)
 
     // Soliciting: the best Advertise so far
     bool _haveAdvert = false;

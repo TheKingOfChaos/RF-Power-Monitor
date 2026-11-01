@@ -317,6 +317,56 @@ static void test_parse_reads_preference() {
     TEST_ASSERT_EQUAL_UINT8(255, in.preference);
 }
 
+/// Kea's Advertise with a SOL_MAX_RT option (82) of `seconds` appended
+static Msg advertiseWithSolMaxRt(uint32_t seconds) {
+    Msg m = payloadOf(KEA_ADVERTISE, KEA_ADVERTISE_LEN);
+    const uint8_t opt[] = {0x00, 0x52, 0x00, 0x04};
+    memcpy(m.b + m.len, opt, sizeof(opt));
+    putBe32(m.b + m.len + 4, seconds);
+    m.len += 8;
+    return m;
+}
+
+static void test_parse_reads_sol_max_rt() {
+    Msg m = advertiseWithSolMaxRt(120);
+    Dhcp6In in;
+    TEST_ASSERT_EQUAL(Dhcp6Parse::Ok, dhcp6Parse(m.b, m.len, LAB_MAC_C1, in));
+    TEST_ASSERT_EQUAL_UINT32(120, in.solMaxRt);
+}
+
+static void test_parse_sol_max_rt_absent_is_zero() {
+    Msg m = payloadOf(KEA_ADVERTISE, KEA_ADVERTISE_LEN);
+    Dhcp6In in;
+    TEST_ASSERT_EQUAL(Dhcp6Parse::Ok, dhcp6Parse(m.b, m.len, LAB_MAC_C1, in));
+    TEST_ASSERT_EQUAL_UINT32(0, in.solMaxRt);
+}
+
+static void test_parse_ignores_sol_max_rt_out_of_range() {
+    // RFC 8415 section 21.24: 60 to 86400 s, other values are ignored
+    const uint32_t bad[] = {0, 59, 86401, 0xFFFFFFFFu};
+    for (uint32_t s : bad) {
+        Msg m = advertiseWithSolMaxRt(s);
+        Dhcp6In in;
+        TEST_ASSERT_EQUAL(Dhcp6Parse::Ok, dhcp6Parse(m.b, m.len, LAB_MAC_C1, in));
+        TEST_ASSERT_EQUAL_UINT32(0, in.solMaxRt);
+    }
+    Msg m = advertiseWithSolMaxRt(60);
+    Dhcp6In in;
+    TEST_ASSERT_EQUAL(Dhcp6Parse::Ok, dhcp6Parse(m.b, m.len, LAB_MAC_C1, in));
+    TEST_ASSERT_EQUAL_UINT32(60, in.solMaxRt);
+    m = advertiseWithSolMaxRt(86400);
+    TEST_ASSERT_EQUAL(Dhcp6Parse::Ok, dhcp6Parse(m.b, m.len, LAB_MAC_C1, in));
+    TEST_ASSERT_EQUAL_UINT32(86400, in.solMaxRt);
+}
+
+static void test_parse_rejects_sol_max_rt_with_wrong_length() {
+    Msg m = advertiseWithSolMaxRt(120);
+    m.b[m.len - 5] = 3;  // length 3
+    m.len -= 1;
+    Dhcp6In in;
+    TEST_ASSERT_EQUAL(Dhcp6Parse::Malformed, dhcp6Parse(m.b, m.len, LAB_MAC_C1, in));
+}
+
 struct Fixture {
     const uint8_t* frame;
     size_t len;
@@ -394,6 +444,10 @@ int main() {
     RUN_TEST(test_parse_prefers_address_with_nonzero_preferred_lifetime);
     RUN_TEST(test_parse_ignores_ia_na_with_other_iaid);
     RUN_TEST(test_parse_reads_preference);
+    RUN_TEST(test_parse_reads_sol_max_rt);
+    RUN_TEST(test_parse_sol_max_rt_absent_is_zero);
+    RUN_TEST(test_parse_ignores_sol_max_rt_out_of_range);
+    RUN_TEST(test_parse_rejects_sol_max_rt_with_wrong_length);
     RUN_TEST(test_parse_survives_every_truncation);
     RUN_TEST(test_parse_survives_every_single_byte_corruption);
     RUN_TEST(test_parse_leaves_output_untouched_on_failure);

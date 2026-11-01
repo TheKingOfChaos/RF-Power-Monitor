@@ -203,6 +203,12 @@ Dhcp6Parse dhcp6Parse(const uint8_t* msg, size_t len, const uint8_t mac[6], Dhcp
             if (olen < 2) return Dhcp6Parse::Malformed;
             in.status = rd16(v);
             break;
+        case OPT_SOL_MAX_RT: {
+            if (olen != 4) return Dhcp6Parse::Malformed;
+            uint32_t s = rd32(v);
+            in.solMaxRt = s >= 60 && s <= 86400 ? s : 0;  // RFC 8415 21.24: others are ignored
+            break;
+        }
         case OPT_IA_NA:
             if (olen < 12) return Dhcp6Parse::Malformed;
             if (rd32(v) == DHCP6_IAID && !readIaNa(v, olen, in)) return Dhcp6Parse::Malformed;
