@@ -135,7 +135,7 @@ class Ipv6Test(unittest.TestCase):
     def test_snmp_get_over_ipv6(self):
         resp = self.snmp_get_v6(GET_SYSDESCR)
         self.assertIsNotNone(resp, "no SNMP answer over IPv6")
-        self.assertIn(b"RF.Power-Monitor", resp)
+        self.assertIn(b"RF-Power-Monitor", resp)
 
     def pc_address_v6(self):
         """The PC's own IPv6 address towards the device (what the device sees as the source)."""
@@ -198,7 +198,7 @@ class Ipv6Test(unittest.TestCase):
             s.settimeout(1)
             s.sendto(GET_SYSDESCR, (self.ip4, SNMP_PORT))
             data, _ = s.recvfrom(2048)
-        self.assertIn(b"RF.Power-Monitor", data)
+        self.assertIn(b"RF-Power-Monitor", data)
 
     # ---- traps to an IPv6 destination ----
 

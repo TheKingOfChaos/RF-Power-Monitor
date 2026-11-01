@@ -47,7 +47,7 @@ check() {
     fi
 }
 
-check "get sysDescr"            'STRING: "RF.Power-Monitor host test"' snmpget $SNMP_OPTS $TARGET 1.3.6.1.2.1.1.1.0
+check "get sysDescr"            'STRING: "RF-Power-Monitor host test"' snmpget $SNMP_OPTS $TARGET 1.3.6.1.2.1.1.1.0
 check "get sysObjectID"         'OID: \.1\.3\.6\.1\.4\.1\.63050$' snmpget $SNMP_OPTS $TARGET 1.3.6.1.2.1.1.2.0
 check "get sysUpTime"           'Timeticks: \([0-9]+\)' snmpget $SNMP_OPTS $TARGET 1.3.6.1.2.1.1.3.0
 check "get sysServices"         'INTEGER: 72' snmpget $SNMP_OPTS $TARGET 1.3.6.1.2.1.1.7.0
@@ -71,7 +71,7 @@ check "set is rejected"         "${NO_SUCH}\.1\.3\.6\.1\.2\.1\.1\.5\.0" \
 check "sysName unchanged"       'STRING: "host-agent"' snmpget $SNMP_OPTS $TARGET 1.3.6.1.2.1.1.5.0
 check "wrong community: no reply" 'Timeout' snmpget -v1 -c wrong -r0 -t1 -On -M /dev/null $TARGET 1.3.6.1.2.1.1.1.0
 V2="-v2c -c public -r0 -t1 -On -M /dev/null"
-check "v2c get sysDescr"        'STRING: "RF.Power-Monitor host test"' snmpget $V2 $TARGET 1.3.6.1.2.1.1.1.0
+check "v2c get sysDescr"        'STRING: "RF-Power-Monitor host test"' snmpget $V2 $TARGET 1.3.6.1.2.1.1.1.0
 check "v2c noSuchObject"        '1\.99\.0 = No Such Object available on this agent at this OID' \
       snmpget $V2 $TARGET 1.3.6.1.2.1.1.99.0
 check "v2c noSuchInstance"      '1\.1\.5 = No Such Instance currently exists at this OID' \

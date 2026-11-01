@@ -1,4 +1,4 @@
-# Throw-away LibreNMS to check the RF.Power-Monitor definitions (based on librenms/docker examples/compose)
+# Throw-away LibreNMS to check the RF-Power-Monitor definitions (based on librenms/docker examples/compose)
 name: lnms-test
 
 x-env: &env

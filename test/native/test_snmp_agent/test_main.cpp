@@ -16,7 +16,7 @@ void setUp() {
     state.mainsChanges = 3;
     state.mainsLastChangeTicks = 100000;
     state.mainsAlarm = false;
-    state.sysDescr = "RF.Power-Monitor";
+    state.sysDescr = "RF-Power-Monitor";
     state.sysContact = "ops@example.com";
     state.sysName = "power-monitor";
     state.sysLocation = "Rack 4";
@@ -651,7 +651,7 @@ static void test_get_netsnmp_request_returns_sysdescr() {
     TEST_ASSERT_EQUAL_UINT8(1, r.count);
     TEST_ASSERT_EQUAL_STRING("1.3.6.1.2.1.1.1.0", str(r.names[0]));
     TEST_ASSERT_EQUAL_HEX8(BerTag::OctetString, r.tags[0]);
-    TEST_ASSERT_EQUAL_STRING("RF.Power-Monitor", r.strings[0]);
+    TEST_ASSERT_EQUAL_STRING("RF-Power-Monitor", r.strings[0]);
     TEST_ASSERT_EQUAL_STRING("public", r.community);
 }
 
@@ -664,7 +664,7 @@ static void test_get_every_object_value_and_type() {
     Reply r = request(agent, BerTag::GetRequest, oids, 10);
     TEST_ASSERT_EQUAL_INT32(0, r.errorStatus);
     TEST_ASSERT_EQUAL_UINT8(10, r.count);
-    TEST_ASSERT_EQUAL_STRING("RF.Power-Monitor", r.strings[0]);
+    TEST_ASSERT_EQUAL_STRING("RF-Power-Monitor", r.strings[0]);
     TEST_ASSERT_EQUAL_HEX8(BerTag::ObjectId, r.tags[1]);
     TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050", str(r.oids[1]));
     TEST_ASSERT_EQUAL_HEX8(BerTag::TimeTicks, r.tags[2]);
@@ -838,7 +838,7 @@ static void test_v2c_get_answers_in_v2c() {
     Reply r = requestV2c(agent, BerTag::GetRequest, oids, 2);
     TEST_ASSERT_EQUAL_INT32(SNMP_VERSION_2C, r.version);
     TEST_ASSERT_EQUAL_INT32(0, r.errorStatus);
-    TEST_ASSERT_EQUAL_STRING("RF.Power-Monitor", r.strings[0]);
+    TEST_ASSERT_EQUAL_STRING("RF-Power-Monitor", r.strings[0]);
     TEST_ASSERT_EQUAL_INT32(1, r.ints[1]);
 }
 

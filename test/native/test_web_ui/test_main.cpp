@@ -1260,11 +1260,11 @@ static void test_longest_values_still_fit_the_page() {
 static void test_pages_carry_the_project_name() {
     webSetUp();
     std::string login = get("/");  // no session: the login page
-    TEST_ASSERT_TRUE(login.find("<title>RF.Power-Monitor login</title>") != std::string::npos);
-    TEST_ASSERT_TRUE(login.find("</svg>RF.Power-Monitor</span>") != std::string::npos);
+    TEST_ASSERT_TRUE(login.find("<title>RF-Power-Monitor login</title>") != std::string::npos);
+    TEST_ASSERT_TRUE(login.find("</svg>RF-Power-Monitor</span>") != std::string::npos);
     std::string csrf;
     std::string page = get("/", logIn(csrf));
-    TEST_ASSERT_TRUE(page.find("<title>RF.Power-Monitor</title>") != std::string::npos);
+    TEST_ASSERT_TRUE(page.find("<title>RF-Power-Monitor</title>") != std::string::npos);
 }
 
 static void test_status_page_shows_switch() {

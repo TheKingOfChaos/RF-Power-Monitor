@@ -1,4 +1,4 @@
-# RF.Power-Monitor
+# RF-Power-Monitor
 
 A mains power monitor built on a Raspberry Pi Pico with a W5500 Ethernet module. It reports whether mains power is present over SNMP v1 and v2c, including traps, together with standard interface statistics (IF-MIB), the CPU temperature and the ambient temperature (TMP1075 on the carrier board), so it can be monitored by LibreNMS or any other SNMP manager. It is configured through a menu on the USB serial port.
 
@@ -100,7 +100,7 @@ All assignments are in [include/pins.h](include/pins.h).
 Connect to the Pico's USB serial port (`COM16` here) at **115200 baud, 8N1**, with PuTTY or any terminal. The menu appears right after boot, without waiting for the network; a `Network up after ... ms` message follows when the address is obtained. Press `?` and Enter to show the menu again.
 
 ```
-=== RF.Power-Monitor Menu ===
+=== RF-Power-Monitor Menu ===
 1. Show status
 2. Use DHCP
 3. Set static IP

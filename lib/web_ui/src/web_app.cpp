@@ -28,7 +28,7 @@ static void pageStart(TextBuffer& b, const char* title) {
           "<nav class=\"navbar navbar-dark bg-dark mb-4\"><div class=\"container\">"
           "<span class=\"navbar-brand fw-semibold d-flex align-items-center\">"
           "<svg class=\"me-2\" width=\"44\" height=\"28\" viewBox=\"" LOGO_VIEWBOX "\" aria-hidden=\"true\">"
-          "<path fill=\"" LOGO_COLOR "\" d=\"" LOGO_PATH "\"/></svg>RF.Power-Monitor</span>");
+          "<path fill=\"" LOGO_COLOR "\" d=\"" LOGO_PATH "\"/></svg>RF-Power-Monitor</span>");
 }
 
 /// Close the navbar and open the page container
@@ -156,7 +156,7 @@ const char* WebApp::stylesheet(size_t& len) {
 
 const char* WebApp::loginPage(int code, const char* reason, const char* text, size_t& len) {
     TextBuffer b(_body, sizeof(_body));
-    pageStart(b, "RF.Power-Monitor login");
+    pageStart(b, "RF-Power-Monitor login");
     navEnd(b);
     b.add("<div class=\"row justify-content-center\"><div class=\"col-sm-9 col-md-6 col-lg-4\">"
           "<div class=\"card shadow-sm\"><div class=\"card-body p-4\">"
@@ -209,7 +209,7 @@ const char* WebApp::mainPage(int code, const char* reason, size_t slot, WebBacke
     const char* csrf = _sessions.csrf(slot);
 
     TextBuffer b(_body, sizeof(_body));
-    pageStart(b, "RF.Power-Monitor");
+    pageStart(b, "RF-Power-Monitor");
     b.add("<div class=\"d-flex align-items-center gap-3\"><span class=\"navbar-text\">");
     b.addEscaped(st.hostname);
     b.add(" &middot; v");

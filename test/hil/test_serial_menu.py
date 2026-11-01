@@ -95,7 +95,7 @@ class SerialMenuTest(unittest.TestCase):
 
     def test_unknown_choice_shows_menu(self):
         out = self.dev.send("x", expect=r"\?\. Show this menu\r?\n> ")
-        self.assertIn("=== RF.Power-Monitor Menu ===", out)
+        self.assertIn("=== RF-Power-Monitor Menu ===", out)
 
     def test_backspace_edits_input(self):
         # "9<BS>1" must be read as "1"

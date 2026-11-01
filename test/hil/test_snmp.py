@@ -108,7 +108,7 @@ class SnmpAgentTest(unittest.TestCase):
     def test_get_sysdescr(self):
         rc, out = self.snmp("snmpget", "1.3.6.1.2.1.1.1.0")
         self.assertEqual(0, rc, out)
-        self.assertRegex(out, r'\.1\.3\.6\.1\.2\.1\.1\.1\.0 = STRING: "RF\.Power-Monitor \d+\.\d+\.\d+ ')
+        self.assertRegex(out, r'\.1\.3\.6\.1\.2\.1\.1\.1\.0 = STRING: "RF-Power-Monitor \d+\.\d+\.\d+ ')
 
     def test_get_sysobjectid_is_enterprise(self):
         rc, out = self.snmp("snmpget", "1.3.6.1.2.1.1.2.0")
@@ -198,7 +198,7 @@ class SnmpAgentTest(unittest.TestCase):
     def test_v2c_get(self):
         rc, out = self.snmp("snmpget", "1.3.6.1.2.1.1.1.0", ENTERPRISE + ".1.0", version="2c")
         self.assertEqual(0, rc, out)
-        self.assertRegex(out, r'1\.1\.0 = STRING: "RF\.Power-Monitor \d+\.\d+\.\d+ ')
+        self.assertRegex(out, r'1\.1\.0 = STRING: "RF-Power-Monitor \d+\.\d+\.\d+ ')
         self.assertRegex(out, r"63050\.1\.0 = INTEGER: [01]")
 
     def test_v2c_exceptions_instead_of_errors(self):

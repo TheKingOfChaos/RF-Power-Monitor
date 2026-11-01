@@ -76,7 +76,7 @@ static const char* trapVersionName(uint8_t v) {
  */
 static void printMenu() {
     Serial.println();
-    Serial.println("=== RF.Power-Monitor Menu ===");
+    Serial.println("=== RF-Power-Monitor Menu ===");
     Serial.println("1. Show status");
     Serial.println("2. Use DHCP");
     Serial.println("3. Set static IP");

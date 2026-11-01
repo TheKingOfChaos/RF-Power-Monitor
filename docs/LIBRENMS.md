@@ -1,14 +1,14 @@
 # LibreNMS
 
-The device works in LibreNMS as a plain SNMP device out of the box: it answers SNMPv2c, has the system group and the standard IF-MIB, so LibreNMS discovers it, graphs the Ethernet port's traffic and shows its uptime. To also get the mains power state and the CPU and ambient temperature as sensors, and the device recognised as an RF.Power-Monitor with the RF logo, add the definitions in [librenms/](../librenms/) to your LibreNMS installation.
+The device works in LibreNMS as a plain SNMP device out of the box: it answers SNMPv2c, has the system group and the standard IF-MIB, so LibreNMS discovers it, graphs the Ethernet port's traffic and shows its uptime. To also get the mains power state and the CPU and ambient temperature as sensors, and the device recognised as an RF-Power-Monitor with the RF logo, add the definitions in [librenms/](../librenms/) to your LibreNMS installation.
 
-> **Status:** tested with LibreNMS 26.9.1 (Docker, [librenms/test/compose.yml](../librenms/test/compose.yml)) against the real device running firmware 1.0.1: OS, version and hardware detected, all three sensors created with the right values and limits, the port polled with traffic rates, and a mains trap logged. The RF logo as device icon and device page logo was checked with LibreNMS (Docker, `latest`) on 2026-10-31 against the device. The definition files also validate against LibreNMS's JSON schemas. Re-checked on 2026-11-01 after the rename (3.0.0 definitions, Pico with the renamed firmware): detected as RF.Power-Monitor (`rfpowermonitor`) with version and hardware, all five sensors, the LLDP neighbour, an authenticationFailure trap in the event log, and snmptrapd resolving the `RF-POWER-MONITOR-MIB` trap names.
+> **Status:** tested with LibreNMS 26.9.1 (Docker, [librenms/test/compose.yml](../librenms/test/compose.yml)) against the real device running firmware 1.0.1: OS, version and hardware detected, all three sensors created with the right values and limits, the port polled with traffic rates, and a mains trap logged. The RF logo as device icon and device page logo was checked with LibreNMS (Docker, `latest`) on 2026-10-31 against the device. The definition files also validate against LibreNMS's JSON schemas. Re-checked on 2026-11-01 after the rename (3.0.0 definitions, Pico with the renamed firmware): detected as RF-Power-Monitor (`rfpowermonitor`) with version and hardware, all five sensors, the LLDP neighbour, an authenticationFailure trap in the event log, and snmptrapd resolving the `RF-POWER-MONITOR-MIB` trap names.
 
 ## What you get
 
 | In LibreNMS | From |
 |---|---|
-| OS "RF.Power-Monitor", type power, version (e.g. `1.0.2`) and hardware (`RP2040, W5500`) | sysObjectID `1.3.6.1.4.1.63050`, sysDescr |
+| OS "RF-Power-Monitor", type power, version (e.g. `1.0.2`) and hardware (`RP2040, W5500`) | sysObjectID `1.3.6.1.4.1.63050`, sysDescr |
 | Port `eth0` with traffic, packets, speed and status | IF-MIB (64-bit counters over v2c) |
 | State sensor "Mains power": present (OK) / lost (warning) | `mainsPowerStatus` |
 | State sensor "Mains lost over 60 s": none (OK) / lostTooLong (critical) | `mainsPowerAlarm` (firmware after 2.5.1) |
@@ -30,7 +30,7 @@ Tested on 2026-11-01 with LibreNMS (Docker, `latest`) and the firmware with `mai
 
 **Updating from an older definition:** copy the YAML files and the MIB again, rediscover the device (device → Settings → Rediscover, or `./lnms device:discover <device ip> -m sensors`) so the new sensor is created and "lost" becomes a warning, and restart snmptrapd so it knows the new trap's name. Until then it logs the trap by its parent's name, `RF-UPS-MONITOR-MIB::rfUpsMonitorNotifications.3` with a 2.5 MIB (the module's name before 3.0.0).
 
-**Updating to 3.0.0 (the project renamed RF.Power-Monitor):** the definition is now `rfpowermonitor` and the MIB `RF-POWER-MONITOR-MIB`. Remove the old files first, or two definitions match the device and detection may keep the old one:
+**Updating to 3.0.0 (the project renamed RF-Power-Monitor):** the definition is now `rfpowermonitor` and the MIB `RF-POWER-MONITOR-MIB`. Remove the old files first, or two definitions match the device and detection may keep the old one:
 
 ```bash
 cd /opt/librenms
@@ -39,7 +39,7 @@ rm -r mibs/rfupsmonitor
 rm html/images/os/rfupsmonitor.svg html/images/logos/rfupsmonitor.svg
 ```
 
-then copy the new files as under Install, rediscover the device (it becomes OS RF.Power-Monitor; its sensors are created again, so their history starts over) and restart snmptrapd so it loads the new MIB. Until the restart it names the traps `RF-UPS-MONITOR-MIB::...`; the trap script below accepts both names.
+then copy the new files as under Install, rediscover the device (it becomes OS RF-Power-Monitor; its sensors are created again, so their history starts over) and restart snmptrapd so it loads the new MIB. Until the restart it names the traps `RF-UPS-MONITOR-MIB::...`; the trap script below accepts both names.
 
 ## Install
 
@@ -66,7 +66,7 @@ Then add the device with SNMP v2c and its community (menu option 4 on the device
 
 or in the web interface: Devices → Add Device, SNMP version v2c. Use v2c, not v1: the 64-bit interface counters exist only in v2c.
 
-If the device was added before the files were copied, rediscover it (device → Settings → Rediscover, or `./discovery.php -h <device ip>`) so it is detected as RF.Power-Monitor.
+If the device was added before the files were copied, rediscover it (device → Settings → Rediscover, or `./discovery.php -h <device ip>`) so it is detected as RF-Power-Monitor.
 
 LibreNMS's daily update and `validate.php` may complain about these extra files, since they are not part of the LibreNMS repository. Keep a copy, and copy them again if an update removes them.
 
@@ -129,7 +129,7 @@ The `snmptrapd` container receives traps on UDP 162 of the PC. Set the device's 
 With WSL in mirrored networking mode (below), a firewall in front of WSL (the Hyper-V firewall) drops traps from the network until UDP 162 is allowed, once, in an administrator PowerShell:
 
 ```powershell
-New-NetFirewallHyperVRule -Name "RFPOWER-SNMP-Trap" -DisplayName "RF.Power-Monitor SNMP traps (WSL/Docker)" -Direction Inbound -VMCreatorId '{40E0AC32-46A5-438A-A0B2-2B479E8F2E90}' -Protocol UDP -LocalPorts 162 -Action Allow
+New-NetFirewallHyperVRule -Name "RFPOWER-SNMP-Trap" -DisplayName "RF-Power-Monitor SNMP traps (WSL/Docker)" -Direction Inbound -VMCreatorId '{40E0AC32-46A5-438A-A0B2-2B479E8F2E90}' -Protocol UDP -LocalPorts 162 -Action Allow
 ```
 
 Checked on 2026-10-31 with v2c traps: coldStart, authenticationFailure, mainsPowerLost and mainsPowerRestored were matched to the device, and the mains sensor changed 2 s after each mains trap. With v1 traps, a 30 s mains cut (Dirigera outlet) gave `RF-POWER-MONITOR-MIB::mainsPowerLost` and `...Restored` in the device's event log, and the "State Sensor Critical" alert opened 3.4 s after mains went off and recovered 3.4 s after it came back; and a wrong community an "SNMP Trap: Authentication Failure" entry. Traps a test sends from the PC itself (`snmptrap` in WSL) arrive without the firewall rule, so they do not show whether the device's traps get through.

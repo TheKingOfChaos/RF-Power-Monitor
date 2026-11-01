@@ -78,7 +78,7 @@ static void test_build_frame_without_addresses_has_no_management_tlv() {
 static void test_build_frame_fits_with_real_texts() {
     // The real sysDescr and the longest hostname, with both management addresses
     LldpLocal l = local();
-    l.sysDescr = "RF.Power-Monitor 3.0.0 mains power monitor (RP2040, W5500)";
+    l.sysDescr = "RF-Power-Monitor 3.0.0 mains power monitor (RP2040, W5500)";
     l.sysName = "abcdefghijklmnopqrstuvwxyz-12345";  // 32 characters, HOSTNAME_MAX_LENGTH
     l.portDescr = "W5500 10/100 Ethernet";
     l.hasIPv6 = true;

@@ -6,21 +6,24 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Changed
+- Carrier board: silkscreen and title blocks say RF-Power-Monitor, and the board, schematic, fab files, renders and 3D models are regenerated (the generator's RF-Power-Monitor change in 3.0.0 had not been applied to them yet). ERC and DRC clean; nothing else on the board changed.
+
 ## [3.0.0] - 2026-11-01
 
-The project is renamed **RF.Power-Monitor** (was RF-UPS-Monitor): it monitors mains power, not a UPS. The OIDs, the enterprise number 63050 and the settings file are unchanged, so a device updated from 2.x keeps its settings and is still polled by number; the names around it change.
+The project is renamed **RF-Power-Monitor** (was RF-UPS-Monitor): it monitors mains power, not a UPS. The OIDs, the enterprise number 63050 and the settings file are unchanged, so a device updated from 2.x keeps its settings and is still polled by number; the names around it change.
 
 ### Changed
-- Name in the boot banner, serial menu, web page, sysDescr (`RF.Power-Monitor 3.0.0 mains power monitor (RP2040, W5500)`), LLDP system description and the mDNS web service (`RF.Power-Monitor`).
+- Name in the boot banner, serial menu, web page, sysDescr (`RF-Power-Monitor 3.0.0 mains power monitor (RP2040, W5500)`), LLDP system description and the mDNS web service (`RF-Power-Monitor`).
 - MIB module `RF-UPS-MONITOR-MIB` is now `RF-POWER-MONITOR-MIB` (file `mibs/RF-POWER-MONITOR-MIB.txt`), its `rfUpsMonitor...` identifiers are `rfPowerMonitor...`; same OIDs. The MIB description now says v1 and v2c.
-- LibreNMS OS `rfupsmonitor` is now `rfpowermonitor` (definition files, logos, sysDescr match `RF.Power-Monitor`).
+- LibreNMS OS `rfupsmonitor` is now `rfpowermonitor` (definition files, logos, sysDescr match `RF-Power-Monitor`).
 - Default hostname / sysName `rf-ups-monitor` is now `rf-power-monitor` (new devices and factory reset). A stored name is kept: an updated device keeps `rf-ups-monitor` until it is changed (menu option 4 or the web page).
 - Test environment variables `RFUPS_*` are now `RFPOWER_*`, and the diagnostic build flag `RFUPS_DIAG` is `RFPOWER_DIAG`.
-- Carrier board generator: title block and silkscreen say RF.Power-Monitor.
+- Carrier board generator: title block and silkscreen say RF-Power-Monitor.
 - Docs and diagrams brought up to date: LLDP and LLDP-MIB, the watchdog, DHCPv6, the mains alarm, IPv6 trap destinations, current test counts.
 
 ### Updating from 2.x
-- **LibreNMS:** delete `rfupsmonitor.yaml` (os_detection and os_discovery), `html/images/{os,logos}/rfupsmonitor.svg` and `mibs/rfupsmonitor/`, copy the new files as in docs/LIBRENMS.md, rediscover the device (it becomes OS RF.Power-Monitor; sensor history under the old OS may start over) and restart snmptrapd so it loads the new MIB.
+- **LibreNMS:** delete `rfupsmonitor.yaml` (os_detection and os_discovery), `html/images/{os,logos}/rfupsmonitor.svg` and `mibs/rfupsmonitor/`, copy the new files as in docs/LIBRENMS.md, rediscover the device (it becomes OS RF-Power-Monitor; sensor history under the old OS may start over) and restart snmptrapd so it loads the new MIB.
 - **Other managers:** load `RF-POWER-MONITOR-MIB` instead of `RF-UPS-MONITOR-MIB`; trap and object OIDs are the same.
 - **Hostname:** optionally rename the device to `rf-power-monitor`; its DHCP name, mDNS name and sysName change with it.
 - **Tests:** rename `RFUPS_*` environment variables to `RFPOWER_*`.

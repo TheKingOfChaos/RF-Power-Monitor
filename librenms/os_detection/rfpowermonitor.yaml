@@ -1,5 +1,5 @@
 os: rfpowermonitor
-text: 'RF.Power-Monitor'
+text: 'RF-Power-Monitor'
 type: power
 icon: rfpowermonitor
 mib_dir: rfpowermonitor

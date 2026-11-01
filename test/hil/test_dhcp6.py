@@ -120,7 +120,7 @@ class Dhcp6Test(unittest.TestCase):
             s.settimeout(2)
             s.sendto(GET_SYSDESCR, (addr, SNMP_PORT, 0, 0))
             data, _ = s.recvfrom(2048)
-        self.assertIn(b"RF.Power-Monitor", data)
+        self.assertIn(b"RF-Power-Monitor", data)
 
     def test_lease_is_renewed(self):
         self.net.start(managed=True, other=False, valid_s=120, preferred_s=60)  # T1 30 s, T2 48 s

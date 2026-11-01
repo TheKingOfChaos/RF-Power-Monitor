@@ -91,7 +91,7 @@ class StaticIpv6Test(unittest.TestCase):
                 s.settimeout(2)
                 s.sendto(GET_SYSDESCR, (address, SNMP_PORT))
                 data, _ = s.recvfrom(2048)
-            self.assertIn(b"RF.Power-Monitor", data)
+            self.assertIn(b"RF-Power-Monitor", data)
 
             conn = http.client.HTTPConnection(address, 80, timeout=5)
             conn.request("GET", "/", headers={"Host": "[%s]" % address})

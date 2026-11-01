@@ -8,7 +8,7 @@ IMPORTS
 
 rfPowerMonitor MODULE-IDENTITY
     LAST-UPDATED "202611010100Z"
-    ORGANIZATION "RF.Power-Monitor project"
+    ORGANIZATION "RF-Power-Monitor project"
     CONTACT-INFO
         "https://github.com/TheKingOfChaos/RF-UPS-Monitor-v3
          kenneth@tkoc.dk"
@@ -19,7 +19,7 @@ rfPowerMonitor MODULE-IDENTITY
          implemented."
     REVISION "202611010100Z"
     DESCRIPTION
-        "Project renamed RF.Power-Monitor: module RF-UPS-MONITOR-MIB is now
+        "Project renamed RF-Power-Monitor: module RF-UPS-MONITOR-MIB is now
          RF-POWER-MONITOR-MIB and the rfUpsMonitor... names are rfPowerMonitor...
          (same OIDs)."
     REVISION "202611010000Z"
@@ -195,7 +195,7 @@ rfPowerMonitorMainsNotificationGroup NOTIFICATION-GROUP
 rfPowerMonitorCompliance MODULE-COMPLIANCE
     STATUS      current
     DESCRIPTION
-        "Every RF.Power-Monitor agent implements all objects and
+        "Every RF-Power-Monitor agent implements all objects and
          notifications; ambientTemperature only with the sensor."
     MODULE      -- this module
         MANDATORY-GROUPS { rfPowerMonitorMainsGroup, rfPowerMonitorMainsNotificationGroup,
