@@ -1,4 +1,4 @@
-"""HIL check of the DHCPv6 test network itself (opt-in: RFUPS_DHCP6_TEST=1).
+"""HIL check of the DHCPv6 test network itself (opt-in: RFPOWER_DHCP6_TEST=1).
 
 Works with any firmware: a router advertisement with only the O flag makes lwIP's
 stateless DHCPv6 client on the device send an Information-request to ff02::1:2.
@@ -8,7 +8,7 @@ everything the DHCPv6 address tests need. Needs root in WSL (`wsl -u root`),
 python3-scapy and kea-dhcp6-server there (docs/TESTING.md).
 
 Run:
-    $env:RFUPS_DHCP6_TEST = "1"
+    $env:RFPOWER_DHCP6_TEST = "1"
     %USERPROFILE%\\.platformio\\penv\\Scripts\\python.exe -m unittest discover -s test/hil -p "test_dhcp6_testnet.py" -v
 """
 
@@ -29,7 +29,7 @@ def ipv6_addresses(raw):
     return ll, glob
 
 
-@unittest.skipUnless(os.environ.get("RFUPS_DHCP6_TEST") == "1", "set RFUPS_DHCP6_TEST=1 to run the DHCPv6 test network")
+@unittest.skipUnless(os.environ.get("RFPOWER_DHCP6_TEST") == "1", "set RFPOWER_DHCP6_TEST=1 to run the DHCPv6 test network")
 class Dhcp6TestNetTest(unittest.TestCase):
 
     @classmethod

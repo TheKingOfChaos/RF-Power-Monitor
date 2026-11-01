@@ -39,7 +39,7 @@ Restart VS Code (or open a new terminal) afterwards so `PATH` is refreshed, then
 
 ### Serial port
 
-The Pico is expected on `COM16` (set in `platformio.ini`; the HIL tests read `RFUPS_PORT`). Close PuTTY or any serial monitor first: an open port gives "Access denied" and the upload fails.
+The Pico is expected on `COM16` (set in `platformio.ini`; the HIL tests read `RFPOWER_PORT`). Close PuTTY or any serial monitor first: an open port gives "Access denied" and the upload fails.
 
 ## Running the tests
 
@@ -98,14 +98,14 @@ They use the Python and `pyserial` that come with PlatformIO, so there is nothin
 The device must be in DHCP mode when the run starts, and is left in DHCP mode. The menu is available before the network is up, so tests that need the network call `Device.wait_connected()` first. The static IP test is skipped unless you give it a free address:
 
 ```powershell
-$env:RFUPS_STATIC_IP = "10.10.6.250"   # must not be in use on the LAN
-$env:RFUPS_STATIC_MASK = "255.255.0.0" # optional, default 255.255.0.0
-$env:RFUPS_STATIC_GW = "10.10.0.1"     # optional, default: current DHCP gateway
-$env:RFUPS_MANUAL_MAINS = "1"          # optional, mains off/on tests where you switch mains when asked
-$env:RFUPS_MANUAL_BUTTON = "1"         # optional, interactive factory reset button test
-$env:RFUPS_DHCP_TRAP_TARGET = "10.10.6.65" # optional: the address your DHCP server sends in option 224
-$env:RFUPS_STATIC_IPV6 = "fd16:d833:4f0e:3ece::249" # optional: free address in the device's /64 (static IPv6 test)
-$env:RFUPS_STATIC_IPV6_GATEWAY = "fe80::1"         # optional: gateway for that test (stored and shown only)
+$env:RFPOWER_STATIC_IP = "10.10.6.250"   # must not be in use on the LAN
+$env:RFPOWER_STATIC_MASK = "255.255.0.0" # optional, default 255.255.0.0
+$env:RFPOWER_STATIC_GW = "10.10.0.1"     # optional, default: current DHCP gateway
+$env:RFPOWER_MANUAL_MAINS = "1"          # optional, mains off/on tests where you switch mains when asked
+$env:RFPOWER_MANUAL_BUTTON = "1"         # optional, interactive factory reset button test
+$env:RFPOWER_DHCP_TRAP_TARGET = "10.10.6.65" # optional: the address your DHCP server sends in option 224
+$env:RFPOWER_STATIC_IPV6 = "fd16:d833:4f0e:3ece::249" # optional: free address in the device's /64 (static IPv6 test)
+$env:RFPOWER_STATIC_IPV6_GATEWAY = "fe80::1"         # optional: gateway for that test (stored and shown only)
 ```
 
 ### Mains tests with a smart plug
@@ -113,23 +113,23 @@ $env:RFUPS_STATIC_IPV6_GATEWAY = "fe80::1"         # optional: gateway for that 
 The mains tests switch the device's mains input off and on. They run automatically when the mains detection circuit is fed from an outlet on an IKEA Dirigera hub ([test/hil/mains_switch.py](../test/hil/mains_switch.py)):
 
 ```powershell
-$env:RFUPS_MAINS_SWITCH = "dirigera"
-$env:RFUPS_DIRIGERA_IP = "10.10.6.124"        # the hub
-$env:RFUPS_DIRIGERA_OUTLET = "Stikprop 1"     # outlet name in the IKEA app
+$env:RFPOWER_MAINS_SWITCH = "dirigera"
+$env:RFPOWER_DIRIGERA_IP = "10.10.6.124"        # the hub
+$env:RFPOWER_DIRIGERA_OUTLET = "Stikprop 1"     # outlet name in the IKEA app
 # optional, paths on the WSL side, these are the defaults:
-$env:RFUPS_DIRIGERA_TOKEN = "~/dirigera/token"
-$env:RFUPS_DIRIGERA_PYTHON = "~/dirigera/.venv/bin/python"
+$env:RFPOWER_DIRIGERA_TOKEN = "~/dirigera/token"
+$env:RFPOWER_DIRIGERA_PYTHON = "~/dirigera/.venv/bin/python"
 ```
 
 One-time setup in WSL: `python3 -m venv ~/dirigera/.venv && ~/dirigera/.venv/bin/pip install dirigera`, then `~/dirigera/.venv/bin/generate-token <hub ip>` (press the button on the hub) and save the token in `~/dirigera/token` with `chmod 600`. Never commit the token. The tests call [test/hil/dirigera_outlet.py](../test/hil/dirigera_outlet.py) with that Python and always switch the outlet back on, also when a test fails. One switch takes about a second; the device sees the change about 0.1 s after the hub confirms it.
 
-Without `RFUPS_MAINS_SWITCH`, `RFUPS_MANUAL_MAINS=1` runs the same tests with prompts for you to switch mains by hand (except the short-outage test). With neither, they are skipped.
+Without `RFPOWER_MAINS_SWITCH`, `RFPOWER_MANUAL_MAINS=1` runs the same tests with prompts for you to switch mains by hand (except the short-outage test). With neither, they are skipped.
 
 The trap tests (`test_snmp_traps.py`) set the device's trap destination to this PC and listen on UDP 162. Windows Firewall asks once whether PlatformIO's Python may receive network traffic; allow it on the network the Pico is on, or no traps arrive. The tests restore the previous trap destination.
 
 Flashing an embedded test replaces the firmware, so always reflash with `pio run -e pico -t upload` before HIL tests or normal use.
 
-### DHCPv6 test network (`RFUPS_DHCP6_TEST=1`)
+### DHCPv6 test network (`RFPOWER_DHCP6_TEST=1`)
 
 The DHCPv6 tests (`test_dhcp6_testnet.py`, `test_dhcp6.py`) need a router that sets the M flag and a DHCPv6 server, which an ordinary LAN does not have. [test/hil/dhcp6_testnet.py](../test/hil/dhcp6_testnet.py) makes one on this PC without disturbing the LAN, in WSL (mirrored networking) as root:
 
@@ -139,14 +139,14 @@ The DHCPv6 tests (`test_dhcp6_testnet.py`, `test_dhcp6.py`) need a router that s
 
 One-time setup: `wsl -d Ubuntu -u root -- apt install python3-scapy kea-dhcp6-server`, then `systemctl disable --now kea-dhcp6-server` (the package starts a service; the tests run their own Kea). The tests run commands as root with `wsl -u root`. A VPN such as Cisco AnyConnect blocks IPv6 between this PC and the device ("General failure" on ping6): disconnect it for these tests and for `test_ipv6.py`.
 
-### LLDP switch (`RFUPS_LLDP_SWITCH`, `RFUPS_LLDP_SWITCH_CONSOLE`)
+### LLDP switch (`RFPOWER_LLDP_SWITCH`, `RFPOWER_LLDP_SWITCH_CONSOLE`)
 
 The LLDP tests (`test_lldp.py`) need the device plugged into a switch that sends LLDP; other networks may have none, so they are opt-in:
 
 ```powershell
-$env:RFUPS_LLDP_SWITCH = "1"                # the device's switch sends LLDP: the status screen must name it
-$env:RFUPS_LLDP_SWITCH_CONSOLE = "COM45"    # optional: the switch's serial console (Junos, 9600 baud)
-$env:RFUPS_LLDP_SWITCH_CREDENTIALS = "..."  # optional, default secret/switch.md
+$env:RFPOWER_LLDP_SWITCH = "1"                # the device's switch sends LLDP: the status screen must name it
+$env:RFPOWER_LLDP_SWITCH_CONSOLE = "COM45"    # optional: the switch's serial console (Junos, 9600 baud)
+$env:RFPOWER_LLDP_SWITCH_CREDENTIALS = "..."  # optional, default secret/switch.md
 ```
 
 With the console, the tests log in, run `show lldp neighbors` (operational commands only, the configuration is never touched) and log out. The login file has the lines `username: ...` and `password: ...`; keep it in `secret/` (git-ignored) and never commit it. The tests never print it. A root login lands in the shell; the helper starts `cli` itself.
@@ -298,10 +298,10 @@ Uses `test/settings_a.json` and `test/settings_b.json`, never the real settings.
 ### `test/hil/test_snmp.py`: the SNMP agent on the device
 - `snmpget` of sysDescr, sysObjectID, several varbinds in order; sysUpTime advances ~100 ticks per second
 - Mains objects present and consistent with the serial status screen
-- `snmpwalk` of everything (46 objects in v1 in order, End of MIB; v1 does not see the eight Counter64 columns), the system group (7) and the enterprise subtree (5; 4 with `RFUPS_NO_TMP1075`)
+- `snmpwalk` of everything (46 objects in v1 in order, End of MIB; v1 does not see the eight Counter64 columns), the system group (7) and the enterprise subtree (5; 4 with `RFPOWER_NO_TMP1075`)
 - IF-MIB: ifDescr, ifType, ifMtu, admin/oper status, ifName; ifSpeed, ifHighSpeed and ifPhysAddress match the status screen; 20 requests raise the 64-bit packet and octet counters; ifInOctets is the low half of ifHCInOctets; the receive drop counters match the status screen; Counter64 is noSuchName in v1
 - cpuTemperature between 10 and 85 °C and within 2 °C of the status screen
-- ambientTemperature between 5 and 50 °C, within 0.5 °C of the status screen and below the CPU temperature (skipped with `RFUPS_NO_TMP1075=1`, for a module without the carrier board)
+- ambientTemperature between 5 and 50 °C, within 0.5 °C of the status screen and below the CPU temperature (skipped with `RFPOWER_NO_TMP1075=1`, for a module without the carrier board)
 - noSuchName for unknown OIDs and past the end; `snmpset` rejected and nothing changed
 - Wrong community and v2c get no reply and are counted on the status screen
 - SNMP settings set from the menu show up in `snmpget` immediately (no reboot), the old community is refused, and they survive a reboot; the originals are restored afterwards
@@ -315,7 +315,7 @@ Uses `test/settings_a.json` and `test/settings_b.json`, never the real settings.
 - Login form without device data, security headers; wrong password refused and logged; login shows the device status
 - 5 failed logins lock out even the right password for 30 s, logged as `web locked out`
 - Actions need session and CSRF token; community change applies to SNMP at once (old community refused) and is restored; invalid community and invalid static address rejected without restart
-- Restart button and DHCP save restart the device (sysUpTime restarts, default password kept); static IP from the web page and back (opt-in `RFUPS_STATIC_IP`)
+- Restart button and DHCP save restart the device (sysUpTime restarts, default password kept); static IP from the web page and back (opt-in `RFPOWER_STATIC_IP`)
 - Hostname from the web page: status screen, SNMP sysName and mDNS (`name.local` resolved by the PC) follow at once without restart; invalid names refused; restored afterwards
 - Web interface off via serial option 8: port 80 closed, SNMP keeps working, off survives a restart, back on; the page turning itself off asks first, then closes port 80, and serial option 8 reopens it at once; three logins per round leave closed connections in TIME-WAIT on port 80, and turning the web interface off and on still opens the port within 3 s, three rounds in a row (`SO_REUSE`; without it the port stayed closed for about 2 minutes)
 - Logo and favicon: `/favicon.svg` is the path from `logo/RF-canopy-RGB-Orange.svg`, logo in the navbar and on the login card
@@ -334,7 +334,7 @@ Uses `test/settings_a.json` and `test/settings_b.json`, never the real settings.
 
 ### `test/hil/test_ipv6_static.py`: static IPv6 address
 - Menu option 9 refuses link-local addresses, `/64` suffixes and gateways outside the /64, shows the address in short form, and `n` changes nothing
-- Opt-in (`RFUPS_STATIC_IPV6`): the address is set, the device restarts, the address passes duplicate detection and is marked `(static)` while the link-local and SLAAC addresses stay; ping6, SNMP and the web page answer on it; then it is removed again
+- Opt-in (`RFPOWER_STATIC_IPV6`): the address is set, the device restarts, the address passes duplicate detection and is marked `(static)` while the link-local and SLAAC addresses stay; ping6, SNMP and the web page answer on it; then it is removed again
 - The device must start without a static IPv6 address (the suite skips otherwise)
 
 ### `test/native/test_lldp`: `lib/lldp`
@@ -346,15 +346,15 @@ Uses `test/settings_a.json` and `test/settings_b.json`, never the real settings.
 - LLDP-MIB (`test_snmp_agent`): lldpLocPortTable, lldpRemTable with the EX2200-C neighbour in v1 and v2c (Junos port name served as interfaceName), walks and GetBulk from `1.0` with and without a neighbour, noSuchInstance for another row (also another time mark), noSuchObject for an unknown column, mib-2 walks unchanged; `scripts/host_agent_check.sh` checks the same tables with net-snmp's tools (numeric OIDs: WSL has no LLDP-MIB)
 
 ### `test/hil/test_lldp.py`: LLDP on the device (opt-in, see above)
-- The status screen names the switch and port within 35 s (`RFUPS_LLDP_SWITCH=1`)
-- `snmpget` (v1 and v2c) of lldpRemSysName and lldpRemPortId gives the same switch and port as the status screen, lldpLocPortDesc names our port (`RFUPS_LLDP_SWITCH=1`); `test_snmp.py`'s walks from the root expect the LLDP-MIB objects first, the remote row only while the status screen shows a switch
-- The switch lists the device by MAC with its hostname, port description and IPv4 address, and the device shows the port the switch says it is on (`RFUPS_LLDP_SWITCH_CONSOLE`)
+- The status screen names the switch and port within 35 s (`RFPOWER_LLDP_SWITCH=1`)
+- `snmpget` (v1 and v2c) of lldpRemSysName and lldpRemPortId gives the same switch and port as the status screen, lldpLocPortDesc names our port (`RFPOWER_LLDP_SWITCH=1`); `test_snmp.py`'s walks from the root expect the LLDP-MIB objects first, the remote row only while the status screen shows a switch
+- The switch lists the device by MAC with its hostname, port description and IPv4 address, and the device shows the port the switch says it is on (`RFPOWER_LLDP_SWITCH_CONSOLE`)
 - A new hostname reaches the switch within 5 s (fails with a firmware that sends only every 30 s); the old one is restored
 
 ### `test/hil/test_dhcp_trap.py`: trap destination from DHCP
 - Choosing `dhcp` asks for option 224 in the renewal, the LAN's server still answers (same lease and IP, SNMP answers), the status screen reports the ACK; back to fixed
 - A forged DHCPACK with option 224 (Kea's capture re-addressed to the device, wrong transaction id) sent from this PC is ignored and counted
-- Opt-in `RFUPS_DHCP_TRAP_TARGET=<address>`: with a server that sends option 224, the destination in use is that address; if it is this PC, an authenticationFailure trap arrives there
+- Opt-in `RFPOWER_DHCP_TRAP_TARGET=<address>`: with a server that sends option 224, the destination in use is that address; if it is this PC, an authenticationFailure trap arrives there
 
 ### `test/hil/test_snmp_traps.py`: traps on the device (every test runs with v1 and with v2c traps)
 - coldStart arrives after a reboot (empty ARP table, the trap is the first packet to this PC), exactly once, from the device's address, with a small time-stamp
@@ -368,7 +368,7 @@ Uses `test/settings_a.json` and `test/settings_b.json`, never the real settings.
 - Frames: headers and checksum identical to the device's and dhcpcd's frames; replies only for this MAC, ports 547 -> 546, valid checksum, no extension headers; router advertisements only with hop limit 255 from a link-local source
 - Client: first Solicit within 1 s, best preference wins (255 at once), Request gives up after 10, Renew at T1 and Rebind at T2 (half and 80 % of preferred when 0), lease extended by a Renew reply, address removed at the end of the valid lifetime, infinite lifetimes never expire, a duplicate is declined, wrong transaction id or server ignored, Solicit backs off to 3600 s across a `millis()` wrap
 
-### `test/hil/test_dhcp6_testnet.py`, `test_dhcp6.py`: DHCPv6 on the device (opt-in, `RFUPS_DHCP6_TEST=1`)
+### `test/hil/test_dhcp6_testnet.py`, `test_dhcp6.py`: DHCPv6 on the device (opt-in, `RFPOWER_DHCP6_TEST=1`)
 - The test network works with any firmware: an O-flag advertisement makes lwIP's stateless client send an Information-request, Kea replies, and the device's SLAAC address is unchanged
 - With the M flag the device gets an address from Kea's pool, marked `(dhcpv6)`, that answers ping6 and SNMP; the lease is renewed; the address is removed when Kea stops; an address this PC already uses is declined; core 0 keeps > 1 KB of stack; this PC's IPv6 default routes are unchanged
 - Each test reboots the device first (option 2, DHCP unchanged); needs community `public`
@@ -378,7 +378,7 @@ Uses `test/settings_a.json` and `test/settings_b.json`, never the real settings.
 - A menu reboot (option 2, DHCP unchanged) shows `Last restart: reboot` and does not count; twice the watchdog timeout of normal running restarts nothing
 - Each test restarts the device once; settings are not touched (the reboot test skips in static mode)
 
-### `test/hil/test_factory_reset.py`: the reset button (manual, `RFUPS_MANUAL_BUTTON=1`)
+### `test/hil/test_factory_reset.py`: the reset button (manual, `RFPOWER_MANUAL_BUTTON=1`)
 - A ~3 s press is released without reset, the log shows how long it was held, and SNMP keeps answering while it is held
 - A 10 s hold resets after 10000-10100 ms (SNMP keeps answering with the community set before the hold), defaults are saved in under 2 s, the device reboots with DHCP, `public`, default sysName, no trap destination and default stored static IP
 - Your previous SNMP settings and stored static IP are restored afterwards

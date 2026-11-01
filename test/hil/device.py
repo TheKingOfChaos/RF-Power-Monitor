@@ -13,7 +13,7 @@ import time
 import serial
 from serial.tools import list_ports
 
-PORT = os.environ.get("RFUPS_PORT", "COM16")
+PORT = os.environ.get("RFPOWER_PORT", "COM16")
 BAUD = 115200
 PROMPT = "> "
 

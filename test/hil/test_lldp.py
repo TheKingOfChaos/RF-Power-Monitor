@@ -1,8 +1,8 @@
 """HIL tests: LLDP, the device announcing itself and showing the switch it is plugged into.
 
 Opt-in, since another network may have no LLDP switch:
-    RFUPS_LLDP_SWITCH=1               the device is plugged into a switch that sends LLDP
-    RFUPS_LLDP_SWITCH_CONSOLE=COM45   that switch's serial console (Junos), to read its neighbour list;
+    RFPOWER_LLDP_SWITCH=1               the device is plugged into a switch that sends LLDP
+    RFPOWER_LLDP_SWITCH_CONSOLE=COM45   that switch's serial console (Junos), to read its neighbour list;
                                       login in secret/switch.md (see switch_console.py)
 
 Run: python -m unittest discover -s test/hil -p "test_lldp.py" -v
@@ -16,8 +16,8 @@ import unittest
 from device import Device
 from snmp_tools import net_snmp
 
-LISTEN = os.environ.get("RFUPS_LLDP_SWITCH") == "1"
-CONSOLE = os.environ.get("RFUPS_LLDP_SWITCH_CONSOLE")
+LISTEN = os.environ.get("RFPOWER_LLDP_SWITCH") == "1"
+CONSOLE = os.environ.get("RFPOWER_LLDP_SWITCH_CONSOLE")
 if CONSOLE:
     from switch_console import SwitchConsole
 
@@ -46,7 +46,7 @@ class LldpTest(unittest.TestCase):
                 return interface, sw.run("show lldp neighbors interface %s" % interface)
         return None, listing
 
-    @unittest.skipUnless(LISTEN, "set RFUPS_LLDP_SWITCH=1 when the device is plugged into an LLDP switch")
+    @unittest.skipUnless(LISTEN, "set RFPOWER_LLDP_SWITCH=1 when the device is plugged into an LLDP switch")
     def test_status_shows_the_switch(self):
         # The switch sends every 30 s; allow one interval and a bit
         deadline = time.time() + 35
@@ -57,7 +57,7 @@ class LldpTest(unittest.TestCase):
             time.sleep(3)
         self.assertRegex(st["switch"] or "", r"^\S.*, port \S+", st["raw"])
 
-    @unittest.skipUnless(LISTEN, "set RFUPS_LLDP_SWITCH=1 when the device is plugged into an LLDP switch")
+    @unittest.skipUnless(LISTEN, "set RFPOWER_LLDP_SWITCH=1 when the device is plugged into an LLDP switch")
     def test_snmp_lldp_tables_name_the_switch(self):
         # LLDP-MIB as LibreNMS reads it: lldpRemSysName and lldpRemPortId give the same switch and port
         # as the status screen, in v1 and v2c, and lldpLocPortDesc names our port
@@ -74,7 +74,7 @@ class LldpTest(unittest.TestCase):
             self.assertIn('7.0.1.1 = STRING: "%s"' % port, out)
             self.assertIn('= STRING: "W5500 10/100 Ethernet"', out)
 
-    @unittest.skipUnless(CONSOLE, "set RFUPS_LLDP_SWITCH_CONSOLE to the switch's console port")
+    @unittest.skipUnless(CONSOLE, "set RFPOWER_LLDP_SWITCH_CONSOLE to the switch's console port")
     def test_switch_lists_the_device(self):
         st = self.dev.status()
         mac = st["mac"].lower()
@@ -88,7 +88,7 @@ class LldpTest(unittest.TestCase):
         if LISTEN:
             self.assertIn(", port %s" % interface, self.dev.status()["switch"])
 
-    @unittest.skipUnless(CONSOLE, "set RFUPS_LLDP_SWITCH_CONSOLE to the switch's console port")
+    @unittest.skipUnless(CONSOLE, "set RFPOWER_LLDP_SWITCH_CONSOLE to the switch's console port")
     def test_switch_learns_new_hostname_within_5_s(self):
         d = self.dev
         before = d.status()

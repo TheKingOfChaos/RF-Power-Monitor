@@ -4,8 +4,8 @@ Only operational commands are run (show ...); the configuration is never touched
 The login is read from a local file that must not be committed (secret/ is in
 .gitignore); it is never printed, logged or put in an exception.
 
-    RFUPS_LLDP_SWITCH_CONSOLE      serial port of the console, e.g. COM45 (9600 baud, Junos default)
-    RFUPS_LLDP_SWITCH_CREDENTIALS  login file, default secret/switch.md, lines "username: ..." and "password: ..."
+    RFPOWER_LLDP_SWITCH_CONSOLE      serial port of the console, e.g. COM45 (9600 baud, Junos default)
+    RFPOWER_LLDP_SWITCH_CREDENTIALS  login file, default secret/switch.md, lines "username: ..." and "password: ..."
 """
 
 import os
@@ -15,8 +15,8 @@ import time
 import serial
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-PORT = os.environ.get("RFUPS_LLDP_SWITCH_CONSOLE")
-CREDENTIALS = os.environ.get("RFUPS_LLDP_SWITCH_CREDENTIALS", os.path.join(ROOT, "secret", "switch.md"))
+PORT = os.environ.get("RFPOWER_LLDP_SWITCH_CONSOLE")
+CREDENTIALS = os.environ.get("RFPOWER_LLDP_SWITCH_CREDENTIALS", os.path.join(ROOT, "secret", "switch.md"))
 
 CLI_PROMPT = re.compile(r"\S+@\S+> $")  # Junos operational mode
 SHELL_PROMPT = re.compile(r"(%|#) $")  # root logs in to the FreeBSD shell first

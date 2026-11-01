@@ -87,11 +87,11 @@ An item is only ticked when it is implemented **and** its tests exist and pass (
 - [x] Debouncer (5 ms), detection within 10 ms — `test/native/test_power_debouncer`
 - [x] GPIO27 sampled at 1 kHz on core 1, seqlock hand-over to core 0 — `test/embedded/test_mains_input`
 - [x] Status screen line and serial log on every change — HIL `test_status_reports_mains_power`
-- [x] Verify loss/restore with real mains — HIL `test_mains_loss_and_restore_are_reported` (manual, `RFUPS_MANUAL_MAINS=1`, passed 2026-10-16)
+- [x] Verify loss/restore with real mains — HIL `test_mains_loss_and_restore_are_reported` (manual, `RFPOWER_MANUAL_MAINS=1`, passed 2026-10-16)
 - [x] Expose in MIB: mainsPowerStatus, mainsPowerChanges, mainsPowerLastChange
 - [x] SNMP trap on change: mainsPowerLost / mainsPowerRestored with the three mains objects — native byte-exact test
 - [x] Mains traps with real mains, v1 and v2c — HIL `test_mains_traps_with_real_mains` (Dirigera outlet, passed 2026-10-17)
-- [x] Mains tests automated with an IKEA Dirigera smart plug (`RFUPS_MAINS_SWITCH=dirigera`, `test/hil/mains_switch.py`); manual mode kept
+- [x] Mains tests automated with an IKEA Dirigera smart plug (`RFPOWER_MAINS_SWITCH=dirigera`, `test/hil/mains_switch.py`); manual mode kept
 
 ## 4. Configuration storage
 - [x] LittleFS mount
@@ -123,7 +123,7 @@ An item is only ticked when it is implemented **and** its tests exist and pass (
 - [x] 10 s hold counted from the debounced press, triggers once, release just before 10 s cancels, button held at boot ignored — native
 - [x] LED feedback: slow blink while held, fast after trigger — native
 - [x] Defaults saved (incl. trap destination), reboot within 2 s of the trigger
-- [x] Test with the real button (SW1 on the carrier): timing, LED, SNMP keeps answering, settings restored — HIL `test_factory_reset.py` (manual, `RFUPS_MANUAL_BUTTON=1`), passed 2026-10-26
+- [x] Test with the real button (SW1 on the carrier): timing, LED, SNMP keeps answering, settings restored — HIL `test_factory_reset.py` (manual, `RFPOWER_MANUAL_BUTTON=1`), passed 2026-10-26
 
 ## 7. Testing infrastructure
 - [x] `native` environment, MinGW-w64 on Windows, `-Wall -Wextra -Werror`
@@ -169,7 +169,7 @@ An item is only ticked when it is implemented **and** its tests exist and pass (
 
 ## 13. IPv6 (2.3.0)
 - [x] Dual stack (`PIO_FRAMEWORK_ARDUINO_ENABLE_IPV6`): link-local + SLAAC, SNMP/web/mDNS over IPv6, addresses on the status screen and web page — HIL `test_ipv6.py`
-- [x] lwIP timer pool +12 (`MEMP_NUM_SYS_TIMEOUT`): with IPv6, mDNS emptied it and lwIP panicked; found with the `RFUPS_DIAG` build
+- [x] lwIP timer pool +12 (`MEMP_NUM_SYS_TIMEOUT`): with IPv6, mDNS emptied it and lwIP panicked; found with the `RFPOWER_DIAG` build
 - [x] Back-to-back UDP packets crashed the IPv6 build (core `UdpContext` helper pbuf flags `0xFF` include `PBUF_FLAG_IS_CUSTOM`): `LWIP_IPV6_FRAG=0`, IPv6 replies <= 1452 bytes — HIL `test_back_to_back_requests_are_answered_and_do_not_crash`
 - [ ] Report the `PBUF_HELPER_FLAG 0xff` bug to arduino-pico (UdpContext.h), then `LWIP_IPV6_FRAG` could go back on (still in arduino-pico master, 2026-10-31)
 - [x] Platform pinned to commit `24f5f5b` (Arduino-Pico 5.4.3, lwIP 2.2.1, GCC 14.2) instead of the moving git HEAD (2026-10-31)
@@ -177,7 +177,7 @@ An item is only ticked when it is implemented **and** its tests exist and pass (
 - [x] Each core gets its own 8 KB stack (`core1_separate_stack`): with IPv6 only ~660 bytes of core 0's 4 KB were left after a page-load burst; now ~5.3 KB stay unused — HIL `test_page_load_burst_keeps_snmp_fast_and_stack_headroom`
 - [x] Rate limiter and access log keyed per full IPv4 or IPv6 address (`SourceKey`, 128 bits), ::/32 sources dropped; not per /64, so trust does not pass to other hosts in a manager's /64 — native `test_access_control`, HIL `test_wrong_community_over_ipv6_is_logged_with_the_full_pc_address`
 - [x] Stage 2: IPv6 trap destination (v2c only; global or ULA, refused with v1) — native `test_netconfig` (`test_trap_target_*`), `test_settings_codec` (`test_ipv6_trap_target_*`, `test_trap_version_fits_target`), sanitizers; HIL `test_v2c_trap_reaches_an_ipv6_destination`, `test_menu_refuses_*` (passed 2026-10-31; a VPN such as Cisco AnyConnect blocks IPv6 to the device)
-- [x] Static IPv6 address (/64) and gateway, serial menu option 9 and web page, next to SLAAC (2.4.0) — native `test_netconfig` (parse/format/validate, truncation), `test_settings_codec`, `test_web_ui`; HIL `test_ipv6_static.py` (opt-in `RFUPS_STATIC_IPV6`)
+- [x] Static IPv6 address (/64) and gateway, serial menu option 9 and web page, next to SLAAC (2.4.0) — native `test_netconfig` (parse/format/validate, truncation), `test_settings_codec`, `test_web_ui`; HIL `test_ipv6_static.py` (opt-in `RFPOWER_STATIC_IPV6`)
 - [x] DHCPv6 address assignment: stateful client, one IA_NA (`lib/dhcp6_client`, `src/dhcp6_service.cpp`), HIL tested on the test network in `test/hil/dhcp6/`
 - [x] Hardware watchdog in normal builds (8 s; core 0 feeds only while core 1's heartbeat moves; restart cause and count on the status screen) — native `test_watchdog_logic`, sanitizers, HIL `test_watchdog.py` (core 0 and core 1 stalls restart the device, menu reboot not counted; passed 2026-10-31)
 - [x] `SO_REUSE=1` instead of dropping TIME-WAIT entries on port 80 — HIL `test_web_reopens_at_once_after_the_device_closed_connections` (fails without either, passes with `SO_REUSE`), web/SNMP/serial menu/IPv6 suites and on-device tests pass
@@ -186,7 +186,7 @@ An item is only ticked when it is implemented **and** its tests exist and pass (
 ## 12. Web on/off, DHCP trap destination, logo (2.2.0)
 - [x] Web interface on/off: setting `webEnabled`, serial option 8, "Turn off…" on the page with confirmation; port 80 closed, sessions ended, mDNS `_http` removed — native, HIL
 - [x] Trap destination `dhcp`: option 224 requested in the device's DHCP messages (frame edit at the driver) and read from ACKs; verified against Kea 2.2.0 in Docker and the LAN server — native `test_dhcp_option`, HIL `test_dhcp_trap.py`
-- [ ] Opt-in HIL `test_trap_destination_comes_from_option_224` against the home DHCP server once option 224 is configured there (`RFUPS_DHCP_TRAP_TARGET`)
+- [ ] Opt-in HIL `test_trap_destination_comes_from_option_224` against the home DHCP server once option 224 is configured there (`RFPOWER_DHCP_TRAP_TARGET`)
 - [x] Logo in the navbar, on the login card and as favicon — native, HIL
 
 ## 11. Hostname

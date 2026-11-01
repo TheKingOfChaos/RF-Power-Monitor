@@ -1,6 +1,6 @@
 """HIL tests for the DHCPv6 address (stateful DHCPv6, one IA_NA) on the test network.
 
-Opt-in: RFUPS_DHCP6_TEST=1. The test network (dhcp6_testnet.py) sends router
+Opt-in: RFPOWER_DHCP6_TEST=1. The test network (dhcp6_testnet.py) sends router
 advertisements with the M flag only to the device and runs Kea for the device only,
 in WSL as root; nothing else on the LAN is affected. Each test reboots the device
 first (menu option 2, DHCP unchanged), because a started DHCPv6 client keeps running
@@ -8,7 +8,7 @@ until reboot. Needs IPv6 from this PC to the device (a VPN such as Cisco AnyConn
 blocks it) and the SNMP community "public".
 
 Run:
-    $env:RFUPS_DHCP6_TEST = "1"
+    $env:RFPOWER_DHCP6_TEST = "1"
     %USERPROFILE%\\.platformio\\penv\\Scripts\\python.exe -m unittest discover -s test/hil -p "test_dhcp6.py" -v
 """
 
@@ -40,7 +40,7 @@ def default_routes_v6():
     return out.split()
 
 
-@unittest.skipUnless(os.environ.get("RFUPS_DHCP6_TEST") == "1", "set RFUPS_DHCP6_TEST=1 to run the DHCPv6 tests")
+@unittest.skipUnless(os.environ.get("RFPOWER_DHCP6_TEST") == "1", "set RFPOWER_DHCP6_TEST=1 to run the DHCPv6 tests")
 class Dhcp6Test(unittest.TestCase):
 
     @classmethod

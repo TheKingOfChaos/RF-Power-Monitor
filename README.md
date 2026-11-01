@@ -449,7 +449,7 @@ src/source_key.h            Source address -> rate-limit key (full IPv4 or IPv6 
 src/ipv6_static.cpp         Static IPv6 address and gateway (lwIP hook in include/lwip_hooks.h)
 src/watchdog.cpp            Hardware watchdog (both cores), restart cause and count
 src/dhcp6_service.cpp       DHCPv6 address: runs lib/dhcp6_client, frames via the netif hooks
-src/diag.cpp                Hang diagnosis build (-DRFUPS_DIAG): crash and panic capture
+src/diag.cpp                Hang diagnosis build (-DRFPOWER_DIAG): crash and panic capture
 lib/netconfig/              IPv4/IPv6 parsing, formatting and validation, hostnames (pure C++)
 lib/settings_codec/         Settings JSON, validation, A/B selection (pure C++)
 lib/settings/               LittleFS storage on top of settings_codec

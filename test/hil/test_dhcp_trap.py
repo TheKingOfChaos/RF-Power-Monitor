@@ -7,7 +7,7 @@ still answer (lease kept), and the status screen reports the ACK.
 The second needs a DHCP server that has option 224 configured (see
 docs/MIB.md, "Trap destination from DHCP") and is opt-in:
 
-    RFUPS_DHCP_TRAP_TARGET  The address the server hands out in option 224.
+    RFPOWER_DHCP_TRAP_TARGET  The address the server hands out in option 224.
                             If it is this PC, the test also receives a trap.
 
 Run:
@@ -23,7 +23,7 @@ import unittest
 from device import Device
 from snmp_tools import GET_SYSDESCR, TrapListener, local_ip_towards, raw_get, send_raw
 
-EXPECTED = os.environ.get("RFUPS_DHCP_TRAP_TARGET")
+EXPECTED = os.environ.get("RFPOWER_DHCP_TRAP_TARGET")
 
 
 def bad_community_request():
@@ -81,7 +81,7 @@ class DhcpTrapTargetTest(unittest.TestCase):
         self.assertEqual(before["ip"], st["ip"])
         self.assertIsNotNone(raw_get(self.ip, 8800)[0])
         if not EXPECTED:
-            self.assertIn("had no option 224", m.group(2), "server sent option 224: set RFUPS_DHCP_TRAP_TARGET")
+            self.assertIn("had no option 224", m.group(2), "server sent option 224: set RFPOWER_DHCP_TRAP_TARGET")
             self.assertEqual("", st["trapTarget"], "no trap destination without option 224")
         # Back to fixed
         d.set_trap_target("-")
@@ -116,7 +116,7 @@ class DhcpTrapTargetTest(unittest.TestCase):
         self.assertEqual(before["ip"], st["ip"])
         d.set_trap_target("-")
 
-    @unittest.skipUnless(EXPECTED,"set RFUPS_DHCP_TRAP_TARGET to the address your DHCP server sends in option 224")
+    @unittest.skipUnless(EXPECTED,"set RFPOWER_DHCP_TRAP_TARGET to the address your DHCP server sends in option 224")
     def test_trap_destination_comes_from_option_224(self):
         d = self.dev
         d.set_trap_target("dhcp", "2c")

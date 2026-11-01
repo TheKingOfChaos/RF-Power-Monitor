@@ -9,10 +9,10 @@ Run (from the project root, firmware flashed):
     %USERPROFILE%\\.platformio\\penv\\Scripts\\python.exe -m unittest discover -s test/hil -p "test_snmp.py" -v
 
 Environment variables:
-    RFUPS_PORT          Serial port, default COM16
-    RFUPS_WSL_DISTRO    WSL distribution with net-snmp, default Ubuntu-24.04
-    RFUPS_MAINS_SWITCH / RFUPS_MANUAL_MAINS  Mains tests, see mains_switch.py
-    RFUPS_NO_TMP1075    Set when the device has no TMP1075 (no carrier board):
+    RFPOWER_PORT          Serial port, default COM16
+    RFPOWER_WSL_DISTRO    WSL distribution with net-snmp, default Ubuntu-24.04
+    RFPOWER_MAINS_SWITCH / RFPOWER_MANUAL_MAINS  Mains tests, see mains_switch.py
+    RFPOWER_NO_TMP1075    Set when the device has no TMP1075 (no carrier board):
                         the ambient temperature tests are skipped and walks
                         expect no ambientTemperature
 
@@ -35,7 +35,7 @@ from snmp_tools import (GET_SYSDESCR, REQUEST_ID_OFFSET, garbage_packets, local_
 
 ENTERPRISE = "1.3.6.1.4.1.63050"
 # Set when the device has no TMP1075 (module without the carrier board)
-NO_TMP1075 = bool(os.environ.get("RFUPS_NO_TMP1075"))
+NO_TMP1075 = bool(os.environ.get("RFPOWER_NO_TMP1075"))
 # Enterprise objects in walk order: ambientTemperature (.5) exists only with the TMP1075
 ENTERPRISE_OBJECTS = [n for n in range(1, 7) if not (NO_TMP1075 and n == 5)]
 LAST_ENTERPRISE = ENTERPRISE_OBJECTS[-1]
@@ -341,7 +341,7 @@ class SnmpAgentTest(unittest.TestCase):
         status_c = self.dev.status()["cpuTempC"]
         self.assertAlmostEqual(deci / 10.0, status_c, delta=2.0)
 
-    @unittest.skipIf(NO_TMP1075, "RFUPS_NO_TMP1075 set: no carrier board")
+    @unittest.skipIf(NO_TMP1075, "RFPOWER_NO_TMP1075 set: no carrier board")
     def test_ambient_temperature_is_plausible_and_matches_status(self):
         rc, out = self.snmp("snmpget", ENTERPRISE + ".5.0", version="2c")
         m = re.search(r"63050\.5\.0 = INTEGER: (-?\d+)", out)
@@ -354,7 +354,7 @@ class SnmpAgentTest(unittest.TestCase):
         # Read every 2 s: allow for a change between the two reads
         self.assertAlmostEqual(deci / 10.0, status_c, delta=0.5)
 
-    @unittest.skipIf(NO_TMP1075, "RFUPS_NO_TMP1075 set: no carrier board")
+    @unittest.skipIf(NO_TMP1075, "RFPOWER_NO_TMP1075 set: no carrier board")
     def test_ambient_temperature_is_below_the_cpu_die(self):
         st = self.dev.status()
         self.assertLess(st["ambientTempC"], st["cpuTempC"])

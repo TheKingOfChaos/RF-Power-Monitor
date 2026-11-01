@@ -8,7 +8,7 @@ Run:
     %USERPROFILE%\\.platformio\\penv\\Scripts\\python.exe -m unittest discover -s test/hil -p "test_web.py" -v
 
 Environment variables:
-    RFUPS_STATIC_IP / RFUPS_STATIC_MASK / RFUPS_STATIC_GW  Also test switching to a static
+    RFPOWER_STATIC_IP / RFPOWER_STATIC_MASK / RFPOWER_STATIC_GW  Also test switching to a static
         address from the web page and back (as for test_serial_menu.py)
 """
 
@@ -276,11 +276,11 @@ class WebPageTest(unittest.TestCase):
         _, _, page = Web(self.ip).request("GET", "/", sid=web.sid)
         self.assertIn('action="/login"', page)
 
-    @unittest.skipUnless(os.environ.get("RFUPS_STATIC_IP"), "set RFUPS_STATIC_IP to a free address to run")
+    @unittest.skipUnless(os.environ.get("RFPOWER_STATIC_IP"), "set RFPOWER_STATIC_IP to a free address to run")
     def test_static_address_from_the_web_page_and_back(self):
-        static_ip = os.environ["RFUPS_STATIC_IP"]
-        mask = os.environ.get("RFUPS_STATIC_MASK", "255.255.0.0")
-        gw = os.environ.get("RFUPS_STATIC_GW", self.dev.status()["gateway"])
+        static_ip = os.environ["RFPOWER_STATIC_IP"]
+        mask = os.environ.get("RFPOWER_STATIC_MASK", "255.255.0.0")
+        gw = os.environ.get("RFPOWER_STATIC_GW", self.dev.status()["gateway"])
         self.wait_lockout_over()
         web = self.logged_in()
         try:

@@ -8,7 +8,7 @@ import subprocess
 import sys
 import time
 
-WSL_DISTRO = os.environ.get("RFUPS_WSL_DISTRO", "Ubuntu-24.04")
+WSL_DISTRO = os.environ.get("RFPOWER_WSL_DISTRO", "Ubuntu-24.04")
 SNMP_PORT = 161
 
 # snmpget -v1 -c public 1.3.6.1.2.1.1.1.0, captured from net-snmp. Request id at bytes 17..20.

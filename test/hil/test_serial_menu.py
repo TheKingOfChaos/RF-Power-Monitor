@@ -7,11 +7,11 @@ Run (from the project root, firmware already flashed, PuTTY closed):
     %USERPROFILE%\\.platformio\\penv\\Scripts\\python.exe -m unittest discover -s test/hil -v
 
 Environment variables:
-    RFUPS_PORT        Serial port, default COM16
-    RFUPS_STATIC_IP   Free address for the static IP test, e.g. 10.10.6.250
-    RFUPS_STATIC_MASK Subnet mask for that test (default 255.255.0.0)
-    RFUPS_STATIC_GW   Gateway for that test (default: the current DHCP gateway)
-    RFUPS_MAINS_SWITCH / RFUPS_MANUAL_MAINS  Mains tests, see mains_switch.py
+    RFPOWER_PORT        Serial port, default COM16
+    RFPOWER_STATIC_IP   Free address for the static IP test, e.g. 10.10.6.250
+    RFPOWER_STATIC_MASK Subnet mask for that test (default 255.255.0.0)
+    RFPOWER_STATIC_GW   Gateway for that test (default: the current DHCP gateway)
+    RFPOWER_MAINS_SWITCH / RFPOWER_MANUAL_MAINS  Mains tests, see mains_switch.py
 
 The device must be in DHCP mode before the run, and is left in DHCP mode.
 """
@@ -219,12 +219,12 @@ class SerialMenuTest(unittest.TestCase):
         d.read_until(r"Network up after \d+ ms", timeout=30)
         self.assertEqual("connected", d.wait_connected(timeout=5)["state"])
 
-    @unittest.skipUnless(os.environ.get("RFUPS_STATIC_IP"), "set RFUPS_STATIC_IP to a free address to run")
+    @unittest.skipUnless(os.environ.get("RFPOWER_STATIC_IP"), "set RFPOWER_STATIC_IP to a free address to run")
     def test_static_ip_applies_after_reboot(self):
         d = self.dev
-        ip = os.environ["RFUPS_STATIC_IP"]
-        mask = os.environ.get("RFUPS_STATIC_MASK", "255.255.0.0")
-        gw = os.environ.get("RFUPS_STATIC_GW", self.dhcp_status["gateway"])
+        ip = os.environ["RFPOWER_STATIC_IP"]
+        mask = os.environ.get("RFPOWER_STATIC_MASK", "255.255.0.0")
+        gw = os.environ.get("RFPOWER_STATIC_GW", self.dhcp_status["gateway"])
         try:
             d.send("3", expect=r"IP address .*: $")
             d.send(ip, expect=r"Subnet mask .*: $")

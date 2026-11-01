@@ -1,7 +1,7 @@
 """Hardware-in-the-loop test for the factory reset button (GPIO22). Manual: you press the button.
 
 Run:
-    set RFUPS_MANUAL_BUTTON=1
+    set RFPOWER_MANUAL_BUTTON=1
     %USERPROFILE%\\.platformio\\penv\\Scripts\\python.exe -m unittest discover -s test/hil -p "test_factory_reset.py" -v
 
 The test asks you to press the button twice: a short press that must not
@@ -22,8 +22,8 @@ from snmp_tools import GET_SYSDESCR, raw_get
 RESET_COMMUNITY = "hilrst"
 
 
-@unittest.skipUnless(os.environ.get("RFUPS_MANUAL_BUTTON"),
-                     "manual: set RFUPS_MANUAL_BUTTON=1 and press the reset button when asked")
+@unittest.skipUnless(os.environ.get("RFPOWER_MANUAL_BUTTON"),
+                     "manual: set RFPOWER_MANUAL_BUTTON=1 and press the reset button when asked")
 class FactoryResetTest(unittest.TestCase):
 
     @classmethod

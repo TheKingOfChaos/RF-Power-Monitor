@@ -3,8 +3,8 @@
 The menu test needs nothing on the network. The test that applies an address
 is opt-in, because it needs a free address in the device's /64:
 
-    RFUPS_STATIC_IPV6          e.g. fd16:d833:4f0e:3ece::249 (in the /64 the router announces)
-    RFUPS_STATIC_IPV6_GATEWAY  optional gateway, e.g. fe80::1 (only shown and stored; routing
+    RFPOWER_STATIC_IPV6          e.g. fd16:d833:4f0e:3ece::249 (in the /64 the router announces)
+    RFPOWER_STATIC_IPV6_GATEWAY  optional gateway, e.g. fe80::1 (only shown and stored; routing
                                through it needs an off-link IPv6 host to reach)
 
 The device must start without a static IPv6 address and is left without one.
@@ -65,11 +65,11 @@ class StaticIpv6Test(unittest.TestCase):
         self.assertEqual("", st["staticIPv6"])
         self.assertFalse([a for a, flags in st["ipv6"] if "static" in flags])
 
-    @unittest.skipUnless(os.environ.get("RFUPS_STATIC_IPV6"), "set RFUPS_STATIC_IPV6 to a free address in the /64")
+    @unittest.skipUnless(os.environ.get("RFPOWER_STATIC_IPV6"), "set RFPOWER_STATIC_IPV6 to a free address in the /64")
     def test_static_ipv6_applies_after_reboot_next_to_slaac(self):
         d = self.dev
-        address = str(ipaddress.IPv6Address(os.environ["RFUPS_STATIC_IPV6"]))  # canonical, as the device stores it
-        gateway = os.environ.get("RFUPS_STATIC_IPV6_GATEWAY", "")
+        address = str(ipaddress.IPv6Address(os.environ["RFPOWER_STATIC_IPV6"]))  # canonical, as the device stores it
+        gateway = os.environ.get("RFPOWER_STATIC_IPV6_GATEWAY", "")
         before = [a for a, _ in d.status()["ipv6"]]
         try:
             d.set_static_ipv6(address, gateway)

@@ -2,14 +2,14 @@
 
 Two ways, chosen with environment variables:
 
-    RFUPS_MAINS_SWITCH=dirigera   Automatic: an outlet on an IKEA Dirigera hub feeds
+    RFPOWER_MAINS_SWITCH=dirigera   Automatic: an outlet on an IKEA Dirigera hub feeds
                                   the mains detection circuit. Also needs
-        RFUPS_DIRIGERA_IP         hub address, e.g. 10.10.6.124
-        RFUPS_DIRIGERA_OUTLET     outlet name, e.g. "Stikprop 1"
-        RFUPS_DIRIGERA_TOKEN      token file (default ~/dirigera/token, on the WSL side on Windows)
-        RFUPS_DIRIGERA_PYTHON     Python with the dirigera package
+        RFPOWER_DIRIGERA_IP         hub address, e.g. 10.10.6.124
+        RFPOWER_DIRIGERA_OUTLET     outlet name, e.g. "Stikprop 1"
+        RFPOWER_DIRIGERA_TOKEN      token file (default ~/dirigera/token, on the WSL side on Windows)
+        RFPOWER_DIRIGERA_PYTHON     Python with the dirigera package
                                   (default ~/dirigera/.venv/bin/python, on the WSL side on Windows)
-    RFUPS_MANUAL_MAINS=1          Manual: the test asks you to switch mains off and on.
+    RFPOWER_MANUAL_MAINS=1          Manual: the test asks you to switch mains off and on.
 
 With neither set, mains tests are skipped. Mains is always switched back on
 at the end of a test, also when it fails.
@@ -22,8 +22,8 @@ import time
 import unittest
 
 HERE = os.path.dirname(os.path.abspath(__file__))
-WSL_DISTRO = os.environ.get("RFUPS_WSL_DISTRO", "Ubuntu-24.04")
-SKIP_REASON = "set RFUPS_MAINS_SWITCH=dirigera (automatic) or RFUPS_MANUAL_MAINS=1 (manual) to run"
+WSL_DISTRO = os.environ.get("RFPOWER_WSL_DISTRO", "Ubuntu-24.04")
+SKIP_REASON = "set RFPOWER_MAINS_SWITCH=dirigera (automatic) or RFPOWER_MANUAL_MAINS=1 (manual) to run"
 
 
 class DirigeraSwitch:
@@ -32,10 +32,10 @@ class DirigeraSwitch:
     automatic = True
 
     def __init__(self):
-        self.ip = os.environ["RFUPS_DIRIGERA_IP"]
-        self.outlet = os.environ["RFUPS_DIRIGERA_OUTLET"]
-        self.token = os.environ.get("RFUPS_DIRIGERA_TOKEN", "~/dirigera/token")
-        self.python = os.environ.get("RFUPS_DIRIGERA_PYTHON", "~/dirigera/.venv/bin/python")
+        self.ip = os.environ["RFPOWER_DIRIGERA_IP"]
+        self.outlet = os.environ["RFPOWER_DIRIGERA_OUTLET"]
+        self.token = os.environ.get("RFPOWER_DIRIGERA_TOKEN", "~/dirigera/token")
+        self.python = os.environ.get("RFPOWER_DIRIGERA_PYTHON", "~/dirigera/.venv/bin/python")
 
     def _run(self, command):
         script = os.path.join(HERE, "dirigera_outlet.py")
@@ -89,9 +89,9 @@ class ManualSwitch:
 
 def get_switch():
     """The configured switch, or None when mains tests should be skipped."""
-    if os.environ.get("RFUPS_MAINS_SWITCH") == "dirigera":
+    if os.environ.get("RFPOWER_MAINS_SWITCH") == "dirigera":
         return DirigeraSwitch()
-    if os.environ.get("RFUPS_MANUAL_MAINS"):
+    if os.environ.get("RFPOWER_MANUAL_MAINS"):
         return ManualSwitch()
     return None
 

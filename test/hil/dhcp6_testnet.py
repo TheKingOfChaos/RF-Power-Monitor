@@ -1,4 +1,4 @@
-"""DHCPv6 test network, run from this PC for the HIL tests (opt-in, RFUPS_DHCP6_TEST=1).
+"""DHCPv6 test network, run from this PC for the HIL tests (opt-in, RFPOWER_DHCP6_TEST=1).
 
 In WSL (mirrored networking, as root via `wsl -u root`): router advertisements sent
 unicast to the device's link-local address only (M and/or O flag, router lifetime 0,
@@ -10,7 +10,7 @@ import ipaddress
 import os
 import subprocess
 
-DISTRO = os.environ.get("RFUPS_WSL_DISTRO", "Ubuntu-24.04")
+DISTRO = os.environ.get("RFPOWER_WSL_DISTRO", "Ubuntu-24.04")
 HERE = os.path.dirname(os.path.abspath(__file__))
 SCRIPT = "dhcp6/testnet.sh"
 

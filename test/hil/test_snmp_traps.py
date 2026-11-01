@@ -12,7 +12,7 @@ Run:
     %USERPROFILE%\\.platformio\\penv\\Scripts\\python.exe -m unittest discover -s test/hil -p "test_snmp_traps.py" -v
 
 Environment variables:
-    RFUPS_MAINS_SWITCH / RFUPS_MANUAL_MAINS  Mains trap test, see mains_switch.py
+    RFPOWER_MAINS_SWITCH / RFPOWER_MANUAL_MAINS  Mains trap test, see mains_switch.py
 """
 
 import time
