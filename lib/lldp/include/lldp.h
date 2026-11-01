@@ -46,6 +46,8 @@ struct LldpLocal {
 size_t lldpBuildFrame(const LldpLocal& local, uint8_t* out, size_t cap);
 
 static const size_t LLDP_TEXT_MAX = 64;  ///< Received text kept per field (bytes, without the NUL)
+static const size_t LLDP_ID_MAX = 64;    ///< Raw Chassis ID / Port ID bytes kept
+static const size_t LLDP_SYS_DESCR_MAX = 128;  ///< System Description kept (bytes, without the NUL)
 
 /**
  * @brief What a neighbour (the switch) announced, as printable text
@@ -61,7 +63,28 @@ struct LldpNeighbour {
     char sysName[LLDP_TEXT_MAX + 1];    ///< Empty if not sent
     char mgmtAddr[46];                  ///< First IPv4 or IPv6 management address as text, empty if none
     uint16_t ttl;                       ///< Seconds; 0 = the neighbour is shutting down
+    // As received, for the LLDP-MIB lldpRemTable (src/snmp_service.cpp)
+    uint8_t chassisIdSubtype;
+    uint8_t chassisIdRaw[LLDP_ID_MAX];  ///< Chassis ID bytes after the subtype, cut to LLDP_ID_MAX
+    uint8_t chassisIdLen;
+    uint8_t portIdRaw[LLDP_ID_MAX];     ///< Port ID bytes after the subtype, cut to LLDP_ID_MAX
+    uint8_t portIdLen;
+    char sysDescr[LLDP_SYS_DESCR_MAX + 1];  ///< System Description, same text rules, empty if not sent
+    uint16_t capsSupported;             ///< System Capabilities bits, 0 if not sent
+    uint16_t capsEnabled;
 };
+
+/**
+ * @brief The Port ID as served in LLDP-MIB lldpRemPortId
+ *
+ * Junos sends its ifIndex as a locally assigned Port ID (subtype 7) and the
+ * interface name as Port Description; LibreNMS labels the remote port with
+ * lldpRemPortId. So for subtype 7 with a description, this gives subtype 5
+ * (interfaceName) and the description, else the Port ID as received.
+ *
+ * @param data Points into n; valid as long as n is
+ */
+void lldpSnmpPortId(const LldpNeighbour& n, uint8_t& subtype, const uint8_t*& data, size_t& len);
 
 enum class LldpParse : uint8_t { Ok, NotLldp, Malformed };
 

@@ -385,6 +385,106 @@ static void test_switch_text_cut_to_cap() {
     TEST_ASSERT_EQUAL_HEX8('x', text[8]);
 }
 
+// ---- raw values for the LLDP-MIB ----
+
+static void test_parse_keeps_raw_ids() {
+    TEST_ASSERT_EQUAL(LldpParse::Ok, lldpParseFrame(EX2200_C_LLDPDU, sizeof(EX2200_C_LLDPDU), nb));
+    TEST_ASSERT_EQUAL(4, nb.chassisIdSubtype);
+    const uint8_t chassis[] = {0xf8, 0xc0, 0x01, 0xc7, 0x90, 0xc0};
+    TEST_ASSERT_EQUAL(6, nb.chassisIdLen);
+    TEST_ASSERT_EQUAL_HEX8_ARRAY(chassis, nb.chassisIdRaw, 6);
+    TEST_ASSERT_EQUAL(3, nb.portIdLen);
+    TEST_ASSERT_EQUAL_HEX8_ARRAY("523", nb.portIdRaw, 3);
+}
+
+static void test_parse_reads_sys_descr_and_caps() {
+    TEST_ASSERT_EQUAL(LldpParse::Ok, lldpParseFrame(EX2200_C_LLDPDU, sizeof(EX2200_C_LLDPDU), nb));
+    TEST_ASSERT_EQUAL_STRING_LEN("Juniper Networks, Inc. ex2200-c-12p-2g", nb.sysDescr, 38);
+    TEST_ASSERT_EQUAL_HEX16(0x0014, nb.capsSupported);  // bridge, router
+    TEST_ASSERT_EQUAL_HEX16(0x0014, nb.capsEnabled);
+    uint8_t out[LLDP_FRAME_MAX];
+    size_t n = lldpBuildFrame(local(), out, sizeof(out));
+    TEST_ASSERT_EQUAL(LldpParse::Ok, lldpParseFrame(out, n, nb));
+    TEST_ASSERT_EQUAL_STRING("RF", nb.sysDescr);
+    TEST_ASSERT_EQUAL_HEX16(0x0080, nb.capsSupported);
+    TEST_ASSERT_EQUAL_HEX16(0x0080, nb.capsEnabled);
+    TEST_ASSERT_EQUAL(LldpParse::Ok, lldpParseFrame(JUNOS_STYLE, sizeof(JUNOS_STYLE), nb));
+    TEST_ASSERT_EQUAL_STRING("", nb.sysDescr);  // not sent
+    TEST_ASSERT_EQUAL_HEX16(0, nb.capsSupported);
+}
+
+/// A frame with a 255-byte chassis ID (subtype 7, local) and a 255-byte System Description
+static size_t longFieldsFrame(uint8_t* f) {
+    size_t at = 0;
+    memcpy(f, JUNOS_STYLE, 14);
+    at = 14;
+    f[at++] = 0x03;  // Chassis ID, 256 bytes: subtype + 255
+    f[at++] = 0x00;
+    f[at++] = 7;
+    for (int i = 0; i < 255; i++) f[at++] = (uint8_t)('A' + i % 26);
+    memcpy(f + at, JUNOS_STYLE + 23, 6 + 4);  // Port ID and TTL from the Junos-style frame
+    at += 10;
+    f[at++] = 0x0c;  // System Description, 255 bytes
+    f[at++] = 0xff;
+    for (int i = 0; i < 255; i++) f[at++] = 'd';
+    f[at++] = 0x00;
+    f[at++] = 0x00;
+    return at;
+}
+
+static void test_parse_keeps_raw_ids_cut_to_64() {
+    static uint8_t f[700];
+    size_t n = longFieldsFrame(f);
+    TEST_ASSERT_EQUAL(LldpParse::Ok, lldpParseFrame(f, n, nb));
+    TEST_ASSERT_EQUAL(LLDP_ID_MAX, nb.chassisIdLen);
+    TEST_ASSERT_EQUAL_HEX8('A', nb.chassisIdRaw[0]);
+    TEST_ASSERT_EQUAL_HEX8('A' + 63 % 26, nb.chassisIdRaw[63]);
+}
+
+static void test_parse_cuts_sys_descr_to_128() {
+    static uint8_t f[700];
+    size_t n = longFieldsFrame(f);
+    TEST_ASSERT_EQUAL(LldpParse::Ok, lldpParseFrame(f, n, nb));
+    TEST_ASSERT_EQUAL(LLDP_SYS_DESCR_MAX, strlen(nb.sysDescr));
+}
+
+static void test_snmp_port_id_uses_description_for_local_port_id() {
+    TEST_ASSERT_EQUAL(LldpParse::Ok, lldpParseFrame(EX2200_C_LLDPDU, sizeof(EX2200_C_LLDPDU), nb));
+    uint8_t subtype;
+    const uint8_t* data;
+    size_t len;
+    lldpSnmpPortId(nb, subtype, data, len);
+    TEST_ASSERT_EQUAL(5, subtype);  // interfaceName
+    TEST_ASSERT_EQUAL(10, len);
+    TEST_ASSERT_EQUAL_HEX8_ARRAY("ge-0/0/9.0", data, 10);
+}
+
+static void test_snmp_port_id_without_description_is_raw() {
+    TEST_ASSERT_EQUAL(LldpParse::Ok, lldpParseFrame(EX2200_C_LLDPDU, sizeof(EX2200_C_LLDPDU), nb));
+    nb.portDescr[0] = '\0';
+    uint8_t subtype;
+    const uint8_t* data;
+    size_t len;
+    lldpSnmpPortId(nb, subtype, data, len);
+    TEST_ASSERT_EQUAL(7, subtype);
+    TEST_ASSERT_EQUAL(3, len);
+    TEST_ASSERT_EQUAL_HEX8_ARRAY("523", data, 3);
+}
+
+static void test_snmp_port_id_mac_is_raw() {
+    uint8_t out[LLDP_FRAME_MAX];
+    size_t n = lldpBuildFrame(local(), out, sizeof(out));
+    TEST_ASSERT_EQUAL(LldpParse::Ok, lldpParseFrame(out, n, nb));
+    uint8_t subtype;
+    const uint8_t* data;
+    size_t len;
+    lldpSnmpPortId(nb, subtype, data, len);
+    TEST_ASSERT_EQUAL(3, subtype);
+    TEST_ASSERT_EQUAL(6, len);
+    const uint8_t mac[6] = {0x02, 0x00, 0x00, 0x00, 0x00, 0x01};
+    TEST_ASSERT_EQUAL_HEX8_ARRAY(mac, data, 6);
+}
+
 // ---- when to send ----
 
 static void test_nothing_sent_while_link_down() {
@@ -459,6 +559,13 @@ int main(int, char**) {
     RUN_TEST(test_parse_rejects_bad_ttl_length);
     RUN_TEST(test_parse_sanitises_and_cuts_text);
     RUN_TEST(test_parse_reads_real_ex2200_c_frame);
+    RUN_TEST(test_parse_keeps_raw_ids);
+    RUN_TEST(test_parse_reads_sys_descr_and_caps);
+    RUN_TEST(test_parse_keeps_raw_ids_cut_to_64);
+    RUN_TEST(test_parse_cuts_sys_descr_to_128);
+    RUN_TEST(test_snmp_port_id_uses_description_for_local_port_id);
+    RUN_TEST(test_snmp_port_id_without_description_is_raw);
+    RUN_TEST(test_snmp_port_id_mac_is_raw);
     RUN_TEST(test_neighbour_expires_after_ttl);
     RUN_TEST(test_neighbour_expires_across_millis_wrap);
     RUN_TEST(test_ttl_zero_forgets_neighbour);

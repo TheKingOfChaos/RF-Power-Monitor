@@ -110,12 +110,13 @@ size_t lldpBuildFrame(const LldpLocal& local, uint8_t* out, size_t cap) {
 // ---- parsing ----
 
 static const uint8_t PORT_LOCAL = 7;
+static const uint8_t PORT_INTERFACE_NAME = 5;
 static const uint8_t CHASSIS_NETWORK_ADDRESS = 5;
 static const uint8_t PORT_NETWORK_ADDRESS = 4;
 
-/// Copy received text, cut to LLDP_TEXT_MAX, non-printable bytes as '?'
-static void copyText(const uint8_t* src, size_t len, char* dest) {
-    if (len > LLDP_TEXT_MAX) len = LLDP_TEXT_MAX;
+/// Copy received text, cut to max bytes, non-printable bytes as '?'
+static void copyText(const uint8_t* src, size_t len, char* dest, size_t max = LLDP_TEXT_MAX) {
+    if (len > max) len = max;
     for (size_t i = 0; i < len; i++) dest[i] = (src[i] >= 0x20 && src[i] <= 0x7E) ? (char)src[i] : '?';
     dest[len] = '\0';
 }
@@ -146,6 +147,14 @@ static void formatId(const uint8_t* v, size_t len, uint8_t macSubtype, uint8_t a
     copyText(data, n, dest);
 }
 
+/// Chassis ID or Port ID bytes after the subtype, cut to LLDP_ID_MAX
+static uint8_t copyRawId(const uint8_t* v, size_t len, uint8_t* dest) {
+    size_t n = len - 1;
+    if (n > LLDP_ID_MAX) n = LLDP_ID_MAX;
+    memcpy(dest, v + 1, n);
+    return (uint8_t)n;
+}
+
 LldpParse lldpParseFrame(const uint8_t* frame, size_t len, LldpNeighbour& out) {
     if (frame == nullptr || len < 14) return LldpParse::NotLldp;
     if (((frame[12] << 8) | frame[13]) != LLDP_ETHERTYPE) return LldpParse::NotLldp;
@@ -168,12 +177,15 @@ LldpParse lldpParseFrame(const uint8_t* frame, size_t len, LldpNeighbour& out) {
             return LldpParse::Ok;
         case TLV_CHASSIS_ID:
             if (index != 1 || tlvLen < 2 || tlvLen > 256) return LldpParse::Malformed;
+            out.chassisIdSubtype = v[0];
             formatId(v, tlvLen, CHASSIS_MAC, CHASSIS_NETWORK_ADDRESS, out.chassisId);
+            out.chassisIdLen = copyRawId(v, tlvLen, out.chassisIdRaw);
             break;
         case TLV_PORT_ID:
             if (index != 2 || tlvLen < 2 || tlvLen > 256) return LldpParse::Malformed;
             out.portIdSubtype = v[0];
             formatId(v, tlvLen, PORT_MAC, PORT_NETWORK_ADDRESS, out.portId);
+            out.portIdLen = copyRawId(v, tlvLen, out.portIdRaw);
             break;
         case TLV_TTL:
             if (index != 3 || tlvLen != 2) return LldpParse::Malformed;
@@ -185,6 +197,15 @@ LldpParse lldpParseFrame(const uint8_t* frame, size_t len, LldpNeighbour& out) {
         case TLV_SYS_NAME:
             copyText(v, tlvLen, out.sysName);
             break;
+        case TLV_SYS_DESCR:
+            copyText(v, tlvLen, out.sysDescr, LLDP_SYS_DESCR_MAX);
+            break;
+        case TLV_SYS_CAPS:
+            if (tlvLen == 4) {  // any other length: not a valid capabilities TLV, ignored
+                out.capsSupported = (uint16_t)((v[0] << 8) | v[1]);
+                out.capsEnabled = (uint16_t)((v[2] << 8) | v[3]);
+            }
+            break;
         case TLV_MGMT_ADDR:
             // Address string length (subtype + address), subtype, address; the rest is not used
             if (out.mgmtAddr[0] == '\0' && tlvLen >= 2 && v[0] >= 2 && (size_t)v[0] + 1 <= tlvLen) {
@@ -192,9 +213,21 @@ LldpParse lldpParseFrame(const uint8_t* frame, size_t len, LldpNeighbour& out) {
             }
             break;
         default:
-            break;  // System Description, Capabilities, organisational TLVs: not shown
+            break;  // organisational TLVs (802.1, 802.3, LLDP-MED, vendor): not used
         }
     }
+}
+
+void lldpSnmpPortId(const LldpNeighbour& n, uint8_t& subtype, const uint8_t*& data, size_t& len) {
+    if (n.portIdSubtype == PORT_LOCAL && n.portDescr[0]) {
+        subtype = PORT_INTERFACE_NAME;
+        data = (const uint8_t*)n.portDescr;
+        len = strlen(n.portDescr);
+        return;
+    }
+    subtype = n.portIdSubtype;
+    data = n.portIdRaw;
+    len = n.portIdLen;
 }
 
 // ---- the neighbour ----
