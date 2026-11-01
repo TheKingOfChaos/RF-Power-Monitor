@@ -78,7 +78,7 @@ Every native suite must be listed in `scripts/sanitize.sh`; the script fails if 
 wsl -d Ubuntu-24.04 -- bash scripts/host_agent_check.sh
 ```
 
-It needs the `snmp` package in WSL. If `snmp-mibs-downloader` is installed too (it is on this PC), it also validates `mibs/RF-UPS-MONITOR-MIB.txt`: `snmptranslate -PW` must report no warnings in our file, every object must be in the tree, and `snmpget` must show MIB names (`mainsPowerStatus.0 = INTEGER: present(1)`). Without that package the MIB checks are skipped.
+It needs the `snmp` package in WSL. If `snmp-mibs-downloader` is installed too (it is on this PC), it also validates `mibs/RF-POWER-MONITOR-MIB.txt`: `snmptranslate -PW` must report no warnings in our file, every object must be in the tree, and `snmpget` must show MIB names (`mainsPowerStatus.0 = INTEGER: present(1)`). Without that package the MIB checks are skipped.
 
 ### HIL tests
 

@@ -39,7 +39,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y snmp
-          # Standard IETF MIBs for validating mibs/RF-UPS-MONITOR-MIB.txt; the
+          # Standard IETF MIBs for validating mibs/RF-POWER-MONITOR-MIB.txt; the
           # check skips those tests if this package is unavailable
           sudo apt-get install -y snmp-mibs-downloader || echo "snmp-mibs-downloader not available"
 

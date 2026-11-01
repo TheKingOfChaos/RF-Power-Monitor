@@ -9,17 +9,17 @@ The device runs an SNMP agent on UDP port 161 and sends traps. Every object is r
 - **Interfaces:** the standard IF-MIB (`ifTable`, `ifXTable`) for the one Ethernet port, so generic managers such as LibreNMS graph its traffic.
 - **Operations:** GetRequest, GetNextRequest (and so `snmpwalk`), and in v2c GetBulkRequest (`snmpbulkwalk`, `snmpbulkget`). SetRequest is rejected (v1 `noSuchName`, v2c `notWritable`/`noCreation`).
 - **Enterprise number:** 63050 (`1.3.6.1.4.1.63050`), assigned to this project.
-- **MIB file:** [mibs/RF-UPS-MONITOR-MIB.txt](../mibs/RF-UPS-MONITOR-MIB.txt) (SMIv2).
+- **MIB file:** [mibs/RF-POWER-MONITOR-MIB.txt](../mibs/RF-POWER-MONITOR-MIB.txt) (SMIv2).
 
 ## Objects
 
 | OID | Name | Type | Value |
 |---|---|---|---|
-| `1.3.6.1.2.1.1.1.0` | sysDescr | OCTET STRING | `RF-UPS-Monitor 2.3.0 mains power monitor (RP2040, W5500)` (with the firmware version) |
+| `1.3.6.1.2.1.1.1.0` | sysDescr | OCTET STRING | `RF.Power-Monitor 3.0.0 mains power monitor (RP2040, W5500)` (with the firmware version) |
 | `1.3.6.1.2.1.1.2.0` | sysObjectID | OBJECT IDENTIFIER | `1.3.6.1.4.1.63050` |
 | `1.3.6.1.2.1.1.3.0` | sysUpTime | TimeTicks | Hundredths of a second since boot |
 | `1.3.6.1.2.1.1.4.0` | sysContact | OCTET STRING | From the settings (menu option 4), default empty |
-| `1.3.6.1.2.1.1.5.0` | sysName | OCTET STRING | The hostname (menu option 4 or web page), default `rf-ups-monitor` |
+| `1.3.6.1.2.1.1.5.0` | sysName | OCTET STRING | The hostname (menu option 4 or web page), default `rf-power-monitor` |
 | `1.3.6.1.2.1.1.6.0` | sysLocation | OCTET STRING | From the settings (menu option 4), default empty |
 | `1.3.6.1.2.1.1.7.0` | sysServices | INTEGER | 72 (end-to-end + applications) |
 | `1.3.6.1.4.1.63050.1.0` | mainsPowerStatus | INTEGER | `1` = present, `0` = lost |
@@ -158,14 +158,14 @@ Configure option 224 on the DHCP server. The device asks for it, so the server d
 
 ```jsonc
 // Kea (kea-dhcp4.conf, in "Dhcp4"); tested with Kea 2.2.0
-"option-def": [ { "name": "rfups-trap-target", "code": 224, "type": "ipv4-address", "space": "dhcp4" } ],
-"subnet4": [ { ..., "option-data": [ { "name": "rfups-trap-target", "data": "10.10.6.65" } ] } ]
+"option-def": [ { "name": "rfpower-trap-target", "code": 224, "type": "ipv4-address", "space": "dhcp4" } ],
+"subnet4": [ { ..., "option-data": [ { "name": "rfpower-trap-target", "data": "10.10.6.65" } ] } ]
 ```
 
 ```
 # ISC dhcpd (dhcpd.conf)
-option rfups-trap-target code 224 = ip-address;
-option rfups-trap-target 10.10.6.65;
+option rfpower-trap-target code 224 = ip-address;
+option rfpower-trap-target 10.10.6.65;
 
 # dnsmasq
 dhcp-option=224,10.10.6.65
@@ -216,10 +216,10 @@ snmpget -v1 -c public 10.10.6.111 1.3.6.1.4.1.63050.1.0 1.3.6.1.4.1.63050.2.0 1.
 With the MIB file, the tools show names instead of numbers:
 
 ```bash
-snmpwalk -v1 -c public -M +./mibs -m +RF-UPS-MONITOR-MIB 10.10.6.111 1.3.6.1.4.1.63050
-# RF-UPS-MONITOR-MIB::mainsPowerStatus.0 = INTEGER: present(1)
-# RF-UPS-MONITOR-MIB::mainsPowerChanges.0 = Counter32: 0
-# RF-UPS-MONITOR-MIB::mainsPowerLastChange.0 = Timeticks: (0) 0:00:00.00
+snmpwalk -v1 -c public -M +./mibs -m +RF-POWER-MONITOR-MIB 10.10.6.111 1.3.6.1.4.1.63050
+# RF-POWER-MONITOR-MIB::mainsPowerStatus.0 = INTEGER: present(1)
+# RF-POWER-MONITOR-MIB::mainsPowerChanges.0 = Counter32: 0
+# RF-POWER-MONITOR-MIB::mainsPowerLastChange.0 = Timeticks: (0) 0:00:00.00
 ```
 
 This needs the standard IETF MIBs, which Debian/Ubuntu ship separately: `sudo apt install snmp-mibs-downloader`.

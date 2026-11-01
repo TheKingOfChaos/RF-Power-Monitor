@@ -1,4 +1,4 @@
-# RF-UPS-Monitor TODO
+# RF.Power-Monitor TODO
 
 An item is only ticked when it is implemented **and** its tests exist and pass (see `.clinerules`, Test Rules).
 
@@ -33,7 +33,7 @@ An item is only ticked when it is implemented **and** its tests exist and pass (
 - [x] GetNextRequest, lexicographic order, noSuchName past the end (net-snmp: "End of MIB")
 - [x] SetRequest answered with noSuchName (everything read-only)
 - [x] tooBig when the response does not fit; statistics counters
-### 2.4 MIB — `lib/snmp_agent/snmp_mib`, `mibs/RF-UPS-MONITOR-MIB.txt`, `docs/MIB.md`
+### 2.4 MIB — `lib/snmp_agent/snmp_mib`, `mibs/RF-POWER-MONITOR-MIB.txt`, `docs/MIB.md`
 - [x] system group: sysDescr, sysObjectID, sysUpTime, sysContact, sysName, sysLocation, sysServices
 - [x] 63050.1 mainsPowerStatus, .2 mainsPowerChanges, .3 mainsPowerLastChange
 - [x] OID table sorted (tested), full walk test
@@ -212,6 +212,10 @@ An item is only ticked when it is implemented **and** its tests exist and pass (
 - [x] LLDP counted as received multicast, not unknown protocol — native `test_if_stats`
 - [x] LLDP-MIB over SNMP (2.7.0): `lldpLocPortTable` and `lldpRemTable` (one row, Junos port name as Port ID), so LibreNMS shows the switch and port on the device's Neighbours tab without monitoring the switch — native `test_lldp`, `test_snmp_agent` (v1/v2c, walks with and without a neighbour, noSuchInstance), `host_agent_check.sh` against net-snmp, HIL `test_snmp_lldp_tables_name_the_switch`, `test_snmp.py` walks; LibreNMS discovery: link eth0 → r169 / ge-0/0/9.0 (`autodiscovery.xdp` off)
 - [ ] lldpRemManAddrTable (the switch's management address): not served, the EX2200-C sends none
+
+## 16. Name RF.Power-Monitor (3.0.0)
+- [x] Renamed from RF-UPS-Monitor: firmware texts, default hostname `rf-power-monitor`, `RF-POWER-MONITOR-MIB`, LibreNMS OS `rfpowermonitor`, `RFPOWER_*` test variables, board generator, docs and diagrams — native suites (names pinned: default and fallback hostname, page title, stored old name kept), net-snmp check, HIL suites on the renamed firmware, LibreNMS rediscovery
+- [ ] Rename the GitHub repository and the local folder (the user's call)
 
 ## Notes
 - SNMP must be v1 and v2c (no v3) and our own code; networking may use libraries
