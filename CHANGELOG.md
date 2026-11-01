@@ -6,6 +6,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+- Setup manual (docs/SETUP_MANUAL.md: installing a device, first configuration, LibreNMS, proving the alarm) and user manual (docs/USER_MANUAL.md: daily use, alarms, settings, factory reset, firmware update, troubleshooting).
+
 ### Changed
 - Carrier board: silkscreen and title blocks say RF-Power-Monitor, and the board, schematic, fab files, renders and 3D models are regenerated (the generator's RF-Power-Monitor change in 3.0.0 had not been applied to them yet). ERC and DRC clean; nothing else on the board changed.
 
