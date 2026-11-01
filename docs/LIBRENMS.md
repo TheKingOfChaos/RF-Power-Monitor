@@ -16,6 +16,7 @@ The device works in LibreNMS as a plain SNMP device out of the box: it answers S
 | Temperature sensor "Ambient (TMP1075)", warning at 40 °C, critical at 50 °C, low limit −20 °C; only with the carrier board | `ambientTemperature` / 10 |
 | Count sensor "Mains power changes since boot" | `mainsPowerChanges` |
 | Uptime, reboot detection | sysUpTime |
+| Neighbours tab: the switch and port the device is plugged into | LLDP-MIB `lldpRemTable` (firmware 2.7.0) |
 
 The temperature sensors set their low limit explicitly to −20 °C (the RP2040's minimum rating): without it LibreNMS sets a low limit 10 °C below the first reading (29.4 °C in the test), which alarms as soon as the room cools down. The CPU sensor keeps the index `boardTemperature.0` from before the MIB object was renamed `cpuTemperature`, so an existing installation keeps its graph after updating the definitions; replace the MIB file in LibreNMS together with the YAML files. The ambient limits suit a room with equipment; change them per device in LibreNMS if the box sits somewhere warmer.
 
@@ -67,6 +68,24 @@ The device answers SNMP over IPv6 too (see the README's IPv6 section). To poll i
 ```
 
 or choose transport `udp6` in Devices → Add Device. Checked with LibreNMS 26.9.1 in the Docker setup below: added with `-t udp6`, the device is detected as RF-UPS-Monitor, and discovery and polling over IPv6 give the mains state, change counter, temperature and the `eth0` port. If LibreNMS already has the device by its IPv4 address, it refuses a second entry with the same sysName (`--force` skips that check). A static IPv6 address (serial menu option 9) gives the device an address that does not change with the router's prefix, which suits a monitoring system.
+
+### Switch and port (LLDP)
+
+Since 2.7.0 the device answers the standard LLDP-MIB (`lldpLocPortTable`, `lldpRemTable`, see [MIB.md](MIB.md)) with the switch it hears over LLDP. LibreNMS reads it in its `discovery-protocols` discovery module, as it does for every device, so the device's **Neighbours** tab (and the links on the network map) show the switch and port, even when the switch itself is not in LibreNMS. No LibreNMS change is needed. Run discovery once to see it at once, otherwise it comes with the next discovery (every 6 hours):
+
+```bash
+./lnms device:discover <device> -m discovery-protocols
+```
+
+Junos sends its port as a number (its ifIndex, e.g. `523`) and the name only as description; LibreNMS labels the remote port with the port ID, so the device serves the name (`ge-0/0/9.0`) instead, as on its status screen.
+
+LibreNMS by default tries to add every LLDP/CDP neighbour it learns as a new device (`autodiscovery.xdp`). If you only want to see the switch on the device's page, turn that off:
+
+```bash
+./lnms config:set autodiscovery.xdp false
+```
+
+Checked 2026-11-01 with LibreNMS 26.9.1 in the Docker setup below (`autodiscovery.xdp` off): discovery logs `LLDP: 1 neighbors`, and the device's link is local port `eth0` → `r169`, port `ge-0/0/9.0` (a Juniper EX2200-C that is not in LibreNMS); no device was added.
 
 ## Traps
 
