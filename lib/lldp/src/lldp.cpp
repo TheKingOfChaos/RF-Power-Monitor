@@ -1,6 +1,9 @@
 #include "lldp.h"
 
+#include <stdio.h>
 #include <string.h>
+
+#include "netconfig.h"
 
 // TLV types (IEEE 802.1AB-2016 clause 8.4 and 8.5)
 static const uint8_t TLV_END = 0;
@@ -102,4 +105,126 @@ size_t lldpBuildFrame(const LldpLocal& local, uint8_t* out, size_t cap) {
     if (local.hasIPv6) w.mgmtAddress(IANA_IPV6, local.ipv6, 16);
     w.header(TLV_END, 0);
     return w.length();
+}
+
+// ---- parsing ----
+
+static const uint8_t PORT_LOCAL = 7;
+static const uint8_t CHASSIS_NETWORK_ADDRESS = 5;
+static const uint8_t PORT_NETWORK_ADDRESS = 4;
+
+/// Copy received text, cut to LLDP_TEXT_MAX, non-printable bytes as '?'
+static void copyText(const uint8_t* src, size_t len, char* dest) {
+    if (len > LLDP_TEXT_MAX) len = LLDP_TEXT_MAX;
+    for (size_t i = 0; i < len; i++) dest[i] = (src[i] >= 0x20 && src[i] <= 0x7E) ? (char)src[i] : '?';
+    dest[len] = '\0';
+}
+
+/// IANA address family number + address as text; false for other families or lengths
+static bool formatAddress(uint8_t family, const uint8_t* addr, size_t len, char* out) {
+    if ((family == IANA_IPV4) && len == 4) {
+        snprintf(out, 16, "%u.%u.%u.%u", addr[0], addr[1], addr[2], addr[3]);
+        return true;
+    }
+    if ((family == IANA_IPV6) && len == 16) {
+        formatIPv6(addr, out);
+        return true;
+    }
+    return false;
+}
+
+/// Chassis ID or Port ID value (subtype byte first) as text
+static void formatId(const uint8_t* v, size_t len, uint8_t macSubtype, uint8_t addressSubtype, char* dest) {
+    const uint8_t* data = v + 1;
+    size_t n = len - 1;
+    if (v[0] == macSubtype && n == 6) {
+        snprintf(dest, LLDP_TEXT_MAX + 1, "%02x:%02x:%02x:%02x:%02x:%02x", data[0], data[1], data[2], data[3],
+                 data[4], data[5]);
+        return;
+    }
+    if (v[0] == addressSubtype && n >= 1 && formatAddress(data[0], data + 1, n - 1, dest)) return;
+    copyText(data, n, dest);
+}
+
+LldpParse lldpParseFrame(const uint8_t* frame, size_t len, LldpNeighbour& out) {
+    if (frame == nullptr || len < 14) return LldpParse::NotLldp;
+    if (((frame[12] << 8) | frame[13]) != LLDP_ETHERTYPE) return LldpParse::NotLldp;
+    memset(&out, 0, sizeof(out));
+    size_t at = 14;
+    int index = 0;
+    while (true) {
+        if (len - at < 2) return LldpParse::Malformed;  // the TLVs ran out without an End
+        uint8_t type = frame[at] >> 1;
+        size_t tlvLen = ((frame[at] & 0x01) << 8) | frame[at + 1];
+        at += 2;
+        if (tlvLen > len - at) return LldpParse::Malformed;
+        const uint8_t* v = frame + at;
+        at += tlvLen;
+        // Chassis ID, Port ID and TTL come first, in this order (802.1AB 8.2)
+        if (index < 3 && type != TLV_CHASSIS_ID + index) return LldpParse::Malformed;
+        index++;
+        switch (type) {
+        case TLV_END:
+            return LldpParse::Ok;
+        case TLV_CHASSIS_ID:
+            if (index != 1 || tlvLen < 2 || tlvLen > 256) return LldpParse::Malformed;
+            formatId(v, tlvLen, CHASSIS_MAC, CHASSIS_NETWORK_ADDRESS, out.chassisId);
+            break;
+        case TLV_PORT_ID:
+            if (index != 2 || tlvLen < 2 || tlvLen > 256) return LldpParse::Malformed;
+            out.portIdSubtype = v[0];
+            formatId(v, tlvLen, PORT_MAC, PORT_NETWORK_ADDRESS, out.portId);
+            break;
+        case TLV_TTL:
+            if (index != 3 || tlvLen != 2) return LldpParse::Malformed;
+            out.ttl = (uint16_t)((v[0] << 8) | v[1]);
+            break;
+        case TLV_PORT_DESCR:
+            copyText(v, tlvLen, out.portDescr);
+            break;
+        case TLV_SYS_NAME:
+            copyText(v, tlvLen, out.sysName);
+            break;
+        case TLV_MGMT_ADDR:
+            // Address string length (subtype + address), subtype, address; the rest is not used
+            if (out.mgmtAddr[0] == '\0' && tlvLen >= 2 && v[0] >= 2 && (size_t)v[0] + 1 <= tlvLen) {
+                if (!formatAddress(v[1], v + 2, v[0] - 1, out.mgmtAddr)) out.mgmtAddr[0] = '\0';
+            }
+            break;
+        default:
+            break;  // System Description, Capabilities, organisational TLVs: not shown
+        }
+    }
+}
+
+// ---- the neighbour ----
+
+void LldpNeighbourTable::received(const LldpNeighbour& n, uint32_t nowMs) {
+    if (n.ttl == 0) {
+        clear();
+        return;
+    }
+    _n = n;
+    _receivedMs = nowMs;
+    _present = true;
+}
+
+void LldpNeighbourTable::expire(uint32_t nowMs) {
+    if (_present && nowMs - _receivedMs >= (uint32_t)_n.ttl * 1000u) clear();
+}
+
+void LldpNeighbourTable::clear() {
+    _present = false;
+}
+
+void lldpSwitchText(const LldpNeighbourTable& table, char* out, size_t cap) {
+    if (out == nullptr || cap == 0) return;
+    if (!table.present()) {
+        snprintf(out, cap, "none seen");
+        return;
+    }
+    const LldpNeighbour& n = table.neighbour();
+    const char* name = n.sysName[0] ? n.sysName : n.chassisId;
+    const char* port = (n.portIdSubtype == PORT_LOCAL && n.portDescr[0]) ? n.portDescr : n.portId;
+    snprintf(out, cap, "%s, port %s", name, port);
 }
