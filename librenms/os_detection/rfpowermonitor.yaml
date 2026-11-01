@@ -1,8 +1,8 @@
-os: rfupsmonitor
-text: 'RF-UPS-Monitor'
+os: rfpowermonitor
+text: 'RF.Power-Monitor'
 type: power
-icon: rfupsmonitor
-mib_dir: rfupsmonitor
+icon: rfpowermonitor
+mib_dir: rfpowermonitor
 over:
     - { graph: device_bits, text: 'Device Traffic' }
     - { graph: device_state, text: 'Mains Power' }

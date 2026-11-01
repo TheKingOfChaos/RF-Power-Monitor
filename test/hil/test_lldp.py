@@ -21,7 +21,7 @@ CONSOLE = os.environ.get("RFUPS_LLDP_SWITCH_CONSOLE")
 if CONSOLE:
     from switch_console import SwitchConsole
 
-TEST_HOSTNAME = "rfups-lldp-test"
+TEST_HOSTNAME = "rfpower-lldp-test"
 
 
 class LldpTest(unittest.TestCase):

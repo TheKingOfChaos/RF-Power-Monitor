@@ -1,4 +1,4 @@
-RF-UPS-MONITOR-MIB DEFINITIONS ::= BEGIN
+RF-POWER-MONITOR-MIB DEFINITIONS ::= BEGIN
 
 IMPORTS
     MODULE-IDENTITY, OBJECT-TYPE, NOTIFICATION-TYPE, Counter32, Integer32, TimeTicks, enterprises
@@ -6,17 +6,22 @@ IMPORTS
     MODULE-COMPLIANCE, OBJECT-GROUP, NOTIFICATION-GROUP
         FROM SNMPv2-CONF;
 
-rfUpsMonitor MODULE-IDENTITY
-    LAST-UPDATED "202611010000Z"
-    ORGANIZATION "RF-UPS-Monitor project"
+rfPowerMonitor MODULE-IDENTITY
+    LAST-UPDATED "202611010100Z"
+    ORGANIZATION "RF.Power-Monitor project"
     CONTACT-INFO
         "https://github.com/TheKingOfChaos/RF-UPS-Monitor-v3
          kenneth@tkoc.dk"
     DESCRIPTION
         "Mains power monitor based on a Raspberry Pi Pico with a W5500
-         Ethernet module. The agent speaks SNMPv1 only and all objects
+         Ethernet module. The agent speaks SNMPv1 and SNMPv2c, and all objects
          are read-only. The standard system group (RFC 1213) is also
          implemented."
+    REVISION "202611010100Z"
+    DESCRIPTION
+        "Project renamed RF.Power-Monitor: module RF-UPS-MONITOR-MIB is now
+         RF-POWER-MONITOR-MIB and the rfUpsMonitor... names are rfPowerMonitor...
+         (same OIDs)."
     REVISION "202611010000Z"
     DESCRIPTION
         "Added mainsPowerAlarm and the mainsPowerLostTooLong notification
@@ -39,9 +44,9 @@ rfUpsMonitor MODULE-IDENTITY
     ::= { enterprises 63050 }
 
 -- Notifications. Under RFC 3584 these map to SNMPv1 traps with
--- enterprise = rfUpsMonitor and specific-trap = the last sub-identifier.
+-- enterprise = rfPowerMonitor and specific-trap = the last sub-identifier.
 
-rfUpsMonitorNotifications OBJECT IDENTIFIER ::= { rfUpsMonitor 0 }
+rfPowerMonitorNotifications OBJECT IDENTIFIER ::= { rfPowerMonitor 0 }
 
 mainsPowerLost NOTIFICATION-TYPE
     OBJECTS     { mainsPowerStatus, mainsPowerChanges, mainsPowerLastChange }
@@ -49,14 +54,14 @@ mainsPowerLost NOTIFICATION-TYPE
     DESCRIPTION
         "Mains power was lost. mainsPowerLastChange is the time of the
          loss; the trap time-stamp has the same value."
-    ::= { rfUpsMonitorNotifications 1 }
+    ::= { rfPowerMonitorNotifications 1 }
 
 mainsPowerRestored NOTIFICATION-TYPE
     OBJECTS     { mainsPowerStatus, mainsPowerChanges, mainsPowerLastChange }
     STATUS      current
     DESCRIPTION
         "Mains power was restored."
-    ::= { rfUpsMonitorNotifications 2 }
+    ::= { rfPowerMonitorNotifications 2 }
 
 mainsPowerLostTooLong NOTIFICATION-TYPE
     OBJECTS     { mainsPowerStatus, mainsPowerChanges, mainsPowerLastChange,
@@ -68,7 +73,7 @@ mainsPowerLostTooLong NOTIFICATION-TYPE
          exists at that moment, it is sent as soon as one does, unless
          mains returns first. mainsPowerLastChange and the trap
          time-stamp are the time of the loss."
-    ::= { rfUpsMonitorNotifications 3 }
+    ::= { rfPowerMonitorNotifications 3 }
 
 -- Objects
 
@@ -81,7 +86,7 @@ mainsPowerStatus OBJECT-TYPE
          present(1) when mains is detected, lost(0) when it is not.
          A change is reported within 10 ms; changes shorter than 5 ms
          are ignored."
-    ::= { rfUpsMonitor 1 }
+    ::= { rfPowerMonitor 1 }
 
 mainsPowerChanges OBJECT-TYPE
     SYNTAX      Counter32
@@ -90,7 +95,7 @@ mainsPowerChanges OBJECT-TYPE
     DESCRIPTION
         "Number of mains state changes (loss or restore) since the
          agent started. Two changes make one outage."
-    ::= { rfUpsMonitor 2 }
+    ::= { rfPowerMonitor 2 }
 
 mainsPowerLastChange OBJECT-TYPE
     SYNTAX      TimeTicks
@@ -99,7 +104,7 @@ mainsPowerLastChange OBJECT-TYPE
     DESCRIPTION
         "The value of sysUpTime at the last mains state change, or 0 if
          the state has not changed since the agent started."
-    ::= { rfUpsMonitor 3 }
+    ::= { rfPowerMonitor 3 }
 
 cpuTemperature OBJECT-TYPE
     SYNTAX      Integer32 (-400..1250)
@@ -112,7 +117,7 @@ cpuTemperature OBJECT-TYPE
          last 16 seconds. This is the die temperature: it reads a few
          degrees above the air around the board and is accurate to a
          few degrees. Named boardTemperature before 2026-10-26."
-    ::= { rfUpsMonitor 4 }
+    ::= { rfPowerMonitor 4 }
 
 ambientTemperature OBJECT-TYPE
     SYNTAX      Integer32 (-400..1250)
@@ -125,7 +130,7 @@ ambientTemperature OBJECT-TYPE
          (271 = 27.1 C), read every 2 seconds. The instance does not
          exist while the sensor does not answer (no carrier board, or
          three failed reads in a row)."
-    ::= { rfUpsMonitor 5 }
+    ::= { rfPowerMonitor 5 }
 
 mainsPowerAlarm OBJECT-TYPE
     SYNTAX      INTEGER { none(0), lostTooLong(1) }
@@ -137,68 +142,68 @@ mainsPowerAlarm OBJECT-TYPE
          if the agent started without mains); none(0) otherwise. It
          returns to none(0) when mains is restored. Alert on this rather
          than on mainsPowerStatus to ignore short outages."
-    ::= { rfUpsMonitor 6 }
+    ::= { rfPowerMonitor 6 }
 
 -- Conformance
 
-rfUpsMonitorConformance OBJECT IDENTIFIER ::= { rfUpsMonitor 100 }
-rfUpsMonitorGroups      OBJECT IDENTIFIER ::= { rfUpsMonitorConformance 1 }
-rfUpsMonitorCompliances OBJECT IDENTIFIER ::= { rfUpsMonitorConformance 2 }
+rfPowerMonitorConformance OBJECT IDENTIFIER ::= { rfPowerMonitor 100 }
+rfPowerMonitorGroups      OBJECT IDENTIFIER ::= { rfPowerMonitorConformance 1 }
+rfPowerMonitorCompliances OBJECT IDENTIFIER ::= { rfPowerMonitorConformance 2 }
 
-rfUpsMonitorMainsGroup OBJECT-GROUP
+rfPowerMonitorMainsGroup OBJECT-GROUP
     OBJECTS     { mainsPowerStatus, mainsPowerChanges, mainsPowerLastChange }
     STATUS      current
     DESCRIPTION
         "Mains power monitoring objects."
-    ::= { rfUpsMonitorGroups 1 }
+    ::= { rfPowerMonitorGroups 1 }
 
-rfUpsMonitorBoardGroup OBJECT-GROUP
+rfPowerMonitorBoardGroup OBJECT-GROUP
     OBJECTS     { cpuTemperature }
     STATUS      current
     DESCRIPTION
         "Board health objects."
-    ::= { rfUpsMonitorGroups 3 }
+    ::= { rfPowerMonitorGroups 3 }
 
-rfUpsMonitorAmbientGroup OBJECT-GROUP
+rfPowerMonitorAmbientGroup OBJECT-GROUP
     OBJECTS     { ambientTemperature }
     STATUS      current
     DESCRIPTION
         "Ambient temperature from the carrier board's sensor."
-    ::= { rfUpsMonitorGroups 4 }
+    ::= { rfPowerMonitorGroups 4 }
 
-rfUpsMonitorAlarmGroup OBJECT-GROUP
+rfPowerMonitorAlarmGroup OBJECT-GROUP
     OBJECTS     { mainsPowerAlarm }
     STATUS      current
     DESCRIPTION
         "Alarm for a long mains outage."
-    ::= { rfUpsMonitorGroups 5 }
+    ::= { rfPowerMonitorGroups 5 }
 
-rfUpsMonitorAlarmNotificationGroup NOTIFICATION-GROUP
+rfPowerMonitorAlarmNotificationGroup NOTIFICATION-GROUP
     NOTIFICATIONS { mainsPowerLostTooLong }
     STATUS      current
     DESCRIPTION
         "Notification for a long mains outage."
-    ::= { rfUpsMonitorGroups 6 }
+    ::= { rfPowerMonitorGroups 6 }
 
-rfUpsMonitorMainsNotificationGroup NOTIFICATION-GROUP
+rfPowerMonitorMainsNotificationGroup NOTIFICATION-GROUP
     NOTIFICATIONS { mainsPowerLost, mainsPowerRestored }
     STATUS      current
     DESCRIPTION
         "Mains power notifications."
-    ::= { rfUpsMonitorGroups 2 }
+    ::= { rfPowerMonitorGroups 2 }
 
-rfUpsMonitorCompliance MODULE-COMPLIANCE
+rfPowerMonitorCompliance MODULE-COMPLIANCE
     STATUS      current
     DESCRIPTION
-        "Every RF-UPS-Monitor agent implements all objects and
+        "Every RF.Power-Monitor agent implements all objects and
          notifications; ambientTemperature only with the sensor."
     MODULE      -- this module
-        MANDATORY-GROUPS { rfUpsMonitorMainsGroup, rfUpsMonitorMainsNotificationGroup,
-                           rfUpsMonitorBoardGroup, rfUpsMonitorAlarmGroup,
-                           rfUpsMonitorAlarmNotificationGroup }
-        GROUP       rfUpsMonitorAmbientGroup
+        MANDATORY-GROUPS { rfPowerMonitorMainsGroup, rfPowerMonitorMainsNotificationGroup,
+                           rfPowerMonitorBoardGroup, rfPowerMonitorAlarmGroup,
+                           rfPowerMonitorAlarmNotificationGroup }
+        GROUP       rfPowerMonitorAmbientGroup
         DESCRIPTION
             "Only on the carrier board with the TMP1075."
-    ::= { rfUpsMonitorCompliances 1 }
+    ::= { rfPowerMonitorCompliances 1 }
 
 END

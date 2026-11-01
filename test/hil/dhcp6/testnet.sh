@@ -7,7 +7,7 @@
 # Mirrored networking gives eth0 its link-local address without a fe80::/64 route, so
 # Kea could not reply to the device; the route is added while the test network runs.
 set -u
-DIR=/tmp/rfups-dhcp6
+DIR=/tmp/rfpower-dhcp6
 HERE=$(cd "$(dirname "$0")" && pwd)
 
 stop() {

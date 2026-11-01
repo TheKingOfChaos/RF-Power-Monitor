@@ -13,7 +13,7 @@
 set -u
 HERE=$(cd "$(dirname "$0")" && pwd)
 RA=$HERE/../../test/hil/dhcp6/send_ra.py
-WORK=/tmp/rfups-d6lab
+WORK=/tmp/rfpower-d6lab
 MAC_KEA=02:00:00:00:d6:00
 MAC_C1=02:00:00:00:d6:01
 MAC_C2=02:00:00:00:d6:02

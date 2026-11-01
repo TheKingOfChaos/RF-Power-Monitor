@@ -1,4 +1,4 @@
-# Throw-away LibreNMS to check the RF-UPS-Monitor definitions (based on librenms/docker examples/compose)
+# Throw-away LibreNMS to check the RF.Power-Monitor definitions (based on librenms/docker examples/compose)
 name: lnms-test
 
 x-env: &env
@@ -38,11 +38,11 @@ services:
     environment: *env
     volumes:
       - data:/data
-      - ${REPO:-../..}/librenms/os_detection/rfupsmonitor.yaml:/opt/librenms/resources/definitions/os_detection/rfupsmonitor.yaml:ro
-      - ${REPO:-../..}/librenms/os_discovery/rfupsmonitor.yaml:/opt/librenms/resources/definitions/os_discovery/rfupsmonitor.yaml:ro
-      - ${REPO:-../..}/mibs/RF-UPS-MONITOR-MIB.txt:/opt/librenms/mibs/rfupsmonitor/RF-UPS-MONITOR-MIB:ro
-      - ${REPO:-../..}/librenms/images/os/rfupsmonitor.svg:/opt/librenms/html/images/os/rfupsmonitor.svg:ro
-      - ${REPO:-../..}/librenms/images/logos/rfupsmonitor.svg:/opt/librenms/html/images/logos/rfupsmonitor.svg:ro
+      - ${REPO:-../..}/librenms/os_detection/rfpowermonitor.yaml:/opt/librenms/resources/definitions/os_detection/rfpowermonitor.yaml:ro
+      - ${REPO:-../..}/librenms/os_discovery/rfpowermonitor.yaml:/opt/librenms/resources/definitions/os_discovery/rfpowermonitor.yaml:ro
+      - ${REPO:-../..}/mibs/RF-POWER-MONITOR-MIB.txt:/opt/librenms/mibs/rfpowermonitor/RF-POWER-MONITOR-MIB:ro
+      - ${REPO:-../..}/librenms/images/os/rfpowermonitor.svg:/opt/librenms/html/images/os/rfpowermonitor.svg:ro
+      - ${REPO:-../..}/librenms/images/logos/rfpowermonitor.svg:/opt/librenms/html/images/logos/rfpowermonitor.svg:ro
 
   dispatcher:
     image: librenms/librenms:latest
@@ -54,12 +54,12 @@ services:
       SIDECAR_DISPATCHER: "1"
     volumes:
       - data:/data
-      - ${REPO:-../..}/librenms/os_detection/rfupsmonitor.yaml:/opt/librenms/resources/definitions/os_detection/rfupsmonitor.yaml:ro
-      - ${REPO:-../..}/librenms/os_discovery/rfupsmonitor.yaml:/opt/librenms/resources/definitions/os_discovery/rfupsmonitor.yaml:ro
-      - ${REPO:-../..}/mibs/RF-UPS-MONITOR-MIB.txt:/opt/librenms/mibs/rfupsmonitor/RF-UPS-MONITOR-MIB:ro
+      - ${REPO:-../..}/librenms/os_detection/rfpowermonitor.yaml:/opt/librenms/resources/definitions/os_detection/rfpowermonitor.yaml:ro
+      - ${REPO:-../..}/librenms/os_discovery/rfpowermonitor.yaml:/opt/librenms/resources/definitions/os_discovery/rfpowermonitor.yaml:ro
+      - ${REPO:-../..}/mibs/RF-POWER-MONITOR-MIB.txt:/opt/librenms/mibs/rfpowermonitor/RF-POWER-MONITOR-MIB:ro
       # The poller sets the device icon and checks that the file exists
-      - ${REPO:-../..}/librenms/images/os/rfupsmonitor.svg:/opt/librenms/html/images/os/rfupsmonitor.svg:ro
-      - ${REPO:-../..}/librenms/images/logos/rfupsmonitor.svg:/opt/librenms/html/images/logos/rfupsmonitor.svg:ro
+      - ${REPO:-../..}/librenms/images/os/rfpowermonitor.svg:/opt/librenms/html/images/os/rfpowermonitor.svg:ro
+      - ${REPO:-../..}/librenms/images/logos/rfpowermonitor.svg:/opt/librenms/html/images/logos/rfpowermonitor.svg:ro
 
   # Trap receiver on UDP 162: set the device's trap destination to this host. Docker Desktop
   # hides the sender's address; snmptrap-agent-addr.php takes it from the trap instead (v1
@@ -77,10 +77,10 @@ services:
     volumes:
       - data:/data
       - ${REPO:-../..}/librenms/test/snmptrap-agent-addr.php:/opt/librenms/snmptrap.php:ro
-      - ${REPO:-../..}/librenms/os_detection/rfupsmonitor.yaml:/opt/librenms/resources/definitions/os_detection/rfupsmonitor.yaml:ro
-      - ${REPO:-../..}/librenms/os_discovery/rfupsmonitor.yaml:/opt/librenms/resources/definitions/os_discovery/rfupsmonitor.yaml:ro
+      - ${REPO:-../..}/librenms/os_detection/rfpowermonitor.yaml:/opt/librenms/resources/definitions/os_detection/rfpowermonitor.yaml:ro
+      - ${REPO:-../..}/librenms/os_discovery/rfpowermonitor.yaml:/opt/librenms/resources/definitions/os_discovery/rfpowermonitor.yaml:ro
       # snmptrapd only searches mibs/ and mibs/cisco/, so the trap names need the MIB at the top
-      - ${REPO:-../..}/mibs/RF-UPS-MONITOR-MIB.txt:/opt/librenms/mibs/RF-UPS-MONITOR-MIB:ro
+      - ${REPO:-../..}/mibs/RF-POWER-MONITOR-MIB.txt:/opt/librenms/mibs/RF-POWER-MONITOR-MIB:ro
 
 volumes:
   db:

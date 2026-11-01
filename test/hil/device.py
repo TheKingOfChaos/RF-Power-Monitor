@@ -1,4 +1,4 @@
-"""Serial-port driver for the RF-UPS-Monitor menu, used by the HIL tests.
+"""Serial-port driver for the RF.Power-Monitor menu, used by the HIL tests.
 
 Talks to the device exactly like a person in PuTTY: sends a line terminated
 by CR and reads what comes back.

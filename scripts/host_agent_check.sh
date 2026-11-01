@@ -47,7 +47,7 @@ check() {
     fi
 }
 
-check "get sysDescr"            'STRING: "RF-UPS-Monitor host test"' snmpget $SNMP_OPTS $TARGET 1.3.6.1.2.1.1.1.0
+check "get sysDescr"            'STRING: "RF.Power-Monitor host test"' snmpget $SNMP_OPTS $TARGET 1.3.6.1.2.1.1.1.0
 check "get sysObjectID"         'OID: \.1\.3\.6\.1\.4\.1\.63050$' snmpget $SNMP_OPTS $TARGET 1.3.6.1.2.1.1.2.0
 check "get sysUpTime"           'Timeticks: \([0-9]+\)' snmpget $SNMP_OPTS $TARGET 1.3.6.1.2.1.1.3.0
 check "get sysServices"         'INTEGER: 72' snmpget $SNMP_OPTS $TARGET 1.3.6.1.2.1.1.7.0
@@ -71,7 +71,7 @@ check "set is rejected"         "${NO_SUCH}\.1\.3\.6\.1\.2\.1\.1\.5\.0" \
 check "sysName unchanged"       'STRING: "host-agent"' snmpget $SNMP_OPTS $TARGET 1.3.6.1.2.1.1.5.0
 check "wrong community: no reply" 'Timeout' snmpget -v1 -c wrong -r0 -t1 -On -M /dev/null $TARGET 1.3.6.1.2.1.1.1.0
 V2="-v2c -c public -r0 -t1 -On -M /dev/null"
-check "v2c get sysDescr"        'STRING: "RF-UPS-Monitor host test"' snmpget $V2 $TARGET 1.3.6.1.2.1.1.1.0
+check "v2c get sysDescr"        'STRING: "RF.Power-Monitor host test"' snmpget $V2 $TARGET 1.3.6.1.2.1.1.1.0
 check "v2c noSuchObject"        '1\.99\.0 = No Such Object available on this agent at this OID' \
       snmpget $V2 $TARGET 1.3.6.1.2.1.1.99.0
 check "v2c noSuchInstance"      '1\.1\.5 = No Such Instance currently exists at this OID' \
@@ -138,25 +138,25 @@ if snmptranslate -M "$MIBDIRS" -m SNMPv2-MIB -On SNMPv2-MIB::sysDescr >/dev/null
     # -PW reports every MIB warning; the standard MIBs have plenty, so only
     # warnings that point at our file count
     check "MIB loads without warnings" '^warnings=0$' \
-          bash -c "echo warnings=\$(snmptranslate -M '$MIBDIRS' -m RF-UPS-MONITOR-MIB -PW -On RF-UPS-MONITOR-MIB::mainsPowerStatus 2>&1 >/dev/null | grep -c RF-UPS-MONITOR-MIB)"
+          bash -c "echo warnings=\$(snmptranslate -M '$MIBDIRS' -m RF-POWER-MONITOR-MIB -PW -On RF-POWER-MONITOR-MIB::mainsPowerStatus 2>&1 >/dev/null | grep -c RF-POWER-MONITOR-MIB)"
     check "MIB describes all objects" 'mainsPowerStatus.*mainsPowerChanges.*mainsPowerLastChange' \
-          snmptranslate -M "$MIBDIRS" -m +RF-UPS-MONITOR-MIB -Tp RF-UPS-MONITOR-MIB::rfUpsMonitor
+          snmptranslate -M "$MIBDIRS" -m +RF-POWER-MONITOR-MIB -Tp RF-POWER-MONITOR-MIB::rfPowerMonitor
     check "MIB OID of mainsPowerStatus" '^\.1\.3\.6\.1\.4\.1\.63050\.1$' \
-          snmptranslate -M "$MIBDIRS" -m +RF-UPS-MONITOR-MIB -On RF-UPS-MONITOR-MIB::mainsPowerStatus
+          snmptranslate -M "$MIBDIRS" -m +RF-POWER-MONITOR-MIB -On RF-POWER-MONITOR-MIB::mainsPowerStatus
     check "MIB notification mainsPowerLost" '^\.1\.3\.6\.1\.4\.1\.63050\.0\.1$' \
-          snmptranslate -M "$MIBDIRS" -m +RF-UPS-MONITOR-MIB -On RF-UPS-MONITOR-MIB::mainsPowerLost
+          snmptranslate -M "$MIBDIRS" -m +RF-POWER-MONITOR-MIB -On RF-POWER-MONITOR-MIB::mainsPowerLost
     check "MIB notification mainsPowerRestored" '^\.1\.3\.6\.1\.4\.1\.63050\.0\.2$' \
-          snmptranslate -M "$MIBDIRS" -m +RF-UPS-MONITOR-MIB -On RF-UPS-MONITOR-MIB::mainsPowerRestored
+          snmptranslate -M "$MIBDIRS" -m +RF-POWER-MONITOR-MIB -On RF-POWER-MONITOR-MIB::mainsPowerRestored
     check "MIB notification mainsPowerLostTooLong" '^\.1\.3\.6\.1\.4\.1\.63050\.0\.3$' \
-          snmptranslate -M "$MIBDIRS" -m +RF-UPS-MONITOR-MIB -On RF-UPS-MONITOR-MIB::mainsPowerLostTooLong
-    check "MIB mainsPowerAlarm by name" 'RF-UPS-MONITOR-MIB::mainsPowerAlarm\.0 = INTEGER: none\(0\)' \
-          snmpget -v1 -c public -r0 -t1 -M "$MIBDIRS" -m +RF-UPS-MONITOR-MIB $TARGET 1.3.6.1.4.1.63050.6.0
-    check "MIB cpuTemperature with units" 'RF-UPS-MONITOR-MIB::cpuTemperature\.0 = INTEGER: 250 0\.1 degrees Celsius' \
-          snmpget -v2c -c public -r0 -t1 -M "$MIBDIRS" -m +RF-UPS-MONITOR-MIB $TARGET 1.3.6.1.4.1.63050.4.0
-    check "MIB ambientTemperature with units" 'RF-UPS-MONITOR-MIB::ambientTemperature\.0 = INTEGER: 215 0\.1 degrees Celsius' \
-          snmpget -v2c -c public -r0 -t1 -M "$MIBDIRS" -m +RF-UPS-MONITOR-MIB $TARGET 1.3.6.1.4.1.63050.5.0
-    check "MIB names in walk"       'RF-UPS-MONITOR-MIB::mainsPowerStatus\.0 = INTEGER: present\(1\)' \
-          snmpget -v1 -c public -r0 -t1 -M "$MIBDIRS" -m +RF-UPS-MONITOR-MIB $TARGET 1.3.6.1.4.1.63050.1.0
+          snmptranslate -M "$MIBDIRS" -m +RF-POWER-MONITOR-MIB -On RF-POWER-MONITOR-MIB::mainsPowerLostTooLong
+    check "MIB mainsPowerAlarm by name" 'RF-POWER-MONITOR-MIB::mainsPowerAlarm\.0 = INTEGER: none\(0\)' \
+          snmpget -v1 -c public -r0 -t1 -M "$MIBDIRS" -m +RF-POWER-MONITOR-MIB $TARGET 1.3.6.1.4.1.63050.6.0
+    check "MIB cpuTemperature with units" 'RF-POWER-MONITOR-MIB::cpuTemperature\.0 = INTEGER: 250 0\.1 degrees Celsius' \
+          snmpget -v2c -c public -r0 -t1 -M "$MIBDIRS" -m +RF-POWER-MONITOR-MIB $TARGET 1.3.6.1.4.1.63050.4.0
+    check "MIB ambientTemperature with units" 'RF-POWER-MONITOR-MIB::ambientTemperature\.0 = INTEGER: 215 0\.1 degrees Celsius' \
+          snmpget -v2c -c public -r0 -t1 -M "$MIBDIRS" -m +RF-POWER-MONITOR-MIB $TARGET 1.3.6.1.4.1.63050.5.0
+    check "MIB names in walk"       'RF-POWER-MONITOR-MIB::mainsPowerStatus\.0 = INTEGER: present\(1\)' \
+          snmpget -v1 -c public -r0 -t1 -M "$MIBDIRS" -m +RF-POWER-MONITOR-MIB $TARGET 1.3.6.1.4.1.63050.1.0
 else
     echo "SKIP  MIB checks (standard MIBs missing: sudo apt install snmp-mibs-downloader)"
 fi

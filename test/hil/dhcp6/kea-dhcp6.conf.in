@@ -8,14 +8,14 @@
     "rebind-timer": @REBIND@,
     "client-classes": [
       { "name": "DROP", "test": "not (pkt.src == 0x@DEVLLHEX@)" },
-      { "name": "rfups-device", "test": "option[1].hex == 0x@DUID@" }
+      { "name": "rfpower-device", "test": "option[1].hex == 0x@DUID@" }
     ],
     "subnet6": [
       {
         "id": 1,
         "subnet": "@SUBNET@",
         "interface": "@IFACE@",
-        "client-class": "rfups-device",
+        "client-class": "rfpower-device",
         "pools": [ { "pool": "@POOL@" } ],
         "option-data": [ { "name": "dns-servers", "data": "@DNS@" } ]
       }
