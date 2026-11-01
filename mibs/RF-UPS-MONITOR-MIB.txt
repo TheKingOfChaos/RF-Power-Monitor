@@ -7,7 +7,7 @@ IMPORTS
         FROM SNMPv2-CONF;
 
 rfUpsMonitor MODULE-IDENTITY
-    LAST-UPDATED "202610260000Z"
+    LAST-UPDATED "202611010000Z"
     ORGANIZATION "RF-UPS-Monitor project"
     CONTACT-INFO
         "https://github.com/TheKingOfChaos/RF-UPS-Monitor-v3
@@ -17,6 +17,10 @@ rfUpsMonitor MODULE-IDENTITY
          Ethernet module. The agent speaks SNMPv1 only and all objects
          are read-only. The standard system group (RFC 1213) is also
          implemented."
+    REVISION "202611010000Z"
+    DESCRIPTION
+        "Added mainsPowerAlarm and the mainsPowerLostTooLong notification
+         (SNMPv1 specific-trap 3): mains lost for 60 seconds."
     REVISION "202610260000Z"
     DESCRIPTION
         "boardTemperature renamed cpuTemperature (same OID, same value).
@@ -53,6 +57,18 @@ mainsPowerRestored NOTIFICATION-TYPE
     DESCRIPTION
         "Mains power was restored."
     ::= { rfUpsMonitorNotifications 2 }
+
+mainsPowerLostTooLong NOTIFICATION-TYPE
+    OBJECTS     { mainsPowerStatus, mainsPowerChanges, mainsPowerLastChange,
+                  mainsPowerAlarm }
+    STATUS      current
+    DESCRIPTION
+        "Mains power has been lost for 60 seconds: mainsPowerAlarm became
+         lostTooLong(1). Sent once per outage; if no trap destination
+         exists at that moment, it is sent as soon as one does, unless
+         mains returns first. mainsPowerLastChange and the trap
+         time-stamp are the time of the loss."
+    ::= { rfUpsMonitorNotifications 3 }
 
 -- Objects
 
@@ -111,6 +127,18 @@ ambientTemperature OBJECT-TYPE
          three failed reads in a row)."
     ::= { rfUpsMonitor 5 }
 
+mainsPowerAlarm OBJECT-TYPE
+    SYNTAX      INTEGER { none(0), lostTooLong(1) }
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "lostTooLong(1) once mainsPowerStatus has been lost(0) for 60
+         seconds without a break, counted from the loss (from start-up
+         if the agent started without mains); none(0) otherwise. It
+         returns to none(0) when mains is restored. Alert on this rather
+         than on mainsPowerStatus to ignore short outages."
+    ::= { rfUpsMonitor 6 }
+
 -- Conformance
 
 rfUpsMonitorConformance OBJECT IDENTIFIER ::= { rfUpsMonitor 100 }
@@ -138,6 +166,20 @@ rfUpsMonitorAmbientGroup OBJECT-GROUP
         "Ambient temperature from the carrier board's sensor."
     ::= { rfUpsMonitorGroups 4 }
 
+rfUpsMonitorAlarmGroup OBJECT-GROUP
+    OBJECTS     { mainsPowerAlarm }
+    STATUS      current
+    DESCRIPTION
+        "Alarm for a long mains outage."
+    ::= { rfUpsMonitorGroups 5 }
+
+rfUpsMonitorAlarmNotificationGroup NOTIFICATION-GROUP
+    NOTIFICATIONS { mainsPowerLostTooLong }
+    STATUS      current
+    DESCRIPTION
+        "Notification for a long mains outage."
+    ::= { rfUpsMonitorGroups 6 }
+
 rfUpsMonitorMainsNotificationGroup NOTIFICATION-GROUP
     NOTIFICATIONS { mainsPowerLost, mainsPowerRestored }
     STATUS      current
@@ -152,7 +194,8 @@ rfUpsMonitorCompliance MODULE-COMPLIANCE
          notifications; ambientTemperature only with the sensor."
     MODULE      -- this module
         MANDATORY-GROUPS { rfUpsMonitorMainsGroup, rfUpsMonitorMainsNotificationGroup,
-                           rfUpsMonitorBoardGroup }
+                           rfUpsMonitorBoardGroup, rfUpsMonitorAlarmGroup,
+                           rfUpsMonitorAlarmNotificationGroup }
         GROUP       rfUpsMonitorAmbientGroup
         DESCRIPTION
             "Only on the carrier board with the TMP1075."

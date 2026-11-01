@@ -15,6 +15,7 @@ void setUp() {
     state.mainsPresent = true;
     state.mainsChanges = 3;
     state.mainsLastChangeTicks = 100000;
+    state.mainsAlarm = false;
     state.sysDescr = "RF-UPS-Monitor";
     state.sysContact = "ops@example.com";
     state.sysName = "ups-monitor";
@@ -216,7 +217,7 @@ static void test_mib_contains_expected_objects() {
     snprintf(expected[n++], 40, "1.3.6.1.2.1.2.1.0");
     for (int i = 1; i <= 22; i++) snprintf(expected[n++], 40, "1.3.6.1.2.1.2.2.1.%d.1", i);
     for (int i = 1; i <= 19; i++) snprintf(expected[n++], 40, "1.3.6.1.2.1.31.1.1.1.%d.1", i);
-    for (int i = 1; i <= 5; i++) snprintf(expected[n++], 40, "1.3.6.1.4.1.63050.%d.0", i);
+    for (int i = 1; i <= 6; i++) snprintf(expected[n++], 40, "1.3.6.1.4.1.63050.%d.0", i);
     TEST_ASSERT_EQUAL_UINT8(n, mibSize());
     for (uint8_t i = 0; i < n; i++) TEST_ASSERT_EQUAL_STRING(expected[i], str(mibEntry(i).oid));
 }
@@ -403,9 +404,10 @@ static void test_ambient_temperature_absent_is_skipped_by_getnext() {
     state.ambientTempValid = false;
     const char* oids[] = {"1.3.6.1.4.1.63050.4.0"};
     Reply r = requestV2c(agent, BerTag::GetNextRequest, oids, 1);
-    TEST_ASSERT_EQUAL_HEX8(BerTag::EndOfMibView, r.tags[0]);
+    TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050.6.0", str(r.names[0]));
     r = request(agent, BerTag::GetNextRequest, oids, 1);
-    TEST_ASSERT_EQUAL_INT32((int32_t)SnmpError::NoSuchName, r.errorStatus);
+    TEST_ASSERT_EQUAL_INT32(0, r.errorStatus);
+    TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050.6.0", str(r.names[0]));
     const char* before[] = {"1.3.6.1.4.1.63050.3.0"};
     r = requestV2c(agent, BerTag::GetNextRequest, before, 1);
     TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050.4.0", str(r.names[0]));
@@ -418,8 +420,38 @@ static void test_ambient_temperature_absent_is_skipped_by_getbulk() {
     Reply r = bulk(agent, 1, 2, oids, 2);
     TEST_ASSERT_EQUAL_INT32(0, r.errorStatus);
     TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050.4.0", str(r.names[0]));  // non-repeater
-    TEST_ASSERT_EQUAL_HEX8(BerTag::EndOfMibView, r.tags[1]);              // repeater ends at once
+    TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050.6.0", str(r.names[1]));  // repeater skips .5.0
+    TEST_ASSERT_EQUAL_HEX8(BerTag::EndOfMibView, r.tags[2]);              // then ends
     for (uint8_t i = 0; i < r.count; i++) TEST_ASSERT_NOT_EQUAL(BerTag::NoSuchInstance, r.tags[i]);
+}
+
+static void test_get_mains_alarm_reports_state() {
+    SnmpAgent agent("public");
+    const char* oids[] = {"1.3.6.1.4.1.63050.6.0"};
+    Reply r = request(agent, BerTag::GetRequest, oids, 1);
+    TEST_ASSERT_EQUAL_INT32(0, r.errorStatus);
+    TEST_ASSERT_EQUAL_HEX8(BerTag::Integer, r.tags[0]);
+    TEST_ASSERT_EQUAL_INT32(0, r.ints[0]);
+    state.mainsAlarm = true;
+    r = requestV2c(agent, BerTag::GetRequest, oids, 1);
+    TEST_ASSERT_EQUAL_INT32(1, r.ints[0]);
+}
+
+static void test_getnext_after_ambient_temperature_is_mains_alarm() {
+    SnmpAgent agent("public");
+    const char* oids[] = {"1.3.6.1.4.1.63050.5.0"};
+    Reply r = request(agent, BerTag::GetNextRequest, oids, 1);
+    TEST_ASSERT_EQUAL_INT32(0, r.errorStatus);
+    TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050.6.0", str(r.names[0]));
+}
+
+static void test_getnext_after_mains_alarm_is_end_of_mib() {
+    SnmpAgent agent("public");
+    const char* oids[] = {"1.3.6.1.4.1.63050.6.0"};
+    Reply r = request(agent, BerTag::GetNextRequest, oids, 1);
+    TEST_ASSERT_EQUAL_INT32((int32_t)SnmpError::NoSuchName, r.errorStatus);
+    r = requestV2c(agent, BerTag::GetNextRequest, oids, 1);
+    TEST_ASSERT_EQUAL_HEX8(BerTag::EndOfMibView, r.tags[0]);
 }
 
 static void test_no_such_instance_for_wrong_if_index() {
@@ -440,7 +472,8 @@ static void test_mib_find_and_next() {
     TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050.1.0", str(mibNext(oid("1.3.6.1.4.1.63050"))->oid));
     TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050.4.0", str(mibNext(oid("1.3.6.1.4.1.63050.3.0"))->oid));
     TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050.5.0", str(mibNext(oid("1.3.6.1.4.1.63050.4.0"))->oid));
-    TEST_ASSERT_NULL(mibNext(oid("1.3.6.1.4.1.63050.5.0")));
+    TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050.6.0", str(mibNext(oid("1.3.6.1.4.1.63050.5.0"))->oid));
+    TEST_ASSERT_NULL(mibNext(oid("1.3.6.1.4.1.63050.6.0")));
     TEST_ASSERT_NULL(mibNext(oid("2.0")));
 }
 
@@ -577,7 +610,7 @@ static void test_getnext_with_several_varbinds() {
 
 static void test_getnext_past_end_reports_index_of_that_varbind() {
     SnmpAgent agent("public");
-    const char* oids[] = {"1.3.6.1.2.1.1.1.0", "1.3.6.1.4.1.63050.5.0"};
+    const char* oids[] = {"1.3.6.1.2.1.1.1.0", "1.3.6.1.4.1.63050.6.0"};
     Reply r = request(agent, BerTag::GetNextRequest, oids, 2);
     TEST_ASSERT_EQUAL_INT32((int32_t)SnmpError::NoSuchName, r.errorStatus);
     TEST_ASSERT_EQUAL_INT32(2, r.errorIndex);
@@ -662,12 +695,12 @@ static void test_v2c_get_reports_exceptions_per_varbind_without_error_status() {
 
 static void test_v2c_getnext_past_end_is_end_of_mib_view() {
     SnmpAgent agent("public");
-    const char* oids[] = {"1.3.6.1.2.1.1.7.0", "1.3.6.1.4.1.63050.5.0"};
+    const char* oids[] = {"1.3.6.1.2.1.1.7.0", "1.3.6.1.4.1.63050.6.0"};
     Reply r = requestV2c(agent, BerTag::GetNextRequest, oids, 2);
     TEST_ASSERT_EQUAL_INT32(0, r.errorStatus);
     TEST_ASSERT_EQUAL_STRING("1.3.6.1.2.1.2.1.0", str(r.names[0]));   // ifNumber follows the system group
     TEST_ASSERT_EQUAL_HEX8(BerTag::EndOfMibView, r.tags[1]);
-    TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050.5.0", str(r.names[1]));
+    TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050.6.0", str(r.names[1]));
 }
 
 static void test_v2c_walk_ends_with_end_of_mib_view() {
@@ -703,7 +736,7 @@ static void test_v1_behaviour_is_unchanged_for_the_same_requests() {
     SnmpAgent agent("public");
     const char* unknown[] = {"1.3.6.1.2.1.1.99.0"};
     TEST_ASSERT_EQUAL_INT32((int32_t)SnmpError::NoSuchName, request(agent, BerTag::GetRequest, unknown, 1).errorStatus);
-    const char* last[] = {"1.3.6.1.4.1.63050.5.0"};
+    const char* last[] = {"1.3.6.1.4.1.63050.6.0"};
     TEST_ASSERT_EQUAL_INT32((int32_t)SnmpError::NoSuchName, request(agent, BerTag::GetNextRequest, last, 1).errorStatus);
     const char* name[] = {"1.3.6.1.2.1.1.5.0"};
     Reply r = request(agent, BerTag::SetRequest, name, 1);
@@ -1046,6 +1079,9 @@ int main() {
     RUN_TEST(test_ambient_temperature_absent_v2c_get_is_no_such_instance);
     RUN_TEST(test_ambient_temperature_absent_is_skipped_by_getnext);
     RUN_TEST(test_ambient_temperature_absent_is_skipped_by_getbulk);
+    RUN_TEST(test_get_mains_alarm_reports_state);
+    RUN_TEST(test_getnext_after_ambient_temperature_is_mains_alarm);
+    RUN_TEST(test_getnext_after_mains_alarm_is_end_of_mib);
     RUN_TEST(test_no_such_instance_for_wrong_if_index);
     RUN_TEST(test_get_netsnmp_request_returns_sysdescr);
     RUN_TEST(test_get_every_object_value_and_type);

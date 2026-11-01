@@ -57,6 +57,7 @@ struct SnmpDeviceState {
     bool mainsPresent;             ///< Debounced mains state
     uint32_t mainsChanges;         ///< Accepted mains changes since boot
     uint32_t mainsLastChangeTicks; ///< uptimeTicks at the last change, 0 if none
+    bool mainsAlarm;               ///< mainsPowerAlarm: mains lost for 60 s or more
     const char* sysDescr;
     const char* sysContact;
     const char* sysName;

@@ -27,12 +27,15 @@ The device runs an SNMP agent on UDP port 161 and sends traps. Every object is r
 | `1.3.6.1.4.1.63050.3.0` | mainsPowerLastChange | TimeTicks | sysUpTime at the last change, 0 if none |
 | `1.3.6.1.4.1.63050.4.0` | cpuTemperature | Integer32 | RP2040 die temperature in 0.1 °C (`392` = 39.2 °C), average of 8 readings, updated every 2 s |
 | `1.3.6.1.4.1.63050.5.0` | ambientTemperature | Integer32 | TMP1075 temperature in 0.1 °C (`271` = 27.1 °C), read every 2 s; absent without the sensor |
+| `1.3.6.1.4.1.63050.6.0` | mainsPowerAlarm | INTEGER | `1` = mains lost for 60 s or more, `0` = none |
 
 `cpuTemperature` comes from the RP2040's internal sensor. It measures the chip, which runs a few degrees above the air around it, and the sensor is only accurate to a few degrees: use it to spot an overheating chip, not as a room thermometer. It was named `boardTemperature` before; the OID and value are unchanged, only the name in the MIB file.
 
 `ambientTemperature` comes from the TMP1075 on the carrier board (I2C0, GP4/GP5, address 0x48), accurate to ±1 °C. It reads the air at the board, several degrees below `cpuTemperature` (27 °C against 34 °C on the bench). Without the carrier board, or after three failed reads in a row (6 s), the object has no instance: v2c Get returns noSuchInstance, v1 Get noSuchName, and walks skip it. It comes back on the next good read.
 
 `mainsPowerStatus` is debounced: a change must last 5 ms to count and is reported within 10 ms of the input changing. On the carrier board the detector holds the input 30-50 ms after mains is lost, so a loss shows within 80 ms of mains going off. To detect an outage between two polls, compare `mainsPowerChanges` with the previous poll; `mainsPowerLastChange` tells you when it happened.
+
+`mainsPowerAlarm` becomes `1` once mains has been lost for 60 s without a break, counted from the debounced loss (from start-up if the device starts without mains), and goes back to `0` when mains returns. A loss that is restored, even briefly, starts a new 60 s. Alert on this object rather than on `mainsPowerStatus` to ignore short outages; when it becomes `1` the device sends one `mainsPowerLostTooLong` trap (below). The 60 s is fixed.
 
 ## Interfaces (IF-MIB)
 
@@ -109,11 +112,13 @@ Traps are sent to the trap destination set in menu option 4 (a fixed address, or
 | authenticationFailure | 4 / 0 | `1.3.6.1.6.3.1.1.5.5` | none | Request with a wrong community; at most one per 10 s |
 | mainsPowerLost | 6 (enterpriseSpecific) / 1 | `1.3.6.1.4.1.63050.0.1` | mainsPowerStatus, mainsPowerChanges, mainsPowerLastChange | Mains lost |
 | mainsPowerRestored | 6 (enterpriseSpecific) / 2 | `1.3.6.1.4.1.63050.0.2` | same | Mains restored |
+| mainsPowerLostTooLong | 6 (enterpriseSpecific) / 3 | `1.3.6.1.4.1.63050.0.3` | same, then mainsPowerAlarm | Mains lost for 60 s (mainsPowerAlarm became 1); once per outage |
 
 - **v1** traps carry enterprise `1.3.6.1.4.1.63050` and the device's IP as agent-addr.
 - **v2c** traps start with `sysUpTime.0` and `snmpTrapOID.0`, as RFC 3416 requires, then the variable bindings above, and end with `snmpTrapAddress.0` (`1.3.6.1.6.3.18.1.3.0`, IpAddress, RFC 3584): the device's IPv4 address, as the v1 agent-addr. A manager behind NAT, such as LibreNMS in Docker Desktop, sees another sender address and can find the device by this one. It is left out while the device has no IPv4 address. Each trap has its own request-id.
 - The time (v1 time-stamp, v2c sysUpTime.0) of a mains trap is the moment of the change, equal to mainsPowerLastChange, not when the trap was sent.
-- In the MIB file the mains traps are the notifications `mainsPowerLost` (`63050.0.1`) and `mainsPowerRestored` (`63050.0.2`); RFC 3584 maps them to the v1 traps above.
+- In the MIB file the mains traps are the notifications `mainsPowerLost` (`63050.0.1`), `mainsPowerRestored` (`63050.0.2`) and `mainsPowerLostTooLong` (`63050.0.3`); RFC 3584 maps them to the v1 traps above.
+- `mainsPowerLostTooLong` is held until it can be sent: if there is no trap destination when the alarm is raised (network not up yet, no destination set, DHCP destination not received yet), it goes out once as soon as there is one, unless mains returns first. There is no separate trap when the alarm clears; `mainsPowerRestored` marks that.
 
 Traps are not acknowledged (v2c InformRequest is not used), so a manager should also poll `mainsPowerChanges`: if it changed between two polls, an outage happened even if its traps were lost.
 

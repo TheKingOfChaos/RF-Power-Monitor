@@ -116,6 +116,11 @@ static SnmpValue getAmbientTemperature(const SnmpDeviceState& s) {
     return SnmpValue::makeInteger(s.ambientTempDeciC);
 }
 
+/// 1 once mains has been lost for 60 s (lib/power_monitor MainsAlarm)
+static SnmpValue getMainsAlarm(const SnmpDeviceState& s) {
+    return SnmpValue::makeInteger(s.mainsAlarm ? 1 : 0);
+}
+
 // ---- table, must be sorted by OID (checked by tests) ----
 
 #define SYSTEM(n) {{1, 3, 6, 1, 2, 1, 1, n, 0}, 9}
@@ -182,6 +187,7 @@ static const MibEntry MIB[] = {
     {PRIVATE(3), getMainsLastChange},
     {PRIVATE(4), getCpuTemperature},
     {PRIVATE(5), getAmbientTemperature},
+    {PRIVATE(6), getMainsAlarm},
 };
 
 static const uint8_t MIB_SIZE = sizeof(MIB) / sizeof(MIB[0]);

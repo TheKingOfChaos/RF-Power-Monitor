@@ -59,27 +59,48 @@ size_t snmpBuildAuthFailureTrap(const char* community, const uint8_t agentAddr[4
                             capacity);
 }
 
-size_t snmpBuildMainsTrap(const char* community, const uint8_t agentAddr[4], const SnmpDeviceState& state,
-                          uint8_t* out, size_t capacity) {
+/// mainsPowerStatus, mainsPowerChanges, mainsPowerLastChange and, for the alarm trap, mainsPowerAlarm
+static const uint32_t MAINS_OBJECTS[] = {1, 2, 3, 6};
+
+/**
+ * @brief Read the first count mains objects through the MIB
+ * @return false if one is missing from the MIB
+ */
+static bool mainsVarbinds(const SnmpDeviceState& state, uint8_t count, Oid* names, SnmpValue* values) {
+    for (uint8_t i = 0; i < count; i++) {
+        names[i] = {{1, 3, 6, 1, 4, 1, ENTERPRISE_NUMBER, MAINS_OBJECTS[i], 0}, 9};
+        const MibEntry* e = mibFind(names[i]);
+        if (e == nullptr) return false;
+        values[i] = e->get(state);
+    }
+    return true;
+}
+
+/// An enterprise-specific mains trap with the first count mains objects, stamped with the last change
+static size_t buildMainsTrap(MainsTrap specific, uint8_t count, const char* community, const uint8_t agentAddr[4],
+                             const SnmpDeviceState& state, uint8_t* out, size_t capacity) {
     SnmpTrap t;
     memset(&t, 0, sizeof(t));
     t.community = community;
     t.enterprise = enterpriseOid();
     memcpy(t.agentAddr, agentAddr, 4);
     t.generic = SnmpGenericTrap::EnterpriseSpecific;
-    t.specific = (int32_t)(state.mainsPresent ? MainsTrap::PowerRestored : MainsTrap::PowerLost);
+    t.specific = (int32_t)specific;
     t.timestamp = state.mainsLastChangeTicks;
-
-    // mainsPowerStatus, mainsPowerChanges, mainsPowerLastChange, read through the MIB
-    for (uint32_t n = 1; n <= 3; n++) {
-        Oid name = {{1, 3, 6, 1, 4, 1, ENTERPRISE_NUMBER, n, 0}, 9};
-        const MibEntry* e = mibFind(name);
-        if (e == nullptr) return 0;
-        t.names[t.varbindCount] = name;
-        t.values[t.varbindCount] = e->get(state);
-        t.varbindCount++;
-    }
+    if (!mainsVarbinds(state, count, t.names, t.values)) return 0;
+    t.varbindCount = count;
     return snmpBuildTrap(t, out, capacity);
+}
+
+size_t snmpBuildMainsTrap(const char* community, const uint8_t agentAddr[4], const SnmpDeviceState& state,
+                          uint8_t* out, size_t capacity) {
+    MainsTrap specific = state.mainsPresent ? MainsTrap::PowerRestored : MainsTrap::PowerLost;
+    return buildMainsTrap(specific, 3, community, agentAddr, state, out, capacity);
+}
+
+size_t snmpBuildMainsAlarmTrap(const char* community, const uint8_t agentAddr[4], const SnmpDeviceState& state,
+                               uint8_t* out, size_t capacity) {
+    return buildMainsTrap(MainsTrap::PowerLostTooLong, 4, community, agentAddr, state, out, capacity);
 }
 
 // ---- v2c ----
@@ -146,21 +167,28 @@ size_t snmpBuildAuthFailureTrapV2c(const char* community, const uint8_t agentAdd
                        capacity);
 }
 
+/// A v2c mains trap (63050.0.specific) with the first count mains objects
+static size_t buildMainsTrapV2c(MainsTrap specific, uint8_t count, const char* community,
+                                const uint8_t agentAddr[4], const SnmpDeviceState& state, int32_t requestId,
+                                uint8_t* out, size_t capacity) {
+    Oid trapOid = {{1, 3, 6, 1, 4, 1, ENTERPRISE_NUMBER, 0, (uint32_t)specific}, 9};
+    Oid names[4];
+    SnmpValue values[4];
+    if (!mainsVarbinds(state, count, names, values)) return 0;
+    return buildV2Trap(community, agentAddr, requestId, state.mainsLastChangeTicks, trapOid, names, values, count,
+                       out, capacity);
+}
+
 size_t snmpBuildMainsTrapV2c(const char* community, const uint8_t agentAddr[4], const SnmpDeviceState& state,
                              int32_t requestId, uint8_t* out, size_t capacity) {
-    uint32_t specific = (uint32_t)(state.mainsPresent ? MainsTrap::PowerRestored : MainsTrap::PowerLost);
-    Oid trapOid = {{1, 3, 6, 1, 4, 1, ENTERPRISE_NUMBER, 0, specific}, 9};
+    MainsTrap specific = state.mainsPresent ? MainsTrap::PowerRestored : MainsTrap::PowerLost;
+    return buildMainsTrapV2c(specific, 3, community, agentAddr, state, requestId, out, capacity);
+}
 
-    Oid names[3];
-    SnmpValue values[3];
-    for (uint32_t n = 1; n <= 3; n++) {
-        names[n - 1] = {{1, 3, 6, 1, 4, 1, ENTERPRISE_NUMBER, n, 0}, 9};
-        const MibEntry* e = mibFind(names[n - 1]);
-        if (e == nullptr) return 0;
-        values[n - 1] = e->get(state);
-    }
-    return buildV2Trap(community, agentAddr, requestId, state.mainsLastChangeTicks, trapOid, names, values, 3,
-                       out, capacity);
+size_t snmpBuildMainsAlarmTrapV2c(const char* community, const uint8_t agentAddr[4], const SnmpDeviceState& state,
+                                  int32_t requestId, uint8_t* out, size_t capacity) {
+    return buildMainsTrapV2c(MainsTrap::PowerLostTooLong, 4, community, agentAddr, state, requestId, out,
+                             capacity);
 }
 
 bool TrapThrottle::allow(uint32_t nowMs) {

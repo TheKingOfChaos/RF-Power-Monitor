@@ -42,7 +42,8 @@ enum class SnmpGenericTrap : int32_t {
 /// specific-trap values for EnterpriseSpecific traps of this device
 enum class MainsTrap : int32_t {
     PowerLost = 1,
-    PowerRestored = 2
+    PowerRestored = 2,
+    PowerLostTooLong = 3   ///< mainsPowerLostTooLong: lost for 60 s (mainsPowerAlarm raised)
 };
 
 /**
@@ -86,6 +87,15 @@ size_t snmpBuildAuthFailureTrap(const char* community, const uint8_t agentAddr[4
 size_t snmpBuildMainsTrap(const char* community, const uint8_t agentAddr[4], const SnmpDeviceState& state,
                           uint8_t* out, size_t capacity);
 
+/**
+ * @brief Encode mainsPowerLostTooLong (specific-trap 3): mains has been lost for 60 s
+ *
+ * Varbinds as the mains traps plus mainsPowerAlarm; time-stamp is state.mainsLastChangeTicks, when
+ * mains was lost.
+ */
+size_t snmpBuildMainsAlarmTrap(const char* community, const uint8_t agentAddr[4], const SnmpDeviceState& state,
+                               uint8_t* out, size_t capacity);
+
 // ---- SNMPv2-Trap (v2c, RFC 3416 4.2.6) ----
 //
 // SNMPv2-Trap-PDU ::= [7] { request-id, 0, 0, VarBindList }, where the list
@@ -94,6 +104,7 @@ size_t snmpBuildMainsTrap(const char* community, const uint8_t agentAddr[4], con
 //   authenticationFailure  1.3.6.1.6.3.1.1.5.5
 //   mainsPowerLost         1.3.6.1.4.1.63050.0.1
 //   mainsPowerRestored     1.3.6.1.4.1.63050.0.2
+//   mainsPowerLostTooLong  1.3.6.1.4.1.63050.0.3
 // Every v2c trap ends with snmpTrapAddress.0 (1.3.6.1.6.3.18.1.3.0, RFC 3584), the
 // device's IPv4 address, as the v1 agent-addr: a manager behind NAT (e.g. LibreNMS in
 // Docker Desktop) sees another sender address and can find the device by this one.
@@ -121,6 +132,13 @@ size_t snmpBuildAuthFailureTrapV2c(const char* community, const uint8_t agentAdd
  */
 size_t snmpBuildMainsTrapV2c(const char* community, const uint8_t agentAddr[4], const SnmpDeviceState& state,
                              int32_t requestId, uint8_t* out, size_t capacity);
+
+/**
+ * @brief Encode a v2c mainsPowerLostTooLong trap: as the mains traps, with mainsPowerAlarm after
+ *        mainsPowerLastChange
+ */
+size_t snmpBuildMainsAlarmTrapV2c(const char* community, const uint8_t agentAddr[4], const SnmpDeviceState& state,
+                                  int32_t requestId, uint8_t* out, size_t capacity);
 
 /**
  * @brief Allows at most one event per interval (wrap-around safe)
