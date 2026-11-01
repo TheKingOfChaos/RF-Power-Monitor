@@ -74,7 +74,7 @@ const char* staticConfigErrorMessage(StaticConfigError error);
 static const size_t HOSTNAME_MAX_LENGTH = 32;
 
 /// Used when no valid hostname can be derived
-static const char HOSTNAME_FALLBACK[] = "rf-ups-monitor";
+static const char HOSTNAME_FALLBACK[] = "rf-power-monitor";
 
 /**
  * @brief A valid device hostname (one DNS label, RFC 1123): 1-32 letters,

@@ -70,7 +70,7 @@ static uint8_t* iaAddress(Msg& m) {
 // ---- building ----
 
 static void test_build_solicit_matches_rfc_layout() {
-    Dhcp6Out o = {DHCP6_SOLICIT, 0x123456, 0, nullptr, 0, nullptr, "rf-ups-monitor"};
+    Dhcp6Out o = {DHCP6_SOLICIT, 0x123456, 0, nullptr, 0, nullptr, "rf-power-monitor"};
     uint8_t buf[256];
     size_t n = dhcp6Build(o, DEVICE_MAC, buf, sizeof(buf));
     const uint8_t want[] = {
@@ -79,7 +79,7 @@ static void test_build_solicit_matches_rfc_layout() {
         0x00, 0x03, 0x00, 0x0c, 0x00, 0x00, 0x00, 0x01, 0, 0, 0, 0, 0, 0, 0, 0,                // IA_NA, IAID 1
         0x00, 0x06, 0x00, 0x04, 0x00, 0x27, 0x00, 0x52,                                        // ORO: FQDN, SOL_MAX_RT
         0x00, 0x08, 0x00, 0x02, 0x00, 0x00,                                                    // Elapsed Time
-        0x00, 0x27, 0x00, 0x10, 0x01, 0x0e, 'r', 'f', '-', 'u', 'p', 's', '-', 'm', 'o', 'n', 'i', 't', 'o', 'r',
+        0x00, 0x27, 0x00, 0x12, 0x01, 0x10, 'r', 'f', '-', 'p', 'o', 'w', 'e', 'r', '-', 'm', 'o', 'n', 'i', 't', 'o', 'r',
     };
     TEST_ASSERT_EQUAL_UINT32(sizeof(want), n);
     TEST_ASSERT_EQUAL_HEX8_ARRAY(want, buf, sizeof(want));
@@ -124,7 +124,7 @@ static void test_build_request_carries_server_id_and_address() {
 }
 
 static void test_build_rebind_has_no_server_id() {
-    Dhcp6Out o = {DHCP6_REBIND, 1, 100, KEA_DUID, sizeof(KEA_DUID), LEASED, "rf-ups-monitor"};
+    Dhcp6Out o = {DHCP6_REBIND, 1, 100, KEA_DUID, sizeof(KEA_DUID), LEASED, "rf-power-monitor"};
     uint8_t buf[256];
     size_t n = dhcp6Build(o, DEVICE_MAC, buf, sizeof(buf));
     TEST_ASSERT_GREATER_THAN(0, n);
@@ -137,7 +137,7 @@ static void test_build_rebind_has_no_server_id() {
 }
 
 static void test_build_decline_has_address_and_no_fqdn() {
-    Dhcp6Out o = {DHCP6_DECLINE, 2, 0, KEA_DUID, sizeof(KEA_DUID), LEASED, "rf-ups-monitor"};
+    Dhcp6Out o = {DHCP6_DECLINE, 2, 0, KEA_DUID, sizeof(KEA_DUID), LEASED, "rf-power-monitor"};
     uint8_t buf[256];
     size_t n = dhcp6Build(o, DEVICE_MAC, buf, sizeof(buf));
     TEST_ASSERT_GREATER_THAN(0, n);
@@ -152,7 +152,7 @@ static void test_build_decline_has_address_and_no_fqdn() {
 
 static void test_build_confirm_has_address_and_no_server_id_or_fqdn() {
     // RFC 8415 18.2.3: no Server Identifier; the FQDN is left out as in Decline
-    Dhcp6Out o = {DHCP6_CONFIRM, 3, 0, KEA_DUID, sizeof(KEA_DUID), LEASED, "rf-ups-monitor"};
+    Dhcp6Out o = {DHCP6_CONFIRM, 3, 0, KEA_DUID, sizeof(KEA_DUID), LEASED, "rf-power-monitor"};
     uint8_t buf[256];
     size_t n = dhcp6Build(o, DEVICE_MAC, buf, sizeof(buf));
     TEST_ASSERT_GREATER_THAN(0, n);
@@ -167,7 +167,7 @@ static void test_build_confirm_has_address_and_no_server_id_or_fqdn() {
 }
 
 static void test_build_returns_zero_when_buffer_too_small() {
-    Dhcp6Out o = {DHCP6_SOLICIT, 1, 0, nullptr, 0, nullptr, "rf-ups-monitor"};
+    Dhcp6Out o = {DHCP6_SOLICIT, 1, 0, nullptr, 0, nullptr, "rf-power-monitor"};
     uint8_t buf[256];
     size_t full = dhcp6Build(o, DEVICE_MAC, buf, sizeof(buf));
     TEST_ASSERT_GREATER_THAN(0, full);

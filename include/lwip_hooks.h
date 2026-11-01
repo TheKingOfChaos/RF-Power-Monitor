@@ -24,10 +24,10 @@ extern "C" {
  * Weak: builds without src/ (the on-device tests, test_build_src = no) link lwIP without it,
  * and the hook then always lets lwIP choose.
  */
-__attribute__((weak)) const ip6_addr_t* rfupsIPv6Gateway(struct netif* netif, const ip6_addr_t* dest);
+__attribute__((weak)) const ip6_addr_t* rfpowerIPv6Gateway(struct netif* netif, const ip6_addr_t* dest);
 
 #ifdef __cplusplus
 }
 #endif
 
-#define LWIP_HOOK_ND6_GET_GW(netif, dest) (rfupsIPv6Gateway ? rfupsIPv6Gateway(netif, dest) : NULL)
+#define LWIP_HOOK_ND6_GET_GW(netif, dest) (rfpowerIPv6Gateway ? rfpowerIPv6Gateway(netif, dest) : NULL)

@@ -376,7 +376,7 @@ static void test_response_builder_produces_get_response() {
     snmpParseRequest(GET_V1, sizeof(GET_V1), req);
     uint8_t buf[256];
     SnmpResponseBuilder b(buf, sizeof(buf), req);
-    TEST_ASSERT_TRUE(b.add(req.names[0], SnmpValue::makeString("RF-UPS-Monitor")));
+    TEST_ASSERT_TRUE(b.add(req.names[0], SnmpValue::makeString("RF.Power-Monitor")));
     size_t len = b.finish();
     TEST_ASSERT_GREATER_THAN(0, len);
 

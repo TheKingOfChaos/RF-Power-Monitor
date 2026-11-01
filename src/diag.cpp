@@ -1,6 +1,6 @@
 #include "diag.h"
 
-#ifdef RFUPS_DIAG
+#ifdef RFPOWER_DIAG
 #include <Arduino.h>
 #include <stdarg.h>
 #include <stdio.h>

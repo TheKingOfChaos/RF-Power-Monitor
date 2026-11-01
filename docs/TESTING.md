@@ -401,7 +401,7 @@ Uses `test/settings_a.json` and `test/settings_b.json`, never the real settings.
 Every build has a hardware watchdog (8 s, `src/watchdog.cpp`, armed at the end of `setup()`): a hang in `loop()` or on core 1 restarts the device, and the status screen shows `Last restart: watchdog`. It does not say where it hung, and a hang during `setup()` still freezes the device with USB serial (then: hold BOOTSEL while plugging in). The diagnosis build tells you where:
 
 ```powershell
-$env:PLATFORMIO_BUILD_FLAGS = '-DRFUPS_DIAG -Wl,--wrap=panic'
+$env:PLATFORMIO_BUILD_FLAGS = '-DRFPOWER_DIAG -Wl,--wrap=panic'
 & $pio run -e pico -t upload
 Remove-Item Env:PLATFORMIO_BUILD_FLAGS
 ```

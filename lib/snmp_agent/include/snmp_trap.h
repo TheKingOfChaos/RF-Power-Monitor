@@ -9,7 +9,7 @@
  *       generic-trap INTEGER, specific-trap INTEGER,
  *       time-stamp TimeTicks, variable-bindings VarBindList }
  *
- * Traps sent by the device (see mibs/RF-UPS-MONITOR-MIB.txt):
+ * Traps sent by the device (see mibs/RF-POWER-MONITOR-MIB.txt):
  *   coldStart              generic 0, at boot once the network is up
  *   authenticationFailure  generic 4, request with a wrong community
  *   mainsPowerLost         enterpriseSpecific (6), specific 1

@@ -4,7 +4,7 @@
  * @file snmp_mib.h
  * @brief The device MIB: a sorted table of OIDs and how to read each one.
  *
- * Objects (see docs/MIB.md and mibs/RF-UPS-MONITOR-MIB.txt):
+ * Objects (see docs/MIB.md and mibs/RF-POWER-MONITOR-MIB.txt):
  *
  *   1.3.6.1.2.1.1.1.0      sysDescr              OCTET STRING
  *   1.3.6.1.2.1.1.2.0      sysObjectID           OBJECT IDENTIFIER (1.3.6.1.4.1.63050)

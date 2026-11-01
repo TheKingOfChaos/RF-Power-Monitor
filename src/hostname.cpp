@@ -15,7 +15,7 @@ static s8_t httpSlot = -1;         // its mDNS service slot, -1 = not announced
 /// Add or remove the _http._tcp service to match advertiseWeb (driver lock held)
 static void syncWebService(netif* nif) {
     if (advertiseWeb && httpSlot < 0) {
-        httpSlot = mdns_resp_add_service(nif, "RF-UPS-Monitor", "_http", DNSSD_PROTO_TCP, 80, nullptr, nullptr);
+        httpSlot = mdns_resp_add_service(nif, "RF.Power-Monitor", "_http", DNSSD_PROTO_TCP, 80, nullptr, nullptr);
     } else if (!advertiseWeb && httpSlot >= 0) {
         mdns_resp_del_service(nif, httpSlot);
         httpSlot = -1;

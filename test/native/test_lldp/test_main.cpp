@@ -12,7 +12,7 @@ static LldpLocal local() {
     LldpLocal l = {};
     const uint8_t mac[6] = {0x02, 0x00, 0x00, 0x00, 0x00, 0x01};
     memcpy(l.mac, mac, 6);
-    l.sysName = "rfups";
+    l.sysName = "rfpow";
     l.sysDescr = "RF";
     l.portDescr = "eth";
     l.hasIPv4 = true;
@@ -32,7 +32,7 @@ static const uint8_t EXPECTED_V4[] = {
     0x04, 0x07, 0x03, 0x02, 0x00, 0x00, 0x00, 0x00, 0x01,  // Port ID, subtype 3 (MAC)
     0x06, 0x02, 0x00, 0x78,                          // TTL 120
     0x08, 0x03, 'e', 't', 'h',                       // Port Description
-    0x0a, 0x05, 'r', 'f', 'u', 'p', 's',             // System Name
+    0x0a, 0x05, 'r', 'f', 'p', 'o', 'w',             // System Name
     0x0c, 0x02, 'R', 'F',                            // System Description
     0x0e, 0x04, 0x00, 0x80, 0x00, 0x80,              // System Capabilities: station only, enabled
     0x10, 0x0c, 0x05, 0x01, 0x0a, 0x00, 0x00, 0x05,  // Management Address: IPv4 10.0.0.5
@@ -73,6 +73,19 @@ static void test_build_frame_without_addresses_has_no_management_tlv() {
     TEST_ASSERT_EQUAL_HEX8_ARRAY(EXPECTED_V4, out, n - 2);
     TEST_ASSERT_EQUAL_HEX8(0x00, out[n - 2]);
     TEST_ASSERT_EQUAL_HEX8(0x00, out[n - 1]);
+}
+
+static void test_build_frame_fits_with_real_texts() {
+    // The real sysDescr and the longest hostname, with both management addresses
+    LldpLocal l = local();
+    l.sysDescr = "RF.Power-Monitor 3.0.0 mains power monitor (RP2040, W5500)";
+    l.sysName = "abcdefghijklmnopqrstuvwxyz-12345";  // 32 characters, HOSTNAME_MAX_LENGTH
+    l.portDescr = "W5500 10/100 Ethernet";
+    l.hasIPv6 = true;
+    uint8_t out[LLDP_FRAME_MAX];
+    size_t n = lldpBuildFrame(l, out, sizeof(out));
+    TEST_ASSERT_GREATER_THAN(0, n);
+    TEST_ASSERT_LESS_OR_EQUAL(LLDP_FRAME_MAX, n);
 }
 
 static void test_build_frame_rejects_small_buffer() {
@@ -138,7 +151,7 @@ static void test_parse_reads_own_built_frame() {
     TEST_ASSERT_EQUAL(3, nb.portIdSubtype);
     TEST_ASSERT_EQUAL_STRING("02:00:00:00:00:01", nb.portId);
     TEST_ASSERT_EQUAL_STRING("eth", nb.portDescr);
-    TEST_ASSERT_EQUAL_STRING("rfups", nb.sysName);
+    TEST_ASSERT_EQUAL_STRING("rfpow", nb.sysName);
     TEST_ASSERT_EQUAL_STRING("10.0.0.5", nb.mgmtAddr);  // the first management address
     l.hasIPv4 = false;
     n = lldpBuildFrame(l, out, sizeof(out));
@@ -325,7 +338,7 @@ static void test_latest_neighbour_wins() {
     uint8_t out[LLDP_FRAME_MAX];
     size_t n = lldpBuildFrame(local(), out, sizeof(out));
     t.received(parsed(out, n), 2000);
-    TEST_ASSERT_EQUAL_STRING("rfups", t.neighbour().sysName);
+    TEST_ASSERT_EQUAL_STRING("rfpow", t.neighbour().sysName);
     t.expire(121000);  // the TTL counts from the latest frame
     TEST_ASSERT_TRUE(t.present());
 }
@@ -545,6 +558,7 @@ int main(int, char**) {
     RUN_TEST(test_build_frame_matches_expected_bytes);
     RUN_TEST(test_build_frame_adds_ipv6_management_address);
     RUN_TEST(test_build_frame_without_addresses_has_no_management_tlv);
+    RUN_TEST(test_build_frame_fits_with_real_texts);
     RUN_TEST(test_build_frame_rejects_small_buffer);
     RUN_TEST(test_build_frame_rejects_string_over_255_bytes);
     RUN_TEST(test_parse_reads_junos_style_frame);

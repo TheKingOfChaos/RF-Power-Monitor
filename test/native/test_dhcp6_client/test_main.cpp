@@ -100,7 +100,7 @@ static void test_client_sends_nothing_before_start() {
 
 static void test_first_solicit_within_max_delay() {
     Dhcp6Client c(MAC, fakeRandom);
-    c.setHostname("rf-ups-monitor");
+    c.setHostname("rf-power-monitor");
     uint32_t now = 5000;
     c.start(now);
     Dhcp6Action a = until(c, &now, 1000);
@@ -114,7 +114,7 @@ static void test_first_solicit_within_max_delay() {
 
 static void test_null_hostname_sends_no_fqdn() {
     Dhcp6Client c(MAC, fakeRandom);
-    c.setHostname("rf-ups-monitor");
+    c.setHostname("rf-power-monitor");
     c.setHostname(nullptr);
     uint32_t now = 0;
     c.start(now);
@@ -495,7 +495,7 @@ static void test_infinite_valid_lifetime_never_expires() {
 
 /// Bound to ADDR_A (60/120 s), then the link comes back up; returns with the first Confirm sent
 static uint32_t confirmingWith(Dhcp6Client& c, Dhcp6Action* sent) {
-    c.setHostname("rf-ups-monitor");
+    c.setHostname("rf-power-monitor");
     uint32_t now = bindWith(c, 0, 60, 120, 0, 0) + 1000;
     c.linkUp(now);
     *sent = until(c, &now, 1100);

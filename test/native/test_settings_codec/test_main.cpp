@@ -177,7 +177,7 @@ static void test_defaults_include_sys_text() {
     Settings s;
     memset(&s, 0xAA, sizeof(s));
     settingsDefaults(s);
-    TEST_ASSERT_EQUAL_STRING("rf-ups-monitor", s.sysName);
+    TEST_ASSERT_EQUAL_STRING("rf-power-monitor", s.sysName);
     TEST_ASSERT_EQUAL_STRING("", s.sysContact);
     TEST_ASSERT_EQUAL_STRING("", s.sysLocation);
 }
@@ -221,11 +221,22 @@ static void test_worst_case_escaped_settings_fit_and_round_trip() {
     TEST_ASSERT_TRUE(settingsEqual(in, out));
 }
 
+static void test_stored_old_default_name_is_kept() {
+    // Devices set up before 3.0.0 stored the old default name; the rename does not change it
+    Settings in, out;
+    settingsDefaults(in);
+    strcpy(in.sysName, "rf-ups-monitor");
+    char json[SETTINGS_JSON_MAX];
+    TEST_ASSERT_GREATER_THAN(0, settingsToJson(in, json, sizeof(json)));
+    TEST_ASSERT_EQUAL(SettingsParseError::None, settingsFromJson(json, out));
+    TEST_ASSERT_EQUAL_STRING("rf-ups-monitor", out.sysName);
+}
+
 static void test_file_without_sys_text_loads_with_defaults() {
     // Files written by firmware up to v3.1.0 have no sysName/sysContact/sysLocation
     Settings s;
     TEST_ASSERT_EQUAL(SettingsParseError::None, settingsFromJson(LEGACY_V1_JSON, s));
-    TEST_ASSERT_EQUAL_STRING("rf-ups-monitor", s.sysName);
+    TEST_ASSERT_EQUAL_STRING("rf-power-monitor", s.sysName);
     TEST_ASSERT_EQUAL_STRING("", s.sysContact);
     TEST_ASSERT_EQUAL_STRING("", s.sysLocation);
 }
@@ -626,6 +637,7 @@ int main() {
     RUN_TEST(test_defaults_include_sys_text);
     RUN_TEST(test_round_trip_sys_text_with_characters_json_must_escape);
     RUN_TEST(test_worst_case_escaped_settings_fit_and_round_trip);
+    RUN_TEST(test_stored_old_default_name_is_kept);
     RUN_TEST(test_file_without_sys_text_loads_with_defaults);
     RUN_TEST(test_rejects_overlong_sys_text);
     RUN_TEST(test_web_password_defaults_to_empty_and_round_trips);

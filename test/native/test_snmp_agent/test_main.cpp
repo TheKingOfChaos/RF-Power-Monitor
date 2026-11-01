@@ -16,9 +16,9 @@ void setUp() {
     state.mainsChanges = 3;
     state.mainsLastChangeTicks = 100000;
     state.mainsAlarm = false;
-    state.sysDescr = "RF-UPS-Monitor";
+    state.sysDescr = "RF.Power-Monitor";
     state.sysContact = "ops@example.com";
-    state.sysName = "ups-monitor";
+    state.sysName = "power-monitor";
     state.sysLocation = "Rack 4";
     memset(&state.iface, 0, sizeof(state.iface));
     state.iface.linkUp = true;
@@ -651,7 +651,7 @@ static void test_get_netsnmp_request_returns_sysdescr() {
     TEST_ASSERT_EQUAL_UINT8(1, r.count);
     TEST_ASSERT_EQUAL_STRING("1.3.6.1.2.1.1.1.0", str(r.names[0]));
     TEST_ASSERT_EQUAL_HEX8(BerTag::OctetString, r.tags[0]);
-    TEST_ASSERT_EQUAL_STRING("RF-UPS-Monitor", r.strings[0]);
+    TEST_ASSERT_EQUAL_STRING("RF.Power-Monitor", r.strings[0]);
     TEST_ASSERT_EQUAL_STRING("public", r.community);
 }
 
@@ -664,13 +664,13 @@ static void test_get_every_object_value_and_type() {
     Reply r = request(agent, BerTag::GetRequest, oids, 10);
     TEST_ASSERT_EQUAL_INT32(0, r.errorStatus);
     TEST_ASSERT_EQUAL_UINT8(10, r.count);
-    TEST_ASSERT_EQUAL_STRING("RF-UPS-Monitor", r.strings[0]);
+    TEST_ASSERT_EQUAL_STRING("RF.Power-Monitor", r.strings[0]);
     TEST_ASSERT_EQUAL_HEX8(BerTag::ObjectId, r.tags[1]);
     TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050", str(r.oids[1]));
     TEST_ASSERT_EQUAL_HEX8(BerTag::TimeTicks, r.tags[2]);
     TEST_ASSERT_EQUAL_UINT32(123456, r.uints[2]);
     TEST_ASSERT_EQUAL_STRING("ops@example.com", r.strings[3]);
-    TEST_ASSERT_EQUAL_STRING("ups-monitor", r.strings[4]);
+    TEST_ASSERT_EQUAL_STRING("power-monitor", r.strings[4]);
     TEST_ASSERT_EQUAL_STRING("Rack 4", r.strings[5]);
     TEST_ASSERT_EQUAL_INT32(72, r.ints[6]);
     TEST_ASSERT_EQUAL_HEX8(BerTag::Integer, r.tags[7]);
@@ -838,7 +838,7 @@ static void test_v2c_get_answers_in_v2c() {
     Reply r = requestV2c(agent, BerTag::GetRequest, oids, 2);
     TEST_ASSERT_EQUAL_INT32(SNMP_VERSION_2C, r.version);
     TEST_ASSERT_EQUAL_INT32(0, r.errorStatus);
-    TEST_ASSERT_EQUAL_STRING("RF-UPS-Monitor", r.strings[0]);
+    TEST_ASSERT_EQUAL_STRING("RF.Power-Monitor", r.strings[0]);
     TEST_ASSERT_EQUAL_INT32(1, r.ints[1]);
 }
 
@@ -850,7 +850,7 @@ static void test_v2c_get_reports_exceptions_per_varbind_without_error_status() {
     TEST_ASSERT_EQUAL_INT32(0, r.errorStatus);
     TEST_ASSERT_EQUAL_INT32(0, r.errorIndex);
     TEST_ASSERT_EQUAL_UINT8(4, r.count);
-    TEST_ASSERT_EQUAL_STRING("ups-monitor", r.strings[0]);
+    TEST_ASSERT_EQUAL_STRING("power-monitor", r.strings[0]);
     TEST_ASSERT_EQUAL_HEX8(BerTag::NoSuchInstance, r.tags[1]);
     TEST_ASSERT_EQUAL_HEX8(BerTag::NoSuchObject, r.tags[2]);
     TEST_ASSERT_EQUAL_HEX8(BerTag::NoSuchInstance, r.tags[3]);   // the object itself, no instance

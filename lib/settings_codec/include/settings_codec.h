@@ -103,7 +103,7 @@ enum class SettingsSlot : uint8_t { None, A, B };
 
 /**
  * @brief Fill settings with factory defaults (DHCP, community "public",
- *        sysName "rf-ups-monitor", empty sysContact and sysLocation)
+ *        sysName "rf-power-monitor", empty sysContact and sysLocation)
  */
 void settingsDefaults(Settings& s);
 

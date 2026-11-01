@@ -548,7 +548,7 @@ public:
         strcpy(st.subnetMask, "255.255.0.0");
         strcpy(st.gateway, "10.10.0.1");
         strcpy(st.community, "public");
-        strcpy(st.hostname, "rf-ups-monitor");
+        strcpy(st.hostname, "rf-power-monitor");
         strcpy(st.lldpSwitch, "none seen");
     }
     void status(WebStatus& out) override { out = st; }
@@ -912,8 +912,8 @@ static void test_change_hostname() {
     std::string csrf;
     std::string token = logIn(csrf);
     std::string page = get("/", token);
-    TEST_ASSERT_TRUE(page.find("<td>rf-ups-monitor</td>") != std::string::npos);
-    TEST_ASSERT_TRUE(page.find("<td>rf-ups-monitor.local</td>") != std::string::npos);
+    TEST_ASSERT_TRUE(page.find("<td>rf-power-monitor</td>") != std::string::npos);
+    TEST_ASSERT_TRUE(page.find("<td>rf-power-monitor.local</td>") != std::string::npos);
     std::string resp = post("/hostname", "csrf=" + csrf + "&hostname=ups-rack4", token);
     TEST_ASSERT_EQUAL(200, statusCode(resp));
     TEST_ASSERT_EQUAL_STRING("ups-rack4", fb->savedHostname.c_str());
@@ -1257,6 +1257,16 @@ static void test_longest_values_still_fit_the_page() {
     TEST_ASSERT_TRUE(page.find("</html>") != std::string::npos);
 }
 
+static void test_pages_carry_the_project_name() {
+    webSetUp();
+    std::string login = get("/");  // no session: the login page
+    TEST_ASSERT_TRUE(login.find("<title>RF.Power-Monitor login</title>") != std::string::npos);
+    TEST_ASSERT_TRUE(login.find("</svg>RF.Power-Monitor</span>") != std::string::npos);
+    std::string csrf;
+    std::string page = get("/", logIn(csrf));
+    TEST_ASSERT_TRUE(page.find("<title>RF.Power-Monitor</title>") != std::string::npos);
+}
+
 static void test_status_page_shows_switch() {
     webSetUp();
     std::string csrf;
@@ -1438,6 +1448,7 @@ int main() {
     RUN_TEST(test_session_found_among_many_other_cookies);
     RUN_TEST(test_every_single_byte_corruption_gets_a_well_formed_response);
     RUN_TEST(test_longest_values_still_fit_the_page);
+    RUN_TEST(test_pages_carry_the_project_name);
     RUN_TEST(test_status_page_shows_switch);
     RUN_TEST(test_status_page_escapes_switch_name);
     RUN_TEST(test_ipv6_form_shows_the_stored_static_values);

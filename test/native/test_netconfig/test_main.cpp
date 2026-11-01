@@ -155,7 +155,7 @@ static void test_every_error_has_a_message() {
 // ---- hostnames ----
 
 static void test_hostname_rules() {
-    TEST_ASSERT_TRUE(hostnameIsValid("rf-ups-monitor"));
+    TEST_ASSERT_TRUE(hostnameIsValid("rf-power-monitor"));
     TEST_ASSERT_TRUE(hostnameIsValid("UPS4"));
     TEST_ASSERT_TRUE(hostnameIsValid("a"));
     TEST_ASSERT_TRUE(hostnameIsValid("4ups"));                               // RFC 1123 allows a digit first
@@ -173,10 +173,14 @@ static void test_hostname_rules() {
     TEST_ASSERT_FALSE(hostnameIsValid("r\xc3\xb8""d"));  // non-ASCII
 }
 
+static void test_hostname_fallback_is_the_project_name() {
+    TEST_ASSERT_EQUAL_STRING("rf-power-monitor", HOSTNAME_FALLBACK);
+}
+
 static void test_hostname_from_free_text() {
     char out[HOSTNAME_MAX_LENGTH + 1];
     struct { const char* in; const char* out; } cases[] = {
-        {"rf-ups-monitor", "rf-ups-monitor"},
+        {"rf-power-monitor", "rf-power-monitor"},
         {"a--b", "a--b"},                           // valid names stay exactly as they are
         {"Rack 4 / UPS", "Rack-4-UPS"},
         {"  Server room, rack 4  ", "Server-room-rack-4"},
@@ -435,6 +439,7 @@ int main() {
     RUN_TEST(test_validate_rejects_gateway_equal_to_host);
     RUN_TEST(test_every_error_has_a_message);
     RUN_TEST(test_hostname_rules);
+    RUN_TEST(test_hostname_fallback_is_the_project_name);
     RUN_TEST(test_hostname_from_free_text);
     RUN_TEST(test_every_printable_text_gives_a_valid_hostname);
     RUN_TEST(test_parse_ipv6_compressed_and_full_forms);

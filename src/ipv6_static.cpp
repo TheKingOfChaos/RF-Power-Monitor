@@ -61,7 +61,7 @@ const char* ipv6StaticProblem() {
     return problem;
 }
 
-extern "C" const ip6_addr_t* rfupsIPv6Gateway(struct netif* nif, const ip6_addr_t* dest) {
+extern "C" const ip6_addr_t* rfpowerIPv6Gateway(struct netif* nif, const ip6_addr_t* dest) {
     (void)dest;
     return haveGateway && nif == staticNetif ? &staticGateway : nullptr;
 }

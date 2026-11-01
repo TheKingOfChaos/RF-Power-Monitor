@@ -2,15 +2,15 @@
 
 /**
  * @file diag.h
- * @brief Temporary hang diagnosis (build with -DRFUPS_DIAG): hardware watchdog plus
+ * @brief Temporary hang diagnosis (build with -DRFPOWER_DIAG): hardware watchdog plus
  *        breadcrumbs in the watchdog scratch registers, which survive the watchdog reset.
  *
- * Without RFUPS_DIAG every macro is empty.
+ * Without RFPOWER_DIAG every macro is empty.
  */
 
 #include <stdint.h>
 
-#ifdef RFUPS_DIAG
+#ifdef RFPOWER_DIAG
 #include <hardware/structs/watchdog.h>
 
 /// Last step of loop() reached (scratch 0)

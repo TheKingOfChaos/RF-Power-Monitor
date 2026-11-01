@@ -168,9 +168,9 @@ void setup() {
     // Wait briefly for a terminal, but don't block boot when none is attached
     uint32_t serialWait = millis();
     while (!Serial && millis() - serialWait < 3000) delay(10);
-    Serial.println("\nRF-UPS-Monitor " FIRMWARE_VERSION " starting...");
+    Serial.println("\nRF.Power-Monitor " FIRMWARE_VERSION " starting...");
     watchdogBegin();  // restart cause, before diagBegin() arms its own early watchdog
-    diagBegin();  // only with -DRFUPS_DIAG
+    diagBegin();  // only with -DRFPOWER_DIAG
     cpuTempBegin();
     ambientTempBegin();
 
