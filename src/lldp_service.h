@@ -11,6 +11,7 @@
 
 #include <stddef.h>
 #include <stdint.h>
+#include <snmp_mib.h>
 
 struct netif;
 
@@ -33,6 +34,12 @@ void lldpServiceSwitchText(char* out, size_t cap);
 
 /// The neighbour's management address as text, "" if none or no neighbour
 void lldpServiceSwitchAddress(char* out, size_t cap);
+
+/**
+ * @brief Copy what LLDP-MIB serves: our MAC and the neighbour, under the driver lock
+ * @return false before lldpBegin()
+ */
+bool lldpServiceSnmpState(SnmpLldpState& out);
 
 /// Hidden menu command lldpdump: print "LLDP <hex>" of the last LLDPDU received, or "LLDP none"
 void lldpDump();

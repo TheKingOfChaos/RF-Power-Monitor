@@ -116,3 +116,12 @@ void lldpDump() {
     for (size_t i = 0; i < len; i++) Serial.printf("%02x", copy[i]);
     Serial.println();
 }
+
+bool lldpServiceSnmpState(SnmpLldpState& out) {
+    if (lldpNetif == nullptr) return false;
+    DriverLock lock;
+    memcpy(out.localMac, lldpNetif->hwaddr, 6);
+    out.present = table.present();
+    if (out.present) out.neighbour = table.neighbour();
+    return true;
+}

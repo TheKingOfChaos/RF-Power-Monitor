@@ -41,9 +41,17 @@ ENTERPRISE_OBJECTS = [n for n in range(1, 7) if not (NO_TMP1075 and n == 5)]
 LAST_ENTERPRISE = ENTERPRISE_OBJECTS[-1]
 
 
-def all_oids(v1):
-    """Every object of the MIB in walk order; v1 does not see the eight Counter64 ifHC* columns."""
-    oids = [".1.3.6.1.2.1.1.%d.0" % i for i in range(1, 8)]
+def all_oids(v1, neighbour):
+    """Every object of the MIB in walk order; v1 does not see the eight Counter64 ifHC* columns.
+
+    LLDP-MIB comes first (1.0.8802 sorts before 1.3.6.1): our port always, the switch's row only
+    while the device holds a neighbour (status screen "Switch:").
+    """
+    lldp = ".1.0.8802.1.1.2.1"
+    oids = [lldp + ".3.7.1.%d.1" % i for i in range(2, 5)]
+    if neighbour:
+        oids += [lldp + ".4.1.1.%d.0.1.1" % i for i in range(4, 13)]
+    oids += [".1.3.6.1.2.1.1.%d.0" % i for i in range(1, 8)]
     oids += [".1.3.6.1.2.1.2.1.0"]
     oids += [".1.3.6.1.2.1.2.2.1.%d.1" % i for i in range(1, 23)]
     oids += [".1.3.6.1.2.1.31.1.1.1.%d.1" % i for i in range(1, 20) if not (v1 and 6 <= i <= 13)]
@@ -79,6 +87,11 @@ class SnmpAgentTest(unittest.TestCase):
 
     def snmp(self, tool, *args, **kw):
         return net_snmp(tool, self.ip, *args, **kw)
+
+    def has_neighbour(self):
+        """The device holds an LLDP neighbour, so lldpRemTable has its row"""
+        self.dev.wait_for_menu(timeout=10)
+        return self.dev.status()["switch"] not in (None, "none seen")
 
     def snmp_stats(self):
         """SNMP counters from the serial status screen."""
@@ -143,7 +156,7 @@ class SnmpAgentTest(unittest.TestCase):
         rc, out = self.snmp("snmpwalk", ".1")
         self.assertEqual(0, rc, out)
         oids = [l.split(" = ")[0] for l in out.splitlines() if " = " in l]
-        self.assertEqual(all_oids(v1=True), oids)
+        self.assertEqual(all_oids(v1=True, neighbour=self.has_neighbour()), oids)
         self.assertIn("End of MIB", out)
 
     def test_walk_enterprise_subtree(self):
@@ -199,7 +212,7 @@ class SnmpAgentTest(unittest.TestCase):
         rc, out = self.snmp("snmpwalk", ".1", version="2c")
         self.assertEqual(0, rc, out)
         oids = [l.split(" = ")[0] for l in out.splitlines() if " = " in l and "No more variables" not in l]
-        self.assertEqual(all_oids(v1=False), oids)
+        self.assertEqual(all_oids(v1=False, neighbour=self.has_neighbour()), oids)
         self.assertIn("No more variables left in this MIB View", out)
 
     def test_bulkwalk_returns_the_same_objects_as_walk(self):
@@ -213,7 +226,7 @@ class SnmpAgentTest(unittest.TestCase):
             return [(l.split(" = ")[0], l.split(" = ")[1].split(":")[0]) for l in text.splitlines()
                     if " = " in l and "No more" not in l]
         self.assertEqual(oids(walk), oids(bulk))
-        self.assertEqual(len(all_oids(v1=False)), len(oids(bulk)))
+        self.assertEqual(len(all_oids(v1=False, neighbour=self.has_neighbour())), len(oids(bulk)))
         # 53 objects at most 16 per GetBulk: at least 4 requests
         self.assertGreaterEqual(self.dev.status()["getBulkRequests"] - before, 4)
 

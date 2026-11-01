@@ -9,6 +9,7 @@
 #include <snmp_trap.h>
 #include "ambient_temp.h"
 #include "cpu_temp.h"
+#include "lldp_service.h"
 #include "net_stats.h"
 #include "source_key.h"
 #include "version.h"
@@ -76,6 +77,9 @@ static SnmpDeviceState captureState() {
         }
     }
     s.mainsAlarm = mainsAlarm.raised();
+    // LLDP-MIB: a static copy (core 0 only), so the response never reads the table lwIP updates
+    static SnmpLldpState lldp;
+    if (lldpServiceSnmpState(lldp)) s.lldp = &lldp;
     return s;
 }
 

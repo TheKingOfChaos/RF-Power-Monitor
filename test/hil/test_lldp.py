@@ -14,6 +14,7 @@ import time
 import unittest
 
 from device import Device
+from snmp_tools import net_snmp
 
 LISTEN = os.environ.get("RFUPS_LLDP_SWITCH") == "1"
 CONSOLE = os.environ.get("RFUPS_LLDP_SWITCH_CONSOLE")
@@ -55,6 +56,23 @@ class LldpTest(unittest.TestCase):
                 break
             time.sleep(3)
         self.assertRegex(st["switch"] or "", r"^\S.*, port \S+", st["raw"])
+
+    @unittest.skipUnless(LISTEN, "set RFUPS_LLDP_SWITCH=1 when the device is plugged into an LLDP switch")
+    def test_snmp_lldp_tables_name_the_switch(self):
+        # LLDP-MIB as LibreNMS reads it: lldpRemSysName and lldpRemPortId give the same switch and port
+        # as the status screen, in v1 and v2c, and lldpLocPortDesc names our port
+        st = self.dev.status()
+        m = re.match(r"^(.*), port (\S+)", st["switch"] or "")
+        self.assertIsNotNone(m, "no switch on the status screen: %s" % st["switch"])
+        name, port = m.groups()
+        rem = "1.0.8802.1.1.2.1.4.1.1"
+        for version in ("1", "2c"):
+            code, out = net_snmp("snmpget", st["ip"], rem + ".9.0.1.1", rem + ".7.0.1.1",
+                                 "1.0.8802.1.1.2.1.3.7.1.4.1", community=st["community"], version=version)
+            self.assertEqual(0, code, out)
+            self.assertIn('= STRING: "%s"' % name, out)
+            self.assertIn('7.0.1.1 = STRING: "%s"' % port, out)
+            self.assertIn('= STRING: "W5500 10/100 Ethernet"', out)
 
     @unittest.skipUnless(CONSOLE, "set RFUPS_LLDP_SWITCH_CONSOLE to the switch's console port")
     def test_switch_lists_the_device(self):
