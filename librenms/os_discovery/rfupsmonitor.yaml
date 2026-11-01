@@ -10,9 +10,20 @@ modules:
                     descr: 'Mains power'
                     index: 'mainsPowerStatus.{{ $index }}'
                     state_name: mainsPowerStatus
+                    # Warning, not critical: a short outage must not alert; mainsPowerAlarm does
                     states:
-                        - { descr: lost, value: 0, generic: 2 }
+                        - { descr: lost, value: 0, generic: 1 }
                         - { descr: present, value: 1, generic: 0 }
+                -
+                    # Critical once mains has been lost for 60 s ("State Sensor Critical" alerts on it)
+                    oid: RF-UPS-MONITOR-MIB::mainsPowerAlarm
+                    num_oid: '.1.3.6.1.4.1.63050.6.{{ $index }}'
+                    descr: 'Mains lost over 60 s'
+                    index: 'mainsPowerAlarm.{{ $index }}'
+                    state_name: mainsPowerAlarm
+                    states:
+                        - { descr: none, value: 0, generic: 0 }
+                        - { descr: lostTooLong, value: 1, generic: 2 }
         temperature:
             data:
                 -

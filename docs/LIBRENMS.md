@@ -10,7 +10,8 @@ The device works in LibreNMS as a plain SNMP device out of the box: it answers S
 |---|---|
 | OS "RF-UPS-Monitor", type power, version (e.g. `1.0.2`) and hardware (`RP2040, W5500`) | sysObjectID `1.3.6.1.4.1.63050`, sysDescr |
 | Port `eth0` with traffic, packets, speed and status | IF-MIB (64-bit counters over v2c) |
-| State sensor "Mains power": present (OK) / lost (critical) | `mainsPowerStatus` |
+| State sensor "Mains power": present (OK) / lost (warning) | `mainsPowerStatus` |
+| State sensor "Mains lost over 60 s": none (OK) / lostTooLong (critical) | `mainsPowerAlarm` (firmware after 2.5.1) |
 | Temperature sensor "CPU (RP2040 die)", warning at 60 °C, critical at 70 °C, low limit −20 °C | `cpuTemperature` / 10 |
 | Temperature sensor "Ambient (TMP1075)", warning at 40 °C, critical at 50 °C, low limit −20 °C; only with the carrier board | `ambientTemperature` / 10 |
 | Count sensor "Mains power changes since boot" | `mainsPowerChanges` |
@@ -18,7 +19,15 @@ The device works in LibreNMS as a plain SNMP device out of the box: it answers S
 
 The temperature sensors set their low limit explicitly to −20 °C (the RP2040's minimum rating): without it LibreNMS sets a low limit 10 °C below the first reading (29.4 °C in the test), which alarms as soon as the room cools down. The CPU sensor keeps the index `boardTemperature.0` from before the MIB object was renamed `cpuTemperature`, so an existing installation keeps its graph after updating the definitions; replace the MIB file in LibreNMS together with the YAML files. The ambient limits suit a room with equipment; change them per device in LibreNMS if the box sits somewhere warmer.
 
-A mains outage turns the state sensor critical (generic state 2). To be alerted, add the "State Sensor Critical" rule from LibreNMS's rule collection (Alerts → Alert Rules → Create rule from collection); a fresh installation has no alert rules. Tested with a real mains cut: the alert opened on the first poll after mains went off and recovered on the first poll after it came back. Polling runs every 5 minutes by default; a short outage between two polls still shows up as a step in "Mains power changes". For immediate notice, send the device's traps to LibreNMS's snmptrapd (below).
+**Alerts for outages longer than 60 s.** A mains loss turns "Mains power" yellow (warning, generic state 1), which no rule in LibreNMS's collection alerts on, so short outages stay out of the alert log. Once mains has been gone for 60 s without a break, the device sets `mainsPowerAlarm` and "Mains lost over 60 s" turns critical (generic state 2). To be alerted, add the "State Sensor Critical" rule from LibreNMS's rule collection (Alerts → Alert Rules → Create rule from collection); a fresh installation has no alert rules. The alert recovers when mains returns.
+
+The 60 s is decided on the device, not with the rule's delay: LibreNMS creates the alert, and its entry in the alert log, at the poll that sees the sensor critical, and the rule's delay only holds back notifications (e-mail and other transports). It also only checks rules when it polls, and the device's mains state alone does not say how long mains has been gone.
+
+Polling runs every 5 minutes by default, so without traps the alert comes at the first poll after the 60 s; a short outage between two polls still shows up as a step in "Mains power changes". For the alert about 60 s after mains goes, send the device's traps to LibreNMS's snmptrapd and let a mains trap poll the device (below).
+
+Tested on 2026-11-01 with LibreNMS (Docker, `latest`) and the firmware with `mainsPowerAlarm`, cutting mains with a smart outlet: a 33 s outage logged mainsPowerLost and mainsPowerRestored and no alert; outages of 76 s and 95 s each logged mainsPowerLostTooLong 60 s after the loss, the alert opened 2 s after that trap and recovered 2 s after mains returned.
+
+**Updating from an older definition:** copy the YAML files and the MIB again, rediscover the device (device → Settings → Rediscover, or `./lnms device:discover <device ip> -m sensors`) so the new sensor is created and "lost" becomes a warning, and restart snmptrapd so it knows the new trap's name. Until then it logs the trap as `RF-UPS-MONITOR-MIB::rfUpsMonitorNotifications.3`.
 
 ## Install
 
@@ -61,7 +70,7 @@ or choose transport `udp6` in Devices → Add Device. Checked with LibreNMS 26.9
 
 ## Traps
 
-Set the device's trap destination (menu option 4) to the LibreNMS server and the trap version to `2c` (or enter `dhcp` and let the DHCP server hand out the LibreNMS address in option 224, see [MIB.md](MIB.md#trap-destination-from-dhcp)), and set up snmptrapd on the server as described in the LibreNMS documentation (SNMP Trap Handler). LibreNMS has no trap handler for the RF-UPS-MONITOR-MIB notifications, so it logs them as unhandled traps: the device's event log shows an entry of type `trap` with the message `RF-UPS-MONITOR-MIB::mainsPowerLost` (or `...Restored`), checked with LibreNMS 26.9.1. The sensors change on the next poll.
+Set the device's trap destination (menu option 4) to the LibreNMS server and the trap version to `2c` (or enter `dhcp` and let the DHCP server hand out the LibreNMS address in option 224, see [MIB.md](MIB.md#trap-destination-from-dhcp)), and set up snmptrapd on the server as described in the LibreNMS documentation (SNMP Trap Handler). LibreNMS has no trap handler for the RF-UPS-MONITOR-MIB notifications, so it logs them as unhandled traps: the device's event log shows an entry of type `trap` with the message `RF-UPS-MONITOR-MIB::mainsPowerLost` (or `...Restored`, `...LostTooLong`), checked with LibreNMS 26.9.1. The sensors change on the next poll.
 
 LibreNMS finds the device for a trap by the address the trap came from. If something between the device and snmptrapd rewrites that address (NAT, such as Docker Desktop's port forwarding), LibreNMS logs "Could not find device for trap" in snmptrapd's output and drops the trap; the Docker setup below works around that.
 
@@ -85,7 +94,7 @@ The poller polls every 5 minutes; traffic rates appear after the second poll. Th
 
 The `snmptrapd` container receives traps on UDP 162 of the PC. Set the device's trap destination to the PC's address (menu option 4); both trap versions work. Docker Desktop replaces the sender's address with its own (172.18.0.1), so LibreNMS alone could not find the device ("Could not find device for trap"). The device's traps also carry its address, v1 in agent-addr and v2c (from firmware 2.5.1) in `snmpTrapAddress.0`, which snmptrapd shows for both; [librenms/test/snmptrap-agent-addr.php](../librenms/test/snmptrap-agent-addr.php), mounted over LibreNMS's `snmptrap.php`, puts that address back before LibreNMS handles the trap. Without NAT in between, on a normal LibreNMS server, the script is not needed. Only traps with the community in `TRAP_COMMUNITY` (default `public`) are accepted, e.g. `TRAP_COMMUNITY=mycommunity docker compose up -d`.
 
-**Alerts from traps:** LibreNMS only logs these traps; alerts come from the sensors. After a mainsPowerLost or mainsPowerRestored trap, the same script polls the device's sensors, which runs its alert rules, so "State Sensor Critical" opens when mains goes and recovers when it returns within seconds instead of at the next 5-minute poll. On a LibreNMS server without this script the alert comes with the next poll.
+**Alerts from traps:** LibreNMS only logs these traps; alerts come from the sensors. After a mainsPowerLost, mainsPowerRestored or mainsPowerLostTooLong trap, the same script polls the device's sensors, which runs its alert rules, so "State Sensor Critical" opens about 60 s after mains goes (at the mainsPowerLostTooLong trap) and recovers when it returns, within seconds instead of at the next 5-minute poll. It also recognises the trap as `rfUpsMonitorNotifications.3`, the name snmptrapd gives it while it still has an older MIB loaded. On a LibreNMS server without this script the alert comes with the next poll.
 
 With WSL in mirrored networking mode (below), a firewall in front of WSL (the Hyper-V firewall) drops traps from the network until UDP 162 is allowed, once, in an administrator PowerShell:
 

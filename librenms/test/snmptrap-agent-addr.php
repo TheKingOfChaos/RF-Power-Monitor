@@ -10,8 +10,9 @@
  * snmptrap.php does. Traps without it pass through unchanged.
  *
  * LibreNMS only logs the RF-UPS-MONITOR-MIB traps; alerts come from the sensors. After a mains
- * trap this polls the device's sensors, which runs its alert rules, so "State Sensor Critical"
- * opens and recovers within seconds instead of at the next 5-minute poll.
+ * trap (lost, restored, or lost for 60 s) this polls the device's sensors, which runs its alert
+ * rules, so "State Sensor Critical" on "Mains lost over 60 s" opens about 60 s after mains goes and
+ * recovers when it returns, instead of at the next 5-minute poll.
  */
 
 use LibreNMS\Util\Debug;
@@ -46,7 +47,7 @@ function useAgentAddress(string $text): string
 }
 
 /**
- * Whether the trap is mainsPowerLost or mainsPowerRestored, by name or by number.
+ * Whether the trap is mainsPowerLost, mainsPowerRestored or mainsPowerLostTooLong, by name or by number.
  *
  * @param  string  $trapOid  snmpTrapOID.0 as snmptrapd printed it
  * @return bool
@@ -54,7 +55,9 @@ function useAgentAddress(string $text): string
 function isMainsTrap(string $trapOid): bool
 {
     return str_contains($trapOid, 'RF-UPS-MONITOR-MIB::mainsPower')
-        || preg_match('/(\.1\.3\.6\.1\.4\.1\.|enterprises\.)63050\.0\.[12]$/', $trapOid) === 1;
+        || preg_match('/(\.1\.3\.6\.1\.4\.1\.|enterprises\.)63050\.0\.[123]$/', $trapOid) === 1
+        // snmptrapd started with an older MIB file names a newer trap by its parent
+        || preg_match('/RF-UPS-MONITOR-MIB::rfUpsMonitorNotifications\.[123]$/', $trapOid) === 1;
 }
 
 $trap = new \LibreNMS\Snmptrap\Trap(useAgentAddress(stream_get_contents(STDIN)));

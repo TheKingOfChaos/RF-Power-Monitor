@@ -502,6 +502,7 @@ An SNMP agent runs on UDP port 161 and answers SNMPv1 and SNMPv2c, each request 
   .3.0  mainsPowerLastChange  TimeTicks
   .4.0  cpuTemperature        Integer32, 0.1 degrees Celsius (RP2040 die)
   .5.0  ambientTemperature    Integer32, 0.1 degrees Celsius (TMP1075, only when present)
+  .6.0  mainsPowerAlarm       INTEGER 1 = mains lost for 60 s or more, 0 = none
 ```
 
 The interface counters are kept by the firmware: every Ethernet frame the W5500 receives or sends is counted (octets, unicast, multicast, broadcast), since the W5500 in MAC-raw mode has no counters of its own. Link state and speed come from the W5500 PHY register. The board temperature is the RP2040's internal sensor, which reads the chip temperature: a few degrees above the air around it.
@@ -514,7 +515,7 @@ snmpbulkwalk -v2c -c public 10.10.6.111
 snmpget      -v2c -c public 10.10.6.111 1.3.6.1.4.1.63050.1.0
 ```
 
-**Traps** go to the trap destination set in menu option 4 (UDP 162), as v2c (default) or v1: `coldStart` at boot, `mainsPowerLost` and `mainsPowerRestored` (with the three mains objects), and `authenticationFailure` for a wrong community (at most one per 10 s).
+**Traps** go to the trap destination set in menu option 4 (UDP 162), as v2c (default) or v1: `coldStart` at boot, `mainsPowerLost` and `mainsPowerRestored` (with the three mains objects), `mainsPowerLostTooLong` once mains has been gone for 60 s (with `mainsPowerAlarm` as well; alert on this one to ignore short outages), and `authenticationFailure` for a wrong community (at most one per 10 s).
 
 ![SNMP request handling: size check, rate limiter, parsing, version and community, MIB, response](docs/diagrams/snmp-request-flow.svg)
 
