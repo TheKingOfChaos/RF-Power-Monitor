@@ -53,6 +53,9 @@ struct SnmpServiceStats {
  */
 bool snmpBegin();
 
+/// sysDescr text (also sent in LLDP)
+const char* snmpSysDescr();
+
 /**
  * @brief Tell the service the device has an address; sends coldStart the first time
  * @param localIP The device's address, used as agent-addr in traps

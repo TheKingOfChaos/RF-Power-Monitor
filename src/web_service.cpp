@@ -10,6 +10,7 @@
 #include "cpu_temp.h"
 #include "dhcp6_service.h"
 #include "hostname.h"
+#include "lldp_service.h"
 #include "net_stats.h"
 #include "snmp_service.h"
 #include "source_key.h"
@@ -128,6 +129,8 @@ public:
         strlcpy(st.ipv6Gateway, currentSettings.ipv6Gateway, sizeof(st.ipv6Gateway));
         strlcpy(st.community, currentSettings.community, sizeof(st.community));
         strlcpy(st.hostname, hostnameCurrent(), sizeof(st.hostname));
+        lldpServiceSwitchText(st.lldpSwitch, sizeof(st.lldpSwitch));
+        lldpServiceSwitchAddress(st.lldpSwitchAddr, sizeof(st.lldpSwitchAddr));
     }
 
     bool checkPassword(const char* password) override {

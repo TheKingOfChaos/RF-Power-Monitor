@@ -61,6 +61,8 @@ struct WebStatus {
     char ipv6Gateway[IPV6_TEXT_MAX];  ///< Stored static IPv6 gateway, empty = none
     char community[32];
     char hostname[33];    ///< Valid hostname in use (DHCP, mDNS name.local, sysName)
+    char lldpSwitch[144];     ///< LLDP neighbour, "<name>, port <port>" or "none seen" (lldpSwitchText)
+    char lldpSwitchAddr[46];  ///< Its management address, empty if none
 };
 
 /// Events the backend may log
@@ -93,8 +95,9 @@ public:
     virtual void log(const SourceKey& source, WebEvent event) = 0;
 };
 
-/// Largest page; the status page with the longest values is 8354 bytes (test_longest_values_still_fit_the_page)
-static const size_t WEB_BODY_MAX = 8704;
+/// Largest page; the status page with the longest values is 9472 bytes (test_longest_values_still_fit_the_page),
+/// over 900 of them for a switch name of quotes (each escaped to &quot;)
+static const size_t WEB_BODY_MAX = 9856;
 /// Longest Cookie header read; browsers send every cookie of the host, not only ours
 static const size_t WEB_COOKIE_HEADER_MAX = 1024;
 static const size_t WEB_RESPONSE_MAX = WEB_BODY_MAX + 768;

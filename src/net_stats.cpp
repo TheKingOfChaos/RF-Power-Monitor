@@ -8,6 +8,7 @@
 #include <lwip/dhcp.h>
 #include <lwip/prot/dhcp.h>
 #include "dhcp6_service.h"
+#include "lldp_service.h"
 #include "diag.h"
 #include "pins.h"
 
@@ -77,6 +78,7 @@ static err_t countingInput(struct pbuf* p, struct netif* nif) {
     DIAG_HOOK(100);
     ifCountReceived(counters, (const uint8_t*)p->payload, p->len, LWIP_IPV6 != 0);
     dhcp6InspectFrame((const uint8_t*)p->payload, p->len);  // router advertisements, DHCPv6 replies; lwIP still gets it
+    lldpInspectFrame((const uint8_t*)p->payload, p->len);   // the switch's LLDPDUs; lwIP drops them
     err_t err = inputWithDhcpAck(p, nif);
     DIAG_HOOK(101);
     return err;

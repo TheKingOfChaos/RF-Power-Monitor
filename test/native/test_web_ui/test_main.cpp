@@ -549,6 +549,7 @@ public:
         strcpy(st.gateway, "10.10.0.1");
         strcpy(st.community, "public");
         strcpy(st.hostname, "rf-ups-monitor");
+        strcpy(st.lldpSwitch, "none seen");
     }
     void status(WebStatus& out) override { out = st; }
     bool checkPassword(const char* p) override {
@@ -1247,10 +1248,35 @@ static void test_longest_values_still_fit_the_page() {
     strcpy(fb->st.liveMask, "255.255.255.255");
     strcpy(fb->st.liveGateway, "255.255.255.255");
     strcpy(fb->st.dns, "255.255.255.255");
+    // Text from the switch: printable, so it can be all '"' (escaped to 6 bytes each)
+    strcpy(fb->st.lldpSwitch, std::string(sizeof(fb->st.lldpSwitch) - 1, '"').c_str());
+    strcpy(fb->st.lldpSwitchAddr, "fd16:d833:4f0e:3ece:ffff:ffff:ffff:fffe");
     std::string csrf;
     std::string page = get("/", logIn(csrf));
     TEST_ASSERT_EQUAL(200, statusCode(page));
     TEST_ASSERT_TRUE(page.find("</html>") != std::string::npos);
+}
+
+static void test_status_page_shows_switch() {
+    webSetUp();
+    std::string csrf;
+    std::string token = logIn(csrf);
+    TEST_ASSERT_TRUE(get("/", token).find("Switch</th><td>none seen</td>") != std::string::npos);
+    strcpy(fb->st.lldpSwitch, "ex2200, port ge-0/0/5.0");
+    TEST_ASSERT_TRUE(get("/", token).find("Switch</th><td>ex2200, port ge-0/0/5.0</td>") != std::string::npos);
+    strcpy(fb->st.lldpSwitchAddr, "10.132.0.2");
+    TEST_ASSERT_TRUE(get("/", token).find("Switch</th><td>ex2200, port ge-0/0/5.0 (10.132.0.2)</td>") !=
+                     std::string::npos);
+}
+
+static void test_status_page_escapes_switch_name() {
+    webSetUp();
+    strcpy(fb->st.lldpSwitch, "<b>sw&1</b>, port \"x\"");
+    std::string csrf;
+    std::string page = get("/", logIn(csrf));
+    TEST_ASSERT_TRUE(page.find("Switch</th><td>&lt;b&gt;sw&amp;1&lt;/b&gt;, port &quot;x&quot;</td>") !=
+                     std::string::npos);
+    TEST_ASSERT_TRUE(page.find("<b>sw") == std::string::npos);
 }
 
 static void test_ipv6_form_shows_the_stored_static_values() {
@@ -1412,6 +1438,8 @@ int main() {
     RUN_TEST(test_session_found_among_many_other_cookies);
     RUN_TEST(test_every_single_byte_corruption_gets_a_well_formed_response);
     RUN_TEST(test_longest_values_still_fit_the_page);
+    RUN_TEST(test_status_page_shows_switch);
+    RUN_TEST(test_status_page_escapes_switch_name);
     RUN_TEST(test_ipv6_form_shows_the_stored_static_values);
     RUN_TEST(test_static_ipv6_is_validated_normalized_saved_and_reboots);
     RUN_TEST(test_empty_ipv6_form_removes_the_static_address);

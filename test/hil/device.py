@@ -137,6 +137,8 @@ class Device:
         info["mains"] = m.group(1) if m else None
         m = re.search(r"Mains alarm: (.*?)\r?$", out, re.MULTILINE)
         info["mainsAlarm"] = m.group(1) if m else None
+        m = re.search(r"^Switch: (.*?)\r?$", out, re.MULTILINE)
+        info["switch"] = m.group(1) if m else None
         m = re.search(r"^DHCPv6: (off|[a-z]+)(?:, ([0-9a-f:]+) \(valid (\d+ s|forever)\))?", out, re.MULTILINE)
         info["dhcp6State"] = m.group(1) if m else None
         info["dhcp6Address"] = m.group(2) if m else None

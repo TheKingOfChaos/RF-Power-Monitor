@@ -23,7 +23,6 @@ static SnmpValue getSysServices(const SnmpDeviceState&) {
 
 // ---- interfaces (IF-MIB, RFC 2863), one Ethernet interface with ifIndex 1 ----
 
-static const char* const IF_DESCR = "W5500 10/100 Ethernet";
 static const char* const IF_NAME = "eth0";
 static const int32_t IF_TYPE_ETHERNET_CSMACD = 6;
 static const int32_t IF_MTU = 1500;
@@ -35,7 +34,7 @@ static SnmpValue gauge(uint32_t v) { return SnmpValue::makeUnsigned(BerTag::Gaug
 
 static SnmpValue getIfNumber(const SnmpDeviceState&) { return integer(1); }
 static SnmpValue getIfIndex(const SnmpDeviceState&) { return integer(1); }
-static SnmpValue getIfDescr(const SnmpDeviceState&) { return SnmpValue::makeString(IF_DESCR); }
+static SnmpValue getIfDescr(const SnmpDeviceState&) { return SnmpValue::makeString(SNMP_IF_DESCR); }
 static SnmpValue getIfType(const SnmpDeviceState&) { return integer(IF_TYPE_ETHERNET_CSMACD); }
 static SnmpValue getIfMtu(const SnmpDeviceState&) { return integer(IF_MTU); }
 static SnmpValue getIfSpeed(const SnmpDeviceState& s) { return gauge(s.iface.linkUp ? s.iface.speedBps : 0); }

@@ -49,6 +49,9 @@ struct SnmpInterfaceState {
     IfCounters counters;       ///< Traffic since boot
 };
 
+/// ifDescr of the one interface (ifIndex 1); LLDP sends it as Port Description
+static const char* const SNMP_IF_DESCR = "W5500 10/100 Ethernet";
+
 /**
  * @brief Everything the MIB reports, captured once per request
  */

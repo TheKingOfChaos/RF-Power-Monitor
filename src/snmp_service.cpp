@@ -18,6 +18,10 @@ const uint8_t MAX_PACKETS_PER_POLL = 4;
 
 static const char* const SYS_DESCR = "RF-UPS-Monitor " FIRMWARE_VERSION " mains power monitor (RP2040, W5500)";
 
+const char* snmpSysDescr() {
+    return SYS_DESCR;
+}
+
 static WiFiUDP udp;
 static bool started = false;
 static bool coldStartSent = false;

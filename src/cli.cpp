@@ -8,6 +8,7 @@
 #include "cpu_temp.h"
 #include "dhcp6_service.h"
 #include "hostname.h"
+#include "lldp_service.h"
 #include "net_stats.h"
 #include "snmp_service.h"
 #include "stack_watch.h"
@@ -182,6 +183,16 @@ static void printStatus() {
     }
     Serial.printf("Trap version: %s\n", currentSettings.trapVersion == TRAP_VERSION_V1 ? "v1" : "v2c");
     Serial.printf("Hostname: %s (DHCP, mDNS %s.local)\n", hostnameCurrent(), hostnameCurrent());
+    {
+        static char sw[144], addr[46];  // static: core 0's stack is small
+        lldpServiceSwitchText(sw, sizeof(sw));
+        lldpServiceSwitchAddress(addr, sizeof(addr));
+        if (addr[0]) {
+            Serial.printf("Switch: %s (%s)\n", sw, addr);
+        } else {
+            Serial.printf("Switch: %s\n", sw);
+        }
+    }
     Serial.printf("Web interface: %s\n", !webEnabled()   ? "off (option 8 turns it on)"
                                          : webListening() ? "on (TCP port 80)"
                                                           : "on, opening TCP port 80 (retrying)");
@@ -492,6 +503,10 @@ static void handleLine(const char* line) {
             Serial.println("The address is used as a /64 next to the automatic (SLAAC) address.");
             Serial.println("Press Enter to keep the value in brackets.");
             promptIPv6Address();
+        } else if (strcmp(line, "lldpdump") == 0) {
+            // Hidden test command (docs/TESTING.md): the switch's last LLDPDU in hex, for test vectors
+            lldpDump();
+            Serial.print("> ");
         } else if (strcmp(line, "stall0") == 0 || strcmp(line, "stall1") == 0) {
             // Hidden test command (docs/TESTING.md): hang one core so the watchdog restarts the device
             uint8_t core = line[5] - '0';

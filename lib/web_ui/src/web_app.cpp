@@ -256,6 +256,17 @@ const char* WebApp::mainPage(int code, const char* reason, size_t slot, WebBacke
         nb.add(" Mbit/s");
     }
     badgeRow(b, "Ethernet link", st.linkUp ? num : "down", st.linkUp ? "success" : "danger");
+    {
+        char sw[sizeof(st.lldpSwitch) + sizeof(st.lldpSwitchAddr) + 3];  // text + " (address)"
+        TextBuffer sb(sw, sizeof(sw));
+        sb.add(st.lldpSwitch);
+        if (st.lldpSwitchAddr[0]) {
+            sb.add(" (");
+            sb.add(st.lldpSwitchAddr);
+            sb.add(")");
+        }
+        row(b, "Switch", sw);  // text from the network: row() escapes it
+    }
     row(b, "Hostname", st.hostname);
     nb = TextBuffer(num, sizeof(num));
     nb.add(st.hostname);

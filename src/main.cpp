@@ -12,6 +12,7 @@
 #include "factory_reset.h"
 #include "hostname.h"
 #include "ipv6_static.h"
+#include "lldp_service.h"
 #include "net_stats.h"
 #include "pins.h"
 #include "snmp_service.h"
@@ -213,6 +214,7 @@ void setup() {
         netStatsBegin(eth.getNetIf());
         ipv6StaticBegin(eth.getNetIf());
         dhcp6Begin(eth.getNetIf());  // waits for a router advertisement with the M flag
+        lldpBegin(eth.getNetIf());
         netStatsRequestDhcpTrapTarget(currentSettings.trapFromDhcp);  // before the first DISCOVER
         snmpBegin();
         webBegin();
@@ -261,6 +263,7 @@ void loop() {
     DIAG_MARK(3);
     netStatsPoll(snmpUptimeTicks());
     dhcp6Poll();
+    lldpPoll();
     DIAG_MARK(4);
     cpuTempPoll();
     ambientTempPoll();
