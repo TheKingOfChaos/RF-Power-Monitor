@@ -42,7 +42,17 @@ Connect a USB cable and open a terminal (PuTTY: Serial, the device's COM port, 1
 
 ### LibreNMS
 
-The device page shows the sensors *Mains power* (OK / warning), *Mains lost over 60 s* (OK / critical), *CPU* and *Ambient* temperature and *Mains power changes since boot*, the Ethernet port with its traffic, the event log with the traps, and the switch on the Neighbours tab.
+The device page shows the sensors *Mains power* (OK / warning), *Mains lost over 60 s* (OK / critical), *CPU* and *Ambient* temperature and *Mains power changes since boot*, and the Ethernet port with its traffic:
+
+![LibreNMS: the device page](images/librenms/device-overview.png)
+
+Under **Logs → Event Log** you see what happened: the traps the device sent (mains lost and restored, restarts, wrong community), and changes LibreNMS noticed such as a new firmware version:
+
+![LibreNMS: the device's event log](images/librenms/device-eventlog.png)
+
+The **Neighbours** tab shows the switch and port the device is plugged into (from LLDP):
+
+![LibreNMS: the Neighbours tab](images/librenms/device-neighbours.png)
 
 ## When the alarm comes
 

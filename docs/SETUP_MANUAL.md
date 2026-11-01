@@ -116,10 +116,22 @@ If you don't want the web page at all, turn it off with menu option `8`.
 ## 6. LibreNMS
 
 1. **Install the device definition** on the LibreNMS server (once per server): copy the two definition files, the MIB and the logos as described in [docs/LIBRENMS.md](LIBRENMS.md#install).
-2. **Add the device**: Devices → Add Device, the device's address or hostname, SNMP v2c, your community. LibreNMS detects it as **RF-Power-Monitor** and creates its sensors: *Mains power*, *Mains lost over 60 s*, *CPU* and *Ambient* temperature, and *Mains power changes since boot*.
+2. **Add the device**: Devices → Add Device, the device's address or hostname, SNMP v2c, your community.
+
+   ![LibreNMS: Add Device](images/librenms/add-device.png)
+
+   LibreNMS detects it as **RF-Power-Monitor** and creates its sensors: *Mains power*, *Mains lost over 60 s*, *CPU* and *Ambient* temperature, and *Mains power changes since boot*. The device page then looks like this:
+
+   ![LibreNMS: the device page with its sensors](images/librenms/device-overview.png)
+
 3. **Traps**: set up snmptrapd on the LibreNMS server as described in the LibreNMS documentation; the device's traps then appear in its event log.
-4. **Alert**: the standard rule **"State Sensor Critical"** alerts when *Mains lost over 60 s* goes critical, which happens when mains has been gone for 60 s. A shorter outage only shows as a warning and does not alert.
+4. **Alert**: the standard rule **"State Sensor Critical"** alerts when *Mains lost over 60 s* goes critical, which happens when mains has been gone for 60 s. A shorter outage only shows as a warning and does not alert. Check under Alerts → Alert Rules that the rule exists and is on (ON); add a transport (e-mail, Teams, ...) to it if you want to be notified, not only see the alert in LibreNMS.
+
+   ![LibreNMS: alert rules, with "State Sensor Critical"](images/librenms/alert-rules.png)
+
 5. **Neighbours**: if the switch speaks LLDP, the device's Neighbours tab shows the switch and port. LibreNMS may try to add the switch as a device by itself; to stop that, see [docs/LIBRENMS.md](LIBRENMS.md#switch-and-port-lldp).
+
+   ![LibreNMS: the switch and port on the Neighbours tab](images/librenms/device-neighbours.png)
 
 ## 7. Prove it works
 
