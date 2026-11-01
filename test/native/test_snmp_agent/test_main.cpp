@@ -41,9 +41,12 @@ void setUp() {
     state.cpuTempDeciC = 287;
     state.ambientTempValid = true;
     state.ambientTempDeciC = 271;
+    state.lldp = nullptr;
 }
 
 void tearDown() {}
+
+static void withSwitch(bool present);
 
 // snmpget -v1 -c public 1.3.6.1.2.1.1.1.0 (net-snmp)
 static const uint8_t NETSNMP_GET_SYSDESCR[] = {
@@ -210,14 +213,16 @@ static void test_mib_is_strictly_sorted() {
 }
 
 static void test_mib_contains_expected_objects() {
-    // system 1-7, ifNumber, ifTable 1-22, ifXTable 1-19, enterprise 1-5
-    char expected[64][40];
+    // lldpLocPortTable 2-4, lldpRemTable 4-12, system 1-7, ifNumber, ifTable 1-22, ifXTable 1-19, enterprise 1-6
+    char expected[80][48];
     uint8_t n = 0;
-    for (int i = 1; i <= 7; i++) snprintf(expected[n++], 40, "1.3.6.1.2.1.1.%d.0", i);
-    snprintf(expected[n++], 40, "1.3.6.1.2.1.2.1.0");
-    for (int i = 1; i <= 22; i++) snprintf(expected[n++], 40, "1.3.6.1.2.1.2.2.1.%d.1", i);
-    for (int i = 1; i <= 19; i++) snprintf(expected[n++], 40, "1.3.6.1.2.1.31.1.1.1.%d.1", i);
-    for (int i = 1; i <= 6; i++) snprintf(expected[n++], 40, "1.3.6.1.4.1.63050.%d.0", i);
+    for (int i = 2; i <= 4; i++) snprintf(expected[n++], 48, "1.0.8802.1.1.2.1.3.7.1.%d.1", i);
+    for (int i = 4; i <= 12; i++) snprintf(expected[n++], 48, "1.0.8802.1.1.2.1.4.1.1.%d.0.1.1", i);
+    for (int i = 1; i <= 7; i++) snprintf(expected[n++], 48, "1.3.6.1.2.1.1.%d.0", i);
+    snprintf(expected[n++], 48, "1.3.6.1.2.1.2.1.0");
+    for (int i = 1; i <= 22; i++) snprintf(expected[n++], 48, "1.3.6.1.2.1.2.2.1.%d.1", i);
+    for (int i = 1; i <= 19; i++) snprintf(expected[n++], 48, "1.3.6.1.2.1.31.1.1.1.%d.1", i);
+    for (int i = 1; i <= 6; i++) snprintf(expected[n++], 48, "1.3.6.1.4.1.63050.%d.0", i);
     TEST_ASSERT_EQUAL_UINT8(n, mibSize());
     for (uint8_t i = 0; i < n; i++) TEST_ASSERT_EQUAL_STRING(expected[i], str(mibEntry(i).oid));
 }
@@ -342,7 +347,8 @@ static void test_counter64_does_not_exist_for_v1() {
 
 static void test_v1_walk_has_every_object_except_counter64() {
     SnmpAgent agent("public");
-    char current[128] = "1.3";
+    withSwitch(true);  // every object has an instance, LLDP-MIB included
+    char current[128] = "1.0";
     uint8_t visited = 0;
     for (;;) {
         const char* oids[] = {current};
@@ -423,6 +429,161 @@ static void test_ambient_temperature_absent_is_skipped_by_getbulk() {
     TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050.6.0", str(r.names[1]));  // repeater skips .5.0
     TEST_ASSERT_EQUAL_HEX8(BerTag::EndOfMibView, r.tags[2]);              // then ends
     for (uint8_t i = 0; i < r.count; i++) TEST_ASSERT_NOT_EQUAL(BerTag::NoSuchInstance, r.tags[i]);
+}
+
+// ---- LLDP-MIB (lldpLocPortTable, lldpRemTable) ----
+
+static SnmpLldpState lldpState;
+
+/// The neighbour the device sees on a Juniper EX2200-C (values from test_lldp's captured frame)
+static void withSwitch(bool present) {
+    memset(&lldpState, 0, sizeof(lldpState));
+    const uint8_t mac[6] = {0x1E, 0xB2, 0xCF, 0x4E, 0xA2, 0x2C};
+    memcpy(lldpState.localMac, mac, 6);
+    lldpState.present = present;
+    LldpNeighbour& n = lldpState.neighbour;
+    n.chassisIdSubtype = 4;
+    const uint8_t chassis[6] = {0xf8, 0xc0, 0x01, 0xc7, 0x90, 0xc0};
+    memcpy(n.chassisIdRaw, chassis, 6);
+    n.chassisIdLen = 6;
+    n.portIdSubtype = 7;
+    memcpy(n.portIdRaw, "523", 3);
+    n.portIdLen = 3;
+    strcpy(n.portDescr, "ge-0/0/9.0");
+    strcpy(n.sysName, "r169");
+    strcpy(n.sysDescr, "Juniper Networks, Inc. ex2200-c-12p-2g");
+    n.capsSupported = 0x0014;
+    n.capsEnabled = 0x0014;
+    n.ttl = 120;
+    state.lldp = &lldpState;
+}
+
+static const char* const LLDP_LOC[] = {"1.0.8802.1.1.2.1.3.7.1.2.1", "1.0.8802.1.1.2.1.3.7.1.3.1",
+                                       "1.0.8802.1.1.2.1.3.7.1.4.1"};
+
+static void test_lldp_loc_port_table() {
+    SnmpAgent agent("public");
+    withSwitch(false);
+    for (int v = 0; v < 2; v++) {
+        Reply r = v ? requestV2c(agent, BerTag::GetRequest, LLDP_LOC, 3) : request(agent, BerTag::GetRequest, LLDP_LOC, 3);
+        TEST_ASSERT_EQUAL_INT32(0, r.errorStatus);
+        TEST_ASSERT_EQUAL_INT32(3, r.ints[0]);  // macAddress
+        TEST_ASSERT_EQUAL_HEX8(BerTag::OctetString, r.tags[1]);
+        TEST_ASSERT_EQUAL_HEX8_ARRAY(lldpState.localMac, r.strings[1], 6);
+        TEST_ASSERT_EQUAL_STRING("W5500 10/100 Ethernet", r.strings[2]);
+    }
+}
+
+static void test_lldp_rem_table_with_neighbour() {
+    SnmpAgent agent("public");
+    withSwitch(true);
+    char oids[9][48];
+    const char* names[9];
+    for (int i = 0; i < 9; i++) {
+        snprintf(oids[i], sizeof(oids[i]), "1.0.8802.1.1.2.1.4.1.1.%d.0.1.1", i + 4);
+        names[i] = oids[i];
+    }
+    for (int v = 0; v < 2; v++) {
+        Reply r = v ? requestV2c(agent, BerTag::GetRequest, names, 9) : request(agent, BerTag::GetRequest, names, 9);
+        TEST_ASSERT_EQUAL_INT32(0, r.errorStatus);
+        TEST_ASSERT_EQUAL_INT32(4, r.ints[0]);  // chassis: macAddress
+        const uint8_t chassis[6] = {0xf8, 0xc0, 0x01, 0xc7, 0x90, 0xc0};
+        TEST_ASSERT_EQUAL_HEX8_ARRAY(chassis, r.strings[1], 6);
+        TEST_ASSERT_EQUAL_INT32(5, r.ints[2]);  // port: interfaceName, not Junos' locally assigned ifIndex
+        TEST_ASSERT_EQUAL_STRING("ge-0/0/9.0", r.strings[3]);
+        TEST_ASSERT_EQUAL_STRING("ge-0/0/9.0", r.strings[4]);
+        TEST_ASSERT_EQUAL_STRING("r169", r.strings[5]);
+        TEST_ASSERT_EQUAL_STRING("Juniper Networks, Inc. ex2200-c-12p-2g", r.strings[6]);
+        const uint8_t caps[2] = {0x00, 0x14};
+        TEST_ASSERT_EQUAL_HEX8(BerTag::OctetString, r.tags[7]);
+        TEST_ASSERT_EQUAL_HEX8_ARRAY(caps, r.strings[7], 2);
+        TEST_ASSERT_EQUAL_HEX8_ARRAY(caps, r.strings[8], 2);
+    }
+}
+
+/// GetNext chain from start (v1 or v2c), names of the first n objects
+static void walkNames(SnmpAgent& agent, bool v2c, const char* start, int n, char out[][40]) {
+    char current[128];
+    strcpy(current, start);
+    for (int i = 0; i < n; i++) {
+        const char* oids[] = {current};
+        Reply r = v2c ? requestV2c(agent, BerTag::GetNextRequest, oids, 1) : request(agent, BerTag::GetNextRequest, oids, 1);
+        TEST_ASSERT_EQUAL_INT32(0, r.errorStatus);
+        strcpy(out[i], str(r.names[0]));
+        strcpy(current, out[i]);
+    }
+}
+
+static void test_walk_without_neighbour_skips_rem_table() {
+    SnmpAgent agent("public");
+    withSwitch(false);
+    for (int v = 0; v < 2; v++) {
+        char names[4][40];
+        walkNames(agent, v, "1.0", 4, names);
+        for (int i = 0; i < 3; i++) TEST_ASSERT_EQUAL_STRING(LLDP_LOC[i], names[i]);
+        TEST_ASSERT_EQUAL_STRING("1.3.6.1.2.1.1.1.0", names[3]);
+    }
+    const char* oids[] = {"1.0"};
+    Reply r = bulk(agent, 0, 4, oids, 1);
+    TEST_ASSERT_EQUAL_UINT8(4, r.count);
+    TEST_ASSERT_EQUAL_STRING("1.3.6.1.2.1.1.1.0", str(r.names[3]));
+}
+
+static void test_walk_with_neighbour_lists_rem_columns_in_order() {
+    SnmpAgent agent("public");
+    withSwitch(true);
+    char expected[14][48];
+    for (int i = 0; i < 3; i++) strcpy(expected[i], LLDP_LOC[i]);
+    for (int i = 0; i < 9; i++) snprintf(expected[3 + i], 48, "1.0.8802.1.1.2.1.4.1.1.%d.0.1.1", i + 4);
+    strcpy(expected[12], "1.3.6.1.2.1.1.1.0");
+    for (int v = 0; v < 2; v++) {
+        char names[13][40];
+        walkNames(agent, v, "1.0", 13, names);
+        for (int i = 0; i < 13; i++) TEST_ASSERT_EQUAL_STRING(expected[i], names[i]);
+    }
+    const char* oids[] = {"1.0"};
+    Reply r = bulk(agent, 0, 13, oids, 1);
+    TEST_ASSERT_EQUAL_UINT8(13, r.count);
+    for (int i = 0; i < 13; i++) TEST_ASSERT_EQUAL_STRING(expected[i], str(r.names[i]));
+}
+
+static void test_rem_get_without_neighbour() {
+    SnmpAgent agent("public");
+    withSwitch(false);
+    const char* oids[] = {"1.0.8802.1.1.2.1.4.1.1.9.0.1.1"};
+    Reply r = request(agent, BerTag::GetRequest, oids, 1);
+    TEST_ASSERT_EQUAL_INT32((int32_t)SnmpError::NoSuchName, r.errorStatus);
+    r = requestV2c(agent, BerTag::GetRequest, oids, 1);
+    TEST_ASSERT_EQUAL_INT32(0, r.errorStatus);
+    TEST_ASSERT_EQUAL_HEX8(BerTag::NoSuchInstance, r.tags[0]);
+}
+
+static void test_rem_column_other_index_is_no_such_instance() {
+    SnmpAgent agent("public");
+    withSwitch(true);
+    const char* oids[] = {"1.0.8802.1.1.2.1.4.1.1.9.0.1.2", "1.0.8802.1.1.2.1.4.1.1.13.0.1.1", "1.0.8802.1.1.2.1.4.1.1.9.5.1.1",
+                          "1.0.8802.1.1.2.1.3.7.1.4.2"};
+    Reply r = requestV2c(agent, BerTag::GetRequest, oids, 4);
+    TEST_ASSERT_EQUAL_HEX8(BerTag::NoSuchInstance, r.tags[0]);  // lldpRemSysName exists, not this row
+    TEST_ASSERT_EQUAL_HEX8(BerTag::NoSuchObject, r.tags[1]);    // no column 13
+    TEST_ASSERT_EQUAL_HEX8(BerTag::NoSuchInstance, r.tags[2]);  // another time mark: still lldpRemSysName
+    TEST_ASSERT_EQUAL_HEX8(BerTag::NoSuchInstance, r.tags[3]);  // lldpLocPortDesc, port 2
+}
+
+static void test_lldp_absent_without_state() {
+    SnmpAgent agent("public");
+    state.lldp = nullptr;  // host tools and the tests above: no LLDP data
+    char names[1][40];
+    walkNames(agent, true, "1.0", 1, names);
+    TEST_ASSERT_EQUAL_STRING("1.3.6.1.2.1.1.1.0", names[0]);
+}
+
+static void test_mib2_walk_unchanged() {
+    SnmpAgent agent("public");
+    withSwitch(true);
+    char names[1][40];
+    walkNames(agent, false, "1.3.6.1.2.1", 1, names);
+    TEST_ASSERT_EQUAL_STRING("1.3.6.1.2.1.1.1.0", names[0]);
 }
 
 static void test_get_mains_alarm_reports_state() {
@@ -566,7 +727,8 @@ static void test_get_with_no_varbinds_returns_empty_response() {
 
 static void test_walk_from_root_visits_every_object_in_order_then_ends() {
     SnmpAgent agent("public");
-    char current[128] = "1.3";
+    withSwitch(true);  // every object has an instance, LLDP-MIB included
+    char current[128] = "1.0";
     uint8_t visited = 0;
     uint8_t expectedIndex = 0;
     for (;;) {
@@ -705,7 +867,8 @@ static void test_v2c_getnext_past_end_is_end_of_mib_view() {
 
 static void test_v2c_walk_ends_with_end_of_mib_view() {
     SnmpAgent agent("public");
-    char current[128] = "1.3";
+    withSwitch(true);  // every object has an instance, LLDP-MIB included
+    char current[128] = "1.0";
     uint8_t visited = 0;
     for (;;) {
         const char* oids[] = {current};
@@ -781,7 +944,8 @@ static void test_getbulk_interleaves_several_repeaters() {
 static void test_getbulk_walk_returns_whole_mib_then_end_of_mib_view() {
     // Like snmpbulkwalk: repeat GetBulk from the last OID until endOfMibView
     SnmpAgent agent("public");
-    char current[128] = "1.3";
+    withSwitch(true);
+    char current[128] = "1.0";
     uint16_t seen = 0;
     bool ended = false;
     for (int requests = 0; requests < 50 && !ended; requests++) {
@@ -856,7 +1020,8 @@ static void test_getbulk_huge_max_repetitions_is_bounded() {
 
 static void test_getbulk_truncates_to_fit_instead_of_too_big() {
     SnmpAgent agent("public");
-    const char* oids[] = {"1.3"};
+    withSwitch(true);
+    const char* oids[] = {"1.0"};
     uint8_t small[120];
     uint8_t req[128];
     size_t len = buildBulk(req, sizeof(req), 0, 50, oids, 1);
@@ -1079,6 +1244,14 @@ int main() {
     RUN_TEST(test_ambient_temperature_absent_v2c_get_is_no_such_instance);
     RUN_TEST(test_ambient_temperature_absent_is_skipped_by_getnext);
     RUN_TEST(test_ambient_temperature_absent_is_skipped_by_getbulk);
+    RUN_TEST(test_lldp_loc_port_table);
+    RUN_TEST(test_lldp_rem_table_with_neighbour);
+    RUN_TEST(test_walk_without_neighbour_skips_rem_table);
+    RUN_TEST(test_walk_with_neighbour_lists_rem_columns_in_order);
+    RUN_TEST(test_rem_get_without_neighbour);
+    RUN_TEST(test_rem_column_other_index_is_no_such_instance);
+    RUN_TEST(test_lldp_absent_without_state);
+    RUN_TEST(test_mib2_walk_unchanged);
     RUN_TEST(test_get_mains_alarm_reports_state);
     RUN_TEST(test_getnext_after_ambient_temperature_is_mains_alarm);
     RUN_TEST(test_getnext_after_mains_alarm_is_end_of_mib);

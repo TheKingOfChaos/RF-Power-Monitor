@@ -32,6 +32,7 @@
  */
 
 #include <if_stats.h>
+#include <lldp.h>
 
 #include "snmp_message.h"
 
@@ -47,6 +48,16 @@ struct SnmpInterfaceState {
     uint8_t mac[6];            ///< ifPhysAddress
     uint32_t lastChangeTicks;  ///< ifLastChange: sysUpTime when the link last changed, 0 if never
     IfCounters counters;       ///< Traffic since boot
+};
+
+/**
+ * @brief LLDP data for LLDP-MIB lldpLocPortTable and lldpRemTable (static in
+ *        the firmware, reached by pointer so no copy lands on the stack)
+ */
+struct SnmpLldpState {
+    uint8_t localMac[6];      ///< lldpLocPortId of the one port (MAC subtype)
+    bool present;             ///< A neighbour is held: lldpRemTable has its one row (0.1.1)
+    LldpNeighbour neighbour;  ///< Valid while present
 };
 
 /// ifDescr of the one interface (ifIndex 1); LLDP sends it as Port Description
@@ -69,6 +80,7 @@ struct SnmpDeviceState {
     int32_t cpuTempDeciC;          ///< RP2040 die temperature, tenths of a degree Celsius
     bool ambientTempValid;         ///< TMP1075 answers; false makes ambientTemperature absent
     int32_t ambientTempDeciC;      ///< TMP1075 temperature, tenths of a degree Celsius
+    const SnmpLldpState* lldp;     ///< LLDP-MIB data; nullptr: no LLDP-MIB object has an instance
 };
 
 /**
@@ -77,6 +89,7 @@ struct SnmpDeviceState {
 struct MibEntry {
     Oid oid;
     SnmpValue (*get)(const SnmpDeviceState& state);
+    uint8_t indexArcs = 1;  ///< Arcs of the instance (.0 or ifIndex: 1; lldpRemTable: 3)
 };
 
 /**

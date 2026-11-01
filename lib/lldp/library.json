@@ -16,5 +16,8 @@
     ],
     "license": "MIT",
     "frameworks": "*",
-    "platforms": "*"
+    "platforms": "*",
+    "dependencies": {
+        "netconfig": "*"
+    }
 }

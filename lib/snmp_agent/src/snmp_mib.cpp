@@ -120,6 +120,82 @@ static SnmpValue getMainsAlarm(const SnmpDeviceState& s) {
     return SnmpValue::makeInteger(s.mainsAlarm ? 1 : 0);
 }
 
+// ---- LLDP-MIB (IEEE 802.1AB-2005 Annex F): our one port and the one neighbour ----
+
+static const int32_t LLDP_PORT_ID_MAC = 3;
+
+static SnmpValue noInstance() { return SnmpValue::makeException(BerTag::NoSuchInstance); }
+
+/// The neighbour, or nullptr when lldpRemTable has no row
+static const LldpNeighbour* remote(const SnmpDeviceState& s) {
+    return (s.lldp != nullptr && s.lldp->present) ? &s.lldp->neighbour : nullptr;
+}
+
+static SnmpValue getLocPortIdSubtype(const SnmpDeviceState& s) {
+    return s.lldp ? integer(LLDP_PORT_ID_MAC) : noInstance();
+}
+static SnmpValue getLocPortId(const SnmpDeviceState& s) {
+    return s.lldp ? SnmpValue::makeBytes(s.lldp->localMac, 6) : noInstance();
+}
+static SnmpValue getLocPortDesc(const SnmpDeviceState& s) {
+    return s.lldp ? SnmpValue::makeString(SNMP_IF_DESCR) : noInstance();
+}
+
+static SnmpValue getRemChassisIdSubtype(const SnmpDeviceState& s) {
+    const LldpNeighbour* n = remote(s);
+    return n ? integer(n->chassisIdSubtype) : noInstance();
+}
+static SnmpValue getRemChassisId(const SnmpDeviceState& s) {
+    const LldpNeighbour* n = remote(s);
+    return n ? SnmpValue::makeBytes(n->chassisIdRaw, n->chassisIdLen) : noInstance();
+}
+static SnmpValue getRemPortIdSubtype(const SnmpDeviceState& s) {
+    const LldpNeighbour* n = remote(s);
+    if (!n) return noInstance();
+    uint8_t subtype;
+    const uint8_t* data;
+    size_t len;
+    lldpSnmpPortId(*n, subtype, data, len);
+    return integer(subtype);
+}
+static SnmpValue getRemPortId(const SnmpDeviceState& s) {
+    const LldpNeighbour* n = remote(s);
+    if (!n) return noInstance();
+    uint8_t subtype;
+    const uint8_t* data;
+    size_t len;
+    lldpSnmpPortId(*n, subtype, data, len);
+    return SnmpValue::makeBytes(data, len);
+}
+static SnmpValue getRemPortDesc(const SnmpDeviceState& s) {
+    const LldpNeighbour* n = remote(s);
+    return n ? SnmpValue::makeString(n->portDescr) : noInstance();
+}
+static SnmpValue getRemSysName(const SnmpDeviceState& s) {
+    const LldpNeighbour* n = remote(s);
+    return n ? SnmpValue::makeString(n->sysName) : noInstance();
+}
+static SnmpValue getRemSysDesc(const SnmpDeviceState& s) {
+    const LldpNeighbour* n = remote(s);
+    return n ? SnmpValue::makeString(n->sysDescr) : noInstance();
+}
+/// LldpSystemCapabilitiesMap: BITS, i.e. the two bytes as received; buf must outlive the response
+static SnmpValue caps(uint16_t bits, uint8_t* buf) {
+    buf[0] = (uint8_t)(bits >> 8);
+    buf[1] = (uint8_t)bits;
+    return SnmpValue::makeBytes(buf, 2);
+}
+static SnmpValue getRemSysCapSupported(const SnmpDeviceState& s) {
+    static uint8_t buf[2];
+    const LldpNeighbour* n = remote(s);
+    return n ? caps(n->capsSupported, buf) : noInstance();
+}
+static SnmpValue getRemSysCapEnabled(const SnmpDeviceState& s) {
+    static uint8_t buf[2];
+    const LldpNeighbour* n = remote(s);
+    return n ? caps(n->capsEnabled, buf) : noInstance();
+}
+
 // ---- table, must be sorted by OID (checked by tests) ----
 
 #define SYSTEM(n) {{1, 3, 6, 1, 2, 1, 1, n, 0}, 9}
@@ -127,8 +203,23 @@ static SnmpValue getMainsAlarm(const SnmpDeviceState& s) {
 #define IF(n) {{1, 3, 6, 1, 2, 1, 2, 2, 1, n, 1}, 11}
 #define IFX(n) {{1, 3, 6, 1, 2, 1, 31, 1, 1, 1, n, 1}, 12}
 #define PRIVATE(n) {{1, 3, 6, 1, 4, 1, ENTERPRISE_NUMBER, n, 0}, 9}
+// lldpLocPortTable row lldpLocPortNum 1; lldpRemTable row lldpRemTimeMark 0, lldpRemLocalPortNum 1, lldpRemIndex 1
+#define LLDP_LOC(n) {{1, 0, 8802, 1, 1, 2, 1, 3, 7, 1, n, 1}, 12}
+#define LLDP_REM(n) {{1, 0, 8802, 1, 1, 2, 1, 4, 1, 1, n, 0, 1, 1}, 14}
 
 static const MibEntry MIB[] = {
+    {LLDP_LOC(2), getLocPortIdSubtype},
+    {LLDP_LOC(3), getLocPortId},
+    {LLDP_LOC(4), getLocPortDesc},
+    {LLDP_REM(4), getRemChassisIdSubtype, 3},
+    {LLDP_REM(5), getRemChassisId, 3},
+    {LLDP_REM(6), getRemPortIdSubtype, 3},
+    {LLDP_REM(7), getRemPortId, 3},
+    {LLDP_REM(8), getRemPortDesc, 3},
+    {LLDP_REM(9), getRemSysName, 3},
+    {LLDP_REM(10), getRemSysDesc, 3},
+    {LLDP_REM(11), getRemSysCapSupported, 3},
+    {LLDP_REM(12), getRemSysCapEnabled, 3},
     {SYSTEM(1), getSysDescr},
     {SYSTEM(2), getSysObjectId},
     {SYSTEM(3), getSysUpTime},
@@ -208,9 +299,9 @@ const MibEntry* mibFind(const Oid& oid) {
 
 bool mibHasObject(const Oid& oid) {
     for (uint8_t i = 0; i < MIB_SIZE; i++) {
-        // Scalars and the single table row: the object is the entry without its last arc (.0 or ifIndex)
+        // The object is the entry without its instance (.0, ifIndex, or lldpRemTable's three index arcs)
         Oid object = MIB[i].oid;
-        object.length--;
+        object.length -= MIB[i].indexArcs;
         if (oidStartsWith(oid, object)) return true;
     }
     return false;
