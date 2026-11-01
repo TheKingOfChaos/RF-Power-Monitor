@@ -46,7 +46,7 @@ See [TODO.md](TODO.md) for the detailed plan.
 | Document | Contents |
 |---|---|
 | [docs/SETUP_MANUAL.md](docs/SETUP_MANUAL.md) | **Installing a device**: safety, assembly, first configuration, LibreNMS, proving the alarm works, checklist |
-| [docs/USER_MANUAL.md](docs/USER_MANUAL.md) | **Daily use**: LEDs, web page, what to do on an alarm, changing settings, factory reset, firmware update, troubleshooting |
+| [docs/USER_MANUAL.md](docs/USER_MANUAL.md) | **Daily use**: LEDs, web page, what to do on an alarm, changing settings, the serial menu (every option and status line), factory reset, firmware update, troubleshooting |
 | This README | Hardware, wiring, serial menu, web page, network, IPv6, mains monitoring, factory reset, settings, building, SNMP overview, troubleshooting |
 | [docs/MIB.md](docs/MIB.md) | Every SNMP object (system, IF-MIB, RF-POWER-MONITOR-MIB), traps, v1/v2c differences, rate limiting, errors, limits |
 | [docs/LIBRENMS.md](docs/LIBRENMS.md) | Monitoring the device with LibreNMS: install, sensors, alerts, traps, Docker test setup |
