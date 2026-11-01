@@ -145,3 +145,17 @@ private:
  * @return First free slot after 0, -1 if all are used (nothing is ever evicted)
  */
 int dhcp6PickSlot(const uint8_t* states, int count);
+
+/**
+ * @brief Whether an lwIP slot still holds the DHCPv6 address (lwIP may have expired it, or SLAAC reused it)
+ * @param state The slot's lwIP state (0 = invalid)
+ * @param slotAddr The address now in the slot
+ * @param addr The leased address
+ */
+bool dhcp6SlotHolds(uint8_t state, const uint8_t slotAddr[16], const uint8_t addr[16]);
+
+/**
+ * @brief lwIP state after refreshing the lifetimes: a deprecated address with a new preferred
+ * lifetime is preferred again (lwIP's timer only ever moves preferred to deprecated)
+ */
+uint8_t dhcp6RefreshedState(uint8_t state, uint32_t preferred);

@@ -258,6 +258,28 @@ static void test_parse_drops_address_with_valid_zero() {
     TEST_ASSERT_FALSE(in.hasLease);
 }
 
+static void test_parse_prefers_address_with_nonzero_preferred_lifetime() {
+    // Renumbering: the old address comes first, deprecated (preferred 0), then the new one
+    Msg m = payloadOf(KEA_REPLY_REQUEST, KEA_REPLY_REQUEST_LEN);
+    uint16_t iaLen;
+    uint8_t* ia = const_cast<uint8_t*>(findOption(m.b, m.len, 3, &iaLen));
+    uint8_t* addr = iaAddress(m);
+    TEST_ASSERT_NOT_NULL(addr);
+    uint8_t* opt = addr - 4;
+    size_t optSize = 4 + (size_t)(opt[2] << 8 | opt[3]);
+    memmove(opt + optSize, opt, m.len - (size_t)(opt - m.b));  // a copy of the IA Address in front
+    m.len += optSize;
+    ia[-2] = (uint8_t)((iaLen + optSize) >> 8);
+    ia[-1] = (uint8_t)(iaLen + optSize);
+    addr[15] = 0x99;          // the old address
+    putBe32(addr + 16, 0);    // deprecated
+    Dhcp6In in;
+    TEST_ASSERT_EQUAL(Dhcp6Parse::Ok, dhcp6Parse(m.b, m.len, LAB_MAC_C1, in));
+    TEST_ASSERT_TRUE(in.hasLease);
+    TEST_ASSERT_EQUAL_MEMORY(LEASED, in.lease.addr, 16);
+    TEST_ASSERT_TRUE(in.lease.preferred > 0);
+}
+
 static void test_parse_ignores_ia_na_with_other_iaid() {
     Msg m = payloadOf(KEA_REPLY_REQUEST, KEA_REPLY_REQUEST_LEN);
     uint16_t l;
@@ -354,6 +376,7 @@ int main() {
     RUN_TEST(test_parse_reply_without_client_id_is_malformed);
     RUN_TEST(test_parse_drops_address_with_preferred_above_valid);
     RUN_TEST(test_parse_drops_address_with_valid_zero);
+    RUN_TEST(test_parse_prefers_address_with_nonzero_preferred_lifetime);
     RUN_TEST(test_parse_ignores_ia_na_with_other_iaid);
     RUN_TEST(test_parse_reads_preference);
     RUN_TEST(test_parse_survives_every_truncation);

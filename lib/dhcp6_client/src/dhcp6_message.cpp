@@ -132,7 +132,7 @@ size_t dhcp6Build(const Dhcp6Out& m, const uint8_t mac[6], uint8_t* out, size_t 
 }
 
 /**
- * @brief Read our IA_NA's options: the first usable address and the IA's status
+ * @brief Read our IA_NA's options: the first usable address (preferring one not deprecated) and the IA's status
  * @return false if the sub-options are malformed
  */
 static bool readIaNa(const uint8_t* p, size_t len, Dhcp6In& in) {
@@ -148,7 +148,9 @@ static bool readIaNa(const uint8_t* p, size_t len, Dhcp6In& in) {
         if (code == OPT_IAADDR) {
             if (olen < 24) return false;
             uint32_t preferred = rd32(v + 16), valid = rd32(v + 20);
-            if (!in.hasLease && valid != 0 && preferred <= valid) {
+            // The first usable address, but one still preferred beats a deprecated one (renumbering)
+            bool better = !in.hasLease || (in.lease.preferred == 0 && preferred > 0);
+            if (better && valid != 0 && preferred <= valid) {
                 memcpy(in.lease.addr, v, 16);
                 in.lease.preferred = preferred;
                 in.lease.valid = valid;

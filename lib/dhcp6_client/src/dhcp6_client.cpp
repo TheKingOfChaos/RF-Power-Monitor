@@ -120,9 +120,11 @@ void Dhcp6Client::bind(const Dhcp6In& m) {
     _pendingAdd = true;  // add, or refresh the lifetimes of the address lwIP already has
     _boundAt = _now;
 
-    uint32_t pref = _lease.preferred;
-    uint32_t t1 = _lease.t1 ? _lease.t1 : (pref == INFINITY_S ? INFINITY_S : pref / 2);
-    uint32_t t2 = _lease.t2 ? _lease.t2 : (pref == INFINITY_S ? INFINITY_S : (uint32_t)((uint64_t)pref * 4 / 5));
+    // T1/T2 0 leave the times to us; a deprecated address (preferred 0) uses the valid lifetime,
+    // or T1 would be now and the client would renew once per round trip
+    uint32_t base = _lease.preferred ? _lease.preferred : _lease.valid;
+    uint32_t t1 = _lease.t1 ? _lease.t1 : (base == INFINITY_S ? INFINITY_S : base / 2);
+    uint32_t t2 = _lease.t2 ? _lease.t2 : (base == INFINITY_S ? INFINITY_S : (uint32_t)((uint64_t)base * 4 / 5));
     _t1At = atSeconds(_now, t1);
     _t2At = atSeconds(_now, t2);
     _validEnd = atSeconds(_now, _lease.valid);
@@ -224,11 +226,12 @@ Dhcp6Action Dhcp6Client::poll(uint32_t nowMs, uint8_t* buf, size_t size) {
         return a;
     }
 
-    // Timers of the lease
+    // Timers of the lease; the address also expires while the client is asking for it again
+    // (Requesting after NoBinding, or Soliciting after that failed)
     bool leased = _state == Dhcp6State::Bound || _state == Dhcp6State::Renewing || _state == Dhcp6State::Rebinding;
-    if (leased && t >= _validEnd) {
+    if (_haveLease && t >= _validEnd) {
         _haveLease = false;
-        restartSolicit();
+        if (leased) restartSolicit();
         a.kind = Dhcp6Action::RemoveAddress;
         memcpy(a.addr, _lease.addr, 16);
         return a;
@@ -307,4 +310,16 @@ int dhcp6PickSlot(const uint8_t* states, int count) {
         if (states[i] == 0) return i;
     }
     return -1;
+}
+
+bool dhcp6SlotHolds(uint8_t state, const uint8_t slotAddr[16], const uint8_t addr[16]) {
+    return state != 0 && memcmp(slotAddr, addr, 16) == 0;
+}
+
+// lwIP's IP6_ADDR_DEPRECATED and IP6_ADDR_PREFERRED (the service checks they still match)
+static const uint8_t STATE_DEPRECATED = 0x10;
+static const uint8_t STATE_PREFERRED = 0x30;
+
+uint8_t dhcp6RefreshedState(uint8_t state, uint32_t preferred) {
+    return state == STATE_DEPRECATED && preferred > 0 ? STATE_PREFERRED : state;
 }

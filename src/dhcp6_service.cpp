@@ -26,7 +26,6 @@ static Dhcp6In inbox;
 static uint8_t message[256];
 static uint8_t frame[DHCP6_FRAME_HEADER + sizeof(message)];
 static int slot = -1;
-static uint8_t slotAddr[16];
 static const char* problem = "";
 
 static uint32_t random32() {
@@ -59,6 +58,15 @@ void dhcp6InspectFrame(const uint8_t* f, size_t len) {
     }
 }
 
+// dhcp6RefreshedState() uses lwIP's values
+static_assert(IP6_ADDR_DEPRECATED == 0x10 && IP6_ADDR_PREFERRED == 0x30, "lwIP address states changed");
+
+/// Whether our slot still holds addr in lwIP (lwIP expires addresses itself; SLAAC may reuse the slot). Driver lock held
+static bool slotHolds(const uint8_t addr[16]) {
+    return slot >= 0 && dhcp6SlotHolds(netif_ip6_addr_state(dhcpNetif, slot),
+                                       (const uint8_t*)netif_ip6_addr(dhcpNetif, slot)->addr, addr);
+}
+
 static void toLwip(const uint8_t bytes[16], ip6_addr_t& out) {
     uint32_t w[4];
     memcpy(w, bytes, sizeof(w));  // ip6_addr_t words are in network order
@@ -73,8 +81,7 @@ static void addAddress(const Dhcp6Action& a) {
     ip6_addr_t addr;
     toLwip(a.addr, addr);
     DriverLock lock;
-    bool same = slot >= 0 && memcmp(slotAddr, a.addr, 16) == 0;
-    if (!same) {
+    if (!slotHolds(a.addr)) {
         uint8_t states[LWIP_IPV6_NUM_ADDRESSES];
         for (int i = 0; i < LWIP_IPV6_NUM_ADDRESSES; i++) states[i] = netif_ip6_addr_state(dhcpNetif, i);
         slot = dhcp6PickSlot(states, LWIP_IPV6_NUM_ADDRESSES);
@@ -83,20 +90,18 @@ static void addAddress(const Dhcp6Action& a) {
             return;
         }
         problem = "";
-        memcpy(slotAddr, a.addr, 16);
         netif_ip6_addr_set(dhcpNetif, slot, &addr);
         netif_ip6_addr_set_state(dhcpNetif, slot, IP6_ADDR_TENTATIVE);  // lwIP runs duplicate address detection
     }
     netif_ip6_addr_set_valid_life(dhcpNetif, slot, a.valid);  // never 0 here: 0 would mean "static" to lwIP
     netif_ip6_addr_set_pref_life(dhcpNetif, slot, a.preferred);
+    netif_ip6_addr_set_state(dhcpNetif, slot, dhcp6RefreshedState(netif_ip6_addr_state(dhcpNetif, slot), a.preferred));
 }
 
 static void removeAddress(const Dhcp6Action& a) {
     DriverLock lock;
-    if (slot >= 0 && memcmp(slotAddr, a.addr, 16) == 0) {
-        netif_ip6_addr_set_state(dhcpNetif, slot, IP6_ADDR_INVALID);
-        slot = -1;
-    }
+    if (slotHolds(a.addr)) netif_ip6_addr_set_state(dhcpNetif, slot, IP6_ADDR_INVALID);
+    slot = -1;
     problem = "";
 }
 
@@ -123,7 +128,7 @@ void dhcp6Poll() {
         haveMsg = inboxFull;
         if (haveMsg) msg = inbox;
         inboxFull = false;
-        if (slot >= 0) duplicate = ip6_addr_isduplicated(netif_ip6_addr_state(dhcpNetif, slot));
+        if (slotHolds(client->lease().addr)) duplicate = ip6_addr_isduplicated(netif_ip6_addr_state(dhcpNetif, slot));
     }
     uint32_t now = millis();
     client->setHostname(hostnameCurrent());
@@ -141,7 +146,8 @@ void dhcp6Poll() {
 }
 
 bool dhcp6IsSlot(int i) {
-    return slot >= 0 && slot == i;
+    // The callers read the netif the same way, without the lock
+    return client != nullptr && slot == i && slotHolds(client->lease().addr);
 }
 
 void dhcp6GetStatus(Dhcp6Status& out) {
@@ -149,7 +155,10 @@ void dhcp6GetStatus(Dhcp6Status& out) {
     out.problem = problem;
     if (client == nullptr) return;
     out.state = client->state();
-    out.hasAddress = client->hasLease() && slot >= 0;
+    {
+        DriverLock lock;
+        out.hasAddress = client->hasLease() && slotHolds(client->lease().addr);
+    }
     if (client->hasLease()) formatIPv6(client->lease().addr, out.address);
     out.validLeftS = client->validLeftS(millis());
     out.sent = client->sent();
