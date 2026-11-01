@@ -300,7 +300,7 @@ class SnmpAgentTest(unittest.TestCase):
         self.assertEqual(c64 & 0xFFFFFFFF, c32, out)
 
     def test_receive_drop_counters_match_the_status_screen(self):
-        # The values depend on the LAN (e.g. LLDP or IPv6 frames are unknown protocols), so compare
+        # The values depend on the LAN (e.g. spanning tree frames are unknown protocols), so compare
         # SNMP with the status screen read just before: never lower, and only a little higher
         st = self.dev.status()
         for key in ("inDiscards", "inErrors", "inUnknownProtos", "outErrors"):

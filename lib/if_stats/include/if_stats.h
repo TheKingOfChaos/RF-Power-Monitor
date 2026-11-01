@@ -56,10 +56,10 @@ enum class RxVerdict : uint8_t { Deliver, Error, UnknownProto };
 /**
  * @brief Decide whether lwIP can use a received frame
  *
- * Shorter than the Ethernet header or longer than 1514 bytes: Error. An
- * EtherType other than IPv4 (0x0800), ARP (0x0806) or, with ipv6, IPv6
- * (0x86DD) is UnknownProto: this includes 802.3 length fields (< 0x0600,
- * e.g. spanning tree), VLAN tags and LLDP, which lwIP drops.
+ * Shorter than the Ethernet header or longer than 1514 bytes: Error. IPv4
+ * (0x0800), ARP (0x0806), LLDP (0x88CC, read by the firmware) and, with ipv6,
+ * IPv6 (0x86DD) are delivered. Any other EtherType is UnknownProto: this
+ * includes 802.3 length fields (< 0x0600, e.g. spanning tree) and VLAN tags.
  */
 RxVerdict classifyReceived(const uint8_t* frame, size_t length, bool ipv6);
 

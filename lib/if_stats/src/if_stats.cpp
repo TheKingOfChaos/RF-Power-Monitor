@@ -30,6 +30,7 @@ RxVerdict classifyReceived(const uint8_t* frame, size_t length, bool ipv6) {
     if (frame == nullptr || length < ETH_HEADER_LEN || length > ETH_MAX_FRAME_LEN) return RxVerdict::Error;
     uint16_t etherType = (uint16_t)((frame[12] << 8) | frame[13]);
     if (etherType == 0x0800 || etherType == 0x0806) return RxVerdict::Deliver;
+    if (etherType == 0x88CC) return RxVerdict::Deliver;  // LLDP, read by src/lldp_service.cpp
     if (ipv6 && etherType == 0x86DD) return RxVerdict::Deliver;
     return RxVerdict::UnknownProto;
 }

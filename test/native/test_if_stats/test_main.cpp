@@ -77,10 +77,22 @@ static void test_ipv6_is_delivered_only_with_ipv6_enabled() {
     TEST_ASSERT_EQUAL(RxVerdict::Deliver, classifyReceived(MULTICAST_V6, sizeof(MULTICAST_V6), true));
 }
 
+static void test_lldp_is_delivered() {
+    // The firmware reads LLDP (src/lldp_service.cpp), so it is not an unknown protocol
+    static const uint8_t LLDP[] = {0x01, 0x80, 0xC2, 0x00, 0x00, 0x0E, 0, 0, 0, 0, 0, 0, 0x88, 0xCC};
+    TEST_ASSERT_EQUAL(RxVerdict::Deliver, classifyReceived(LLDP, sizeof(LLDP), false));
+    TEST_ASSERT_EQUAL(RxVerdict::Deliver, classifyReceived(LLDP, sizeof(LLDP), true));
+    IfCounters c;
+    memset(&c, 0, sizeof(c));
+    ifCountReceived(c, LLDP, sizeof(LLDP), true);
+    TEST_ASSERT_TRUE(c.inMulticastPkts == 1);
+    TEST_ASSERT_EQUAL_UINT32(0, c.inUnknownProtos);
+}
+
 static void test_other_ethertypes_are_unknown_protocols() {
     static uint8_t f[ETH_MAX_FRAME_LEN + 1];
-    // 802.3 length field (spanning tree), the boundary, VLAN tag, LLDP, almost IPv4
-    const uint16_t types[] = {0x0026, 0x05FF, 0x0600, 0x8100, 0x88CC, 0x0801, 0x0000, 0xFFFF};
+    // 802.3 length field (spanning tree), the boundary, VLAN tag, almost LLDP, almost IPv4
+    const uint16_t types[] = {0x0026, 0x05FF, 0x0600, 0x8100, 0x88CD, 0x0801, 0x0000, 0xFFFF};
     for (uint16_t t : types) {
         frameWith(t, f);
         TEST_ASSERT_EQUAL_MESSAGE(RxVerdict::UnknownProto, classifyReceived(f, 60, true), "ethertype");
@@ -150,6 +162,7 @@ int main() {
     RUN_TEST(test_octets_go_past_32_bits);
     RUN_TEST(test_ipv4_and_arp_are_delivered);
     RUN_TEST(test_ipv6_is_delivered_only_with_ipv6_enabled);
+    RUN_TEST(test_lldp_is_delivered);
     RUN_TEST(test_other_ethertypes_are_unknown_protocols);
     RUN_TEST(test_frame_length_boundaries);
     RUN_TEST(test_received_frames_land_in_the_right_counter);

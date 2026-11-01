@@ -59,7 +59,7 @@ The device has one interface, index 1: the W5500 Ethernet port. `ifNumber.0` (`1
 | 12, 18 | ifInNUcastPkts, ifOutNUcastPkts | Counter32 | Multicast + broadcast frames |
 | 13 | ifInDiscards | Counter32 | Frames the driver read from the W5500 but dropped because lwIP had no free buffer |
 | 14 | ifInErrors | Counter32 | Frames shorter than the 14-byte Ethernet header or longer than 1514 bytes |
-| 15 | ifInUnknownProtos | Counter32 | Frames with an EtherType other than IPv4 or ARP, e.g. IPv6, LLDP, spanning tree, VLAN-tagged |
+| 15 | ifInUnknownProtos | Counter32 | Frames with an EtherType other than IPv4, ARP, IPv6 or LLDP, e.g. spanning tree, VLAN-tagged |
 | 19 | ifOutDiscards | Counter32 | 0 (lwIP drops before the driver are not visible) |
 | 20 | ifOutErrors | Counter32 | Frames the driver failed to send |
 | 21 | ifOutQLen | Gauge32 | 0 |
@@ -81,7 +81,7 @@ The device has one interface, index 1: the W5500 Ethernet port. `ifNumber.0` (`1
 
 The W5500 runs in MAC-raw mode for lwIP and has no traffic counters of its own, so the firmware counts every frame passed between the W5500 and lwIP: octets are whole Ethernet frames without the FCS, and frames are sorted into unicast, multicast and broadcast by their destination MAC. Only frames lwIP can use count as packets; the others count in ifInErrors or ifInUnknownProtos (all received octets count in ifInOctets).
 
-What the counters cannot see: the W5500 itself silently drops frames with a bad checksum and frames that arrive while its 16 KB receive buffer is full, and has no counters for either. ifInDiscards therefore only counts drops in the firmware. ifInUnknownProtos is normally non-zero and rising on a LAN with IPv6 or LLDP traffic; that is not a fault.
+What the counters cannot see: the W5500 itself silently drops frames with a bad checksum and frames that arrive while its 16 KB receive buffer is full, and has no counters for either. ifInDiscards therefore only counts drops in the firmware. ifInUnknownProtos is normally non-zero and rising on a LAN with spanning tree or other protocols the device does not use; that is not a fault. LLDP frames from the switch count as multicast (ifInMulticastPkts), since the device reads them.
 
 The counters are 64-bit internally and start at 0 at boot. Link state and speed are read from the W5500 PHY register (`PHYCFGR`) every 500 ms; a link change is logged on the serial port.
 

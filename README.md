@@ -154,7 +154,7 @@ IPv6 gateway: from router advertisements
 DNS: 10.10.0.1
 ```
 
-"Unknown protocol" counts frames the device receives but does not use (IPv6, LLDP, spanning tree); on a busy LAN it grows steadily, which is normal.
+"Unknown protocol" counts frames the device receives but does not use (e.g. spanning tree); on a busy LAN it grows steadily, which is normal.
 
 The interface state line is one of:
 
