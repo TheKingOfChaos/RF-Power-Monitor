@@ -54,10 +54,11 @@ function useAgentAddress(string $text): string
  */
 function isMainsTrap(string $trapOid): bool
 {
-    return str_contains($trapOid, 'RF-POWER-MONITOR-MIB::mainsPower')
+    // RF-UPS-MONITOR-MIB is the module's name before 3.0.0: snmptrapd keeps it until restarted
+    return preg_match('/RF-(UPS|POWER)-MONITOR-MIB::mainsPower/', $trapOid) === 1
         || preg_match('/(\.1\.3\.6\.1\.4\.1\.|enterprises\.)63050\.0\.[123]$/', $trapOid) === 1
         // snmptrapd started with an older MIB file names a newer trap by its parent
-        || preg_match('/RF-POWER-MONITOR-MIB::rfPowerMonitorNotifications\.[123]$/', $trapOid) === 1;
+        || preg_match('/RF-(UPS|POWER)-MONITOR-MIB::rf(Ups|Power)MonitorNotifications\.[123]$/', $trapOid) === 1;
 }
 
 $trap = new \LibreNMS\Snmptrap\Trap(useAgentAddress(stream_get_contents(STDIN)));

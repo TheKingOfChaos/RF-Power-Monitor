@@ -28,7 +28,18 @@ Polling runs every 5 minutes by default, so without traps the alert comes at the
 
 Tested on 2026-11-01 with LibreNMS (Docker, `latest`) and the firmware with `mainsPowerAlarm`, cutting mains with a smart outlet: a 33 s outage logged mainsPowerLost and mainsPowerRestored and no alert; outages of 76 s and 95 s each logged mainsPowerLostTooLong 60 s after the loss, the alert opened 2 s after that trap and recovered 2 s after mains returned.
 
-**Updating from an older definition:** copy the YAML files and the MIB again, rediscover the device (device → Settings → Rediscover, or `./lnms device:discover <device ip> -m sensors`) so the new sensor is created and "lost" becomes a warning, and restart snmptrapd so it knows the new trap's name. Until then it logs the trap as `RF-POWER-MONITOR-MIB::rfPowerMonitorNotifications.3`.
+**Updating from an older definition:** copy the YAML files and the MIB again, rediscover the device (device → Settings → Rediscover, or `./lnms device:discover <device ip> -m sensors`) so the new sensor is created and "lost" becomes a warning, and restart snmptrapd so it knows the new trap's name. Until then it logs the trap by its parent's name, `RF-UPS-MONITOR-MIB::rfUpsMonitorNotifications.3` with a 2.5 MIB (the module's name before 3.0.0).
+
+**Updating to 3.0.0 (the project renamed RF.Power-Monitor):** the definition is now `rfpowermonitor` and the MIB `RF-POWER-MONITOR-MIB`. Remove the old files first, or two definitions match the device and detection may keep the old one:
+
+```bash
+cd /opt/librenms
+rm resources/definitions/os_detection/rfupsmonitor.yaml resources/definitions/os_discovery/rfupsmonitor.yaml
+rm -r mibs/rfupsmonitor
+rm html/images/os/rfupsmonitor.svg html/images/logos/rfupsmonitor.svg
+```
+
+then copy the new files as under Install, rediscover the device (it becomes OS RF.Power-Monitor; its sensors are created again, so their history starts over) and restart snmptrapd so it loads the new MIB. Until the restart it names the traps `RF-UPS-MONITOR-MIB::...`; the trap script below accepts both names.
 
 ## Install
 
@@ -113,7 +124,7 @@ The poller polls every 5 minutes; traffic rates appear after the second poll. Th
 
 The `snmptrapd` container receives traps on UDP 162 of the PC. Set the device's trap destination to the PC's address (menu option 4); both trap versions work. Docker Desktop replaces the sender's address with its own (172.18.0.1), so LibreNMS alone could not find the device ("Could not find device for trap"). The device's traps also carry its address, v1 in agent-addr and v2c (from firmware 2.5.1) in `snmpTrapAddress.0`, which snmptrapd shows for both; [librenms/test/snmptrap-agent-addr.php](../librenms/test/snmptrap-agent-addr.php), mounted over LibreNMS's `snmptrap.php`, puts that address back before LibreNMS handles the trap. Without NAT in between, on a normal LibreNMS server, the script is not needed. Only traps with the community in `TRAP_COMMUNITY` (default `public`) are accepted, e.g. `TRAP_COMMUNITY=mycommunity docker compose up -d`.
 
-**Alerts from traps:** LibreNMS only logs these traps; alerts come from the sensors. After a mainsPowerLost, mainsPowerRestored or mainsPowerLostTooLong trap, the same script polls the device's sensors, which runs its alert rules, so "State Sensor Critical" opens about 60 s after mains goes (at the mainsPowerLostTooLong trap) and recovers when it returns, within seconds instead of at the next 5-minute poll. It also recognises the trap as `rfPowerMonitorNotifications.3`, the name snmptrapd gives it while it still has an older MIB loaded. On a LibreNMS server without this script the alert comes with the next poll.
+**Alerts from traps:** LibreNMS only logs these traps; alerts come from the sensors. After a mainsPowerLost, mainsPowerRestored or mainsPowerLostTooLong trap, the same script polls the device's sensors, which runs its alert rules, so "State Sensor Critical" opens about 60 s after mains goes (at the mainsPowerLostTooLong trap) and recovers when it returns, within seconds instead of at the next 5-minute poll. It also recognises the traps under the names snmptrapd gives them while it still has an older MIB loaded: by their parent (`rfPowerMonitorNotifications.3`, or `rfUpsMonitorNotifications.3`), and under the module name before 3.0.0, `RF-UPS-MONITOR-MIB` (`librenms/test/check_trap_names.php` checks every form). On a LibreNMS server without this script the alert comes with the next poll.
 
 With WSL in mirrored networking mode (below), a firewall in front of WSL (the Hyper-V firewall) drops traps from the network until UDP 162 is allowed, once, in an administrator PowerShell:
 
