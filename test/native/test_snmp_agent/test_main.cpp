@@ -494,7 +494,9 @@ static void test_lldp_rem_table_with_neighbour() {
         TEST_ASSERT_EQUAL_STRING("ge-0/0/9.0", r.strings[4]);
         TEST_ASSERT_EQUAL_STRING("r169", r.strings[5]);
         TEST_ASSERT_EQUAL_STRING("Juniper Networks, Inc. ex2200-c-12p-2g", r.strings[6]);
-        const uint8_t caps[2] = {0x00, 0x14};
+        // BITS (RFC 2578 7.1.4): bit 0 is the top bit of the first byte, LLDP TLVs count from the bottom bit;
+        // bridge(2) + router(4), net-snmp with LLDP-MIB decodes it as "bridge(2) router(4)"
+        const uint8_t caps[2] = {0x28, 0x00};
         TEST_ASSERT_EQUAL_HEX8(BerTag::OctetString, r.tags[7]);
         TEST_ASSERT_EQUAL_HEX8_ARRAY(caps, r.strings[7], 2);
         TEST_ASSERT_EQUAL_HEX8_ARRAY(caps, r.strings[8], 2);

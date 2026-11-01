@@ -179,10 +179,21 @@ static SnmpValue getRemSysDesc(const SnmpDeviceState& s) {
     const LldpNeighbour* n = remote(s);
     return n ? SnmpValue::makeString(n->sysDescr) : noInstance();
 }
-/// LldpSystemCapabilitiesMap: BITS, i.e. the two bytes as received; buf must outlive the response
+/// The byte with its bit order reversed
+static uint8_t reverseBits(uint8_t b) {
+    uint8_t r = 0;
+    for (int i = 0; i < 8; i++) r |= (uint8_t)(((b >> i) & 1) << (7 - i));
+    return r;
+}
+
+/**
+ * @brief LldpSystemCapabilitiesMap (BITS): the TLV numbers capabilities from its lowest bit
+ *        (bridge = 0x0004), BITS from the top bit of the first byte (RFC 2578 7.1.4), so bridge(2)
+ *        becomes 0x20 in byte 0. buf must outlive the response
+ */
 static SnmpValue caps(uint16_t bits, uint8_t* buf) {
-    buf[0] = (uint8_t)(bits >> 8);
-    buf[1] = (uint8_t)bits;
+    buf[0] = reverseBits((uint8_t)bits);         // capabilities 0-7
+    buf[1] = reverseBits((uint8_t)(bits >> 8));  // capabilities 8-15
     return SnmpValue::makeBytes(buf, 2);
 }
 static SnmpValue getRemSysCapSupported(const SnmpDeviceState& s) {

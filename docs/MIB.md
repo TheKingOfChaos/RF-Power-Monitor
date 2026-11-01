@@ -103,7 +103,7 @@ The device answers part of the standard LLDP-MIB (IEEE 802.1AB-2005 Annex F), so
 | 1.0.8802.1.1.2.1.4.1.1.8.0.1.1 | lldpRemPortDesc | OCTET STRING | port description, empty if not sent |
 | 1.0.8802.1.1.2.1.4.1.1.9.0.1.1 | lldpRemSysName | OCTET STRING | the switch's name |
 | 1.0.8802.1.1.2.1.4.1.1.10.0.1.1 | lldpRemSysDesc | OCTET STRING | its system description, at most 128 bytes |
-| 1.0.8802.1.1.2.1.4.1.1.11.0.1.1 | lldpRemSysCapSupported | BITS (2 bytes) | as sent (`00 14`: bridge, router) |
+| 1.0.8802.1.1.2.1.4.1.1.11.0.1.1 | lldpRemSysCapSupported | BITS (2 bytes) | as sent, in BITS order (bit 0 = top bit of the first byte; the TLV counts from the bottom bit): bridge + router = `28 00` |
 | 1.0.8802.1.1.2.1.4.1.1.12.0.1.1 | lldpRemSysCapEnabled | BITS (2 bytes) | as sent |
 
 There is one remote row, index lldpRemTimeMark 0, lldpRemLocalPortNum 1, lldpRemIndex 1, and only while the device holds a neighbour (the status screen's `Switch:` line); otherwise v1 answers noSuchName and v2c noSuchInstance, and walks skip it. Text from the switch is cut to 64 characters (128 for the description) with non-printable bytes replaced by `?`. Not served: lldpRemManAddrTable (the management address; its index holds the address), lldpLocalSystemData, lldpStatistics and LLDP-V2-MIB. A v1 walk from the root returns 59 objects with a neighbour (47 without), a v2c walk 67 (55).

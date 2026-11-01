@@ -117,7 +117,7 @@ check "lldpLocPortTable"        '3\.7\.1\.2\.1 = INTEGER: 3.*3\.7\.1\.3\.1 = Hex
       bash -c "snmpwalk $V2 $TARGET $LLDP.3.7 | tr '\n' ' '"
 check "lldpRemTable ids"        '4\.1\.1\.4\.0\.1\.1 = INTEGER: 4.*5\.0\.1\.1 = Hex-STRING: F8 C0 01 C7 90 C0.*6\.0\.1\.1 = INTEGER: 5.*7\.0\.1\.1 = STRING: "ge-0/0/9\.0"' \
       bash -c "snmpwalk $V2 $TARGET $LLDP.4.1 | tr '\n' ' '"
-check "lldpRemTable names"      '8\.0\.1\.1 = STRING: "ge-0/0/9\.0".*9\.0\.1\.1 = STRING: "r169".*10\.0\.1\.1 = STRING: "Juniper Networks, Inc\. ex2200-c-12p-2g".*11\.0\.1\.1 = Hex-STRING: 00 14.*12\.0\.1\.1 = Hex-STRING: 00 14' \
+check "lldpRemTable names"      '8\.0\.1\.1 = STRING: "ge-0/0/9\.0".*9\.0\.1\.1 = STRING: "r169".*10\.0\.1\.1 = STRING: "Juniper Networks, Inc\. ex2200-c-12p-2g".*11\.0\.1\.1 = Hex-STRING: 28 00.*12\.0\.1\.1 = Hex-STRING: 28 00' \
       bash -c "snmpwalk $V2 $TARGET $LLDP.4.1 | tr '\n' ' '"
 check "lldpRemSysName other row" '9\.0\.1\.2 = No Such Instance' snmpget $V2 $TARGET $LLDP.4.1.1.9.0.1.2
 check "v1 lldpRemSysName"       '9\.0\.1\.1 = STRING: "r169"' snmpget $SNMP_OPTS $TARGET $LLDP.4.1.1.9.0.1.1
