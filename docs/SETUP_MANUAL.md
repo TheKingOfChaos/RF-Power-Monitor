@@ -107,7 +107,13 @@ These take effect at once; no restart.
 
 ## 5. Web page and password
 
-Open **http://&lt;device address&gt;/** (or **http://&lt;hostname&gt;.local/**) in a browser and log in as `admin` with the default password from the status screen. The page shows the status and lets you change the network, the name and the community, and restart the device.
+Open **http://&lt;device address&gt;/** (or **http://&lt;hostname&gt;.local/**) in a browser and log in as `admin` with the default password from the status screen.
+
+![The login page](images/web/web-login.png)
+
+The page shows the status and lets you change the network, the name and the community, and restart the device. (In the pictures in this manual, the addresses, MAC and community are example values.)
+
+![The status and settings page](images/web/web-status.png)
 
 Set your **own web password** with menu option `6` (8 to 32 characters). It can only be set from the serial menu, so someone who learns it cannot lock you out. The page uses plain HTTP: use it on a trusted management network.
 

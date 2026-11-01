@@ -34,6 +34,8 @@ Open **http://&lt;device address&gt;/** or **http://&lt;hostname&gt;.local/** an
 - **Switch**: the switch and port the device is plugged into (if the switch speaks LLDP)
 - Name, addresses, MAC address and network mode; the firmware version in the top bar
 
+![The web page (addresses, MAC and community are example values)](images/web/web-status.png)
+
 From the page you can change the network settings, the name and the SNMP community, restart the device, and log out. A session ends after 15 minutes without use.
 
 ### The serial menu
