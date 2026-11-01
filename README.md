@@ -32,6 +32,7 @@ More diagrams (firmware architecture, SNMP request flow, mains flow, settings, t
 | Web interface can be turned off (serial menu or the page itself) | Working |
 | IPv6 (dual stack): SNMP, web page and mDNS over IPv6, SLAAC, per-address rate limiting | Working |
 | Static IPv6 address and gateway (serial menu or web page), next to SLAAC | Working |
+| LLDP: the switch lists the device as a neighbour; status screen and web page show the switch and port | Working |
 | SNMP trap destination from DHCP option 224 | Working, tested with Kea 2.2.0; in your network once the DHCP server has option 224 |
 | Interface statistics (IF-MIB ifTable/ifXTable, 64-bit counters) | Working, counted by the firmware |
 | CPU temperature (RP2040 internal sensor) | Working |
@@ -113,7 +114,7 @@ Connect to the Pico's USB serial port (`COM16` here) at **115200 baud, 8N1**, wi
 >
 ```
 
-**1. Show status** prints the mains power state, the CPU and ambient temperature (`no sensor` without the TMP1075), the Ethernet link speed, traffic and drop counters, the SNMP counters and settings (community, sysName, sysContact, sysLocation), the configured network mode, the stored static settings, and the live interface: state, MAC, IP, subnet, gateway and DNS.
+**1. Show status** prints the mains power state, the CPU and ambient temperature (`no sensor` without the TMP1075), the Ethernet link speed, traffic and drop counters, the SNMP counters and settings (community, sysName, sysContact, sysLocation), the switch and port the device is plugged into (LLDP), the configured network mode, the stored static settings, and the live interface: state, MAC, IP, subnet, gateway and DNS.
 
 ```
 > 1
@@ -256,7 +257,7 @@ The device serves a small configuration page on **http://&lt;device IP&gt;/** (p
 
 - **Login:** user `admin`. Until you set your own password, the password is the device's **default password**: 10 random characters generated on first boot, different for every device, and shown only on the serial status screen (menu option 1): `Web login: user admin, default password "k7wqz3mtd9"`. A factory reset does not change it; menu option 7 replaces it with a new random one.
 - **Own password:** serial menu option 6 sets one (8-32 characters, no spaces; typed characters are shown as `*`), or `-` goes back to the device default. Changing it logs every browser out. The password is stored as a salted SHA-256 hash (2000 rounds), never as text; checking it takes about half a second, done in small steps so SNMP keeps answering meanwhile. It can only be changed from the serial menu, so someone who learns it cannot lock you out.
-- **Status:** mains power (green or red badge) and change count, uptime, CPU and ambient temperature, Ethernet link, hostname and `.local` name, IP address, IPv6 address and link-local address (when the device has them), MAC address, network mode, static IPv6 address (when set), firmware version (top bar). With DHCP the Network card's boxes show the address, subnet mask and gateway the DHCP server gave (and the DNS server below them); choosing Static and saving keeps that address.
+- **Status:** mains power (green or red badge) and change count, uptime, CPU and ambient temperature, Ethernet link, the switch and port (LLDP), hostname and `.local` name, IP address, IPv6 address and link-local address (when the device has them), MAC address, network mode, static IPv6 address (when set), firmware version (top bar). With DHCP the Network card's boxes show the address, subnet mask and gateway the DHCP server gave (and the DNS server below them); choosing Static and saving keeps that address.
 - **Device name:** the hostname (also SNMP sysName and mDNS name), active immediately.
 - **Network:** DHCP or static IP (address, mask and gateway are checked as in the serial menu). Saving restarts the device; the page tells you the new address.
 - **IPv6:** static IPv6 address and gateway, checked as in the serial menu (option 9); empty fields remove them. Saving restarts the device.
@@ -302,6 +303,12 @@ Responses: `400` with the reason on the page for an invalid value (nothing is sa
 - **Static IP** is set through the serial menu.
 - The MAC address is derived from the Pico's unique chip ID, so it is stable across reboots. Reserve it in your DHCP server for a fixed address.
 - Networking uses the Arduino-Pico core's lwIP driver for the W5500 (`Wiznet5500lwIP`).
+
+### LLDP
+
+The device announces itself with LLDP (IEEE 802.1AB) every 30 s, 1 s after the Ethernet link comes up and about 1 s after its address or hostname changes, so the switch lists it as a neighbour (`show lldp neighbors` on Junos). It sends its MAC as chassis and port ID, the hostname as system name, the sysDescr text (with the firmware version) as system description, `W5500 10/100 Ethernet` as port description, "station only" as capability, and its IPv4 address and global IPv6 address (when it has them) as management addresses, with a time to live of 120 s. There is no setting; LLDP is always on.
+
+It also reads the LLDP frames the switch sends and shows the switch and the port it is plugged into: `Switch: r169, port ge-0/0/9.0` on the status screen (with the switch's management address in brackets when the switch sends one), and a "Switch" row on the web page. Junos sends the port as a number (its ifIndex) and the interface name as port description; the device shows the name. Without LLDP from the switch it shows `none seen`; the switch is forgotten when its time to live runs out or the link goes down. LLDP frames count as received multicast frames, not as unknown protocol.
 
 ## Hostname
 

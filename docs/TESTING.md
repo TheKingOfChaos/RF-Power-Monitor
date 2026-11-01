@@ -139,6 +139,20 @@ The DHCPv6 tests (`test_dhcp6_testnet.py`, `test_dhcp6.py`) need a router that s
 
 One-time setup: `wsl -d Ubuntu -u root -- apt install python3-scapy kea-dhcp6-server`, then `systemctl disable --now kea-dhcp6-server` (the package starts a service; the tests run their own Kea). The tests run commands as root with `wsl -u root`. A VPN such as Cisco AnyConnect blocks IPv6 between this PC and the device ("General failure" on ping6): disconnect it for these tests and for `test_ipv6.py`.
 
+### LLDP switch (`RFUPS_LLDP_SWITCH`, `RFUPS_LLDP_SWITCH_CONSOLE`)
+
+The LLDP tests (`test_lldp.py`) need the device plugged into a switch that sends LLDP; other networks may have none, so they are opt-in:
+
+```powershell
+$env:RFUPS_LLDP_SWITCH = "1"                # the device's switch sends LLDP: the status screen must name it
+$env:RFUPS_LLDP_SWITCH_CONSOLE = "COM45"    # optional: the switch's serial console (Junos, 9600 baud)
+$env:RFUPS_LLDP_SWITCH_CREDENTIALS = "..."  # optional, default secret/switch.md
+```
+
+With the console, the tests log in, run `show lldp neighbors` (operational commands only, the configuration is never touched) and log out. The login file has the lines `username: ...` and `password: ...`; keep it in `secret/` (git-ignored) and never commit it. The tests never print it. A root login lands in the shell; the helper starts `cli` itself.
+
+The hidden menu command `lldpdump` prints the last LLDP frame from the switch in hex (`LLDP 0180c2...`), for test vectors; `test/native/test_lldp` has one from a Juniper EX2200-C (its serial number replaced).
+
 ## What is covered
 
 ### `test/native/test_netconfig`: `lib/netconfig`
@@ -322,6 +336,18 @@ Uses `test/settings_a.json` and `test/settings_b.json`, never the real settings.
 - Menu option 9 refuses link-local addresses, `/64` suffixes and gateways outside the /64, shows the address in short form, and `n` changes nothing
 - Opt-in (`RFUPS_STATIC_IPV6`): the address is set, the device restarts, the address passes duplicate detection and is marked `(static)` while the link-local and SLAAC addresses stay; ping6, SNMP and the web page answer on it; then it is removed again
 - The device must start without a static IPv6 address (the suite skips otherwise)
+
+### `test/native/test_lldp`: `lib/lldp`
+- Built frame byte for byte (written out from IEEE 802.1AB and decoded by `tcpdump -vv`), with and without IPv4/IPv6 management addresses, buffer one byte too small, strings over 255 bytes
+- Parsing a Junos-style frame (Port ID as ifIndex, interface name in Port Description, organisational TLVs skipped), a frame captured from a Juniper EX2200-C, and our own frame; other EtherTypes, short and null frames; every truncation, a TLV past the end, missing or misordered mandatory TLVs, a wrong TTL length, no End TLV (all clean under the sanitizers)
+- Text cut to 64 characters, non-printable bytes as `?`
+- Neighbour: expires after its TTL (also across a `millis()` wrap), TTL 0 and link down forget it, the latest frame wins; display text (port description for a local port ID, else the port ID; chassis ID without a system name; `none seen`; cut to the buffer)
+- Send timing: nothing while the link is down, 1 s after link up (again after a flap), every 30 s, 1 s after a change, across a `millis()` wrap
+
+### `test/hil/test_lldp.py`: LLDP on the device (opt-in, see above)
+- The status screen names the switch and port within 35 s (`RFUPS_LLDP_SWITCH=1`)
+- The switch lists the device by MAC with its hostname, port description and IPv4 address, and the device shows the port the switch says it is on (`RFUPS_LLDP_SWITCH_CONSOLE`)
+- A new hostname reaches the switch within 5 s (fails with a firmware that sends only every 30 s); the old one is restored
 
 ### `test/hil/test_dhcp_trap.py`: trap destination from DHCP
 - Choosing `dhcp` asks for option 224 in the renewal, the LAN's server still answers (same lease and IP, SNMP answers), the status screen reports the ACK; back to fixed
