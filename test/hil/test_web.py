@@ -479,6 +479,29 @@ class WebPageTest(unittest.TestCase):
             d.set_web_enabled(True)
         self.assertTrue(self.port_80_open())
 
+    def test_web_reopens_at_once_after_the_device_closed_connections(self):
+        # A login (a POST the device reads in full) ends with the device closing the connection, which
+        # leaves it in TIME-WAIT on port 80 for 2 minutes; a plain GET does not (lwIP resets instead).
+        # Turning the web interface off and on must still open the port at once
+        d = self.dev
+        self.wait_lockout_over()
+        try:
+            for cycle in range(3):
+                for _ in range(3):
+                    self.logged_in()
+                time.sleep(0.5)
+                d.wait_for_menu(timeout=10)
+                d.set_web_enabled(False)
+                self.assertFalse(self.port_80_open())
+                d.set_web_enabled(True)
+                deadline = time.time() + 3
+                while not self.port_80_open() and time.time() < deadline:
+                    time.sleep(0.2)
+                self.assertTrue(self.port_80_open(), "port 80 not open 3 s after turning on (cycle %d)" % cycle)
+        finally:
+            d.wait_for_menu(timeout=10)
+            d.set_web_enabled(True)
+
     def test_logo_and_favicon(self):
         status, headers, svg = self.web.request("GET", "/favicon.svg")
         self.assertEqual(200, status)

@@ -3,7 +3,6 @@
 #include <LittleFS.h>
 #include <WiFiClient.h>
 #include <WiFiServer.h>
-#include <lwip/priv/tcp_priv.h>
 #include <mains_input.h>
 #include <settings.h>
 #include <web_app.h>
@@ -50,27 +49,9 @@ static bool stopAfterResponse = false;  // the page itself turned the web interf
 static bool wantListening = false;     // web interface on, port 80 may still be opening
 static uint32_t lastListenTryMs = 0;
 
-/**
- * @brief Forget finished web connections in TIME-WAIT on port 80
- *
- * The core's lwipopts.h leaves SO_REUSE off, so a connection the device closed
- * keeps port 80 bound for 2 minutes (2 x TCP_MSL) and opening the server again
- * fails. Removing those entries is safe for finished HTTP connections on a LAN;
- * tcp_abort() frees a TIME-WAIT pcb without sending anything.
- */
-static void dropTimeWaitOnPort80() {
-    DriverLock lock;
-    for (tcp_pcb* p = tcp_tw_pcbs; p != nullptr;) {
-        tcp_pcb* next = p->next;
-        if (p->local_port == 80) tcp_abort(p);
-        p = next;
-    }
-}
-
 /// Try to open port 80; webPoll() retries every second until it works
 static void tryListening() {
     lastListenTryMs = millis();
-    dropTimeWaitOnPort80();
     server.begin();
     listening = server.status() == LISTEN;
     if (!listening) Serial.println("\nWeb: cannot open TCP port 80 yet, retrying");

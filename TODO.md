@@ -180,7 +180,8 @@ An item is only ticked when it is implemented **and** its tests exist and pass (
 - [x] Static IPv6 address (/64) and gateway, serial menu option 9 and web page, next to SLAAC (2.4.0) — native `test_netconfig` (parse/format/validate, truncation), `test_settings_codec`, `test_web_ui`; HIL `test_ipv6_static.py` (opt-in `RFUPS_STATIC_IPV6`)
 - [x] DHCPv6 address assignment: stateful client, one IA_NA (`lib/dhcp6_client`, `src/dhcp6_service.cpp`), HIL tested on the test network in `test/hil/dhcp6/`
 - [x] Hardware watchdog in normal builds (8 s; core 0 feeds only while core 1's heartbeat moves; restart cause and count on the status screen) — native `test_watchdog_logic`, sanitizers, HIL `test_watchdog.py` (core 0 and core 1 stalls restart the device, menu reboot not counted; passed 2026-10-31)
-- [ ] Simplify with lwIP options now that lwIP is known to compile with our flags: `DHCP_ADD_EXTRA_REQUEST_OPTIONS` + `LWIP_HOOK_DHCP_PARSE_OPTION` instead of editing DHCP frames, `SO_REUSE=1` instead of dropping TIME-WAIT entries
+- [x] `SO_REUSE=1` instead of dropping TIME-WAIT entries on port 80 — HIL `test_web_reopens_at_once_after_the_device_closed_connections` (fails without either, passes with `SO_REUSE`), web/SNMP/serial menu/IPv6 suites and on-device tests pass
+- [ ] ~~`DHCP_ADD_EXTRA_REQUEST_OPTIONS` + `LWIP_HOOK_DHCP_PARSE_OPTION` instead of editing DHCP frames~~ — dropped (2026-11-01): the frame editing works and is tested with real frames, and the checks that take option 224 only from an ACK lwIP accepted would stay, so little code goes away while a security-relevant path changes
 
 ## 12. Web on/off, DHCP trap destination, logo (2.2.0)
 - [x] Web interface on/off: setting `webEnabled`, serial option 8, "Turn off…" on the page with confirmation; port 80 closed, sessions ended, mDNS `_http` removed — native, HIL
