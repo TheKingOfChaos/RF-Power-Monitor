@@ -22,10 +22,10 @@ More diagrams (firmware architecture, SNMP request flow, mains flow, settings, t
 | Ethernet with DHCP (default) or static IP | Working |
 | Serial menu for network configuration | Working |
 | Settings stored in flash, power-cut safe | Working |
-| Factory reset button (GPIO22, 10 s hold, non-blocking, LED feedback) | Implemented; manual test with the real button pending |
+| Factory reset button (GPIO22, 10 s hold, non-blocking, LED feedback) | Working, tested with the real button (SW1 on the carrier) |
 | Mains power monitoring on GPIO27 (core 1, debounced) | Working, verified with real mains loss/restore (automated with a smart plug) |
 | SNMP v1 and v2c agent (Get, GetNext, GetBulk, walk, bulkwalk) | Working, tested with net-snmp |
-| SNMP traps in v1 or v2c (coldStart, authenticationFailure, mainsPowerLost/Restored) | Working, mains traps verified with real mains |
+| SNMP traps in v1 or v2c (coldStart, authenticationFailure, mainsPowerLost/Restored, mainsPowerLostTooLong) | Working, mains traps verified with real mains |
 | SNMP rate limiting and access log | Working |
 | Web page with login: status, DHCP/static IP, SNMP community, hostname, restart | Working |
 | Hostname for SNMP sysName, DHCP and mDNS (`name.local`) | Working |
@@ -217,7 +217,7 @@ SNMP settings saved and active
 - Trap version: `1` (SNMPv1 Trap-PDU) or `2c` (SNMPv2-Trap, default). An IPv6 destination needs `2c`: a v1 trap carries the device's address in an IPv4-only field, so the menu refuses `1` with an IPv6 destination.
 - Saved to flash and active immediately, no reboot. A factory reset restores `public`, `rf-power-monitor`, empty contact and location, no trap destination and v2c traps.
 
-**5. Access log** lists the most recent rejected SNMP requests, newest first: wrong community, SNMPv3, malformed packets, rate-limited sources and SetRequests. Repeats from the same source are counted on one line:
+**5. Access log** lists the most recent rejected SNMP requests and failed web logins, newest first: wrong community, SNMPv3, malformed packets, rate-limited sources, SetRequests, `web login failed` and `web locked out`. A repeat of the newest entry (same source and event) is counted on that line:
 
 ```
 Access log: 3 entries, 128 events since boot
@@ -260,7 +260,7 @@ The device serves a small configuration page on **http://&lt;device IP&gt;/** (p
 
 - **Login:** user `admin`. Until you set your own password, the password is the device's **default password**: 10 random characters generated on first boot, different for every device, and shown only on the serial status screen (menu option 1): `Web login: user admin, default password "k7wqz3mtd9"`. A factory reset does not change it; menu option 7 replaces it with a new random one.
 - **Own password:** serial menu option 6 sets one (8-32 characters, no spaces; typed characters are shown as `*`), or `-` goes back to the device default. Changing it logs every browser out. The password is stored as a salted SHA-256 hash (2000 rounds), never as text; checking it takes about half a second, done in small steps so SNMP keeps answering meanwhile. It can only be changed from the serial menu, so someone who learns it cannot lock you out.
-- **Status:** mains power (green or red badge) and change count, uptime, CPU and ambient temperature, Ethernet link, the switch and port (LLDP), hostname and `.local` name, IP address, IPv6 address and link-local address (when the device has them), MAC address, network mode, static IPv6 address (when set), firmware version (top bar). With DHCP the Network card's boxes show the address, subnet mask and gateway the DHCP server gave (and the DNS server below them); choosing Static and saving keeps that address.
+- **Status:** mains power (green or red badge) and change count, mains alarm (none / lost over 60 s), uptime, CPU and ambient temperature, Ethernet link, the switch and port (LLDP), hostname and `.local` name, IP address, IPv6 address and link-local address (when the device has them), MAC address, network mode, static IPv6 address (when set), firmware version (top bar). With DHCP the Network card's boxes show the address, subnet mask and gateway the DHCP server gave (and the DNS server below them); choosing Static and saving keeps that address.
 - **Device name:** the hostname (also SNMP sysName and mDNS name), active immediately.
 - **Network:** DHCP or static IP (address, mask and gateway are checked as in the serial menu). Saving restarts the device; the page tells you the new address.
 - **IPv6:** static IPv6 address and gateway, checked as in the serial menu (option 9); empty fields remove them. Saving restarts the device.
@@ -278,7 +278,7 @@ Security:
 - The session cookie is `HttpOnly` and `SameSite=Strict`, every form carries a per-session token (CSRF protection), and the page sends a strict Content-Security-Policy (no scripts at all) and forbids framing.
 - **Plain HTTP:** the password and the session cookie cross the network unencrypted, like the SNMP community. Use the page on a trusted management network.
 - Settings changed on the page are saved to flash like those from the serial menu, and are written to the serial log (`Web: network settings saved ...`).
-- The server handles one connection at a time without ever blocking: requests are read as they arrive (at most 2 KB), responses are written as fast as the network takes them, and a connection that does not finish within 5 seconds is closed. SNMP keeps answering in between.
+- The server handles one connection at a time without ever blocking: requests are read as they arrive (at most 2 KB), responses are written as fast as the network takes them, a request that has not arrived within 5 seconds is dropped, and a response not sent within 10 seconds of connecting is cut off. SNMP keeps answering in between.
 
 ![Web page: a request is read without blocking, then served, logged in, or checked for session and CSRF token before anything is saved](docs/diagrams/web-request-flow.svg)
 
@@ -298,7 +298,7 @@ Pages and forms, for scripts (e.g. `curl` with a cookie jar). Every POST except 
 | `/favicon.svg` | GET | | The logo, no login |
 | `/static/bootstrap-5.3.3.min.css` | GET | | The stylesheet (gzip), no login |
 
-Responses: `400` with the reason on the page for an invalid value (nothing is saved), `403` without a valid session or CSRF token, `429` while logins are locked, `413` for a request over 2 KB.
+Responses: `400` with the reason on the page for an invalid value (nothing is saved), `403` without a valid session or CSRF token, `401` for a wrong user or password, `429` while logins are locked, `413` for a request over 2 KB, `404`/`405` for an unknown path or wrong method, `500` if saving to flash fails (nothing changed).
 
 ## Network
 
@@ -452,11 +452,13 @@ src/source_key.h            Source address -> rate-limit key (full IPv4 or IPv6 
 src/ipv6_static.cpp         Static IPv6 address and gateway (lwIP hook in include/lwip_hooks.h)
 src/watchdog.cpp            Hardware watchdog (both cores), restart cause and count
 src/dhcp6_service.cpp       DHCPv6 address: runs lib/dhcp6_client, frames via the netif hooks
+src/lldp_service.cpp        LLDP on the device: sends, reads the switch, LLDP-MIB data
 src/diag.cpp                Hang diagnosis build (-DRFPOWER_DIAG): crash and panic capture
 lib/netconfig/              IPv4/IPv6 parsing, formatting and validation, hostnames (pure C++)
 lib/settings_codec/         Settings JSON, validation, A/B selection (pure C++)
 lib/settings/               LittleFS storage on top of settings_codec
-lib/power_monitor/          Mains input debouncer, reset button logic (pure C++)
+lib/power_monitor/          Mains input debouncer, 60 s mains alarm, reset button logic (pure C++)
+lib/lldp/                   LLDP frames, the one neighbour, send timing (pure C++)
 lib/watchdog_logic/         Core 1 heartbeat check, restart record (pure C++)
 lib/dhcp6_client/           Stateful DHCPv6 client: messages, frames, RA flags, RFC 8415 timers (pure C++)
 lib/tmp1075/                TMP1075 conversion and read state (pure C++)
@@ -517,7 +519,7 @@ An SNMP agent runs on UDP port 161 and answers SNMPv1 and SNMPv2c, each request 
   .6.0  mainsPowerAlarm       INTEGER 1 = mains lost for 60 s or more, 0 = none
 ```
 
-The interface counters are kept by the firmware: every Ethernet frame the W5500 receives or sends is counted (octets, unicast, multicast, broadcast), since the W5500 in MAC-raw mode has no counters of its own. Link state and speed come from the W5500 PHY register. The board temperature is the RP2040's internal sensor, which reads the chip temperature: a few degrees above the air around it.
+The interface counters are kept by the firmware: every Ethernet frame the W5500 receives or sends is counted (octets, unicast, multicast, broadcast), since the W5500 in MAC-raw mode has no counters of its own. Link state and speed come from the W5500 PHY register. The CPU temperature (`cpuTemperature`) is the RP2040's internal sensor, which reads the chip temperature: a few degrees above the air around it.
 
 To monitor the device with LibreNMS see [docs/LIBRENMS.md](docs/LIBRENMS.md).
 

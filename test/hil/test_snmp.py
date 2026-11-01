@@ -227,7 +227,7 @@ class SnmpAgentTest(unittest.TestCase):
                     if " = " in l and "No more" not in l]
         self.assertEqual(oids(walk), oids(bulk))
         self.assertEqual(len(all_oids(v1=False, neighbour=self.has_neighbour())), len(oids(bulk)))
-        # 53 objects at most 16 per GetBulk: at least 4 requests
+        # 58 or more objects at most 16 per GetBulk: at least 4 requests
         self.assertGreaterEqual(self.dev.status()["getBulkRequests"] - before, 4)
 
     def test_bulkget_non_repeaters_and_repetitions(self):

@@ -17,7 +17,7 @@ bool settingsLoaded = false;
 
 static SettingsStore defaultStore(SETTINGS_FILE_A, SETTINGS_FILE_B);
 
-// Work buffers kept off the stack: core 0 has only 4 KB of stack, shared with
+// Work buffers kept off the stack: core 0 has only 8 KB of stack, shared with
 // USB, lwIP and W5500 interrupts, and saves are triggered deep in the menu.
 // Settings are only loaded and saved from core 0, so one set is enough.
 static char jsonBuf[SETTINGS_JSON_MAX];

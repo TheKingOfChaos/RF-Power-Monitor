@@ -24,7 +24,7 @@ An item is only ticked when it is implemented **and** its tests exist and pass (
 - [x] Clean under AddressSanitizer/UBSan incl. every single-byte corruption — `scripts/sanitize.sh`
 ### 2.2 Message handling — `lib/snmp_agent/snmp_message`, `test/native/test_snmp_message`
 - [x] Parse Message (version 0, community, PDU), max 16 varbinds, trailing bytes rejected
-- [x] v2c/v3, response/trap PDUs and malformed packets reported separately
+- [x] v3 (and unknown versions), response/trap PDUs and malformed packets reported separately
 - [x] Build GetResponse; error responses echo the request varbinds (RFC 1157)
 - [x] Byte-exact against net-snmp requests, every truncation and single-byte corruption
 ### 2.3 Operations — `lib/snmp_agent/snmp_agent`, `test/native/test_snmp_agent`
@@ -103,7 +103,7 @@ An item is only ticked when it is implemented **and** its tests exist and pass (
 - [x] Store sysName / sysLocation / sysContact (optional fields, older files load with defaults)
 - [x] Save/load stack use measured on the device (≤ 1.5 KB; core 0 has 8 KB since 2.3.0) — `test_save_and_load_use_little_stack`
 - [x] Remove leftover `config.bak` / `config.schema.json` from older firmware at boot — `test_legacy_files_are_removed_and_settings_kept`
-- [x] Trap destination setting (optional field, IPv4 or empty) — native
+- [x] Trap destination setting (optional field, IPv4, IPv6 or empty) — native
 
 ## 5. Serial menu
 - [x] Show status (mode, stored static config, live interface)
@@ -160,7 +160,7 @@ An item is only ticked when it is implemented **and** its tests exist and pass (
 - [x] Pages: status, DHCP/static IP (validated, save + restart), SNMP community (active immediately), restart, log out — native with fake backend, HIL incl. static IP round trip
 - [x] Non-blocking server: slow or stuck clients never delay SNMP; 5 s connection timeout — HIL `test_slow_client_does_not_stall_snmp_and_is_dropped`, `test_page_load_burst_keeps_snmp_fast_and_stack_headroom`
 - [x] Core 0 stack high-water mark on the status screen; HIL asserts > 1 KB headroom after web traffic
-- [x] Own-password hash checked in steps (40 rounds per loop pass) so SNMP stays under 100 ms during a login — native `test_stepwise_check_*`, HIL `test_login_with_own_password_keeps_snmp_fast`
+- [x] Own-password hash checked in steps (20 rounds per loop pass) so SNMP stays under 100 ms during a login — native `test_stepwise_check_*`, HIL `test_login_with_own_password_keeps_snmp_fast`
 - [x] Session cookie found among up to 1 KB of other cookies of the same host — native `test_session_found_among_many_other_cookies`
 - [x] Checked with real Chromium (headless, Playwright): login, reloads, form post, logout all under 120 ms
 - [x] Serial option 7: replace the default password with a new random one (stored, read back, old one refused, browsers logged out) — HIL `test_new_default_password_from_serial_menu`, `test_new_default_keeps_an_own_password_in_use`
@@ -219,6 +219,6 @@ An item is only ticked when it is implemented **and** its tests exist and pass (
 
 ## Notes
 - SNMP must be v1 and v2c (no v3) and our own code; networking may use libraries
-- Memory limits: 70 % flash, 50 % RAM (2.3.0: 14.2 % / 41 %, built with -Os)
+- Memory limits: 70 % flash, 50 % RAM (3.0.0: 17.5 % flash / 45.4 % RAM, built with -Os)
 - Version: `include/version.h`; every user-visible change goes into CHANGELOG.md under [Unreleased]
 - Core 0 has an 8 KB stack (core1_separate_stack, since 2.3.0) shared with USB/lwIP/W5500 interrupts: keep big buffers static

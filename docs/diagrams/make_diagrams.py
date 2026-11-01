@@ -144,7 +144,7 @@ class Diagram:
 
 
 def system_overview():
-    d = Diagram("system-overview", "RF.Power-Monitor: system overview")
+    d = Diagram("system-overview", "RF-Power-Monitor: system overview")
     d.zone("z-mains", 40, 80, 330, 470, "Mains side (galvanically isolated)", ZONE_RED)
     d.box("mains", 75, 140, 260, 70, "Mains 230 V AC", RED)
     d.box("plug", 75, 260, 260, 90, "IKEA TRETAKT smart plug\n(Dirigera hub, tests only)", GRAY, 16, dashed=True)
@@ -152,11 +152,11 @@ def system_overview():
     d.arrow("mains", "bottom", "plug", "top")
     d.arrow("plug", "bottom", "det", "top")
 
-    d.zone("z-board", 420, 80, 650, 640, "RF.Power-Monitor board", ZONE_BLUE)
+    d.zone("z-board", 420, 80, 650, 640, "RF-Power-Monitor board", ZONE_BLUE)
     d.box("flash", 470, 140, 300, 90, "Internal flash (LittleFS)\nsettings_a / settings_b.json", GREEN, 16)
     d.box("pico", 470, 290, 300, 220,
-          "Raspberry Pi Pico\n(RP2040)\n\nCore 0: network, SNMP,\nweb page, LLDP, menu\nCore 1: GPIO27 + GPIO22, 1 kHz\n"
-          "watchdog 8 s, CPU temperature",
+          "Raspberry Pi Pico\n(RP2040)\n\nCore 0: network, SNMP, web page,\nLLDP, menu, CPU temperature,\n"
+          "watchdog 8 s (fed while core 1 runs)\nCore 1: GPIO27 + GPIO22, 1 kHz",
           BLUE, 16)
     d.box("w5500", 880, 330, 170, 150, "W5500\nEthernet\nSPI0: GPIO16-19\nRST 20, INT 21", CYAN, 16)
     d.box("tmp", 880, 540, 170, 100, "TMP1075\nambient temp.\nI2C0, 0x48", ORANGE, 16)
@@ -187,7 +187,7 @@ def system_overview():
 
 
 def firmware_architecture():
-    d = Diagram("firmware-architecture", "RF.Power-Monitor: firmware architecture")
+    d = Diagram("firmware-architecture", "RF-Power-Monitor: firmware architecture")
     d.text(40, 64, "Arrows show the main dependencies. Everything in lib/ (green) is plain C++ and unit tested on the PC.",
            size=16, color="#495057")
     d.zone("z-src", 40, 100, 1650, 330, "src/  firmware on the Pico (Arduino)", ZONE_BLUE)
@@ -253,7 +253,7 @@ def firmware_architecture():
 
 
 def snmp_request_flow():
-    d = Diagram("snmp-request-flow", "RF.Power-Monitor: how an SNMP request is handled")
+    d = Diagram("snmp-request-flow", "RF-Power-Monitor: how an SNMP request is handled")
     d.box("drop", 290, 80, 1080, 70,
           "Dropped without a reply: counted on the status screen, logged in the access log (menu 5)", RED, 18)
     d.box("udp", 40, 220, 200, 90, "UDP datagram\non port 161", CYAN, 18)
@@ -288,7 +288,7 @@ def snmp_request_flow():
 
 
 def mains_flow():
-    d = Diagram("mains-flow", "RF.Power-Monitor: from the mains input to an alert")
+    d = Diagram("mains-flow", "RF-Power-Monitor: from the mains input to an alert")
     d.zone("z-c1", 40, 80, 930, 570, "Core 1: setup1() / loop1(), every millisecond", ZONE_ORANGE)
     d.box("gpio", 70, 170, 190, 90, "GPIO27\nmains detector", ORANGE, 18)
     d.box("sample", 300, 170, 190, 90, "Sample the pin\nevery 1 ms", ORANGE, 16)
@@ -332,7 +332,7 @@ def mains_flow():
 
 
 def test_layers():
-    d = Diagram("test-layers", "RF.Power-Monitor: test layers")
+    d = Diagram("test-layers", "RF-Power-Monitor: test layers")
     layers = [
         ("lnms", "LibreNMS in Docker: definitions, sensors, LLDP neighbour, alert on a real mains cut", VIOLET),
         ("mains", "Mains HIL: a Dirigera smart plug switches real mains", RED),
@@ -362,10 +362,10 @@ def test_layers():
 
 
 def settings_storage():
-    d = Diagram("settings-storage", "RF.Power-Monitor: power-cut safe settings (A/B slots)")
+    d = Diagram("settings-storage", "RF-Power-Monitor: power-cut safe settings (A/B slots)")
     d.text(40, 90, "Saving", size=24)
     d.box("new", 40, 140, 220, 90, "New settings\n(serial menu or web page)", BLUE, 16)
-    d.box("codec", 310, 140, 220, 90, "settings_codec\nvalidate, to JSON", GREEN, 16)
+    d.box("codec", 310, 140, 220, 90, "settings_codec\nto JSON", GREEN, 16)
     d.box("write", 580, 135, 230, 100, "Write the slot\nnot in use,\nsequence + 1", YELLOW, 16)
     d.box("verify", 860, 140, 220, 90, "Read back\nand validate", YELLOW, 16)
     d.box("active", 1130, 140, 220, 90, "New copy is\nthe active one", GREEN, 16)
@@ -395,7 +395,7 @@ def settings_storage():
 
 
 def web_request_flow():
-    d = Diagram("web-request-flow", "RF.Power-Monitor: how a web page request is handled")
+    d = Diagram("web-request-flow", "RF-Power-Monitor: how a web page request is handled")
     d.box("conn", 40, 300, 200, 90, "Browser connects\nTCP port 80", CYAN, 18)
     d.box("read", 290, 285, 220, 120, "Read the request\nnon-blocking,\nat most 2 KB, 5 s", BLUE, 16)
     d.box("closed", 290, 80, 220, 100, "Closed, or\n400 / 413", RED, 18)
@@ -415,30 +415,29 @@ def web_request_flow():
     d.arrow("getdia", "right", "page", "left", "yes")
 
     # POST /login
-    d.box("lock", 900, 380, 200, 120, "login\nlocked?", YELLOW, 18, shape="diamond")
-    d.box("locked", 900, 560, 200, 90, "429\naccess log", RED, 16)
-    d.box("check", 1170, 385, 300, 110, "Check the password\nsalted SHA-256, 2000 rounds,\nin steps: SNMP keeps answering",
+    d.box("check", 870, 375, 300, 130, "Check the password\ndefault: constant-time compare\nown: salted SHA-256, 2000\nrounds in steps, SNMP answers",
           BLUE, 16)
+    d.box("lock", 1250, 380, 200, 120, "login\nlocked?", YELLOW, 18, shape="diamond")
+    d.box("locked", 1250, 560, 200, 90, "429\naccess log", RED, 16)
     d.box("ok", 1640, 380, 180, 120, "right?", YELLOW, 18, shape="diamond")
     d.box("session", 1630, 190, 300, 120, "New session: cookie sid\nHttpOnly, SameSite=Strict\nmax 2, ends after 15 min idle",
           GREEN, 16)
     d.box("wrong", 1620, 560, 220, 90, "401, access log\n5 in a row: 30 s lock", RED, 16)
-    d.arrow("path", "right", "lock", "left", "POST /login", a_frac=0.8, via=[(820, 384), (820, 440)])
+    d.arrow("path", "right", "check", "left", "POST /login", a_frac=0.8, via=[(820, 384), (820, 440)])
+    d.arrow("check", "right", "lock", "left")
     d.arrow("lock", "bottom", "locked", "top", "yes")
-    d.arrow("lock", "right", "check", "left", "no")
-    d.arrow("check", "right", "ok", "left")
+    d.arrow("lock", "right", "ok", "left", "no")
     d.arrow("ok", "top", "session", "bottom", "yes", b_frac=0.35)
     d.arrow("ok", "bottom", "wrong", "top", "no")
     d.arrow("session", "left", "page", "right", "redirect\nto /")
 
     # Actions
-    d.box("post", 900, 740, 240, 110, "POST /network /ipv6\n/hostname /community\n/reboot /disable", BLUE, 16)
+    d.box("post", 900, 740, 240, 110, "POST /network /ipv6\n/hostname /community\n/reboot /disable /logout", BLUE, 16)
     d.box("csrf", 1200, 730, 200, 130, "session and\nCSRF token\nvalid?", YELLOW, 16, shape="diamond")
     d.box("forbid", 1200, 920, 200, 90, "403: Not logged in /\nForm expired", RED, 16)
     d.box("valid", 1470, 735, 180, 120, "fields\nvalid?", YELLOW, 18, shape="diamond")
     d.box("bad", 1460, 920, 200, 90, "400: reason on\nthe page, nothing saved", RED, 16)
-    d.box("save", 1720, 730, 300, 130, "Save to flash\ncommunity, hostname: active now\nnetwork, IPv6, reboot: restart\n"
-          "off: port 80 closed", GREEN, 16)
+    d.box("save", 1720, 730, 300, 130, "community, hostname: saved,\nactive now; network, IPv6:\nsaved, restart; reboot: restart;\noff: saved, port 80 closed;\nlogout: session ends\n(500 if saving fails)", GREEN, 16)
     d.arrow("path", "bottom", "post", "left", "POST action", via=[(650, 795)])
     d.arrow("post", "right", "csrf", "left")
     d.arrow("csrf", "bottom", "forbid", "top", "no")
@@ -451,7 +450,7 @@ def web_request_flow():
 
 
 def network_addresses():
-    d = Diagram("network-addresses", "RF.Power-Monitor: where the addresses come from (dual stack)")
+    d = Diagram("network-addresses", "RF-Power-Monitor: where the addresses come from (dual stack)")
     d.zone("z-v4", 20, 80, 1180, 380, "IPv4", ZONE_BLUE)
     d.box("dhcpsrv", 40, 180, 300, 90, "DHCP server\non the LAN", GRAY, 18)
     d.box("dhcp", 400, 160, 320, 130, "DHCP (default)\naddress, mask, gateway, DNS;\nsends the hostname (option 12)",

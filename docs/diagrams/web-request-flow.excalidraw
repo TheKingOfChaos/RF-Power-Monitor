@@ -29,8 +29,8 @@
    "updated": 1,
    "link": null,
    "locked": false,
-   "text": "RF.Power-Monitor: how a web page request is handled",
-   "originalText": "RF.Power-Monitor: how a web page request is handled",
+   "text": "RF-Power-Monitor: how a web page request is handled",
+   "originalText": "RF-Power-Monitor: how a web page request is handled",
    "fontSize": 32,
    "fontFamily": 1,
    "textAlign": "left",
@@ -312,7 +312,7 @@
     },
     {
      "type": "arrow",
-     "id": "a-path-lock-41"
+     "id": "a-path-check-41"
     },
     {
      "type": "arrow",
@@ -1250,9 +1250,87 @@
    "autoResize": true
   },
   {
+   "id": "check",
+   "type": "rectangle",
+   "x": 870,
+   "y": 375,
+   "width": 300,
+   "height": 130,
+   "angle": 0,
+   "strokeColor": "#1e1e1e",
+   "backgroundColor": "#a5d8ff",
+   "fillStyle": "solid",
+   "strokeWidth": 2,
+   "strokeStyle": "solid",
+   "roughness": 1,
+   "opacity": 100,
+   "groupIds": [],
+   "frameId": null,
+   "roundness": {
+    "type": 3
+   },
+   "seed": 2645270067,
+   "version": 1,
+   "versionNonce": 3626880669,
+   "isDeleted": false,
+   "boundElements": [
+    {
+     "type": "text",
+     "id": "check-text"
+    },
+    {
+     "type": "arrow",
+     "id": "a-path-check-41"
+    },
+    {
+     "type": "arrow",
+     "id": "a-check-lock-43"
+    }
+   ],
+   "updated": 1,
+   "link": null,
+   "locked": false
+  },
+  {
+   "id": "check-text",
+   "type": "text",
+   "x": 880.8,
+   "y": 400.0,
+   "width": 278.4,
+   "height": 80.0,
+   "angle": 0,
+   "strokeColor": "#1e1e1e",
+   "backgroundColor": "transparent",
+   "fillStyle": "solid",
+   "strokeWidth": 2,
+   "strokeStyle": "solid",
+   "roughness": 1,
+   "opacity": 100,
+   "groupIds": [],
+   "frameId": null,
+   "roundness": null,
+   "seed": 3612194781,
+   "version": 1,
+   "versionNonce": 3756438479,
+   "isDeleted": false,
+   "boundElements": null,
+   "updated": 1,
+   "link": null,
+   "locked": false,
+   "text": "Check the password\ndefault: constant-time compare\nown: salted SHA-256, 2000\nrounds in steps, SNMP answers",
+   "originalText": "Check the password\ndefault: constant-time compare\nown: salted SHA-256, 2000\nrounds in steps, SNMP answers",
+   "fontSize": 16,
+   "fontFamily": 1,
+   "textAlign": "center",
+   "verticalAlign": "middle",
+   "containerId": "check",
+   "lineHeight": 1.25,
+   "autoResize": true
+  },
+  {
    "id": "lock",
    "type": "diamond",
-   "x": 900,
+   "x": 1250,
    "y": 380,
    "width": 200,
    "height": 120,
@@ -1280,15 +1358,15 @@
     },
     {
      "type": "arrow",
-     "id": "a-path-lock-41"
+     "id": "a-check-lock-43"
     },
     {
      "type": "arrow",
-     "id": "a-lock-locked-43"
+     "id": "a-lock-locked-44"
     },
     {
      "type": "arrow",
-     "id": "a-lock-check-45"
+     "id": "a-lock-ok-46"
     }
    ],
    "updated": 1,
@@ -1298,7 +1376,7 @@
   {
    "id": "lock-text",
    "type": "text",
-   "x": 963.46,
+   "x": 1313.46,
    "y": 417.5,
    "width": 73.08,
    "height": 45.0,
@@ -1334,7 +1412,7 @@
   {
    "id": "locked",
    "type": "rectangle",
-   "x": 900,
+   "x": 1250,
    "y": 560,
    "width": 200,
    "height": 90,
@@ -1362,7 +1440,7 @@
     },
     {
      "type": "arrow",
-     "id": "a-lock-locked-43"
+     "id": "a-lock-locked-44"
     }
    ],
    "updated": 1,
@@ -1372,7 +1450,7 @@
   {
    "id": "locked-text",
    "type": "text",
-   "x": 953.6,
+   "x": 1303.6,
    "y": 585.0,
    "width": 92.8,
    "height": 40.0,
@@ -1402,84 +1480,6 @@
    "textAlign": "center",
    "verticalAlign": "middle",
    "containerId": "locked",
-   "lineHeight": 1.25,
-   "autoResize": true
-  },
-  {
-   "id": "check",
-   "type": "rectangle",
-   "x": 1170,
-   "y": 385,
-   "width": 300,
-   "height": 110,
-   "angle": 0,
-   "strokeColor": "#1e1e1e",
-   "backgroundColor": "#a5d8ff",
-   "fillStyle": "solid",
-   "strokeWidth": 2,
-   "strokeStyle": "solid",
-   "roughness": 1,
-   "opacity": 100,
-   "groupIds": [],
-   "frameId": null,
-   "roundness": {
-    "type": 3
-   },
-   "seed": 2645270067,
-   "version": 1,
-   "versionNonce": 3626880669,
-   "isDeleted": false,
-   "boundElements": [
-    {
-     "type": "text",
-     "id": "check-text"
-    },
-    {
-     "type": "arrow",
-     "id": "a-lock-check-45"
-    },
-    {
-     "type": "arrow",
-     "id": "a-check-ok-47"
-    }
-   ],
-   "updated": 1,
-   "link": null,
-   "locked": false
-  },
-  {
-   "id": "check-text",
-   "type": "text",
-   "x": 1180.8,
-   "y": 410.0,
-   "width": 278.4,
-   "height": 60.0,
-   "angle": 0,
-   "strokeColor": "#1e1e1e",
-   "backgroundColor": "transparent",
-   "fillStyle": "solid",
-   "strokeWidth": 2,
-   "strokeStyle": "solid",
-   "roughness": 1,
-   "opacity": 100,
-   "groupIds": [],
-   "frameId": null,
-   "roundness": null,
-   "seed": 3612194781,
-   "version": 1,
-   "versionNonce": 3756438479,
-   "isDeleted": false,
-   "boundElements": null,
-   "updated": 1,
-   "link": null,
-   "locked": false,
-   "text": "Check the password\nsalted SHA-256, 2000 rounds,\nin steps: SNMP keeps answering",
-   "originalText": "Check the password\nsalted SHA-256, 2000 rounds,\nin steps: SNMP keeps answering",
-   "fontSize": 16,
-   "fontFamily": 1,
-   "textAlign": "center",
-   "verticalAlign": "middle",
-   "containerId": "check",
    "lineHeight": 1.25,
    "autoResize": true
   },
@@ -1514,7 +1514,7 @@
     },
     {
      "type": "arrow",
-     "id": "a-check-ok-47"
+     "id": "a-lock-ok-46"
     },
     {
      "type": "arrow",
@@ -1718,11 +1718,11 @@
    "autoResize": true
   },
   {
-   "id": "a-path-lock-41",
+   "id": "a-path-check-41",
    "type": "arrow",
    "x": 740,
    "y": 384.0,
-   "width": 160,
+   "width": 130,
    "height": 56.0,
    "angle": 0,
    "strokeColor": "#1e1e1e",
@@ -1735,14 +1735,14 @@
    "groupIds": [],
    "frameId": null,
    "roundness": null,
-   "seed": 1542543542,
+   "seed": 2751162149,
    "version": 1,
-   "versionNonce": 3382452124,
+   "versionNonce": 1350266210,
    "isDeleted": false,
    "boundElements": [
     {
      "type": "text",
-     "id": "a-path-lock-41-label"
+     "id": "a-path-check-41-label"
     }
    ],
    "updated": 1,
@@ -1762,7 +1762,7 @@
      56.0
     ],
     [
-     160,
+     130,
      56.0
     ]
    ],
@@ -1773,7 +1773,7 @@
     "gap": 4
    },
    "endBinding": {
-    "elementId": "lock",
+    "elementId": "check",
     "focus": 0,
     "gap": 4
    },
@@ -1782,10 +1782,10 @@
    "elbowed": false
   },
   {
-   "id": "a-path-lock-41-label",
+   "id": "a-path-check-41-label",
    "type": "text",
    "x": 768.96,
-   "y": 402.0,
+   "y": 387.0,
    "width": 102.08,
    "height": 20.0,
    "angle": 0,
@@ -1799,9 +1799,9 @@
    "groupIds": [],
    "frameId": null,
    "roundness": null,
-   "seed": 1192358649,
+   "seed": 2977946123,
    "version": 1,
-   "versionNonce": 1131830152,
+   "versionNonce": 3476732395,
    "isDeleted": false,
    "boundElements": null,
    "updated": 1,
@@ -1813,14 +1813,67 @@
    "fontFamily": 1,
    "textAlign": "center",
    "verticalAlign": "middle",
-   "containerId": "a-path-lock-41",
+   "containerId": "a-path-check-41",
    "lineHeight": 1.25,
    "autoResize": true
   },
   {
-   "id": "a-lock-locked-43",
+   "id": "a-check-lock-43",
    "type": "arrow",
-   "x": 1000.0,
+   "x": 1170,
+   "y": 440.0,
+   "width": 80,
+   "height": 0.0,
+   "angle": 0,
+   "strokeColor": "#1e1e1e",
+   "backgroundColor": "transparent",
+   "fillStyle": "solid",
+   "strokeWidth": 2,
+   "strokeStyle": "solid",
+   "roughness": 1,
+   "opacity": 100,
+   "groupIds": [],
+   "frameId": null,
+   "roundness": {
+    "type": 2
+   },
+   "seed": 3255063336,
+   "version": 1,
+   "versionNonce": 1807398420,
+   "isDeleted": false,
+   "boundElements": [],
+   "updated": 1,
+   "link": null,
+   "locked": false,
+   "points": [
+    [
+     0,
+     0.0
+    ],
+    [
+     80,
+     0.0
+    ]
+   ],
+   "lastCommittedPoint": null,
+   "startBinding": {
+    "elementId": "check",
+    "focus": 0,
+    "gap": 4
+   },
+   "endBinding": {
+    "elementId": "lock",
+    "focus": 0,
+    "gap": 4
+   },
+   "startArrowhead": null,
+   "endArrowhead": "arrow",
+   "elbowed": false
+  },
+  {
+   "id": "a-lock-locked-44",
+   "type": "arrow",
+   "x": 1350.0,
    "y": 500,
    "width": 0.0,
    "height": 60,
@@ -1837,14 +1890,14 @@
    "roundness": {
     "type": 2
    },
-   "seed": 557949921,
+   "seed": 3219916470,
    "version": 1,
-   "versionNonce": 2372761981,
+   "versionNonce": 4182991895,
    "isDeleted": false,
    "boundElements": [
     {
      "type": "text",
-     "id": "a-lock-locked-43-label"
+     "id": "a-lock-locked-44-label"
     }
    ],
    "updated": 1,
@@ -1876,9 +1929,9 @@
    "elbowed": false
   },
   {
-   "id": "a-lock-locked-43-label",
+   "id": "a-lock-locked-44-label",
    "type": "text",
-   "x": 986.08,
+   "x": 1336.08,
    "y": 520.0,
    "width": 27.839999999999996,
    "height": 20.0,
@@ -1893,9 +1946,9 @@
    "groupIds": [],
    "frameId": null,
    "roundness": null,
-   "seed": 819706928,
+   "seed": 664107416,
    "version": 1,
-   "versionNonce": 3249977437,
+   "versionNonce": 3766557124,
    "isDeleted": false,
    "boundElements": null,
    "updated": 1,
@@ -1907,16 +1960,16 @@
    "fontFamily": 1,
    "textAlign": "center",
    "verticalAlign": "middle",
-   "containerId": "a-lock-locked-43",
+   "containerId": "a-lock-locked-44",
    "lineHeight": 1.25,
    "autoResize": true
   },
   {
-   "id": "a-lock-check-45",
+   "id": "a-lock-ok-46",
    "type": "arrow",
-   "x": 1100,
+   "x": 1450,
    "y": 440.0,
-   "width": 70,
+   "width": 190,
    "height": 0.0,
    "angle": 0,
    "strokeColor": "#1e1e1e",
@@ -1931,14 +1984,14 @@
    "roundness": {
     "type": 2
    },
-   "seed": 578346765,
+   "seed": 2462280089,
    "version": 1,
-   "versionNonce": 3167748688,
+   "versionNonce": 1449970065,
    "isDeleted": false,
    "boundElements": [
     {
      "type": "text",
-     "id": "a-lock-check-45-label"
+     "id": "a-lock-ok-46-label"
     }
    ],
    "updated": 1,
@@ -1950,7 +2003,7 @@
      0.0
     ],
     [
-     70,
+     190,
      0.0
     ]
    ],
@@ -1961,7 +2014,7 @@
     "gap": 4
    },
    "endBinding": {
-    "elementId": "check",
+    "elementId": "ok",
     "focus": 0,
     "gap": 4
    },
@@ -1970,9 +2023,9 @@
    "elbowed": false
   },
   {
-   "id": "a-lock-check-45-label",
+   "id": "a-lock-ok-46-label",
    "type": "text",
-   "x": 1125.72,
+   "x": 1535.72,
    "y": 430.0,
    "width": 18.56,
    "height": 20.0,
@@ -1987,9 +2040,9 @@
    "groupIds": [],
    "frameId": null,
    "roundness": null,
-   "seed": 3989181898,
+   "seed": 651071917,
    "version": 1,
-   "versionNonce": 507798128,
+   "versionNonce": 2348628833,
    "isDeleted": false,
    "boundElements": null,
    "updated": 1,
@@ -2001,62 +2054,9 @@
    "fontFamily": 1,
    "textAlign": "center",
    "verticalAlign": "middle",
-   "containerId": "a-lock-check-45",
+   "containerId": "a-lock-ok-46",
    "lineHeight": 1.25,
    "autoResize": true
-  },
-  {
-   "id": "a-check-ok-47",
-   "type": "arrow",
-   "x": 1470,
-   "y": 440.0,
-   "width": 170,
-   "height": 0.0,
-   "angle": 0,
-   "strokeColor": "#1e1e1e",
-   "backgroundColor": "transparent",
-   "fillStyle": "solid",
-   "strokeWidth": 2,
-   "strokeStyle": "solid",
-   "roughness": 1,
-   "opacity": 100,
-   "groupIds": [],
-   "frameId": null,
-   "roundness": {
-    "type": 2
-   },
-   "seed": 2961615120,
-   "version": 1,
-   "versionNonce": 2745195683,
-   "isDeleted": false,
-   "boundElements": [],
-   "updated": 1,
-   "link": null,
-   "locked": false,
-   "points": [
-    [
-     0,
-     0.0
-    ],
-    [
-     170,
-     0.0
-    ]
-   ],
-   "lastCommittedPoint": null,
-   "startBinding": {
-    "elementId": "check",
-    "focus": 0,
-    "gap": 4
-   },
-   "endBinding": {
-    "elementId": "ok",
-    "focus": 0,
-    "gap": 4
-   },
-   "startArrowhead": null,
-   "endArrowhead": "arrow",
-   "elbowed": false
   },
   {
    "id": "a-ok-session-48",
@@ -2385,9 +2385,9 @@
   {
    "id": "post-text",
    "type": "text",
-   "x": 927.2,
+   "x": 908.64,
    "y": 765.0,
-   "width": 185.6,
+   "width": 222.71999999999997,
    "height": 60.0,
    "angle": 0,
    "strokeColor": "#1e1e1e",
@@ -2408,8 +2408,8 @@
    "updated": 1,
    "link": null,
    "locked": false,
-   "text": "POST /network /ipv6\n/hostname /community\n/reboot /disable",
-   "originalText": "POST /network /ipv6\n/hostname /community\n/reboot /disable",
+   "text": "POST /network /ipv6\n/hostname /community\n/reboot /disable /logout",
+   "originalText": "POST /network /ipv6\n/hostname /community\n/reboot /disable /logout",
    "fontSize": 16,
    "fontFamily": 1,
    "textAlign": "center",
@@ -2771,10 +2771,10 @@
   {
    "id": "save-text",
    "type": "text",
-   "x": 1726.16,
-   "y": 755.0,
-   "width": 287.68,
-   "height": 80.0,
+   "x": 1721.52,
+   "y": 735.0,
+   "width": 296.96,
+   "height": 120.0,
    "angle": 0,
    "strokeColor": "#1e1e1e",
    "backgroundColor": "transparent",
@@ -2794,8 +2794,8 @@
    "updated": 1,
    "link": null,
    "locked": false,
-   "text": "Save to flash\ncommunity, hostname: active now\nnetwork, IPv6, reboot: restart\noff: port 80 closed",
-   "originalText": "Save to flash\ncommunity, hostname: active now\nnetwork, IPv6, reboot: restart\noff: port 80 closed",
+   "text": "community, hostname: saved,\nactive now; network, IPv6:\nsaved, restart; reboot: restart;\noff: saved, port 80 closed;\nlogout: session ends\n(500 if saving fails)",
+   "originalText": "community, hostname: saved,\nactive now; network, IPv6:\nsaved, restart; reboot: restart;\noff: saved, port 80 closed;\nlogout: session ends\n(500 if saving fails)",
    "fontSize": 16,
    "fontFamily": 1,
    "textAlign": "center",

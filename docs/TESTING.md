@@ -6,7 +6,7 @@ The project has three test layers. Each one tests what the layer below cannot.
 |---|---|---|---|---|---|
 | Unit | `test/native/` | Your PC | Unity | `pio test -e native` | ~5 s |
 | On-device | `test/embedded/` | The Pico | Unity | `pio test -e pico` | ~35 s |
-| Hardware-in-the-loop (HIL) | `test/hil/` | PC talking to flashed Pico | Python `unittest` | see below | ~20 s |
+| Hardware-in-the-loop (HIL) | `test/hil/` | PC talking to flashed Pico | Python `unittest` | see below | several minutes (longer with mains tests) |
 
 The rules for writing tests are in [.clinerules](../.clinerules), section *Testing Requirements → Test Rules*.
 
@@ -89,7 +89,7 @@ These run against the real firmware, so flash it first:
 & "$env:USERPROFILE\.platformio\penv\Scripts\python.exe" -m unittest discover -s test/hil -v
 ```
 
-They use the Python and `pyserial` that come with PlatformIO, so there is nothing to install. The SNMP tests (`test_snmp.py`) also call net-snmp in WSL (`wsl -d Ubuntu-24.04 -- snmpget ...`) and send raw UDP from Windows; they read the device IP from the serial status screen. Run one file with `-p`:
+They use the Python and `pyserial` that come with PlatformIO, so there is nothing to install. `RFPOWER_WSL_DISTRO` names the WSL distribution with net-snmp (default `Ubuntu-24.04`). The SNMP tests (`test_snmp.py`) also call net-snmp in WSL (`wsl -d Ubuntu-24.04 -- snmpget ...`) and send raw UDP from Windows; they read the device IP from the serial status screen. Run one file with `-p`:
 
 ```powershell
 & "$env:USERPROFILE\.platformio\penv\Scripts\python.exe" -m unittest discover -s test/hil -p "test_snmp.py" -v
@@ -194,7 +194,7 @@ The hidden menu command `lldpdump` prints the last LLDP frame from the switch in
 
 ### `test/native/test_snmp_message`: `lib/snmp_agent` message layer
 - net-snmp Get, GetNext and two-varbind requests parsed exactly; SetRequest accepted for the agent to reject
-- v2c/v3 → BadVersion, response/trap/unknown PDUs → UnsupportedPdu, trailing bytes, every truncation, varbind without value, garbage → Malformed
+- version 2 (unassigned) and v3 → BadVersion, response/trap/unknown PDUs → UnsupportedPdu, trailing bytes, every truncation, varbind without value, garbage → Malformed
 - Varbind limit (16), empty varbind list
 - GetResponse byte-exact; every value type; unknown value type and full buffer fail cleanly
 - Error responses echo the request varbinds byte for byte; community preserved byte for byte
@@ -204,16 +204,16 @@ The hidden menu command `lldpdump` prints the last LLDP frame from the switch in
 - MIB strictly sorted, expected objects, exact match and next-object lookup (non-leaf and between objects)
 - GetRequest of every object with type and value from the device state; mains lost; empty strings
 - noSuchName with the right error-index for unknown and non-leaf OIDs
-- Full walk from `1.3` visits every object in order and ends with noSuchName; enterprise subtree; several GetNext varbinds
+- Full walk from `1.0` (LLDP-MIB first, with a neighbour) visits every object in order and ends with noSuchName; enterprise subtree; several GetNext varbinds
 - SetRequest → noSuchName with the value echoed
-- No response for wrong community (several near-misses), changed community, v2c/v3, response PDUs, malformed packets
+- No response for wrong community (several near-misses), changed community, v3 and unknown versions, response PDUs, malformed packets
 - tooBig when the response does not fit, nothing when even the error does not fit, 16 varbinds fit
 - Statistics, request id echo across the int32 range, every single-byte corruption yields either nothing or a valid response
 
 ### v2c in the native suites
 - `test_snmp_message`: net-snmp v2c Get and GetBulk parsed (non-repeaters/max-repetitions), GetBulk refused in v1, Inform/v2-Trap/Report refused, v2c response byte-exact with an exception value, `tryAdd` rollback, every single-byte corruption of a GetBulk request
 - `test_snmp_agent`: v2c Get with noSuchObject/noSuchInstance and no error-status, GetNext endOfMibView, full v2c walk, Set notWritable/noCreation, v1 unchanged for the same requests; GetBulk against the net-snmp request, interleaved repeaters, whole MIB in one request, zero/negative/oversized parameters, INT32_MAX repetitions bounded, truncation, tooBig only when nothing fits, v2c tooBig with empty list, corruption
-- `test_snmp_trap`: v2c coldStart and mainsPowerLost byte-exact against `snmptrap -v2c`, trap OIDs for all four traps
+- `test_snmp_trap`: v2c coldStart, mainsPowerLost and mainsPowerLostTooLong byte-exact against `snmptrap -v2c`, trap OIDs of authenticationFailure, mainsPowerLost and mainsPowerRestored
 - `test_settings_codec`: trap version default v2c, round trip, invalid values rejected
 
 ### IF-MIB and temperatures in the native suites
@@ -234,6 +234,7 @@ The hidden menu command `lldpdump` prints the last LLDP frame from the switch in
 - mainsPowerRestored fields, varbinds are the MIB objects with the right types, configured community used
 - Failure on small buffers, missing community, too many varbinds
 - Throttle: one per interval, first event at time 0, millis() wrap-around
+- v2c traps end with `snmpTrapAddress.0` (left out without an IPv4 address); mainsPowerLostTooLong (v1 and v2c, byte-exact against net-snmp); `trapCanLeave` waits for the agent, the link and a destination, and an IPv4 or IPv6 destination needs an address of its own family
 
 ### `test/native/test_access_control`: rate limiter and access log
 - Burst then refusal, refill at the configured rate, refill capped at the burst, sustained rate over 10 s within 2 requests of the theory
@@ -256,6 +257,15 @@ The hidden menu command `lldpdump` prints the last LLDP frame from the switch in
 - LED pattern: slow blink while held, fast after trigger, also after release
 - millis() wrap-around, configurable hold time
 - A released press reports how long it lasted (`lastPressMs()`), for the serial log
+
+### `test/native/test_mains_alarm`: the 60 s mains alarm (`lib/power_monitor`)
+- Not raised before 60 s, raised at 60 s; a restore clears the alarm and a pending trap; a restore at the mark raises nothing
+- Boot without mains counts from boot; a quick restore and loss restarts the count; the pending trap is sent once; a new outage gets a new trap
+- Stays raised across a `millis()` wrap, and the 60 s are timed across one
+
+### `test/native/test_watchdog_logic`: core 1 heartbeat and restart count (`lib/watchdog_logic`)
+- The heartbeat goes stale after exactly the stale time and recovers; counter and `millis()` wrap
+- The restart record counts watchdog restarts, starts over at power-on, does not trust corrupted or random RAM, saturates; cause names
 
 ### `test/native/test_power_debouncer`: `lib/power_monitor`
 - Initial state not counted as a change, stable input never changes
@@ -292,24 +302,29 @@ Uses `test/settings_a.json` and `test/settings_b.json`, never the real settings.
 - DHCP save → reboot → reconnect → ping
 - Static IP applied after reboot, then DHCP restored (opt-in)
 - Mains power line on the status screen
-- SNMP settings on the status screen; option 4 rejects an empty or 32-character community, a 64-character sysName and a line longer than the input buffer; Enter keeps, `-` clears; cancel changes nothing
+- SNMP settings on the status screen; option 4 rejects an empty or 32-character community, invalid hostnames (33 characters, spaces, dots, `_`, a leading `-`) and a line longer than the input buffer; Enter keeps, `-` clears; cancel changes nothing
 - Mains loss and restore reported in the log and status (needs a mains switch, see above)
 
 ### `test/hil/test_snmp.py`: the SNMP agent on the device
 - `snmpget` of sysDescr, sysObjectID, several varbinds in order; sysUpTime advances ~100 ticks per second
 - Mains objects present and consistent with the serial status screen
-- `snmpwalk` of everything (46 objects in v1 in order, End of MIB; v1 does not see the eight Counter64 columns), the system group (7) and the enterprise subtree (5; 4 with `RFPOWER_NO_TMP1075`)
+- `snmpwalk` of everything from `.1` (v1: 50 objects in order, 59 while the device has an LLDP neighbour, LLDP-MIB first; End of MIB; v1 does not see the eight Counter64 columns), the system group (7) and the enterprise subtree (6; 5 with `RFPOWER_NO_TMP1075`)
 - IF-MIB: ifDescr, ifType, ifMtu, admin/oper status, ifName; ifSpeed, ifHighSpeed and ifPhysAddress match the status screen; 20 requests raise the 64-bit packet and octet counters; ifInOctets is the low half of ifHCInOctets; the receive drop counters match the status screen; Counter64 is noSuchName in v1
 - cpuTemperature between 10 and 85 °C and within 2 °C of the status screen
 - ambientTemperature between 5 and 50 °C, within 0.5 °C of the status screen and below the CPU temperature (skipped with `RFPOWER_NO_TMP1075=1`, for a module without the carrier board)
 - noSuchName for unknown OIDs and past the end; `snmpset` rejected and nothing changed
-- Wrong community and v2c get no reply and are counted on the status screen
+- Wrong community and SNMPv3 get no reply and are counted on the status screen
 - SNMP settings set from the menu show up in `snmpget` immediately (no reboot), the old community is refused, and they survive a reboot; the originals are restored afterwards
 - Rate limit: requests as fast as replies come back for 3 s are answered at burst + 50/s (±15 %), the rest dropped, counted and logged; answers resume after a pause
 - Access log lists bad community and bad version from this PC, newest first; SetRequests are logged
 - The device must use community `public` for this suite
 
-- v2c: get, exceptions instead of errors, walk of all 53 objects ending with endOfMibView, `snmpbulkwalk` returns the same objects as `snmpwalk`, `snmpbulkget -Cn1 -Cr3`, `-Cr1000` capped at 16 varbinds and reaching endOfMibView, Set notWritable, wrong community; SNMPv3 gets no reply and is counted; v1/v2c counters
+- v2c: get, exceptions instead of errors, walk of all 58 objects (67 with an LLDP neighbour) ending with endOfMibView, `snmpbulkwalk` returns the same objects as `snmpwalk`, `snmpbulkget -Cn1 -Cr3`, `-Cr1000` capped at 16 varbinds and reaching endOfMibView, Set notWritable, wrong community; SNMPv3 gets no reply and is counted; v1/v2c counters
+
+- 30 requests: every reply echoes its request id, worst case under 100 ms
+- 300 malformed packets in bursts: agent keeps answering; oversized packet ignored; 5 simultaneous requests all answered
+- Mains loss/restore over SNMP: status, change counter and last-change time; a ~1 s outage between two reads still shows as two changes in mainsPowerChanges (needs a mains switch)
+- A 30 s outage leaves mainsPowerAlarm at 0; an outage over 60 s raises it (not before 57 s; status screen `lost over 60 s`) until mains returns (needs a mains switch)
 
 ### `test/hil/test_web.py`: the web page on the device
 - Login form without device data, security headers; wrong password refused and logged; login shows the device status
@@ -331,6 +346,7 @@ Uses `test/settings_a.json` and `test/settings_b.json`, never the real settings.
 - SNMP get over IPv6, a wrong community over IPv6 logged with the PC's full address, web page at `http://[address]/`, `name.local` resolves to IPv6, IPv4 still answers
 - Four requests sent back to back over IPv4 and over IPv6 are all answered (they crashed the device before `LWIP_IPV6_FRAG=0`)
 - No restart during the run (sysUpTime keeps rising): the first IPv6 build panicked seconds after boot
+- A v2c trap reaches an IPv6 destination; the menu refuses v1 traps to an IPv6 destination and a link-local destination
 
 ### `test/hil/test_ipv6_static.py`: static IPv6 address
 - Menu option 9 refuses link-local addresses, `/64` suffixes and gateways outside the /64, shows the address in short form, and `n` changes nothing
@@ -361,6 +377,7 @@ Uses `test/settings_a.json` and `test/settings_b.json`, never the real settings.
 - A wrong community sends one authenticationFailure trap; five more within 10 s send none but are counted in the access log
 - No traps when the destination is off; trap counter on the status screen; SNMP keeps answering
 - mainsPowerLost and mainsPowerRestored with real mains: correct version, source, varbinds, change counter and time-stamps (needs a mains switch)
+- v2c traps have increasing request-ids; mainsPowerLostTooLong arrives within 75 s of a loss (needs a mains switch)
 
 ### `test/native/test_dhcp6_message`, `test_dhcp6_frame`, `test_dhcp6_client`: `lib/dhcp6_client`
 - Real frames (`test/native/dhcp6_frames/frames.h`, made by [scripts/dhcp6_capture](../scripts/dhcp6_capture/README.md)): Kea 2.4.1's Advertise, Replies and NoAddrsAvail, dhcpcd 10's Solicit/Request/Renew, router advertisements with and without M, the device's own Information-request
@@ -382,9 +399,6 @@ Uses `test/settings_a.json` and `test/settings_b.json`, never the real settings.
 - A ~3 s press is released without reset, the log shows how long it was held, and SNMP keeps answering while it is held
 - A 10 s hold resets after 10000-10100 ms (SNMP keeps answering with the community set before the hold), defaults are saved in under 2 s, the device reboots with DHCP, `public`, default sysName, no trap destination and default stored static IP
 - Your previous SNMP settings and stored static IP are restored afterwards
-- 30 requests: every reply echoes its request id, worst case under 100 ms
-- 300 malformed packets in bursts: agent keeps answering; oversized packet ignored; 5 simultaneous requests all answered
-- Mains loss/restore over SNMP: status, change counter and last-change time; a ~1 s outage between two reads still shows as two changes in mainsPowerChanges (needs a mains switch)
 
 ## Adding a test
 
