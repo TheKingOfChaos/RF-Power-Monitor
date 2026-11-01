@@ -1,0 +1,20 @@
+{
+    "name": "lldp",
+    "version": "1.0.0",
+    "description": "LLDP (IEEE 802.1AB) frames, neighbour and send timing (pure C++, host testable)",
+    "keywords": "lldp, ethernet",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/TheKingOfChaos/RF-UPS-Monitor-v3.git"
+    },
+    "authors": [
+        {
+            "name": "kenneth Foli Jørgensen",
+            "email": "kenneth@tkoc.dk",
+            "maintainer": true
+        }
+    ],
+    "license": "MIT",
+    "frameworks": "*",
+    "platforms": "*"
+}

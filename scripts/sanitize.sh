@@ -26,6 +26,7 @@ declare -A SUITES=(
     [test_power_debouncer]="power_monitor"
     [test_reset_button]="power_monitor"
     [test_mains_alarm]="power_monitor"
+    [test_lldp]="lldp netconfig"
     [test_snmp_ber]="snmp_ber"
     [test_snmp_message]="snmp_agent snmp_ber if_stats"
     [test_snmp_agent]="snmp_agent snmp_ber if_stats"
