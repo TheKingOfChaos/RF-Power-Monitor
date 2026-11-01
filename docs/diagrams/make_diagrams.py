@@ -144,7 +144,7 @@ class Diagram:
 
 
 def system_overview():
-    d = Diagram("system-overview", "RF-UPS-Monitor: system overview")
+    d = Diagram("system-overview", "RF.Power-Monitor: system overview")
     d.zone("z-mains", 40, 80, 330, 470, "Mains side (galvanically isolated)", ZONE_RED)
     d.box("mains", 75, 140, 260, 70, "Mains 230 V AC", RED)
     d.box("plug", 75, 260, 260, 90, "IKEA TRETAKT smart plug\n(Dirigera hub, tests only)", GRAY, 16, dashed=True)
@@ -152,11 +152,12 @@ def system_overview():
     d.arrow("mains", "bottom", "plug", "top")
     d.arrow("plug", "bottom", "det", "top")
 
-    d.zone("z-board", 420, 80, 650, 640, "RF-UPS-Monitor board", ZONE_BLUE)
+    d.zone("z-board", 420, 80, 650, 640, "RF.Power-Monitor board", ZONE_BLUE)
     d.box("flash", 470, 140, 300, 90, "Internal flash (LittleFS)\nsettings_a / settings_b.json", GREEN, 16)
     d.box("pico", 470, 290, 300, 220,
-          "Raspberry Pi Pico\n(RP2040)\n\nCore 0: network, SNMP, menu\nCore 1: GPIO27 + GPIO22, 1 kHz\nCPU temperature sensor",
-          BLUE, 17)
+          "Raspberry Pi Pico\n(RP2040)\n\nCore 0: network, SNMP,\nweb page, LLDP, menu\nCore 1: GPIO27 + GPIO22, 1 kHz\n"
+          "watchdog 8 s, CPU temperature",
+          BLUE, 16)
     d.box("w5500", 880, 330, 170, 150, "W5500\nEthernet\nSPI0: GPIO16-19\nRST 20, INT 21", CYAN, 16)
     d.box("tmp", 880, 540, 170, 100, "TMP1075\nambient temp.\nI2C0, 0x48", ORANGE, 16)
     d.box("button", 470, 590, 140, 90, "Reset button\nGPIO22 to GND", GRAY, 16)
@@ -174,10 +175,10 @@ def system_overview():
     d.zone("z-net", 1150, 80, 380, 700, "Network", ZONE_GRAY)
     d.box("dhcp", 1190, 130, 140, 100, "DHCP server\nopt. 224 = trap\ndestination", GRAY, 16)
     d.box("browser", 1350, 140, 140, 80, "Browser\nweb page\nTCP 80", VIOLET, 16)
-    d.box("switch", 1190, 360, 300, 90, "LAN switch\nIPv4 + IPv6", GRAY, 18)
+    d.box("switch", 1190, 360, 300, 90, "LAN switch\nIPv4 + IPv6, LLDP", GRAY, 18)
     d.box("lnms", 1190, 520, 300, 110, "SNMP manager\nLibreNMS / net-snmp\nUDP 161, v1/v2c, IPv4/IPv6", VIOLET, 16)
     d.box("traps", 1190, 660, 300, 100, "Trap receiver\nUDP 162 (v1 or v2c)\nfixed IP or from DHCP", VIOLET, 16)
-    d.arrow("w5500", "right", "switch", "left", "100 Mbit/s", b_frac=0.5, both=True)
+    d.arrow("w5500", "right", "switch", "left", "100 Mbit/s\nLLDP", b_frac=0.5, both=True)
     d.arrow("switch", "top", "dhcp", "bottom", a_frac=0.23, both=True)
     d.arrow("switch", "top", "browser", "bottom", a_frac=0.77, both=True)
     d.arrow("switch", "bottom", "lnms", "top", both=True)
@@ -186,56 +187,73 @@ def system_overview():
 
 
 def firmware_architecture():
-    d = Diagram("firmware-architecture", "RF-UPS-Monitor: firmware architecture")
+    d = Diagram("firmware-architecture", "RF.Power-Monitor: firmware architecture")
     d.text(40, 64, "Arrows show the main dependencies. Everything in lib/ (green) is plain C++ and unit tested on the PC.",
            size=16, color="#495057")
-    d.zone("z-src", 40, 100, 1650, 200, "src/  firmware on the Pico (Arduino)", ZONE_BLUE)
+    d.zone("z-src", 40, 100, 1650, 330, "src/  firmware on the Pico (Arduino)", ZONE_BLUE)
     cols = [70, 300, 530, 760, 990, 1220, 1450]
     src = [("main", "main.cpp\nboot, Ethernet,\nloop, starts core 1"), ("cli", "cli.cpp\nserial menu"),
            ("svc", "snmp_service.cpp\nUDP 161, traps,\ndevice state"), ("temp", "cpu_temp.cpp\nambient_temp.cpp\nRP2040, TMP1075"),
-           ("net", "net_stats.cpp\nframe counters,\nW5500 PHY"), ("reset", "factory_reset.cpp\nGPIO22 on core 1"),
+           ("net", "net_stats.cpp\nframe counters,\nW5500 PHY, hooks"), ("reset", "factory_reset.cpp\nGPIO22 on core 1"),
            ("web", "web_service.cpp\nweb page, TCP 80,\nnon-blocking")]
     for x, (eid, text) in zip(cols, src):
         d.box(eid, x, 160, 210, 110, text, BLUE, 16)
+    # Second row: services added since 2.3.0, each over the library it runs
+    src2 = [(70, "d6svc", "dhcp6_service.cpp\nDHCPv6 client,\nframes around lwIP"),
+            (300, "lldpsvc", "lldp_service.cpp\nLLDP send / listen,\nLLDP-MIB data"),
+            (760, "names", "hostname.cpp\nipv6_static.cpp\nDHCP/mDNS name, IPv6"),
+            (1220, "wdog", "watchdog.cpp\n8 s watchdog,\ncore 1 heartbeat")]
+    for x, eid, text in src2:
+        d.box(eid, x, 290, 210, 110, text, BLUE, 16)
 
-    d.zone("z-pure", 40, 340, 1650, 330, "lib/  pure C++, host tested", ZONE_GREEN, title_at="bottom",
+    dy = 130  # everything below the second src row moves down
+    d.zone("z-pure", 40, 340 + dy, 1650, 330, "lib/  pure C++, host tested", ZONE_GREEN, title_at="bottom",
            title_x=760)
     pure = [("codec", "settings_codec\nJSON, validation,\nA/B selection"), ("netcfg", "netconfig\nIPv4/IPv6 parse +\nvalidate"),
             ("agent", "snmp_agent\nMIB, Get / GetNext /\nGetBulk, traps"), ("acl", "access_control\nrate limiter,\naccess log"),
-            ("ifst", "if_stats\nframe classes,\nPHYCFGR decode"), ("power", "power_monitor\ndebouncer,\nreset button"),
+            ("ifst", "if_stats\nframe classes,\nPHYCFGR decode"), ("power", "power_monitor\ndebouncer, mains\nalarm, reset button"),
             ("webui", "web_ui\nHTTP parser, login,\nsessions, pages")]
     for x, (eid, text) in zip(cols, pure):
-        d.box(eid, x, 400, 210, 110, text, GREEN, 16)
-    d.box("ber", 530, 560, 210, 90, "snmp_ber\nBER codec, OIDs,\nCounter64", GREEN, 16)
-    d.box("dhcpopt", 990, 548, 210, 72, "dhcp_option\nask for / read\nDHCP option 224", GREEN, 16)
-    d.box("tmp1075", 760, 548, 200, 72, "tmp1075\nregister to 0.1 C,\nread state", GREEN, 16)
+        d.box(eid, x, 400 + dy, 210, 110, text, GREEN, 16)
+    d.box("d6c", 100, 548 + dy, 180, 72, "dhcp6_client\nDHCPv6 messages,\nclient state", GREEN, 16)
+    d.box("lldp", 300, 548 + dy, 210, 72, "lldp\nLLDPDU build/parse,\nneighbour, timing", GREEN, 16)
+    d.box("ber", 530, 560 + dy, 210, 90, "snmp_ber\nBER codec, OIDs,\nCounter64", GREEN, 16)
+    d.box("tmp1075", 760, 548 + dy, 200, 72, "tmp1075\nregister to 0.1 C,\nread state", GREEN, 16)
+    d.box("dhcpopt", 990, 548 + dy, 210, 72, "dhcp_option\nask for / read\nDHCP option 224", GREEN, 16)
+    d.box("wdl", 1220, 548 + dy, 210, 72, "watchdog_logic\nheartbeat check,\nrestart count", GREEN, 16)
 
-    d.zone("z-hw", 40, 710, 1650, 170, "lib/  hardware layers", ZONE_YELLOW, title_at="bottom")
-    d.box("settings", 70, 740, 210, 90, "settings\nLittleFS A/B slots", YELLOW, 16)
-    d.box("mains", 1220, 735, 210, 100, "mains_input\nGPIO27 on core 1,\nseqlock", YELLOW, 16)
+    d.zone("z-hw", 40, 710 + dy, 1650, 170, "lib/  hardware layers", ZONE_YELLOW, title_at="bottom")
+    d.box("settings", 70, 740 + dy, 210, 90, "settings\nLittleFS A/B slots", YELLOW, 16)
+    d.box("mains", 1450, 735 + dy, 210, 100, "mains_input\nGPIO27 on core 1,\nseqlock", YELLOW, 16)
 
-    d.zone("z-core", 40, 920, 1650, 150, "Arduino-Pico core (earlephilhower)", ZONE_GRAY)
+    d.zone("z-core", 40, 920 + dy, 1650, 150, "Arduino-Pico core (earlephilhower)", ZONE_GRAY)
     core = [(70, 330, "lwip", "lwIP + Wiznet5500lwIP\n(CountingW5500)"), (430, 200, "lfs", "LittleFS"),
             (660, 200, "spi", "SPI"), (890, 250, "usb", "USB serial"), (1170, 260, "mc", "multicore\nsetup1 / loop1"), (1460, 200, "tcp", "WiFiServer\n(TCP)")]
     for x, w, eid, text in core:
-        d.box(eid, x, 980, w, 70, text, GRAY, 16)
+        d.box(eid, x, 980 + dy, w, 70, text, GRAY, 16)
 
-    d.arrow("cli", "bottom", "netcfg", "top")
+    # Arrows from the first src row run down the gaps between the columns, past the second row
+    def gap(x):
+        return x + 220  # the gap right of the column at x
+    d.arrow("cli", "bottom", "netcfg", "top", a_frac=0.95, b_frac=0.95, via=[(gap(300), 280), (gap(300), 520)])
     d.arrow("svc", "bottom", "agent", "top")
-    d.arrow("svc", "bottom", "acl", "top", a_frac=0.8, b_frac=0.3)
+    d.arrow("svc", "bottom", "acl", "top", a_frac=0.8, b_frac=0.3, via=[(698, 450), (823, 450)])
     d.arrow("agent", "bottom", "ber", "top")
-    d.arrow("net", "bottom", "ifst", "top", a_frac=0.4, b_frac=0.4)
-    d.arrow("net", "bottom", "dhcpopt", "top", a_frac=0.95, b_frac=0.95, via=[(1210, 300), (1210, 530)])
-    d.arrow("temp", "bottom", "tmp1075", "top", a_frac=0.95, b_frac=0.95, via=[(980, 300), (980, 530)])
-    d.arrow("reset", "bottom", "power", "top")
+    d.arrow("net", "bottom", "ifst", "top")
+    d.arrow("net", "bottom", "dhcpopt", "top", a_frac=0.95, b_frac=0.95, via=[(gap(990), 280), (gap(990), 660)])
+    d.arrow("temp", "bottom", "tmp1075", "top", a_frac=0.05, b_frac=0.05, via=[(gap(530), 280), (gap(530), 660)])
+    d.arrow("reset", "bottom", "power", "top", a_frac=0.05, b_frac=0.05, via=[(gap(990) + 10, 280), (gap(990) + 10, 520)])
     d.arrow("web", "bottom", "webui", "top")
-    d.arrow("settings", "top", "codec", "bottom")
-    d.arrow("mains", "top", "power", "bottom")
+    d.arrow("d6svc", "bottom", "d6c", "top", a_frac=0.95, b_frac=0.95, via=[(gap(70) - 10, 410), (gap(70) - 10, 668)])
+    d.arrow("lldpsvc", "bottom", "lldp", "top", a_frac=0.95, b_frac=0.95, via=[(gap(300) - 10, 410), (gap(300) - 10, 668)])
+    d.arrow("wdog", "bottom", "wdl", "top", a_frac=0.95, b_frac=0.95, via=[(gap(1220) - 10, 410), (gap(1220) - 10, 668)])
+    d.arrow("settings", "top", "codec", "bottom", a_frac=0.05, b_frac=0.05)  # left of dhcp6_client
+    d.arrow("mains", "top", "power", "bottom", b_frac=0.9, via=[(1555, 660), (1409, 660)])  # above watchdog_logic
     d.save()
 
 
 def snmp_request_flow():
-    d = Diagram("snmp-request-flow", "RF-UPS-Monitor: how an SNMP request is handled")
+    d = Diagram("snmp-request-flow", "RF.Power-Monitor: how an SNMP request is handled")
     d.box("drop", 290, 80, 1080, 70,
           "Dropped without a reply: counted on the status screen, logged in the access log (menu 5)", RED, 18)
     d.box("udp", 40, 220, 200, 90, "UDP datagram\non port 161", CYAN, 18)
@@ -255,7 +273,7 @@ def snmp_request_flow():
 
     d.box("comm", 1190, 470, 180, 130, "community\ncorrect?", YELLOW, 18, shape="diamond")
     d.box("pdu", 840, 480, 260, 110, "Handle the PDU\nGet, GetNext, GetBulk (v2c)\nSet is rejected", BLUE, 16)
-    d.box("mib", 520, 480, 260, 110, "MIB table\nsystem, IF-MIB, 63050\n53 objects (45 in v1)", GREEN, 16)
+    d.box("mib", 520, 480, 260, 110, "MIB table\nLLDP-MIB, system,\nIF-MIB, 63050: up to\n67 objects (59 in v1)", GREEN, 16)
     d.box("build", 180, 480, 280, 110, "Build GetResponse\nv1 errors / v2c exceptions\nGetBulk at most 16 varbinds",
           BLUE, 16)
     d.box("sent", 180, 680, 280, 90, "Reply sent\nsource now trusted\n(not for GetBulk)", GREEN, 16)
@@ -270,7 +288,7 @@ def snmp_request_flow():
 
 
 def mains_flow():
-    d = Diagram("mains-flow", "RF-UPS-Monitor: from the mains input to an alert")
+    d = Diagram("mains-flow", "RF.Power-Monitor: from the mains input to an alert")
     d.zone("z-c1", 40, 80, 930, 570, "Core 1: setup1() / loop1(), every millisecond", ZONE_ORANGE)
     d.box("gpio", 70, 170, 190, 90, "GPIO27\nmains detector", ORANGE, 18)
     d.box("sample", 300, 170, 190, 90, "Sample the pin\nevery 1 ms", ORANGE, 16)
@@ -293,8 +311,8 @@ def mains_flow():
     d.zone("z-c0", 1010, 80, 480, 570, "Core 0: loop()", ZONE_BLUE)
     d.box("read", 1040, 160, 200, 110, "Read snapshot\n(retries while\ncore 1 writes)", BLUE, 16)
     d.box("log", 1280, 130, 190, 80, "Serial log +\nstatus screen", BLUE, 16)
-    d.box("obj", 1280, 240, 190, 90, "SNMP objects\n63050.1 / .2 / .3", BLUE, 16)
-    d.box("trap", 1280, 360, 190, 100, "Trap\nmainsPowerLost /\nRestored", VIOLET, 16)
+    d.box("obj", 1280, 225, 190, 120, "SNMP objects\n63050.1 / .2 / .3\n.6 alarm: lost\nfor 60 s", BLUE, 16)
+    d.box("trap", 1280, 360, 190, 120, "Traps\nmainsPowerLost,\nRestored, and\nLostTooLong (60 s)", VIOLET, 16)
     d.box("fr", 1040, 400, 200, 110, "Factory reset\nsave defaults,\nreboot within 2 s", RED, 16)
     d.arrow("seq", "right", "read", "left")
     d.arrow("read", "right", "log", "left", a_frac=0.3)
@@ -303,26 +321,28 @@ def mains_flow():
     d.arrow("flag", "right", "fr", "left")
 
     d.zone("z-net", 1580, 80, 360, 570, "Network", ZONE_GRAY)
-    d.box("lnms", 1610, 200, 300, 130, "LibreNMS\npolls every 5 min\nstate sensor critical\n\"State Sensor Critical\" alert",
+    d.box("lnms", 1610, 180, 300, 150, "LibreNMS\npolls every 5 min\n\"Mains lost over 60 s\"\ncritical: alert\n(lost alone: warning)",
           VIOLET, 16)
-    d.box("rx", 1610, 380, 300, 90, "Trap receiver /\nLibreNMS event log", VIOLET, 16)
+    d.box("rx", 1610, 380, 300, 100, "Trap receiver /\nLibreNMS event log;\na mains trap starts a poll", VIOLET, 16)
     d.arrow("obj", "right", "lnms", "left", "UDP 161")
     d.arrow("trap", "right", "rx", "left", "UDP 162")
-    d.text(1010, 680, "A short outage between two polls still shows: mainsPowerChanges goes up by 2.", size=16,
-           color="#495057")
+    d.text(1010, 680, "A short outage between two polls still shows: mainsPowerChanges goes up by 2.\n"
+                      "Only an outage of 60 s or more raises the alarm and the alert.", size=16, color="#495057")
     d.save()
 
 
 def test_layers():
-    d = Diagram("test-layers", "RF-UPS-Monitor: test layers")
+    d = Diagram("test-layers", "RF.Power-Monitor: test layers")
     layers = [
-        ("lnms", "LibreNMS in Docker: definitions, sensors, alert on a real mains cut", VIOLET),
+        ("lnms", "LibreNMS in Docker: definitions, sensors, LLDP neighbour, alert on a real mains cut", VIOLET),
         ("mains", "Mains HIL: a Dirigera smart plug switches real mains", RED),
-        ("hil", "HIL (Python): menu, SNMP, traps, web, DHCP option 224, IPv6 (static too), reboot", ORANGE),
+        ("hil", "HIL (Python): menu, SNMP, traps, web, IPv6, DHCP opt. 224,\nLLDP (switch console), watchdog, reboot",
+         ORANGE),
         ("emb", "On-device Unity tests: LittleFS, W5500, GPIO27 sampler", YELLOW),
-        ("host", "Host agent vs real net-snmp (WSL): 52 checks, MIB validation", CYAN),
+        ("host", "Host agent vs real net-snmp (WSL): 65 checks incl. LLDP-MIB, MIB validation", CYAN),
         ("san", "Sanitizers (WSL): every native suite under ASan + UBSan", CYAN),
-        ("native", "Native unit tests: 384 tests of lib/, frames from the device and Kea", GREEN),
+        ("native", "Native unit tests: about 600 tests of lib/, frames from the device,\nKea, Junos and net-snmp",
+         GREEN),
     ]
     for i, (eid, text, bg) in enumerate(layers):
         d.box(eid, 120, 110 + i * 100, 820, 80, text, bg, 18)
@@ -330,7 +350,8 @@ def test_layers():
     d.text(10, 800, "fast, runs everywhere", size=16, color="#495057")
     d.text(10, 84, "slower, real hardware", size=16, color="#495057")
 
-    d.box("pc", 1010, 110, 330, 380, "Your PC\nPico on COM16\nWSL: net-snmp, Docker\nDirigera hub\n\nrun locally", GRAY, 18)
+    d.box("pc", 1010, 110, 330, 380, "Your PC\nPico on USB (RFPOWER_PORT)\nWSL: net-snmp, Docker\nDirigera hub\nswitch console\n\n"
+          "run locally", GRAY, 18)
     d.box("ci", 1010, 510, 330, 280, "GitHub Actions CI\non every push\n\nnative tests\nsanitizers\nnet-snmp check\nfirmware build (.uf2)",
           GREEN, 18)
     for eid in ("lnms", "mains", "hil", "emb"):
@@ -341,7 +362,7 @@ def test_layers():
 
 
 def settings_storage():
-    d = Diagram("settings-storage", "RF-UPS-Monitor: power-cut safe settings (A/B slots)")
+    d = Diagram("settings-storage", "RF.Power-Monitor: power-cut safe settings (A/B slots)")
     d.text(40, 90, "Saving", size=24)
     d.box("new", 40, 140, 220, 90, "New settings\n(serial menu or web page)", BLUE, 16)
     d.box("codec", 310, 140, 220, 90, "settings_codec\nvalidate, to JSON", GREEN, 16)
@@ -374,7 +395,7 @@ def settings_storage():
 
 
 def web_request_flow():
-    d = Diagram("web-request-flow", "RF-UPS-Monitor: how a web page request is handled")
+    d = Diagram("web-request-flow", "RF.Power-Monitor: how a web page request is handled")
     d.box("conn", 40, 300, 200, 90, "Browser connects\nTCP port 80", CYAN, 18)
     d.box("read", 290, 285, 220, 120, "Read the request\nnon-blocking,\nat most 2 KB, 5 s", BLUE, 16)
     d.box("closed", 290, 80, 220, 100, "Closed, or\n400 / 413", RED, 18)
@@ -430,13 +451,13 @@ def web_request_flow():
 
 
 def network_addresses():
-    d = Diagram("network-addresses", "RF-UPS-Monitor: where the addresses come from (dual stack)")
+    d = Diagram("network-addresses", "RF.Power-Monitor: where the addresses come from (dual stack)")
     d.zone("z-v4", 20, 80, 1180, 380, "IPv4", ZONE_BLUE)
     d.box("dhcpsrv", 40, 180, 300, 90, "DHCP server\non the LAN", GRAY, 18)
     d.box("dhcp", 400, 160, 320, 130, "DHCP (default)\naddress, mask, gateway, DNS;\nsends the hostname (option 12)",
           BLUE, 16)
     d.box("static4", 400, 330, 320, 100, "Static IPv4\nserial menu 3 or web page\n(restart)", BLUE, 16)
-    d.box("trap", 860, 120, 300, 100, "Trap destination\nfixed (menu 4) or\nDHCP option 224", ORANGE, 16)
+    d.box("trap", 860, 120, 300, 100, "Trap destination\nfixed (menu 4, IPv4 or\nIPv6) or DHCP option 224", ORANGE, 16)
     d.box("ip4", 860, 270, 300, 100, "IPv4 address\nDHCP or static", GREEN, 18)
     d.arrow("dhcpsrv", "right", "dhcp", "left")
     d.arrow("dhcp", "right", "trap", "left", "option 224", a_frac=0.25)
@@ -446,7 +467,7 @@ def network_addresses():
     d.zone("z-v6", 20, 490, 1180, 460, "IPv6", ZONE_GREEN)
     d.box("ra", 40, 660, 300, 100, "IPv6 router\nrouter advertisements", GRAY, 18)
     d.box("ll", 400, 540, 320, 90, "Link-local fe80::\nfrom the MAC (EUI-64), always", BLUE, 16)
-    d.box("slaac", 400, 665, 320, 90, "SLAAC\none address per advertised /64", BLUE, 16)
+    d.box("slaac", 400, 650, 320, 120, "SLAAC: one address per\nadvertised /64; DHCPv6: one\naddress when the router\nsets the M flag", BLUE, 16)
     d.box("static6", 400, 790, 320, 100, "Static IPv6 (/64)\nserial menu 9 or web page\n(restart)", BLUE, 16)
     d.box("ip6", 860, 610, 300, 120, "IPv6 addresses\nup to 4, each passes\nduplicate address detection",
           GREEN, 16)
@@ -459,7 +480,7 @@ def network_addresses():
     d.arrow("static6", "right", "gw", "left", "gateway", a_frac=0.75, b_frac=0.6)
     d.arrow("ra", "bottom", "gw", "bottom", "routers", via=[(190, 930), (1010, 930)])
 
-    d.box("traps", 1260, 120, 320, 100, "Traps (UDP 162)\nIPv4 only", ORANGE, 18)
+    d.box("traps", 1260, 120, 320, 100, "Traps (UDP 162)\nto IPv4, or v2c to IPv6", ORANGE, 18)
     d.box("svc", 1260, 270, 320, 480, "Services on every address\n\nSNMP, UDP 161\n\nweb page, TCP 80\n\n"
           "mDNS name.local\n(A and AAAA)\n\nping", VIOLET, 18)
     d.arrow("trap", "right", "traps", "left")
