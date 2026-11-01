@@ -36,8 +36,9 @@ from snmp_tools import (GET_SYSDESCR, REQUEST_ID_OFFSET, garbage_packets, local_
 ENTERPRISE = "1.3.6.1.4.1.63050"
 # Set when the device has no TMP1075 (module without the carrier board)
 NO_TMP1075 = bool(os.environ.get("RFUPS_NO_TMP1075"))
-# Last enterprise object: ambientTemperature (.5) exists only with the TMP1075
-LAST_ENTERPRISE = 4 if NO_TMP1075 else 5
+# Enterprise objects in walk order: ambientTemperature (.5) exists only with the TMP1075
+ENTERPRISE_OBJECTS = [n for n in range(1, 7) if not (NO_TMP1075 and n == 5)]
+LAST_ENTERPRISE = ENTERPRISE_OBJECTS[-1]
 
 
 def all_oids(v1):
@@ -46,7 +47,7 @@ def all_oids(v1):
     oids += [".1.3.6.1.2.1.2.1.0"]
     oids += [".1.3.6.1.2.1.2.2.1.%d.1" % i for i in range(1, 23)]
     oids += [".1.3.6.1.2.1.31.1.1.1.%d.1" % i for i in range(1, 20) if not (v1 and 6 <= i <= 13)]
-    oids += ["." + ENTERPRISE + ".%d.0" % i for i in range(1, LAST_ENTERPRISE + 1)]
+    oids += ["." + ENTERPRISE + ".%d.0" % i for i in ENTERPRISE_OBJECTS]
     return oids
 
 
@@ -147,7 +148,7 @@ class SnmpAgentTest(unittest.TestCase):
 
     def test_walk_enterprise_subtree(self):
         rc, out = self.snmp("snmpwalk", ENTERPRISE)
-        self.assertEqual(LAST_ENTERPRISE, sum(1 for l in out.splitlines() if " = " in l), out)
+        self.assertEqual(len(ENTERPRISE_OBJECTS), sum(1 for l in out.splitlines() if " = " in l), out)
 
     def test_walk_system_group(self):
         rc, out = self.snmp("snmpwalk", "1.3.6.1.2.1.1")
@@ -233,7 +234,7 @@ class SnmpAgentTest(unittest.TestCase):
         rc, out = self.snmp("snmpbulkget", "-Cn0", "-Cr1000", ENTERPRISE, version="2c")
         self.assertEqual(0, rc, out)
         self.assertIn("No more variables left in this MIB View", out)
-        self.assertEqual(LAST_ENTERPRISE, sum(1 for l in out.splitlines() if " = " in l and "No more" not in l))
+        self.assertEqual(len(ENTERPRISE_OBJECTS), sum(1 for l in out.splitlines() if " = " in l and "No more" not in l))
 
     # ---- IF-MIB ----
 
@@ -569,6 +570,54 @@ class SnmpAgentTest(unittest.TestCase):
         status, after = wait_until(counted_twice, 10) or changes()
         self.assertEqual(1, status)
         self.assertEqual(before + 2, after, "the outage must count as one loss and one restore")
+
+    def mains_alarm(self):
+        """mainsPowerStatus and mainsPowerAlarm over SNMP."""
+        rc, out = self.snmp("snmpget", ENTERPRISE + ".1.0", ENTERPRISE + ".6.0")
+        return (int(re.search(r"63050\.1\.0 = INTEGER: (\d)", out).group(1)),
+                int(re.search(r"63050\.6\.0 = INTEGER: (\d)", out).group(1)))
+
+    @skip_without_switch
+    def test_short_mains_loss_does_not_raise_alarm(self):
+        self.assertEqual((1, 0), self.mains_alarm(), "mains must be on and no alarm when the test starts")
+        switch = get_switch()
+        seen = []
+        try:
+            switch.off()
+            self.assertIsNotNone(wait_until(lambda: self.mains_alarm()[0] == 0, 10), "mains loss not seen")
+            end = time.time() + 30
+            while time.time() < end:
+                seen.append(self.mains_alarm()[1])
+                time.sleep(2)
+            switch.on()
+            self.assertIsNotNone(wait_until(lambda: self.mains_alarm()[0] == 1, 10), "mains restore not seen")
+        finally:
+            switch.restore()
+        self.assertEqual({0}, set(seen), "a 30 s outage must not raise mainsPowerAlarm")
+        self.assertEqual((1, 0), self.mains_alarm())
+
+    @skip_without_switch
+    def test_mains_loss_over_60_s_raises_alarm_until_restore(self):
+        self.assertEqual((1, 0), self.mains_alarm(), "mains must be on and no alarm when the test starts")
+        switch = get_switch()
+        try:
+            switch.off()
+            self.assertIsNotNone(wait_until(lambda: self.mains_alarm()[0] == 0, 10), "mains loss not seen")
+            lost = time.time()
+            time.sleep(50)
+            self.assertEqual((0, 0), self.mains_alarm(), "alarm raised before 60 s")
+            raised = wait_until(lambda: self.mains_alarm()[1] == 1, 25, interval=0.5)
+            raised_after = time.time() - lost
+            self.assertIsNotNone(raised, "mainsPowerAlarm not raised within 75 s")
+            self.assertEqual("lost over 60 s", self.dev.status()["mainsAlarm"])
+            switch.on()
+            cleared = wait_until(lambda: self.mains_alarm() == (1, 0), 10)
+        finally:
+            switch.restore()
+        self.assertIsNotNone(cleared, "mainsPowerAlarm not cleared after restore")
+        # Counted from the debounced loss, which this test sees a moment after it happens
+        self.assertGreater(raised_after, 57)
+        self.assertEqual("none", self.dev.status()["mainsAlarm"])
 
 
 if __name__ == "__main__":

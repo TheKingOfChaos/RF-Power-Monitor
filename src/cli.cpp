@@ -114,6 +114,7 @@ static void printStatus() {
                       mains.present ? "present" : "LOST", (unsigned long)mains.changes,
                       (unsigned long)((millis() - mains.lastChangeMs) / 1000));
     }
+    Serial.printf("Mains alarm: %s\n", snmpMainsAlarm() ? "lost over 60 s" : "none");
 
     const SnmpStats& snmp = snmpStats();
     Serial.printf("SNMP: %lu packets, %lu responses (get %lu, getnext %lu, set %lu), "

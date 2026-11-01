@@ -37,6 +37,7 @@ struct WebStatus {
     bool mainsKnown;
     bool mainsPresent;
     uint32_t mainsChanges;
+    bool mainsAlarm;          ///< mainsPowerAlarm: lost for 60 s or more
     int32_t cpuTempDeciC;     ///< RP2040 die, tenths of a degree Celsius
     bool ambientTempValid;    ///< TMP1075 answers
     int32_t ambientTempDeciC; ///< TMP1075, tenths of a degree Celsius

@@ -188,6 +188,31 @@ class TrapTests:
         self.assertEqual(changes + 1, vb[ENTERPRISE + ".2.0"][1])
         self.assertGreater(restored["timestamp"], lost["timestamp"])
 
+    @skip_without_switch
+    def test_mains_alarm_trap_after_60_s(self):
+        switch = get_switch()
+        try:
+            print("\n[%s alarm trap]" % self.TRAP_VERSION, end="", flush=True)
+            switch.off()
+            lost = self.wait_kind("mainsPowerLost", timeout=30)
+            alarm = self.wait_kind("mainsPowerLostTooLong", timeout=75)
+            time.sleep(10)
+            alarms = len(self.listener.matching(lambda t: t["kind"] == "mainsPowerLostTooLong"))
+            switch.on()
+            self.wait_kind("mainsPowerRestored", timeout=30)
+        finally:
+            switch.restore()
+        self.assertIsNotNone(lost, "no mainsPowerLost trap")
+        self.assertIsNotNone(alarm, "no mainsPowerLostTooLong trap within 75 s of the loss")
+        self.assertFromDevice(alarm)
+        vb = alarm["varbinds"]
+        self.assertEqual((0x02, 0), vb[ENTERPRISE + ".1.0"])      # mainsPowerStatus = lost
+        self.assertEqual((0x02, 1), vb[ENTERPRISE + ".6.0"])      # mainsPowerAlarm = lostTooLong
+        # Stamped with the loss, like mainsPowerLost
+        self.assertEqual(lost["timestamp"], alarm["timestamp"])
+        self.assertEqual(alarm["timestamp"], vb[ENTERPRISE + ".3.0"][1])
+        self.assertEqual(1, alarms, "one mainsPowerLostTooLong per outage")
+
 
 class V1TrapTest(TrapTests, unittest.TestCase):
     TRAP_VERSION = "1"

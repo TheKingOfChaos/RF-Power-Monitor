@@ -254,6 +254,7 @@ void loop() {
                       (unsigned long)mains.lastChangeMs);
         snmpNotifyMainsChange();
     }
+    snmpPollMainsAlarm();
 
     // Link state for IF-MIB, CPU and ambient temperature
     DIAG_MARK(3);

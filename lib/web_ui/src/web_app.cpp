@@ -229,6 +229,7 @@ const char* WebApp::mainPage(int code, const char* reason, size_t slot, WebBacke
         badgeRow(b, "Mains power", "unknown", "secondary");
     } else {
         badgeRow(b, "Mains power", st.mainsPresent ? "present" : "LOST", st.mainsPresent ? "success" : "danger");
+        badgeRow(b, "Mains alarm", st.mainsAlarm ? "lost over 60 s" : "none", st.mainsAlarm ? "danger" : "success");
     }
     TextBuffer nb(num, sizeof(num));
     nb.addUnsigned(st.mainsChanges);

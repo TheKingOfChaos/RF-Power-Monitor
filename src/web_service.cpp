@@ -103,6 +103,7 @@ public:
         st.mainsKnown = mainsRead(mains);
         st.mainsPresent = st.mainsKnown && mains.present;
         st.mainsChanges = st.mainsKnown ? mains.changes : 0;
+        st.mainsAlarm = snmpMainsAlarm();
         st.cpuTempDeciC = cpuTempDeciC();
         st.ambientTempValid = ambientTempValid();
         st.ambientTempDeciC = ambientTempDeciC();

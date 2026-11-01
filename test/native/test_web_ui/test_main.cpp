@@ -1181,6 +1181,22 @@ static void test_mains_and_link_badges_show_the_state() {
     TEST_ASSERT_TRUE(get("/", token).find("text-bg-secondary\">unknown</span>") != std::string::npos);
 }
 
+static void test_status_page_shows_mains_alarm() {
+    webSetUp();
+    std::string csrf;
+    std::string token = logIn(csrf);
+    std::string page = get("/", token);
+    TEST_ASSERT_TRUE(page.find("Mains alarm</th><td><span class=\"badge text-bg-success\">none</span>") !=
+                     std::string::npos);
+    fb->st.mainsPresent = false;
+    fb->st.mainsAlarm = true;
+    page = get("/", token);
+    TEST_ASSERT_TRUE(page.find("Mains alarm</th><td><span class=\"badge text-bg-danger\">lost over 60 s</span>") !=
+                     std::string::npos);
+    fb->st.mainsKnown = false;
+    TEST_ASSERT_TRUE(get("/", token).find("Mains alarm") == std::string::npos);
+}
+
 static void test_session_found_among_many_other_cookies() {
     webSetUp();
     std::string csrf;
@@ -1392,6 +1408,7 @@ int main() {
     RUN_TEST(test_embedded_stylesheet_is_a_gzip_file_of_bootstrap);
     RUN_TEST(test_other_responses_have_no_static_body_and_pages_link_the_stylesheet);
     RUN_TEST(test_mains_and_link_badges_show_the_state);
+    RUN_TEST(test_status_page_shows_mains_alarm);
     RUN_TEST(test_session_found_among_many_other_cookies);
     RUN_TEST(test_every_single_byte_corruption_gets_a_well_formed_response);
     RUN_TEST(test_longest_values_still_fit_the_page);

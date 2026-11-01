@@ -82,6 +82,17 @@ bool snmpTrapTarget(TrapAddress& out);
 void snmpNotifyMainsChange();
 
 /**
+ * @brief Update the mains alarm (lost for 60 s) and send its mainsPowerLostTooLong trap once a trap can leave.
+ *        Call from the core 0 loop.
+ */
+void snmpPollMainsAlarm();
+
+/**
+ * @brief mainsPowerAlarm: mains has been lost for 60 s or more
+ */
+bool snmpMainsAlarm();
+
+/**
  * @brief sysUpTime: hundredths of a second since boot
  */
 uint32_t snmpUptimeTicks();

@@ -2,6 +2,7 @@
 
 #include <Arduino.h>
 #include <WiFiUdp.h>
+#include <mains_alarm.h>
 #include <mains_input.h>
 #include <netconfig.h>
 #include <settings.h>
@@ -21,6 +22,7 @@ static WiFiUDP udp;
 static bool started = false;
 static bool coldStartSent = false;
 static uint8_t agentAddr[4] = {0, 0, 0, 0};
+static MainsAlarm mainsAlarm;  ///< Core 0 only: snmpPollMainsAlarm() and captureState()
 
 static SnmpAgent agent(currentSettings.community);
 static RateLimiter limiter(SNMP_RATE_PER_SECOND, SNMP_RATE_BURST, SNMP_GLOBAL_RATE_PER_SECOND,
@@ -69,6 +71,7 @@ static SnmpDeviceState captureState() {
             s.mainsLastChangeTicks = s.uptimeTicks - agoTicks;
         }
     }
+    s.mainsAlarm = mainsAlarm.raised();
     return s;
 }
 
@@ -91,7 +94,7 @@ void accessLogRecord(const SourceKey& source, AccessEvent event) {
 /// request-id of the next v2c trap
 static int32_t nextTrapRequestId = 1;
 
-enum class TrapKind { ColdStart, AuthFailure, Mains };
+enum class TrapKind { ColdStart, AuthFailure, Mains, MainsAlarm };
 
 /**
  * @brief Encode a trap in the configured version (v1 Trap-PDU or v2c SNMPv2-Trap)
@@ -103,6 +106,7 @@ static size_t buildTrap(TrapKind kind, const SnmpDeviceState& state) {
         case TrapKind::ColdStart:   return snmpBuildColdStartTrap(c, agentAddr, state.uptimeTicks, outBuf, sizeof(outBuf));
         case TrapKind::AuthFailure: return snmpBuildAuthFailureTrap(c, agentAddr, state.uptimeTicks, outBuf, sizeof(outBuf));
         case TrapKind::Mains:       return snmpBuildMainsTrap(c, agentAddr, state, outBuf, sizeof(outBuf));
+        case TrapKind::MainsAlarm:  return snmpBuildMainsAlarmTrap(c, agentAddr, state, outBuf, sizeof(outBuf));
         }
         return 0;
     }
@@ -111,6 +115,7 @@ static size_t buildTrap(TrapKind kind, const SnmpDeviceState& state) {
     case TrapKind::ColdStart:   return snmpBuildColdStartTrapV2c(c, agentAddr, state.uptimeTicks, id, outBuf, sizeof(outBuf));
     case TrapKind::AuthFailure: return snmpBuildAuthFailureTrapV2c(c, agentAddr, state.uptimeTicks, id, outBuf, sizeof(outBuf));
     case TrapKind::Mains:       return snmpBuildMainsTrapV2c(c, agentAddr, state, id, outBuf, sizeof(outBuf));
+    case TrapKind::MainsAlarm:  return snmpBuildMainsAlarmTrapV2c(c, agentAddr, state, id, outBuf, sizeof(outBuf));
     }
     return 0;
 }
@@ -190,6 +195,27 @@ void snmpNotifyMainsChange() {
     if (!started) return;
     SnmpDeviceState state = captureState();
     sendTrap(buildTrap(TrapKind::Mains, state), state.mainsPresent ? "mainsPowerRestored" : "mainsPowerLost");
+}
+
+void snmpPollMainsAlarm() {
+    MainsSnapshot mains;
+    if (!mainsRead(mains)) return;
+    bool wasRaised = mainsAlarm.raised();
+    mainsAlarm.update(mains.present, mains.changes, mains.lastChangeMs, millis());
+    if (mainsAlarm.raised() && !wasRaised) Serial.println("\nMains power lost for 60 s: alarm raised");
+    if (!mainsAlarm.trapPending()) return;
+
+    // Held until a trap can actually leave: agent running, an IPv4 address (the trap's agent address),
+    // Ethernet link up and a destination. One attempt, as for every trap.
+    static const uint8_t NO_ADDRESS[4] = {0, 0, 0, 0};
+    TrapAddress target;
+    if (!started || memcmp(agentAddr, NO_ADDRESS, 4) == 0 || !netStatsPhy().linkUp || !snmpTrapTarget(target)) return;
+    sendTrap(buildTrap(TrapKind::MainsAlarm, captureState()), "mainsPowerLostTooLong");
+    mainsAlarm.trapSent();
+}
+
+bool snmpMainsAlarm() {
+    return mainsAlarm.raised();
 }
 
 void snmpPoll() {
