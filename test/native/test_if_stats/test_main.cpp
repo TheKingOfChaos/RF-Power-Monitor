@@ -111,13 +111,13 @@ static void test_frame_length_boundaries() {
 }
 
 static void test_received_frames_land_in_the_right_counter() {
-    static uint8_t ip[ETH_MAX_FRAME_LEN + 1], lldp[ETH_MAX_FRAME_LEN + 1];
+    static uint8_t ip[ETH_MAX_FRAME_LEN + 1], vlan[ETH_MAX_FRAME_LEN + 1];
     frameWith(0x0800, ip);
-    frameWith(0x88CC, lldp);
+    frameWith(0x8100, vlan);
     IfCounters c;
     memset(&c, 0, sizeof(c));
     ifCountReceived(c, ip, 100, false);
-    ifCountReceived(c, lldp, 60, false);
+    ifCountReceived(c, vlan, 60, false);
     ifCountReceived(c, MULTICAST_V6, 86, false);
     ifCountReceived(c, ip, 10, false);
     ifCountDiscard(c, 1514);
