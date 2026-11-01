@@ -6,6 +6,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Fixed
+- HIL watchdog test: the core 1 restart time now comes from when the device stops answering SNMP, not from Windows noticing the USB drop, which sometimes came 2 s late and failed the test (the device restarted after 9.1 s every time). The firmware was right; no firmware change.
+
 ## [2.7.0] - 2026-11-01
 
 ### Added

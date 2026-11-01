@@ -8,15 +8,47 @@ Run:
     %USERPROFILE%\\.platformio\\penv\\Scripts\\python.exe -m unittest discover -s test/hil -p "test_watchdog.py" -v
 """
 
+import socket
+import threading
 import time
 import unittest
 
 import serial
 
 from device import Device
+from snmp_tools import SNMP_PORT, get_sysdescr_packet
 
 WATCHDOG_S = 8.0     # WATCHDOG_TIMEOUT_MS
 CORE1_STALE_S = 1.0  # CoreHeartbeatCheck::DEFAULT_STALE_MS
+
+
+class SnmpAnswers:
+    """Ask the device for sysDescr every 50 ms in the background; last = time of the last answer."""
+
+    def __init__(self, host, community):
+        self.last = None
+        self._stop = False
+        self._sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self._sock.settimeout(0.05)
+        self._packet = get_sysdescr_packet(community)
+        self._host = host
+        self._thread = threading.Thread(target=self._run, daemon=True)
+        self._thread.start()
+
+    def _run(self):
+        while not self._stop:
+            try:
+                self._sock.sendto(self._packet, (self._host, SNMP_PORT))
+                self._sock.recvfrom(2048)
+                self.last = time.time()
+            except OSError:  # socket.timeout included: no answer this round
+                pass
+            time.sleep(0.02)
+
+    def stop(self):
+        self._stop = True
+        self._thread.join()
+        self._sock.close()
 
 
 class WatchdogTest(unittest.TestCase):
@@ -48,14 +80,31 @@ class WatchdogTest(unittest.TestCase):
         return None
 
     def stall_and_check(self, core):
-        before = self.dev.status()["watchdogRestarts"]
+        st = self.dev.wait_connected(timeout=60)
+        before = st["watchdogRestarts"]
         self.assertIsNotNone(before, "status screen has no 'Last restart' line")
-        out = self.dev.send("stall%d" % core, expect=r"Stalling core %d" % core)
-        self.assertIn("watchdog restarts the device", out)
-        took = self.wait_for_restart(timeout=WATCHDOG_S + CORE1_STALE_S + 5)
-        self.assertIsNotNone(took, "core %d stalled but the device did not restart" % core)
-        # core 0: the watchdog timeout; core 1: core 0 first notices the stale heartbeat
-        self.assertLess(took, WATCHDOG_S + (CORE1_STALE_S if core == 1 else 0) + 2)
+        # Windows sometimes reports the USB drop 2 s after the chip restarted (measured 2026-11-01:
+        # SNMP fell silent at 9.1 s every time, the port dropped at 9.1 or 11.1 s). With core 1
+        # stalled, core 0 keeps answering SNMP until the restart, so its silence is the restart time.
+        # With core 0 stalled, SNMP stops at once, so only the USB drop tells (watchdog time + 2 s)
+        watch = SnmpAnswers(st["ip"], st["community"]) if core == 1 else None
+        try:
+            if watch:
+                time.sleep(0.5)
+                self.assertIsNotNone(watch.last, "the device does not answer SNMP before the stall")
+            out = self.dev.send("stall%d" % core, expect=r"Stalling core %d" % core)
+            stalled = time.time()
+            self.assertIn("watchdog restarts the device", out)
+            usb_drop = self.wait_for_restart(timeout=WATCHDOG_S + CORE1_STALE_S + 5)
+            self.assertIsNotNone(usb_drop, "core %d stalled but the device did not restart" % core)
+        finally:
+            if watch:
+                watch.stop()
+        if core == 1:
+            # core 0 first notices the stale heartbeat, then the watchdog runs out
+            self.assertLess(watch.last - stalled, WATCHDOG_S + CORE1_STALE_S + 0.5)
+        else:
+            self.assertLess(usb_drop, WATCHDOG_S + 2)
         self.dev.reconnect_after_reboot()
         st = self.dev.status()
         self.assertEqual("watchdog", st["lastRestart"])

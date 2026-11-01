@@ -374,7 +374,7 @@ Uses `test/settings_a.json` and `test/settings_b.json`, never the real settings.
 - Each test reboots the device first (option 2, DHCP unchanged); needs community `public`
 
 ### `test/hil/test_watchdog.py`: the hardware watchdog
-- The hidden menu commands `stall0` and `stall1` hang core 0 (interrupts off) or core 1 for good; the device restarts within 8 s (core 1: 9 s), and the status screen shows `Last restart: watchdog` with the watchdog restart count one higher
+- The hidden menu commands `stall0` and `stall1` hang core 0 (interrupts off) or core 1 for good; the device restarts within 8 s (core 1: 9 s), and the status screen shows `Last restart: watchdog` with the watchdog restart count one higher The core 1 restart time is taken from when the device stops answering SNMP (core 0 answers until the restart): Windows sometimes reports the USB drop 2 s late, which made the old USB-based timing fail now and then (9.1 s or 11.1 s against an 11 s limit). The core 0 time still comes from the USB drop, as core 0 stops answering at once.
 - A menu reboot (option 2, DHCP unchanged) shows `Last restart: reboot` and does not count; twice the watchdog timeout of normal running restarts nothing
 - Each test restarts the device once; settings are not touched (the reboot test skips in static mode)
 

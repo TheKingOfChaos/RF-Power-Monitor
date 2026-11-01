@@ -18,6 +18,14 @@ GET_SYSDESCR = bytes.fromhex(
 REQUEST_ID_OFFSET = 17
 
 
+def get_sysdescr_packet(community):
+    """GET_SYSDESCR with another community (v1, request id 0x46741e94); communities up to 100 bytes."""
+    c = community.encode("ascii")
+    pdu = GET_SYSDESCR[13:]  # from the GetRequest PDU tag on, unchanged
+    body = bytes([0x02, 0x01, 0x00, 0x04, len(c)]) + c + pdu
+    return bytes([0x30, len(body)]) + body
+
+
 def net_snmp(tool, host, *args, community="public", version="1", timeout=2, retries=0):
     """Run a net-snmp tool (snmpget, snmpwalk, ...) in WSL; return (exit code, output)."""
     cmd = [tool, "-v" + version, "-c", community, "-r", str(retries), "-t", str(timeout),
