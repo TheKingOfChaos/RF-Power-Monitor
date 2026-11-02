@@ -8,6 +8,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Added
 - Setup manual (docs/SETUP_MANUAL.md: installing a device, first configuration, LibreNMS, proving the alarm) and user manual (docs/USER_MANUAL.md: daily use, alarms, settings, factory reset, firmware update, troubleshooting).
+- HIL tests for the "no link" and "no DHCP server" states (`test/hil/test_switch_port.py`, opt-in `RFPOWER_SWITCH_CONFIG`): they disable the device's switch port or drop DHCP on it over the switch's console, with `commit confirmed` so the switch undoes a change a test could not, and check that the device recovers from both without a reboot.
 
 ### Changed
 - Carrier board: silkscreen and title blocks say RF-Power-Monitor, and the board, schematic, fab files, renders and 3D models are regenerated (the generator's RF-Power-Monitor change in 3.0.0 had not been applied to them yet). ERC and DRC clean; nothing else on the board changed.

@@ -1,6 +1,9 @@
-"""Serial console of a Juniper switch (EX2200-C), for the LLDP HIL tests.
+"""Serial console of a Juniper switch (EX2200-C), for the LLDP and switch port HIL tests.
 
-Only operational commands are run (show ...); the configuration is never touched.
+run() only runs operational commands (show ...). configure() changes the configuration
+and is only used by the opt-in switch port tests (test_switch_port.py): it locks the
+configuration (configure exclusive; a private candidate cannot "commit confirmed") and
+refuses to commit if the candidate already holds someone else's uncommitted changes.
 The login is read from a local file that must not be committed (secret/ is in
 .gitignore); it is never printed, logged or put in an exception.
 
@@ -19,6 +22,9 @@ PORT = os.environ.get("RFPOWER_LLDP_SWITCH_CONSOLE")
 CREDENTIALS = os.environ.get("RFPOWER_LLDP_SWITCH_CREDENTIALS", os.path.join(ROOT, "secret", "switch.md"))
 
 CLI_PROMPT = re.compile(r"\S+@\S+> $")  # Junos operational mode
+CONFIG_PROMPT = re.compile(r"\S+@\S+# $")  # Junos configuration mode
+DISCARD_PROMPT = re.compile(r"\[yes,no\] \(yes\) $")  # leaving configuration mode with uncommitted changes
+CONFIG_ERROR = re.compile(r"^(error:|syntax error|unknown command)", re.MULTILINE)
 SHELL_PROMPT = re.compile(r"(%|#) $")  # root logs in to the FreeBSD shell first
 LOGIN_PROMPT = re.compile(r"login: $")
 
@@ -112,3 +118,41 @@ class SwitchConsole:
         out = self._read_until(CLI_PROMPT, timeout).replace("\r", "")
         lines = out.split("\n")
         return "\n".join(lines[1:-1])  # drop the echoed command and the prompt
+
+    def configure(self, statements, confirm_minutes=None):
+        """Apply set/delete statements under an exclusive lock and commit them.
+
+        With confirm_minutes the commit is "commit confirmed": Junos rolls it back by itself
+        unless another commit follows within that time. A failed statement or commit raises
+        RuntimeError and discards the candidate, so nothing half-done is left behind.
+        """
+        for s in statements:
+            if not s.startswith(("set ", "delete ")):
+                raise ValueError("only set and delete statements are applied: %r" % s)
+        self._write("configure exclusive")
+        out = self._read_until([CONFIG_PROMPT, CLI_PROMPT], 30).replace("\r", "")
+        if not CONFIG_PROMPT.search(out) or CONFIG_ERROR.search(out):
+            raise RuntimeError("switch console: configure exclusive refused:\n" + out)
+        try:
+            self._write("show | compare")
+            out = self._read_until(CONFIG_PROMPT, 30).replace("\r", "")
+            # Without the echo, [edit] and the prompt, and the note of our own pending "commit confirmed"
+            pending = "\n".join(line for line in out.split("\n")[1:-2]
+                                if not line.startswith("# commit confirmed will be rolled back")).strip()
+            if pending:
+                raise RuntimeError("switch console: the candidate already has someone's uncommitted "
+                                   "changes, refusing to commit them:\n" + pending)
+            for s in statements:
+                self._write(s)
+                out = self._read_until(CONFIG_PROMPT, 30).replace("\r", "")
+                if CONFIG_ERROR.search(out):
+                    raise RuntimeError("switch console: %r refused:\n%s" % (s, out))
+            self._write("commit confirmed %d" % confirm_minutes if confirm_minutes else "commit")
+            out = self._read_until(CONFIG_PROMPT, 240).replace("\r", "")
+            if "commit complete" not in out:
+                raise RuntimeError("switch console: commit failed:\n" + out)
+        finally:
+            self._write("exit configuration-mode")
+            if DISCARD_PROMPT.search(self._read_until([CLI_PROMPT, DISCARD_PROMPT], 30).replace("\r", "")):
+                self._write("yes")
+                self._read_until(CLI_PROMPT, 30)

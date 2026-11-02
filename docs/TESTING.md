@@ -149,9 +149,20 @@ $env:RFPOWER_LLDP_SWITCH_CONSOLE = "COM45"    # optional: the switch's serial co
 $env:RFPOWER_LLDP_SWITCH_CREDENTIALS = "..."  # optional, default secret/switch.md
 ```
 
-With the console, the tests log in, run `show lldp neighbors` (operational commands only, the configuration is never touched) and log out. The login file has the lines `username: ...` and `password: ...`; keep it in `secret/` (git-ignored) and never commit it. The tests never print it. A root login lands in the shell; the helper starts `cli` itself.
+With the console, the LLDP tests log in, run `show lldp neighbors` (operational commands only, the configuration is never touched) and log out. The login file has the lines `username: ...` and `password: ...`; keep it in `secret/` (git-ignored) and never commit it. The tests never print it. A root login lands in the shell; the helper starts `cli` itself.
 
 The hidden menu command `lldpdump` prints the last LLDP frame from the switch in hex (`LLDP 0180c2...`), for test vectors; `test/native/test_lldp` has one from a Juniper EX2200-C (its serial number replaced).
+
+### Switch port changes (`RFPOWER_SWITCH_CONFIG`)
+
+`test_switch_port.py` makes the "no link" and "no DHCP server" states by changing the device's switch port over the same console, so it needs `RFPOWER_LLDP_SWITCH_CONSOLE` and, because it changes the switch's configuration, its own opt-in:
+
+```powershell
+$env:RFPOWER_SWITCH_CONFIG = "1"              # allow the tests to change the device's switch port
+$env:RFPOWER_LLDP_SWITCH_CONSOLE = "COM45"
+```
+
+The port is the one the device names over LLDP, used only if the switch also lists the device's MAC on it. Only that port is changed: `disable`, or an input filter `rfpower-test-no-dhcp` that drops UDP to port 67 in place of its own filter (whose policer is off for those minutes). Changes are made under `configure exclusive`, refused if the candidate already holds someone else's uncommitted changes, and committed with `commit confirmed 5`: if a test dies, Junos rolls the change back by itself within 5 minutes. The test restores the port with a plain commit. The device stays powered over USB, so the serial menu works while the port is down. The two tests take about 4 minutes.
 
 ## What is covered
 
@@ -366,6 +377,10 @@ Uses `test/settings_a.json` and `test/settings_b.json`, never the real settings.
 - `snmpget` (v1 and v2c) of lldpRemSysName and lldpRemPortId gives the same switch and port as the status screen, lldpLocPortDesc names our port (`RFPOWER_LLDP_SWITCH=1`); `test_snmp.py`'s walks from the root expect the LLDP-MIB objects first, the remote row only while the status screen shows a switch
 - The switch lists the device by MAC with its hostname, port description and IPv4 address, and the device shows the port the switch says it is on (`RFPOWER_LLDP_SWITCH_CONSOLE`)
 - A new hostname reaches the switch within 5 s (fails with a firmware that sends only every 30 s); the old one is restored
+
+### `test/hil/test_switch_port.py`: no link, no DHCP server (opt-in, see above)
+- Port disabled: within 10 s the status screen shows `State: no Ethernet link, check cable` and the Ethernet line link down; port enabled again: connected and SNMP answers, without a reboot
+- DHCP dropped at the port and the device rebooted: `State: link up, waiting for DHCP lease` and no address, unchanged for 20 s (no fallback address); DHCP allowed again: a lease within 90 s (lwIP retries at most every 60 s) and SNMP answers, without a reboot
 
 ### `test/hil/test_dhcp_trap.py`: trap destination from DHCP
 - Choosing `dhcp` asks for option 224 in the renewal, the LAN's server still answers (same lease and IP, SNMP answers), the status screen reports the ACK; back to fixed

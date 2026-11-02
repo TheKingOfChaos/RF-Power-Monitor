@@ -10,7 +10,7 @@ An item is only ticked when it is implemented **and** its tests exist and pass (
 - [x] No lease: keep retrying DHCP, no fallback address (decided 2026-10-16, avoids IP conflicts)
 - [x] Boot does not wait for DHCP, menu available immediately — HIL `test_menu_is_available_before_dhcp_lease`
 - [x] Status shows connection state (connected / waiting for lease / no link / no W5500) — HIL
-- [ ] Test the "no link" and "no DHCP server" states (needs a switchable port or isolated network)
+- [x] Test the "no link" and "no DHCP server" states: the device's switch port disabled, or DHCP dropped by a port filter, over the switch console (`commit confirmed`); both recover without a reboot — HIL `test_switch_port.py` (opt-in `RFPOWER_SWITCH_CONFIG`, passed 2026-11-02 on the EX2200-C)
 - [x] Delete the obsolete custom stack (`lib/w5500`, `lib/network`) and its tests
 
 ## 2. SNMP v1/v2c agent
