@@ -7,7 +7,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ## [Unreleased]
 
 ## [3.1.0] - 2026-11-02
- MIBs, so LibreNMS and other managers show CPU load, memory, storage, addresses, inventory and protocol statistics without device-specific setup.
+
+Standard MIBs, so LibreNMS and other managers show CPU load, memory, storage, addresses, inventory and protocol statistics without device-specific setup.
 
 ### Added
 - LibreNMS: CPU and Memory graphs on the device overview, the serial number from ENTITY-MIB. Checked with LibreNMS 26.10.2.
