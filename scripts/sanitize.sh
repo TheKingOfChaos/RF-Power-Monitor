@@ -36,6 +36,7 @@ declare -A SUITES=(
     [test_access_control]="access_control netconfig"
     [test_web_ui]="web_ui settings_codec netconfig access_control"
     [test_tmp1075]="tmp1075"
+    [test_cpu_load]="cpu_load"
     [test_watchdog_logic]="watchdog_logic"
     [test_dhcp6_message]="dhcp6_client"
     [test_dhcp6_frame]="dhcp6_client"
