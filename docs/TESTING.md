@@ -330,7 +330,7 @@ Uses `test/settings_a.json` and `test/settings_b.json`, never the real settings.
 ### `test/hil/test_snmp.py`: the SNMP agent on the device
 - `snmpget` of sysDescr, sysObjectID, several varbinds in order; sysUpTime advances ~100 ticks per second
 - Mains objects present and consistent with the serial status screen
-- `snmpwalk` of everything from `.1` (v1: 160 objects in order, 169 while the device has an LLDP neighbour, LLDP-MIB first; End of MIB; v1 does not see the eight Counter64 columns), the system group (7) and the enterprise subtree (6; 5 with `RFPOWER_NO_TMP1075`)
+- `snmpwalk` of everything from `.1` (v1: 224 objects in order, 233 while the device has an LLDP neighbour, LLDP-MIB first; End of MIB; v1 does not see the eight Counter64 columns), the system group (7) and the enterprise subtree (6; 5 with `RFPOWER_NO_TMP1075`)
 - IF-MIB: ifDescr, ifType, ifMtu, admin/oper status, ifName; ifSpeed, ifHighSpeed and ifPhysAddress match the status screen; 20 requests raise the 64-bit packet and octet counters; ifInOctets is the low half of ifHCInOctets; the receive drop counters match the status screen; Counter64 is noSuchName in v1
 - cpuTemperature between 10 and 85 °C and within 2 °C of the status screen
 - ambientTemperature between 5 and 50 °C, within 0.5 °C of the status screen and below the CPU temperature (skipped with `RFPOWER_NO_TMP1075=1`, for a module without the carrier board)
@@ -341,7 +341,7 @@ Uses `test/settings_a.json` and `test/settings_b.json`, never the real settings.
 - Access log lists bad community and bad version from this PC, newest first; SetRequests are logged
 - The device must use community `public` for this suite
 
-- v2c: get, exceptions instead of errors, walk of all 168 objects (177 with an LLDP neighbour) ending with endOfMibView, `snmpbulkwalk` returns the same objects as `snmpwalk`, `snmpbulkget -Cn1 -Cr3`, `-Cr1000` capped at 16 varbinds and reaching endOfMibView, Set notWritable, wrong community; SNMPv3 gets no reply and is counted; v1/v2c counters
+- v2c: get, exceptions instead of errors, walk of all 232 objects (241 with an LLDP neighbour) plus the IP address rows, which the walk tests leave out and `test_snmp_ip_addresses_match_status_screen` / `test_ipv6.py` `test_snmp_ipv6_addresses_match_status_screen` check against the status screen ending with endOfMibView, `snmpbulkwalk` returns the same objects as `snmpwalk`, `snmpbulkget -Cn1 -Cr3`, `-Cr1000` capped at 16 varbinds and reaching endOfMibView, Set notWritable, wrong community; SNMPv3 gets no reply and is counted; v1/v2c counters
 
 - 30 requests: every reply echoes its request id, worst case under 100 ms
 - 300 malformed packets in bursts: agent keeps answering; oversized packet ignored; 5 simultaneous requests all answered

@@ -130,6 +130,23 @@ class Ipv6Test(unittest.TestCase):
         out = subprocess.run(["ping", "-6", flag, "3", dest], capture_output=True, text=True).stdout
         self.assertIn("Reply from" if sys.platform == "win32" else "bytes from", out, out)
 
+    def test_snmp_ipv6_addresses_match_status_screen(self):
+        # IP-MIB ipAddressTable: one row per valid address (preferred or deprecated), over IPv4
+        rc, out = net_snmp("snmpwalk", self.ip4, "1.3.6.1.2.1.4.34.1.3", version="2c")
+        self.assertEqual(0, rc, out)
+        rows = re.findall(r"\.1\.3\.6\.1\.2\.1\.4\.34\.1\.3\.2\.16\.([\d.]+) = INTEGER: 1", out)
+        over_snmp = {str(ipaddress.IPv6Address(bytes(int(x) for x in r.split(".")))) for r in rows}
+        raw = self.dev.status()["raw"]
+        on_screen = {str(ipaddress.IPv6Address(a.lower())) for a, state in
+                     re.findall(r"^IPv6: ([0-9A-F:]+)(?: \((tentative|deprecated)\))?\r?$", raw, re.MULTILINE)
+                     if state != "tentative"}
+        self.assertEqual(on_screen, over_snmp)
+        self.assertIn(self.link_local(), over_snmp)
+        # The link-local address comes from the MAC: origin linklayer(5)
+        ll_index = ".".join(str(b) for b in ipaddress.IPv6Address(self.link_local()).packed)
+        rc, out = net_snmp("snmpget", self.ip4, "1.3.6.1.2.1.4.34.1.6.2.16." + ll_index, version="2c")
+        self.assertIn("INTEGER: 5", out)
+
     # ---- services over IPv6 ----
 
     def test_snmp_get_over_ipv6(self):

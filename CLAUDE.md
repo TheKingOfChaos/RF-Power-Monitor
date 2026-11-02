@@ -25,7 +25,7 @@ Details and setup are in `docs/TESTING.md`.
 
 ## Build notes
 
-- lwIP is compiled from source with the core's `lwipopts.h` plus our `build_flags`, so lwIP options can be set in `platformio.ini` (IPv6, `MEMP_NUM_SYS_TIMEOUT`, `LWIP_IPV6_FRAG=0`, `LWIP_IPV6_NUM_ADDRESSES=4`, `SO_REUSE=1` and the hook file `include/lwip_hooks.h` are; the comments there say why).
+- lwIP is compiled from source with the core's `lwipopts.h` plus our `build_flags`, so lwIP options can be set in `platformio.ini`; options the core's file sets without `#ifndef` (`LWIP_STATS`, for the MIB-II counters) are overridden in `include/lwipopts.h`, which `#include_next`s the core's (IPv6, `MEMP_NUM_SYS_TIMEOUT`, `LWIP_IPV6_FRAG=0`, `LWIP_IPV6_NUM_ADDRESSES=4`, `SO_REUSE=1` and the hook file `include/lwip_hooks.h` are; the comments there say why).
 - Each core has its own 8 KB stack (`core1_separate_stack` in `src/main.cpp`); the status screen and a HIL test watch core 0's headroom.
 - A firmware hang takes USB serial with it: use the `RFPOWER_DIAG` build (docs/TESTING.md) before asking the user for BOOTSEL.
 

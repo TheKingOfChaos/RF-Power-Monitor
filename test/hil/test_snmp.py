@@ -25,6 +25,7 @@ import re
 import socket
 import statistics
 import struct
+import subprocess
 import time
 import unittest
 
@@ -59,6 +60,11 @@ def all_oids(v1, neighbour):
     oids += [".1.3.6.1.2.1.1.9.1.%d.%d" % (c, r) for c in range(2, 5) for r in range(1, 10)]  # sysORTable
     oids += [".1.3.6.1.2.1.2.1.0"]
     oids += [".1.3.6.1.2.1.2.2.1.%d.1" % i for i in range(1, 23)]
+    # MIB-II ip (1-19, 23), icmp (1-26), tcp (1-12, 14, 15), udp (1-4): lwIP's counters
+    oids += [".1.3.6.1.2.1.4.%d.0" % i for i in list(range(1, 20)) + [23]]
+    oids += [".1.3.6.1.2.1.5.%d.0" % i for i in range(1, 27)]
+    oids += [".1.3.6.1.2.1.6.%d.0" % i for i in range(1, 16) if i != 13]
+    oids += [".1.3.6.1.2.1.7.%d.0" % i for i in range(1, 5)]
     oids += [".1.3.6.1.2.1.11.%d.0" % i for i in SNMP_GROUP]
     # HOST-RESOURCES-MIB: hrSystem, hrMemorySize, hrStorage (RAM, LittleFS), hrDevice and hrProcessor (2 cores)
     hr = ".1.3.6.1.2.1.25"
@@ -72,6 +78,15 @@ def all_oids(v1, neighbour):
     oids += ["." + ENTERPRISE + ".%d.0" % i for i in ENTERPRISE_OBJECTS]
     oids += [LAST_OID]
     return oids
+
+
+# IP-MIB address rows (ipAddrTable, ipAddressTable): one per address the device has right now
+ADDRESS_ROWS = (".1.3.6.1.2.1.4.20.", ".1.3.6.1.2.1.4.34.")
+
+
+def static_oids(oids):
+    """The walked OIDs without the address rows, which depend on the network (tested on their own)."""
+    return [o for o in oids if not o.startswith(ADDRESS_ROWS)]
 
 
 def v3_packet():
@@ -170,7 +185,7 @@ class SnmpAgentTest(unittest.TestCase):
     def test_walk_returns_all_objects_in_order(self):
         rc, out = self.snmp("snmpwalk", ".1")
         self.assertEqual(0, rc, out)
-        oids = [l.split(" = ")[0] for l in out.splitlines() if " = " in l]
+        oids = static_oids([l.split(" = ")[0] for l in out.splitlines() if " = " in l])
         self.assertEqual(all_oids(v1=True, neighbour=self.has_neighbour()), oids)
         self.assertIn("End of MIB", out)
 
@@ -197,6 +212,77 @@ class SnmpAgentTest(unittest.TestCase):
         rc, out = self.snmp("snmpget", "1.3.6.1.2.1.11.30.0", "1.3.6.1.6.3.1.1.6.1.0")
         self.assertRegex(out, r"11\.30\.0 = INTEGER: 1")  # snmpEnableAuthenTraps
         self.assertRegex(out, r"6\.1\.0 = INTEGER: 0")    # snmpSetSerialNo
+
+    # ---- MIB-II protocol counters (lwIP) ----
+
+    def counters(self, *oids):
+        """Counter32/Gauge32 values of the given OIDs, in order."""
+        rc, out = self.snmp("snmpget", *oids, version="2c")
+        values = re.findall(r"= (?:Counter32|Gauge32): (\d+)", out)
+        self.assertEqual(len(oids), len(values), out)
+        return [int(v) for v in values]
+
+    def test_icmp_echo_counters_follow_ping(self):
+        in_echos, out_reps = "1.3.6.1.2.1.5.8.0", "1.3.6.1.2.1.5.22.0"
+        before = self.counters(in_echos, out_reps)
+        result = subprocess.run(["ping", "-n", "10", "-w", "1000", self.ip], stdout=subprocess.PIPE, text=True)
+        self.assertEqual(0, result.returncode, result.stdout)
+        after = self.counters(in_echos, out_reps)
+        self.assertGreaterEqual(after[0] - before[0], 10)
+        self.assertGreaterEqual(after[1] - before[1], 10)
+        self.assertLess(after[0] - before[0], 30)  # nobody else pings it that much
+
+    def test_udp_counters_follow_snmp_requests(self):
+        in_dgrams, out_dgrams = "1.3.6.1.2.1.7.1.0", "1.3.6.1.2.1.7.4.0"
+        before = self.counters(in_dgrams, out_dgrams)
+        for _ in range(10):
+            self.snmp("snmpget", "1.3.6.1.2.1.1.3.0")
+        after = self.counters(in_dgrams, out_dgrams)
+        # The 10 requests and the one reading the counters, each answered
+        self.assertGreaterEqual(after[0] - before[0], 11)
+        self.assertGreaterEqual(after[1] - before[1], 10)
+
+    def test_udp_no_ports_counts_closed_port(self):
+        no_ports = "1.3.6.1.2.1.7.2.0"
+        before = self.counters(no_ports)[0]
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            for _ in range(3):
+                s.sendto(b"x", (self.ip, 9))  # discard port: nothing listens
+                time.sleep(0.1)
+        self.assertGreaterEqual(self.counters(no_ports)[0] - before, 3)
+
+    def test_tcp_passive_opens_follow_web_connections(self):
+        passive = "1.3.6.1.2.1.6.6.0"
+        before = self.counters(passive)[0]
+        for _ in range(3):
+            with socket.create_connection((self.ip, 80), timeout=5):
+                pass
+            time.sleep(0.3)
+        self.assertGreaterEqual(self.counters(passive)[0] - before, 3)
+
+    def test_tcp_curr_estab_counts_an_open_web_connection(self):
+        estab = "1.3.6.1.2.1.6.9.0"
+        with socket.create_connection((self.ip, 80), timeout=5):
+            time.sleep(0.3)
+            self.assertGreaterEqual(self.counters(estab)[0], 1)
+        time.sleep(1)
+        # Our connection is gone (FIN or the device's 5 s timeout); the web page may still hold others
+        self.assertLessEqual(self.counters(estab)[0], 4)
+
+    def test_snmp_ip_addresses_match_status_screen(self):
+        st = self.dev.status()
+        rc, out = self.snmp("snmpwalk", "1.3.6.1.2.1.4.20.1", version="2c")
+        self.assertEqual(0, rc, out)
+        # ipAddrTable: exactly the device's IPv4 address, with its netmask
+        addrs = re.findall(r"\.4\.20\.1\.1\.[\d.]+ = IpAddress: ([\d.]+)", out)
+        self.assertEqual([st["ip"]], addrs)
+        self.assertRegex(out, r"\.4\.20\.1\.3\.%s = IpAddress: %s" % (re.escape(st["ip"]), re.escape(st["subnet"])))
+        # ipAddressTable: the same address as an ipv4 row, from DHCP or set by hand
+        index = "1.4." + st["ip"]
+        rc, out = self.snmp("snmpget", "1.3.6.1.2.1.4.34.1.3." + index, "1.3.6.1.2.1.4.34.1.6." + index,
+                            version="2c")
+        values = re.findall(r"INTEGER: (\d+)", out)
+        self.assertEqual(["1", "4" if st["mode"] == "DHCP" else "2"], values, out)
 
     def test_sysortable_names_the_mibs(self):
         rc, out = self.snmp("snmpwalk", "1.3.6.1.2.1.1.9.1.3")
@@ -248,7 +334,7 @@ class SnmpAgentTest(unittest.TestCase):
     def test_v2c_walk_ends_with_end_of_mib_view(self):
         rc, out = self.snmp("snmpwalk", ".1", version="2c")
         self.assertEqual(0, rc, out)
-        oids = [l.split(" = ")[0] for l in out.splitlines() if " = " in l and "No more variables" not in l]
+        oids = static_oids([l.split(" = ")[0] for l in out.splitlines() if " = " in l and "No more variables" not in l])
         self.assertEqual(all_oids(v1=False, neighbour=self.has_neighbour()), oids)
         self.assertIn("No more variables left in this MIB View", out)
 
@@ -263,9 +349,9 @@ class SnmpAgentTest(unittest.TestCase):
             return [(l.split(" = ")[0], l.split(" = ")[1].split(":")[0]) for l in text.splitlines()
                     if " = " in l and "No more" not in l]
         self.assertEqual(oids(walk), oids(bulk))
-        self.assertEqual(len(all_oids(v1=False, neighbour=self.has_neighbour())), len(oids(bulk)))
-        # 168 or more objects at most 16 per GetBulk: at least 11 requests
-        self.assertGreaterEqual(self.dev.status()["getBulkRequests"] - before, 11)
+        self.assertEqual(len(all_oids(v1=False, neighbour=self.has_neighbour())), len(static_oids([o for o, _ in oids(bulk)])))
+        # 232 or more objects at most 16 per GetBulk: at least 15 requests
+        self.assertGreaterEqual(self.dev.status()["getBulkRequests"] - before, 15)
 
     def test_bulkget_non_repeaters_and_repetitions(self):
         rc, out = self.snmp("snmpbulkget", "-Cn1", "-Cr3", "1.3.6.1.2.1.1.3.0", "1.3.6.1.2.1.1", version="2c")

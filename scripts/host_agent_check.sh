@@ -62,7 +62,7 @@ check "get 2nd unknown names it" "${NO_SUCH}\.1\.3\.6\.1\.9\.0" \
       snmpget $SNMP_OPTS $TARGET 1.3.6.1.2.1.1.1.0 1.3.6.1.9.0
 check "getnext enterprise"      '63050\.1\.0 = INTEGER: 1' snmpgetnext $SNMP_OPTS $TARGET 1.3.6.1.4.1.63050
 check "getnext past end"        "${NO_SUCH}\.1\.3\.6\.1\.6\.3\.1\.1\.6\.1\.0" snmpgetnext $SNMP_OPTS $TARGET 1.3.6.1.6.3.1.1.6.1.0
-check "v1 walk all, 169 objects" '^169$' bash -c "snmpwalk $SNMP_OPTS $TARGET .1 | grep -c ' = '"
+check "v1 walk all, 256 objects" '^256$' bash -c "snmpwalk $SNMP_OPTS $TARGET .1 | grep -c ' = '"
 check "walk order"              '1\.1\.0.*1\.2\.0.*1\.3\.0.*1\.4\.0.*1\.5\.0.*1\.6\.0.*1\.7\.0.*63050\.1\.0.*63050\.2\.0.*63050\.3\.0' \
       bash -c "snmpwalk $SNMP_OPTS $TARGET .1 | cut -d' ' -f1 | tr '\n' ' '"
 check "walk enterprise, 6 objects" '^6$' bash -c "snmpwalk $SNMP_OPTS $TARGET 1.3.6.1.4.1.63050 | grep -c ' = '"
@@ -80,11 +80,11 @@ check "v2c mixed get, no error" '1\.5\.0 = STRING: "host-agent".*1\.99\.0 = No S
       snmpget $V2 $TARGET 1.3.6.1.2.1.1.5.0 1.3.6.1.2.1.1.99.0
 check "v2c getnext past end"    '1\.1\.6\.1\.0 = No more variables left in this MIB View' \
       snmpgetnext $V2 $TARGET 1.3.6.1.6.3.1.1.6.1.0
-check "v2c walk all, 177 objects" '^177$' bash -c "snmpwalk $V2 $TARGET .1 | grep ' = ' | grep -vc 'No more variables'"
+check "v2c walk all, 264 objects" '^264$' bash -c "snmpwalk $V2 $TARGET .1 | grep ' = ' | grep -vc 'No more variables'"
 check "v2c walk ends at view end" 'No more variables left in this MIB View' snmpwalk $V2 $TARGET .1
 check "v2c walk order"          '1\.1\.0.*1\.7\.0.*63050\.1\.0.*63050\.3\.0' \
       bash -c "snmpwalk $V2 $TARGET .1 | cut -d' ' -f1 | tr '\n' ' '"
-check "bulkwalk all, 177 objects" '^177$' bash -c "snmpbulkwalk $V2 $TARGET .1 | grep ' = ' | grep -vc 'No more variables'"
+check "bulkwalk all, 264 objects" '^264$' bash -c "snmpbulkwalk $V2 $TARGET .1 | grep ' = ' | grep -vc 'No more variables'"
 check "bulkwalk = walk"         '^same$' bash -c "diff <(snmpwalk $V2 $TARGET .1 | grep ' = ' | cut -d' ' -f1) <(snmpbulkwalk $V2 $TARGET .1 | grep ' = ' | cut -d' ' -f1) >/dev/null && echo same"
 check "bulkget n1 r3"           '1\.1\.4\.0 = STRING.*1\.1\.1\.0 = STRING.*1\.1\.2\.0 = OID.*1\.1\.3\.0 = Timeticks' \
       snmpbulkget $V2 -Cn1 -Cr3 $TARGET 1.3.6.1.2.1.1.3.0 1.3.6.1.2.1.1
@@ -131,6 +131,28 @@ check "hrProcessorLoad"         'hrProcessorLoad\.768 = INTEGER: 7.*hrProcessorL
 check "hrDevice processors"     'hrDeviceType\.768 = OID: HOST-RESOURCES-TYPES::hrDeviceProcessor.*hrDeviceDescr\.769 = STRING: RP2040 core 1 \(mains input\).*hrDeviceStatus\.769 = INTEGER: running\(2\)' \
       bash -c "snmpwalk $HRMIB $TARGET HOST-RESOURCES-MIB::hrDeviceTable | tr '\n' ' '"
 check "hrMemorySize"            'hrMemorySize\.0 = INTEGER: 256 KBytes' snmpget $HRMIB $TARGET HOST-RESOURCES-MIB::hrMemorySize.0
+# ip, icmp, tcp and udp groups (lwIP's MIB-II counters) with net-snmp's names
+NETMIB="-v2c -c public -r0 -t1 -M +/usr/share/snmp/mibs -m IP-MIB:TCP-MIB:UDP-MIB"
+check "ip scalars"              'ipForwarding\.0 = INTEGER: notForwarding\(2\).*ipDefaultTTL\.0 = INTEGER: 255.*ipInReceives\.0 = Counter32: 5000' \
+      snmpget $NETMIB $TARGET IP-MIB::ipForwarding.0 IP-MIB::ipDefaultTTL.0 IP-MIB::ipInReceives.0
+check "ipReasmTimeout"          'ipReasmTimeout\.0 = INTEGER: 15 seconds' snmpget $NETMIB $TARGET IP-MIB::ipReasmTimeout.0
+check "icmp walk, 26 objects"   '^26$' bash -c "snmpwalk $NETMIB $TARGET IP-MIB::icmp | grep -c ' = '"
+check "icmpInEchos"             'icmpInEchos\.0 = Counter32: 3' snmpget $NETMIB $TARGET IP-MIB::icmpInEchos.0
+check "tcp scalars"             'tcpRtoAlgorithm\.0 = INTEGER: vanj\(4\).*tcpMaxConn\.0 = INTEGER: 5.*tcpCurrEstab\.0 = Gauge32: 1' \
+      snmpget $NETMIB $TARGET TCP-MIB::tcpRtoAlgorithm.0 TCP-MIB::tcpMaxConn.0 TCP-MIB::tcpCurrEstab.0
+check "tcp walk, 14 objects"    '^14$' bash -c "snmpwalk $NETMIB $TARGET TCP-MIB::tcp | grep -c ' = '"
+check "udp scalars"             'udpInDatagrams\.0 = Counter32: 42.*udpOutDatagrams\.0 = Counter32: 0' \
+      snmpget $NETMIB $TARGET UDP-MIB::udpInDatagrams.0 UDP-MIB::udpOutDatagrams.0
+# IP-MIB address tables: the host agent holds 10.132.0.58/22 (DHCP) and one SLAAC IPv6 address
+check "ipAddrTable"             'ipAdEntAddr\.10\.132\.0\.58 = IpAddress: 10\.132\.0\.58.*ipAdEntIfIndex\.10\.132\.0\.58 = INTEGER: 1.*ipAdEntNetMask\.10\.132\.0\.58 = IpAddress: 255\.255\.252\.0' \
+      bash -c "snmpwalk $NETMIB $TARGET IP-MIB::ipAddrTable | tr '\n' ' '"
+check "ipAddressTable rows"     'ipAddressIfIndex\.ipv4\."10\.132\.0\.58" = INTEGER: 1.*ipAddressIfIndex\.ipv6\."fd:16:d8:33:4f:0e:3e:ce:1c:b2:cf:ff:fe:4e:a2:2c" = INTEGER: 1' \
+      bash -c "snmpwalk $NETMIB $TARGET IP-MIB::ipAddressIfIndex | tr '\n' ' '"
+check "ipAddressOrigin"         'ipAddressOrigin\.ipv4\."10\.132\.0\.58" = INTEGER: dhcp\(4\).*ipAddressOrigin\.ipv6\.".*" = INTEGER: linklayer\(5\)' \
+      bash -c "snmpwalk $NETMIB $TARGET IP-MIB::ipAddressOrigin | tr '\n' ' '"
+check "ipAddressPrefix"         'ipAddressPrefix\.ipv4\."10\.132\.0\.58" = OID: IP-MIB::ipAddressPrefixOrigin\.1\.ipv4\."10\.132\.0\.0"\.22' \
+      snmpget $NETMIB $TARGET 1.3.6.1.2.1.4.34.1.5.1.4.10.132.0.58
+check "ipAddressTable, 18 objects" '^18$' bash -c "snmpwalk $NETMIB $TARGET IP-MIB::ipAddressTable | grep -c ' = '"
 # ENTITY-MIB numerically: WSL's ENTITY-MIB needs IANA-ENTITY-MIB, which snmp-mibs-downloader lacks
 ENTP=1.3.6.1.2.1.47.1.1.1.1
 check "entPhysicalTable row"    '5\.1 = INTEGER: 3.*8\.1 = STRING: "W5500-EVB-Pico-PoE \+ carrier rev 1\.1".*9\.1 = STRING: "3\.1\.0".*11\.1 = STRING: "E6614103E7452D2F".*13\.1 = STRING: "RF-Power-Monitor".*16\.1 = INTEGER: 2' \

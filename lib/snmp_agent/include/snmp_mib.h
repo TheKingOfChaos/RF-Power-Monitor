@@ -17,6 +17,9 @@
  *   1.3.6.1.2.1.1.9.1.c.n  sysORTable, columns 2-4 for the 9 MIB modules implemented
  *   1.3.6.1.2.1.2.1.0      ifNumber              INTEGER (1)
  *   1.3.6.1.2.1.2.2.1.x.1  ifTable, columns 1-22 for interface 1 (IF-MIB)
+ *   1.3.6.1.2.1.4-7.n.0    MIB-II ip (1-19, 23), icmp (1-26), tcp (1-12, 14, 15), udp (1-4): lwIP's counters
+ *   1.3.6.1.2.1.4.20.1.c   ipAddrTable (IPv4) and 1.3.6.1.2.1.4.34.1.c ipAddressTable: one row per address,
+ *                          built from the state at each request (dynamic columns)
  *   1.3.6.1.2.1.11.n.0     snmp group (SNMPv2-MIB), n = 1-32 without 7 and 23
  *   1.3.6.1.2.1.25...      HOST-RESOURCES-MIB: hrSystem, hrMemorySize, hrStorageTable (1 RAM, 2 LittleFS),
  *                          hrDeviceTable and hrProcessorTable (768 core 0, 769 core 1)
@@ -70,6 +73,29 @@ struct SnmpLldpState {
 /// ifDescr of the one interface (ifIndex 1); LLDP sends it as Port Description
 static const char* const SNMP_IF_DESCR = "W5500 10/100 Ethernet";
 
+/// Where an address came from (IP-MIB IpAddressOriginTC)
+enum class SnmpAddrOrigin : uint8_t { Manual = 2, Dhcp = 4, LinkLayer = 5, Random = 6 };
+
+/// One address of the interface, for ipAddrTable (IPv4) and ipAddressTable (both)
+struct SnmpIpAddress {
+    bool ipv6;
+    uint8_t addr[16];        ///< IPv4 in the first 4 bytes
+    uint8_t prefixLen;       ///< IPv4 from the netmask; IPv6 64
+    SnmpAddrOrigin origin;
+    bool preferred;          ///< false: deprecated (still valid)
+};
+
+/// Most addresses at once: one IPv4 and lwIP's LWIP_IPV6_NUM_ADDRESSES (4) IPv6 slots
+constexpr uint8_t SNMP_MAX_IP_ADDRESSES = 5;
+
+/**
+ * @brief The interface's valid addresses, in any order (the MIB sorts the rows by their index)
+ */
+struct SnmpIpState {
+    uint8_t count;
+    SnmpIpAddress addr[SNMP_MAX_IP_ADDRESSES];
+};
+
 /**
  * @brief HOST-RESOURCES-MIB and ENTITY-MIB data (static in the firmware, reached by pointer)
  */
@@ -84,6 +110,34 @@ struct SnmpHostState {
     const char* firmwareRevision;  ///< entPhysicalFirmwareRev
     const char* hardwareRevision;  ///< entPhysicalHardwareRev
 };
+
+/**
+ * @brief MIB-II protocol statistics (ip, icmp, tcp, udp groups), lwIP's own counters (MIB2_STATS),
+ *        copied once per request. The counters come first, in MIB order; the firmware fills the
+ *        constants from lwIP's options.
+ */
+struct SnmpProtoCounters {
+    // ip .3-.12, .14-.19, .23 (IPv4)
+    uint32_t ipInReceives, ipInHdrErrors, ipInAddrErrors, ipForwDatagrams, ipInUnknownProtos, ipInDiscards,
+        ipInDelivers, ipOutRequests, ipOutDiscards, ipOutNoRoutes, ipReasmReqds, ipReasmOKs, ipReasmFails,
+        ipFragOKs, ipFragFails, ipFragCreates, ipRoutingDiscards;
+    uint32_t icmpIn[13];   ///< icmpInMsgs .. icmpInAddrMaskReps (.1-.13, IPv4)
+    uint32_t icmpOut[13];  ///< icmpOutMsgs .. icmpOutAddrMaskReps (.14-.26, IPv4)
+    // tcp .5-.12, .14, .15 (IPv4 and IPv6); tcpCurrEstab is a gauge
+    uint32_t tcpActiveOpens, tcpPassiveOpens, tcpAttemptFails, tcpEstabResets, tcpCurrEstab, tcpInSegs,
+        tcpOutSegs, tcpRetransSegs, tcpInErrs, tcpOutRsts;
+    // udp .1-.4 (IPv4 and IPv6)
+    uint32_t udpInDatagrams, udpNoPorts, udpInErrors, udpOutDatagrams;
+    // Constants of the stack
+    int32_t ipDefaultTtl;     ///< lwIP IP_DEFAULT_TTL
+    int32_t ipReasmTimeoutS;  ///< lwIP IP_REASS_MAXAGE, in seconds
+    int32_t tcpRtoMinMs;      ///< Nominal, as lwIP's own SNMP agent reports it
+    int32_t tcpRtoMaxMs;      ///< Nominal, as lwIP's own SNMP agent reports it
+    int32_t tcpMaxConn;       ///< lwIP MEMP_NUM_TCP_PCB
+};
+
+/// Number of uint32_t counters at the start of SnmpProtoCounters (ipInReceives .. udpOutDatagrams)
+constexpr uint32_t SNMP_PROTO_COUNTERS = 57;
 
 /**
  * @brief The agent's counters: the status screen and the snmp group (SNMPv2-MIB, RFC 3418)
@@ -129,6 +183,8 @@ struct SnmpDeviceState {
     const SnmpStats* snmp;         ///< The agent's live counters (snmp group); nullptr: all 0
     uint32_t snmpOutTraps;         ///< Traps sent (snmpOutTraps, part of snmpOutPkts)
     const SnmpHostState* host;     ///< HOST-RESOURCES-MIB and ENTITY-MIB; nullptr: none of their objects exist
+    const SnmpProtoCounters* proto;  ///< ip, icmp, tcp and udp groups; nullptr: none of their objects exist
+    const SnmpIpState* ip;         ///< ipAddrTable and ipAddressTable rows; nullptr: both tables empty
 };
 
 /**

@@ -77,6 +77,18 @@ void netStatsPoll(uint32_t uptimeTicks);
 void netStatsCapture(SnmpInterfaceState& out);
 
 /**
+ * @brief lwIP's MIB-II counters (MIB2_STATS, switched on in include/lwipopts.h) for the ip, icmp,
+ *        tcp and udp groups, with the open TCP connections counted as lwIP's own SNMP agent does
+ */
+void netStatsCaptureProto(SnmpProtoCounters& out);
+
+/**
+ * @brief The interface's valid addresses for IP-MIB: the IPv4 address (if any) and every valid IPv6
+ *        slot, with where each came from (DHCP or static IPv4; link-local/SLAAC, DHCPv6 or static IPv6)
+ */
+void netStatsCaptureAddresses(SnmpIpState& out);
+
+/**
  * @brief Latest decoded PHY status (link, 10/100, duplex)
  */
 PhyStatus netStatsPhy();

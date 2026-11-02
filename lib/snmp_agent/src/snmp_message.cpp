@@ -36,6 +36,12 @@ SnmpValue SnmpValue::makeBytes(const uint8_t* data, size_t length) {
     return v;
 }
 
+SnmpValue SnmpValue::makeIpAddress(const uint8_t addr[4]) {
+    SnmpValue v = blankValue(BerTag::IpAddress);
+    memcpy(v.ip, addr, 4);
+    return v;
+}
+
 SnmpValue SnmpValue::makeString(const char* s) {
     SnmpValue v = blankValue(BerTag::OctetString);
     v.data = (const uint8_t*)(s ? s : "");

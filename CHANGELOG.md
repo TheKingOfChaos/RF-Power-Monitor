@@ -7,6 +7,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ## [Unreleased]
 
 ### Added
+- IP-MIB address tables: ipAddrTable (IPv4) and ipAddressTable (IPv4 and IPv6, with prefix, origin and status), rows that follow the addresses the device has at the moment, so LibreNMS shows the IPv4 and IPv6 addresses on eth0.
+- MIB-II ip, icmp, tcp and udp groups (IP-MIB, TCP-MIB, UDP-MIB scalars): lwIP's own MIB-II counters, switched on in the new `include/lwipopts.h` (196 bytes of RAM), so LibreNMS graphs IP, ICMP, TCP and UDP traffic.
 - HOST-RESOURCES-MIB (RFC 2790): CPU load of both cores (hrProcessorLoad, one-minute average), RAM and the LittleFS partition (hrStorageTable), hrMemorySize and hrSystem, so LibreNMS graphs processors, memory and storage. Also on the status screen.
 - ENTITY-MIB (RFC 6933): one inventory entry with model, hardware and firmware revision, manufacturer and serial number (the flash chip's unique ID).
 - SNMPv2-MIB complete (RFC 3418): sysORLastChange and sysORTable (the 9 MIB modules the agent implements), the snmp group (snmpInPkts ... snmpProxyDrops: the agent's own counters, so LibreNMS can graph SNMP traffic) and snmpSetSerialNo (read-only 0). A walk from the root now returns 126 objects (v2c, with an LLDP neighbour).

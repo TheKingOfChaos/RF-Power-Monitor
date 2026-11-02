@@ -81,6 +81,7 @@ struct SnmpValue {
     /// OCTET STRING with binary content (e.g. a MAC address); data must stay valid until encoded
     static SnmpValue makeBytes(const uint8_t* data, size_t length);
     static SnmpValue makeString(const char* s);
+    static SnmpValue makeIpAddress(const uint8_t addr[4]);  ///< Copies the 4 bytes
     static SnmpValue makeOid(const Oid& o);
     static SnmpValue makeNull();
     /// v2c exception: BerTag::NoSuchObject, NoSuchInstance or EndOfMibView

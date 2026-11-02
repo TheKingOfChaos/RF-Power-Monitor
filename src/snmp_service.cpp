@@ -85,6 +85,12 @@ static SnmpDeviceState captureState() {
     s.snmp = &agent.stats();
     s.snmpOutTraps = serviceStats.trapsSent;
     s.host = &hostStatsSnapshot();
+    static SnmpProtoCounters proto;  // ~250 bytes: static (core 0 only), not on the stack
+    netStatsCaptureProto(proto);
+    s.proto = &proto;
+    static SnmpIpState ip;  // ~110 bytes: static (core 0 only)
+    netStatsCaptureAddresses(ip);
+    s.ip = &ip;
     return s;
 }
 

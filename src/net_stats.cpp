@@ -7,6 +7,11 @@
 #include <string.h>
 #include <lwip/dhcp.h>
 #include <lwip/prot/dhcp.h>
+#include <lwip/stats.h>
+#include <lwip/ip4_frag.h>
+#include <lwip/priv/tcp_priv.h>
+#include "dhcp6_service.h"
+#include "ipv6_static.h"
 #include "dhcp6_service.h"
 #include "lldp_service.h"
 #include "diag.h"
@@ -169,6 +174,102 @@ void netStatsCapture(SnmpInterfaceState& out) {
     out.speedBps = phySpeedBps(phy);
     memcpy(out.mac, mac, 6);
     out.lastChangeTicks = lastChangeTicks;
+}
+
+void netStatsCaptureProto(SnmpProtoCounters& out) {
+    DriverLock lock;  // lwIP counts in its own context, and owns the TCP connection list
+    const stats_mib2& m = lwip_stats.mib2;
+    out.ipInReceives = m.ipinreceives;
+    out.ipInHdrErrors = m.ipinhdrerrors;
+    out.ipInAddrErrors = m.ipinaddrerrors;
+    out.ipForwDatagrams = m.ipforwdatagrams;
+    out.ipInUnknownProtos = m.ipinunknownprotos;
+    out.ipInDiscards = m.ipindiscards;
+    out.ipInDelivers = m.ipindelivers;
+    out.ipOutRequests = m.ipoutrequests;
+    out.ipOutDiscards = m.ipoutdiscards;
+    out.ipOutNoRoutes = m.ipoutnoroutes;
+    out.ipReasmReqds = m.ipreasmreqds;
+    out.ipReasmOKs = m.ipreasmoks;
+    out.ipReasmFails = m.ipreasmfails;
+    out.ipFragOKs = m.ipfragoks;
+    out.ipFragFails = m.ipfragfails;
+    out.ipFragCreates = m.ipfragcreates;
+    out.ipRoutingDiscards = 0;  // lwIP has no such counter; it does not route
+
+    // icmpIn: Msgs, Errors, DestUnreachs, TimeExcds, ParmProbs, SrcQuenchs, Redirects, Echos, EchoReps,
+    // Timestamps, TimestampReps, AddrMasks, AddrMaskReps
+    const uint32_t in[13] = {m.icmpinmsgs,      m.icmpinerrors,       m.icmpindestunreachs, m.icmpintimeexcds,
+                             m.icmpinparmprobs, m.icmpinsrcquenchs,   m.icmpinredirects,    m.icmpinechos,
+                             m.icmpinechoreps,  m.icmpintimestamps,   m.icmpintimestampreps, m.icmpinaddrmasks,
+                             m.icmpinaddrmaskreps};
+    memcpy(out.icmpIn, in, sizeof(in));
+    // icmpOut in the same order; lwIP never sends the other types, so their counters are truly 0
+    memset(out.icmpOut, 0, sizeof(out.icmpOut));
+    out.icmpOut[0] = m.icmpoutmsgs;
+    out.icmpOut[1] = m.icmpouterrors;
+    out.icmpOut[2] = m.icmpoutdestunreachs;
+    out.icmpOut[3] = m.icmpouttimeexcds;
+    out.icmpOut[7] = m.icmpoutechos;
+    out.icmpOut[8] = m.icmpoutechoreps;
+
+    out.tcpActiveOpens = m.tcpactiveopens;
+    out.tcpPassiveOpens = m.tcppassiveopens;
+    out.tcpAttemptFails = m.tcpattemptfails;
+    out.tcpEstabResets = m.tcpestabresets;
+    out.tcpInSegs = m.tcpinsegs;
+    out.tcpOutSegs = m.tcpoutsegs;
+    out.tcpRetransSegs = m.tcpretranssegs;
+    out.tcpInErrs = m.tcpinerrs;
+    out.tcpOutRsts = m.tcpoutrsts;
+    uint32_t established = 0;
+    for (tcp_pcb* pcb = tcp_active_pcbs; pcb != nullptr; pcb = pcb->next) {
+        if (pcb->state == ESTABLISHED || pcb->state == CLOSE_WAIT) established++;
+    }
+    out.tcpCurrEstab = established;
+
+    out.udpInDatagrams = m.udpindatagrams;
+    out.udpNoPorts = m.udpnoports;
+    out.udpInErrors = m.udpinerrors;
+    out.udpOutDatagrams = m.udpoutdatagrams;
+
+    out.ipDefaultTtl = IP_DEFAULT_TTL;
+    out.ipReasmTimeoutS = IP_REASS_MAXAGE * IP_TMR_INTERVAL / 1000;
+    out.tcpRtoMinMs = 1000;   // lwIP's snmp_mib2_tcp.c reports these two as nominal values
+    out.tcpRtoMaxMs = 60000;
+    out.tcpMaxConn = MEMP_NUM_TCP_PCB;
+}
+
+void netStatsCaptureAddresses(SnmpIpState& out) {
+    memset(&out, 0, sizeof(out));
+    if (statsNetif == nullptr) return;
+    DriverLock lock;  // lwIP changes the addresses in its own context (DHCP, SLAAC, DAD)
+    const ip4_addr_t* v4 = netif_ip4_addr(statsNetif);
+    if (!ip4_addr_isany(v4)) {
+        SnmpIpAddress& a = out.addr[out.count++];
+        a.ipv6 = false;
+        memcpy(a.addr, &v4->addr, 4);  // network byte order
+        uint32_t mask = lwip_ntohl(netif_ip4_netmask(statsNetif)->addr);
+        a.prefixLen = 0;
+        while (a.prefixLen < 32 && (mask & (0x80000000u >> a.prefixLen))) a.prefixLen++;
+        a.origin = dhcp_supplied_address(statsNetif) ? SnmpAddrOrigin::Dhcp : SnmpAddrOrigin::Manual;
+        a.preferred = true;
+    }
+#if LWIP_IPV6
+    for (int i = 0; i < LWIP_IPV6_NUM_ADDRESSES && out.count < SNMP_MAX_IP_ADDRESSES; i++) {
+        uint8_t state = netif_ip6_addr_state(statsNetif, i);
+        if (!ip6_addr_isvalid(state)) continue;  // empty, tentative or duplicate: not usable
+        SnmpIpAddress& a = out.addr[out.count++];
+        a.ipv6 = true;
+        memcpy(a.addr, netif_ip6_addr(statsNetif, i)->addr, 16);  // words in network order
+        a.prefixLen = 64;  // link-local, SLAAC and the static address are /64; lwIP keeps no prefix length
+        // Link-local and SLAAC addresses are formed from the MAC (EUI-64): linklayer
+        a.origin = ipv6StaticIsSlot(i) ? SnmpAddrOrigin::Manual
+                   : dhcp6IsSlot(i)    ? SnmpAddrOrigin::Dhcp
+                                       : SnmpAddrOrigin::LinkLayer;
+        a.preferred = ip6_addr_ispreferred(state);
+    }
+#endif
 }
 
 bool netStatsHasRoutableIPv6() {

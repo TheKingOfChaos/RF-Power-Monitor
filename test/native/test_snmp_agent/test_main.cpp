@@ -10,6 +10,7 @@
 
 static SnmpDeviceState state;
 static SnmpHostState host;
+static SnmpProtoCounters proto;
 /// The object that sorts last: snmpSetSerialNo (SNMPv2-MIB) const char* const LAST_OID = "1.3.6.1.6.3.1.1.6.1.0";
 static uint8_t resp[SNMP_MAX_MESSAGE];
 /// The object that sorts last: snmpSetSerialNo (SNMPv2-MIB)
@@ -60,6 +61,17 @@ void setUp() {
     host.firmwareRevision = "3.1.0";
     host.hardwareRevision = "W5500-EVB-Pico-PoE + carrier rev 1.1";
     state.host = &host;
+    // Every counter a different value, so a mixed-up mapping shows
+    uint32_t* field = &proto.ipInReceives;
+    for (uint32_t i = 0; i < SNMP_PROTO_COUNTERS; i++) field[i] = 1000 + i;
+    proto.ipDefaultTtl = 255;
+    proto.ipReasmTimeoutS = 15;
+    proto.tcpRtoMinMs = 1000;
+    proto.tcpRtoMaxMs = 60000;
+    proto.tcpMaxConn = 5;
+    state.proto = &proto;
+    // No IP address rows by default: the walk tests compare with the static table (mibEntry order)
+    state.ip = nullptr;
 }
 
 void tearDown() {}
@@ -164,6 +176,11 @@ static Reply decode(const uint8_t* buf, size_t len) {
             TEST_ASSERT_TRUE(vb.readOctetString(s, slen));
             memcpy(r.strings[i], s, slen < 63 ? slen : 63);
             break;
+        case BerTag::IpAddress:  // the 4 bytes, raw, in strings
+            TEST_ASSERT_TRUE(vb.readOctetString(s, slen, BerTag::IpAddress));
+            TEST_ASSERT_EQUAL_size_t(4, slen);
+            memcpy(r.strings[i], s, 4);
+            break;
         case BerTag::ObjectId: TEST_ASSERT_TRUE(vb.readOid(r.oids[i])); break;
         case BerTag::NoSuchObject:
         case BerTag::NoSuchInstance:
@@ -233,7 +250,7 @@ static void test_mib_is_strictly_sorted() {
 static void test_mib_contains_expected_objects() {
     // lldpLocPortTable 2-4, lldpRemTable 4-12, system 1-8, sysORTable, ifNumber, ifTable 1-22, snmp group,
     // ifXTable 1-19, enterprise 1-6, snmpSetSerialNo
-    static char expected[200][48];
+    static char expected[320][48];
     uint16_t n = 0;
     for (int i = 2; i <= 4; i++) snprintf(expected[n++], 48, "1.0.8802.1.1.2.1.3.7.1.%d.1", i);
     for (int i = 4; i <= 12; i++) snprintf(expected[n++], 48, "1.0.8802.1.1.2.1.4.1.1.%d.0.1.1", i);
@@ -243,6 +260,14 @@ static void test_mib_contains_expected_objects() {
     }
     snprintf(expected[n++], 48, "1.3.6.1.2.1.2.1.0");
     for (int i = 1; i <= 22; i++) snprintf(expected[n++], 48, "1.3.6.1.2.1.2.2.1.%d.1", i);
+    // ip 1-19 and 23, icmp 1-26, tcp 1-12, 14, 15, udp 1-4 (MIB-II scalars)
+    for (int i = 1; i <= 19; i++) snprintf(expected[n++], 48, "1.3.6.1.2.1.4.%d.0", i);
+    snprintf(expected[n++], 48, "1.3.6.1.2.1.4.23.0");
+    for (int i = 1; i <= 26; i++) snprintf(expected[n++], 48, "1.3.6.1.2.1.5.%d.0", i);
+    for (int i = 1; i <= 15; i++) {
+        if (i != 13) snprintf(expected[n++], 48, "1.3.6.1.2.1.6.%d.0", i);  // 13 is tcpConnTable
+    }
+    for (int i = 1; i <= 4; i++) snprintf(expected[n++], 48, "1.3.6.1.2.1.7.%d.0", i);
     for (int i = 1; i <= 32; i++) {
         if (i != 7 && i != 23) snprintf(expected[n++], 48, "1.3.6.1.2.1.11.%d.0", i);  // 7 and 23 never assigned
     }
@@ -514,6 +539,283 @@ static void test_host_resources_absent_without_host_state() {
     const char* before[] = {"1.3.6.1.2.1.11.32.0"};  // snmpProxyDrops: then HOST-RESOURCES, all skipped
     r = requestV2c(agent, BerTag::GetNextRequest, before, 1);
     TEST_ASSERT_EQUAL_STRING("1.3.6.1.2.1.31.1.1.1.1.1", str(r.names[0]));
+}
+
+// ---- IP, ICMP, TCP and UDP scalars (MIB-II counters from lwIP) ----
+
+/// Get one scalar with a v2c Get; returns the reply with its single varbind
+static Reply getOne(SnmpAgent& agent, const char* text) {
+    const char* oids[] = {text};
+    Reply r = requestV2c(agent, BerTag::GetRequest, oids, 1);
+    TEST_ASSERT_EQUAL_INT32_MESSAGE(0, r.errorStatus, text);
+    return r;
+}
+
+static void test_ip_scalars_from_state() {
+    SnmpAgent agent("public");
+    Reply r = getOne(agent, "1.3.6.1.2.1.4.1.0");
+    TEST_ASSERT_EQUAL_HEX8(BerTag::Integer, r.tags[0]);
+    TEST_ASSERT_EQUAL_INT32(2, r.ints[0]);  // ipForwarding: notForwarding
+    TEST_ASSERT_EQUAL_INT32(255, getOne(agent, "1.3.6.1.2.1.4.2.0").ints[0]);
+    TEST_ASSERT_EQUAL_INT32(15, getOne(agent, "1.3.6.1.2.1.4.13.0").ints[0]);  // ipReasmTimeout
+    // Counters .3-.12 and .14-.19 in MIB order: ipInReceives (.3) is the struct's first field
+    static const int COUNTERS[] = {3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 14, 15, 16, 17, 18, 19};
+    for (uint32_t i = 0; i < 16; i++) {
+        char text[32];
+        snprintf(text, sizeof(text), "1.3.6.1.2.1.4.%d.0", COUNTERS[i]);
+        r = getOne(agent, text);
+        TEST_ASSERT_EQUAL_HEX8_MESSAGE(BerTag::Counter32, r.tags[0], text);
+        TEST_ASSERT_EQUAL_UINT32_MESSAGE(1000 + i, r.uints[0], text);
+    }
+    r = getOne(agent, "1.3.6.1.2.1.4.23.0");  // ipRoutingDiscards
+    TEST_ASSERT_EQUAL_UINT32(1016, r.uints[0]);
+}
+
+static void test_icmp_scalars_map_in_and_out_arrays() {
+    SnmpAgent agent("public");
+    for (int i = 1; i <= 26; i++) {
+        char text[32];
+        snprintf(text, sizeof(text), "1.3.6.1.2.1.5.%d.0", i);
+        Reply r = getOne(agent, text);
+        TEST_ASSERT_EQUAL_HEX8_MESSAGE(BerTag::Counter32, r.tags[0], text);
+        uint32_t expected = i <= 13 ? proto.icmpIn[i - 1] : proto.icmpOut[i - 14];
+        TEST_ASSERT_EQUAL_UINT32_MESSAGE(expected, r.uints[0], text);
+    }
+}
+
+static void test_tcp_scalars_from_state() {
+    SnmpAgent agent("public");
+    TEST_ASSERT_EQUAL_INT32(4, getOne(agent, "1.3.6.1.2.1.6.1.0").ints[0]);  // vanj
+    TEST_ASSERT_EQUAL_INT32(1000, getOne(agent, "1.3.6.1.2.1.6.2.0").ints[0]);
+    TEST_ASSERT_EQUAL_INT32(60000, getOne(agent, "1.3.6.1.2.1.6.3.0").ints[0]);
+    TEST_ASSERT_EQUAL_INT32(5, getOne(agent, "1.3.6.1.2.1.6.4.0").ints[0]);
+    TEST_ASSERT_EQUAL_UINT32(proto.tcpActiveOpens, getOne(agent, "1.3.6.1.2.1.6.5.0").uints[0]);
+    TEST_ASSERT_EQUAL_UINT32(proto.tcpPassiveOpens, getOne(agent, "1.3.6.1.2.1.6.6.0").uints[0]);
+    TEST_ASSERT_EQUAL_UINT32(proto.tcpAttemptFails, getOne(agent, "1.3.6.1.2.1.6.7.0").uints[0]);
+    TEST_ASSERT_EQUAL_UINT32(proto.tcpEstabResets, getOne(agent, "1.3.6.1.2.1.6.8.0").uints[0]);
+    TEST_ASSERT_EQUAL_UINT32(proto.tcpInSegs, getOne(agent, "1.3.6.1.2.1.6.10.0").uints[0]);
+    TEST_ASSERT_EQUAL_UINT32(proto.tcpOutSegs, getOne(agent, "1.3.6.1.2.1.6.11.0").uints[0]);
+    TEST_ASSERT_EQUAL_UINT32(proto.tcpRetransSegs, getOne(agent, "1.3.6.1.2.1.6.12.0").uints[0]);
+    TEST_ASSERT_EQUAL_UINT32(proto.tcpInErrs, getOne(agent, "1.3.6.1.2.1.6.14.0").uints[0]);
+    TEST_ASSERT_EQUAL_UINT32(proto.tcpOutRsts, getOne(agent, "1.3.6.1.2.1.6.15.0").uints[0]);
+}
+
+static void test_tcp_curr_estab_is_gauge32() {
+    SnmpAgent agent("public");
+    proto.tcpCurrEstab = 2;
+    Reply r = getOne(agent, "1.3.6.1.2.1.6.9.0");
+    TEST_ASSERT_EQUAL_HEX8(BerTag::Gauge32, r.tags[0]);
+    TEST_ASSERT_EQUAL_UINT32(2, r.uints[0]);
+}
+
+static void test_udp_scalars_from_state() {
+    SnmpAgent agent("public");
+    TEST_ASSERT_EQUAL_UINT32(proto.udpInDatagrams, getOne(agent, "1.3.6.1.2.1.7.1.0").uints[0]);
+    TEST_ASSERT_EQUAL_UINT32(proto.udpNoPorts, getOne(agent, "1.3.6.1.2.1.7.2.0").uints[0]);
+    TEST_ASSERT_EQUAL_UINT32(proto.udpInErrors, getOne(agent, "1.3.6.1.2.1.7.3.0").uints[0]);
+    TEST_ASSERT_EQUAL_UINT32(proto.udpOutDatagrams, getOne(agent, "1.3.6.1.2.1.7.4.0").uints[0]);
+}
+
+static void test_protocol_counters_absent_without_proto_state() {
+    SnmpAgent agent("public");
+    state.proto = nullptr;
+    const char* oids[] = {"1.3.6.1.2.1.4.3.0", "1.3.6.1.2.1.5.1.0", "1.3.6.1.2.1.6.9.0", "1.3.6.1.2.1.7.1.0"};
+    Reply r = requestV2c(agent, BerTag::GetRequest, oids, 4);
+    for (int i = 0; i < 4; i++) TEST_ASSERT_EQUAL_HEX8(BerTag::NoSuchInstance, r.tags[i]);
+    const char* after[] = {"1.3.6.1.2.1.2.2.1.22.1"};  // ifSpecific: then ip..udp, all skipped
+    r = requestV2c(agent, BerTag::GetNextRequest, after, 1);
+    TEST_ASSERT_EQUAL_STRING("1.3.6.1.2.1.11.1.0", str(r.names[0]));
+}
+
+// ---- IP-MIB addresses: rows that change at run time ----
+
+static SnmpIpState ips;
+
+static void setIpv6(SnmpIpAddress& a, const char* hex16, SnmpAddrOrigin origin, bool preferred = true) {
+    a.ipv6 = true;
+    for (int i = 0; i < 16; i++) {
+        unsigned v;
+        sscanf(hex16 + 2 * i, "%2x", &v);
+        a.addr[i] = (uint8_t)v;
+    }
+    a.prefixLen = 64;
+    a.origin = origin;
+    a.preferred = preferred;
+}
+
+/// The device's addresses, deliberately not in index order: a global IPv6, IPv4, link-local
+static void withAddresses() {
+    memset(&ips, 0, sizeof(ips));
+    setIpv6(ips.addr[0], "fd16d8334f0e3ece1cb2cffffe4ea22c", SnmpAddrOrigin::LinkLayer);
+    ips.addr[1].ipv6 = false;
+    const uint8_t v4[4] = {10, 132, 0, 58};
+    memcpy(ips.addr[1].addr, v4, 4);
+    ips.addr[1].prefixLen = 22;
+    ips.addr[1].origin = SnmpAddrOrigin::Dhcp;
+    ips.addr[1].preferred = true;
+    setIpv6(ips.addr[2], "fe800000000000001cb2cffffe4ea22c", SnmpAddrOrigin::LinkLayer);
+    ips.count = 3;
+    state.ip = &ips;
+}
+
+static const char* const V4_ROW = "1.4.10.132.0.58";  // ipAddressAddrType ipv4(1), length 4, address
+static const char* const LL_ROW = "2.16.254.128.0.0.0.0.0.0.28.178.207.255.254.78.162.44";
+static const char* const GLOBAL_ROW = "2.16.253.22.216.51.79.14.62.206.28.178.207.255.254.78.162.44";
+
+/// The OID of ipAddressTable column c, row
+static const char* addrOid(int column, const char* row) {
+    static char buf[8][128];  // up to 8 in one request
+    static int n = 0;
+    n = (n + 1) % 8;
+    snprintf(buf[n], sizeof(buf[n]), "1.3.6.1.2.1.4.34.1.%d.%s", column, row);
+    return buf[n];
+}
+
+static void test_ip_tables_empty_without_addresses() {
+    SnmpAgent agent("public");
+    const char* before[] = {"1.3.6.1.2.1.4.19.0"};  // ipFragCreates: the tables would follow
+    Reply r = requestV2c(agent, BerTag::GetNextRequest, before, 1);
+    TEST_ASSERT_EQUAL_STRING("1.3.6.1.2.1.4.23.0", str(r.names[0]));
+    const char* routing[] = {"1.3.6.1.2.1.4.23.0"};
+    r = requestV2c(agent, BerTag::GetNextRequest, routing, 1);
+    TEST_ASSERT_EQUAL_STRING("1.3.6.1.2.1.5.1.0", str(r.names[0]));
+    // An address the device no longer has: v1 noSuchName, v2c noSuchInstance (the column exists)
+    const char* old[] = {"1.3.6.1.2.1.4.20.1.1.10.132.0.58"};
+    r = request(agent, BerTag::GetRequest, old, 1);
+    TEST_ASSERT_EQUAL_INT32((int32_t)SnmpError::NoSuchName, r.errorStatus);
+    r = requestV2c(agent, BerTag::GetRequest, old, 1);
+    TEST_ASSERT_EQUAL_HEX8(BerTag::NoSuchInstance, r.tags[0]);
+    withAddresses();
+    ips.count = 0;  // a state with no rows behaves the same
+    r = requestV2c(agent, BerTag::GetNextRequest, before, 1);
+    TEST_ASSERT_EQUAL_STRING("1.3.6.1.2.1.4.23.0", str(r.names[0]));
+}
+
+static void test_ipaddrtable_row_for_ipv4() {
+    SnmpAgent agent("public");
+    withAddresses();
+    const char* oids[] = {"1.3.6.1.2.1.4.20.1.1.10.132.0.58", "1.3.6.1.2.1.4.20.1.2.10.132.0.58",
+                          "1.3.6.1.2.1.4.20.1.3.10.132.0.58", "1.3.6.1.2.1.4.20.1.4.10.132.0.58",
+                          "1.3.6.1.2.1.4.20.1.5.10.132.0.58"};
+    Reply r = request(agent, BerTag::GetRequest, oids, 5);
+    TEST_ASSERT_EQUAL_INT32(0, r.errorStatus);
+    const uint8_t addr[4] = {10, 132, 0, 58}, mask[4] = {255, 255, 252, 0};
+    TEST_ASSERT_EQUAL_HEX8(BerTag::IpAddress, r.tags[0]);
+    TEST_ASSERT_EQUAL_MEMORY(addr, r.strings[0], 4);
+    TEST_ASSERT_EQUAL_INT32(1, r.ints[1]);  // ifIndex
+    TEST_ASSERT_EQUAL_MEMORY(mask, r.strings[2], 4);
+    TEST_ASSERT_EQUAL_INT32(1, r.ints[3]);  // broadcast: host part all ones
+    TEST_ASSERT_EQUAL_INT32(65535, r.ints[4]);
+    // Only IPv4 rows: the column ends after the one address
+    const char* next[] = {"1.3.6.1.2.1.4.20.1.1.10.132.0.58"};
+    r = requestV2c(agent, BerTag::GetNextRequest, next, 1);
+    TEST_ASSERT_EQUAL_STRING("1.3.6.1.2.1.4.20.1.2.10.132.0.58", str(r.names[0]));
+}
+
+static void test_ipaddresstable_rows_sorted_ipv4_then_ipv6() {
+    SnmpAgent agent("public");
+    withAddresses();
+    char current[128];
+    strcpy(current, "1.3.6.1.2.1.4.34.1.3");  // ipAddressIfIndex
+    const char* expected[] = {addrOid(3, V4_ROW), addrOid(3, GLOBAL_ROW), addrOid(3, LL_ROW)};
+    static char want[3][128];
+    for (int i = 0; i < 3; i++) strcpy(want[i], expected[i]);
+    for (int i = 0; i < 3; i++) {
+        const char* oids[] = {current};
+        Reply r = requestV2c(agent, BerTag::GetNextRequest, oids, 1);
+        TEST_ASSERT_EQUAL_STRING(want[i], str(r.names[0]));
+        TEST_ASSERT_EQUAL_INT32(1, r.ints[0]);
+        strcpy(current, str(r.names[0]));
+    }
+    // fd16:: sorts before fe80:: (index bytes compare as numbers)
+    const char* oids[] = {current};
+    Reply r = requestV2c(agent, BerTag::GetNextRequest, oids, 1);
+    TEST_ASSERT_EQUAL_STRING(addrOid(4, V4_ROW), str(r.names[0]));  // next column, first row
+}
+
+static void test_ipaddress_row_values() {
+    SnmpAgent agent("public");
+    withAddresses();
+    ips.addr[0].preferred = false;  // a deprecated SLAAC address
+    const char* oids[] = {addrOid(4, V4_ROW), addrOid(6, V4_ROW), addrOid(7, V4_ROW), addrOid(7, GLOBAL_ROW),
+                          addrOid(6, LL_ROW), addrOid(8, LL_ROW), addrOid(10, LL_ROW), addrOid(11, LL_ROW)};
+    Reply r = requestV2c(agent, BerTag::GetRequest, oids, 8);
+    TEST_ASSERT_EQUAL_INT32(0, r.errorStatus);
+    TEST_ASSERT_EQUAL_INT32(1, r.ints[0]);  // unicast
+    TEST_ASSERT_EQUAL_INT32(4, r.ints[1]);  // origin dhcp
+    TEST_ASSERT_EQUAL_INT32(1, r.ints[2]);  // preferred
+    TEST_ASSERT_EQUAL_INT32(2, r.ints[3]);  // deprecated
+    TEST_ASSERT_EQUAL_INT32(5, r.ints[4]);  // linklayer
+    TEST_ASSERT_EQUAL_HEX8(BerTag::TimeTicks, r.tags[5]);
+    TEST_ASSERT_EQUAL_INT32(1, r.ints[6]);  // rowStatus active
+    TEST_ASSERT_EQUAL_INT32(2, r.ints[7]);  // storageType volatile
+}
+
+static void test_ipaddress_prefix_pointer_carries_prefix_length() {
+    SnmpAgent agent("public");
+    withAddresses();
+    const char* oids[] = {addrOid(5, V4_ROW), addrOid(5, GLOBAL_ROW)};
+    Reply r = requestV2c(agent, BerTag::GetRequest, oids, 2);
+    TEST_ASSERT_EQUAL_INT32(0, r.errorStatus);
+    // ipAddressPrefixOrigin.ifIndex.type.length.prefix.prefixLength: the network, then its length
+    TEST_ASSERT_EQUAL_STRING("1.3.6.1.2.1.4.32.1.5.1.1.4.10.132.0.0.22", str(r.oids[0]));
+    TEST_ASSERT_EQUAL_STRING("1.3.6.1.2.1.4.32.1.5.1.2.16.253.22.216.51.79.14.62.206.0.0.0.0.0.0.0.0.64",
+                             str(r.oids[1]));
+}
+
+static void test_dynamic_rows_getnext_continues_after_a_removed_row() {
+    SnmpAgent agent("public");
+    withAddresses();
+    // The manager is at the global address's row; then the address goes away
+    const char* at[] = {addrOid(3, GLOBAL_ROW)};
+    ips.addr[0] = ips.addr[2];  // fe80:: takes its place
+    ips.count = 2;
+    Reply r = requestV2c(agent, BerTag::GetNextRequest, at, 1);
+    TEST_ASSERT_EQUAL_STRING(addrOid(3, LL_ROW), str(r.names[0]));
+    // And from a row past every remaining one: the next column
+    const char* last[] = {addrOid(3, "2.16.255.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1")};
+    r = requestV2c(agent, BerTag::GetNextRequest, last, 1);
+    TEST_ASSERT_EQUAL_STRING(addrOid(4, V4_ROW), str(r.names[0]));
+}
+
+static void test_dynamic_rows_getbulk_walks_columns_in_order() {
+    SnmpAgent agent("public");
+    withAddresses();
+    const char* oids[] = {"1.3.6.1.2.1.4.34.1"};
+    Reply r = bulk(agent, 0, 16, oids, 1);
+    TEST_ASSERT_EQUAL_INT32(0, r.errorStatus);
+    TEST_ASSERT_EQUAL_UINT8(16, r.count);
+    for (uint8_t i = 1; i < r.count; i++) {
+        TEST_ASSERT_LESS_THAN_MESSAGE(0, oidCompare(r.names[i - 1], r.names[i]), str(r.names[i]));
+    }
+    TEST_ASSERT_EQUAL_STRING(addrOid(3, V4_ROW), str(r.names[0]));
+    TEST_ASSERT_EQUAL_STRING(addrOid(4, V4_ROW), str(r.names[3]));  // 3 rows per column
+}
+
+static void test_ipv6_index_is_28_arcs() {
+    SnmpAgent agent("public");
+    withAddresses();
+    const char* oids[] = {addrOid(3, LL_ROW)};
+    Reply r = requestV2c(agent, BerTag::GetRequest, oids, 1);
+    TEST_ASSERT_EQUAL_INT32(1, r.ints[0]);
+    TEST_ASSERT_EQUAL_UINT8(28, r.names[0].length);
+}
+
+static void test_ip_address_walk_in_v1_sees_every_row() {
+    SnmpAgent agent("public");
+    withAddresses();
+    char current[128] = "1.3.6.1.2.1.4.19.0";
+    int rows = 0;
+    for (;;) {
+        const char* oids[] = {current};
+        Reply r = request(agent, BerTag::GetNextRequest, oids, 1);
+        TEST_ASSERT_EQUAL_INT32(0, r.errorStatus);
+        strcpy(current, str(r.names[0]));
+        if (strncmp(current, "1.3.6.1.2.1.4.", 14) != 0 || strcmp(current, "1.3.6.1.2.1.4.34.2") > 0) break;
+        if (strncmp(current, "1.3.6.1.2.1.4.20.", 17) == 0 || strncmp(current, "1.3.6.1.2.1.4.34.", 17) == 0) rows++;
+        TEST_ASSERT_TRUE_MESSAGE(rows < 100, "walk did not end");
+    }
+    TEST_ASSERT_EQUAL_INT(5 + 9 * 3, rows);  // ipAddrTable: 5 columns x 1; ipAddressTable: 9 columns x 3
 }
 
 // ---- ENTITY-MIB (RFC 6933) ----
@@ -1597,6 +1899,21 @@ int main() {
     RUN_TEST(test_hr_device_rows_describe_both_cores);
     RUN_TEST(test_host_resources_absent_without_host_state);
     RUN_TEST(test_entity_row_names_the_device);
+    RUN_TEST(test_ip_scalars_from_state);
+    RUN_TEST(test_icmp_scalars_map_in_and_out_arrays);
+    RUN_TEST(test_tcp_scalars_from_state);
+    RUN_TEST(test_tcp_curr_estab_is_gauge32);
+    RUN_TEST(test_udp_scalars_from_state);
+    RUN_TEST(test_protocol_counters_absent_without_proto_state);
+    RUN_TEST(test_ip_tables_empty_without_addresses);
+    RUN_TEST(test_ipaddrtable_row_for_ipv4);
+    RUN_TEST(test_ipaddresstable_rows_sorted_ipv4_then_ipv6);
+    RUN_TEST(test_ipaddress_row_values);
+    RUN_TEST(test_ipaddress_prefix_pointer_carries_prefix_length);
+    RUN_TEST(test_dynamic_rows_getnext_continues_after_a_removed_row);
+    RUN_TEST(test_dynamic_rows_getbulk_walks_columns_in_order);
+    RUN_TEST(test_ipv6_index_is_28_arcs);
+    RUN_TEST(test_ip_address_walk_in_v1_sees_every_row);
     RUN_TEST(test_mib_get_and_get_next);
     RUN_TEST(test_mib_get_returns_the_instance_and_value);
     RUN_TEST(test_mib_get_absent_instance_is_false);

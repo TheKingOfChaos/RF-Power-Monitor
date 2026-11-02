@@ -102,6 +102,27 @@ int main(int argc, char** argv) {
         static const SnmpHostState HOST = {262144, 131000, true, 262144, 16384, {7, 1}, "E6614103E7452D2F", "3.1.0",
                                            "W5500-EVB-Pico-PoE + carrier rev 1.1"};
         state.host = &HOST;
+        static SnmpProtoCounters proto;
+        proto.ipInReceives = 5000;
+        proto.icmpIn[7] = 3;  // icmpInEchos
+        proto.tcpCurrEstab = 1;
+        proto.udpInDatagrams = 42;
+        proto.ipDefaultTtl = 255;
+        proto.ipReasmTimeoutS = 15;
+        proto.tcpRtoMinMs = 1000;
+        proto.tcpRtoMaxMs = 60000;
+        proto.tcpMaxConn = 5;
+        state.proto = &proto;
+        // 10.132.0.58/22 from DHCP, and a SLAAC address (fd16:d833:4f0e:3ece:1cb2:cfff:fe4e:a22c/64)
+        static SnmpIpState ip = {2,
+                                 {{false, {10, 132, 0, 58}, 22, SnmpAddrOrigin::Dhcp, true},
+                                  {true,
+                                   {0xfd, 0x16, 0xd8, 0x33, 0x4f, 0x0e, 0x3e, 0xce, 0x1c, 0xb2, 0xcf, 0xff, 0xfe, 0x4e,
+                                    0xa2, 0x2c},
+                                   64,
+                                   SnmpAddrOrigin::LinkLayer,
+                                   true}}};
+        state.ip = &ip;
 
         size_t len = agent.handle(in, (size_t)n, out, sizeof(out), state);
         if (len) sendto(fd, out, len, 0, (sockaddr*)&peer, peerLen);

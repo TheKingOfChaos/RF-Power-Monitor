@@ -1,5 +1,7 @@
 #include "snmp_mib.h"
 
+#include <string.h>
+
 // ---- system group (RFC 1213) ----
 
 static SnmpValue getSysDescr(const SnmpDeviceState& s) { return SnmpValue::makeString(s.sysDescr); }
@@ -352,6 +354,130 @@ static SnmpValue getEntModelName(const SnmpDeviceState& s) { return hostString(s
 static SnmpValue getEntIsFRU(const SnmpDeviceState& s) { return s.host ? integer(2) : noInstance(); }  // false
 static SnmpValue getEntLastChangeTime(const SnmpDeviceState& s) { return s.host ? timeTicks(0) : noInstance(); }
 
+// ---- ip, icmp, tcp and udp groups (MIB-II: RFC 4293, 4022, 4113): lwIP's counters ----
+
+template <uint32_t SnmpProtoCounters::*FIELD> static SnmpValue getProtoCounter(const SnmpDeviceState& s) {
+    return s.proto ? counter32(s.proto->*FIELD) : noInstance();
+}
+template <int32_t SnmpProtoCounters::*FIELD> static SnmpValue getProtoConstant(const SnmpDeviceState& s) {
+    return s.proto ? integer(s.proto->*FIELD) : noInstance();
+}
+/// icmpIn (OUT false) or icmpOut (OUT true) counter I, in MIB order
+template <bool OUT, uint8_t I> static SnmpValue getIcmp(const SnmpDeviceState& s) {
+    if (!s.proto) return noInstance();
+    return counter32(OUT ? s.proto->icmpOut[I] : s.proto->icmpIn[I]);
+}
+static SnmpValue getIpForwarding(const SnmpDeviceState& s) { return s.proto ? integer(2) : noInstance(); }  // host
+static SnmpValue getTcpRtoAlgorithm(const SnmpDeviceState& s) { return s.proto ? integer(4) : noInstance(); }  // vanj
+static SnmpValue getTcpCurrEstab(const SnmpDeviceState& s) {
+    return s.proto ? gauge(s.proto->tcpCurrEstab) : noInstance();
+}
+
+// ---- IP-MIB addresses (RFC 4293): rows built from the state's addresses at each request ----
+
+/**
+ * @brief A table column whose rows change at run time: one row per address in s.ip
+ */
+struct MibDynamicColumn {
+    Oid column;
+    /// The row's index arcs; false if this address has no row in this table (IPv6 in ipAddrTable)
+    bool (*rowIndex)(const SnmpIpAddress& a, Oid& index);
+    SnmpValue (*get)(const SnmpIpAddress& a);
+};
+
+static void appendArc(Oid& o, uint32_t arc) {
+    if (o.length < OID_MAX_ARCS) o.arcs[o.length++] = arc;
+}
+
+/// ipAddrTable: IPv4 rows, indexed by the address
+static bool ipv4Index(const SnmpIpAddress& a, Oid& index) {
+    if (a.ipv6) return false;
+    index.length = 0;
+    for (int i = 0; i < 4; i++) appendArc(index, a.addr[i]);
+    return true;
+}
+
+/// ipAddressTable (InetAddressType, InetAddress): ipv4(1).4.bytes or ipv6(2).16.bytes
+static bool inetIndex(const SnmpIpAddress& a, Oid& index) {
+    uint8_t len = a.ipv6 ? 16 : 4;
+    index.length = 0;
+    appendArc(index, a.ipv6 ? 2 : 1);
+    appendArc(index, len);
+    for (uint8_t i = 0; i < len; i++) appendArc(index, a.addr[i]);
+    return true;
+}
+
+/// The address with only its first prefixLen bits kept
+static void network(const SnmpIpAddress& a, uint8_t* out) {
+    uint8_t len = a.ipv6 ? 16 : 4;
+    for (uint8_t i = 0; i < len; i++) {
+        int bits = (int)a.prefixLen - 8 * i;
+        uint8_t mask = bits >= 8 ? 0xFF : (bits <= 0 ? 0 : (uint8_t)(0xFF << (8 - bits)));
+        out[i] = a.addr[i] & mask;
+    }
+}
+
+static SnmpValue getAdEntAddr(const SnmpIpAddress& a) { return SnmpValue::makeIpAddress(a.addr); }
+static SnmpValue getAddrIfIndex(const SnmpIpAddress&) { return integer(1); }
+static SnmpValue getAdEntNetMask(const SnmpIpAddress& a) {
+    SnmpIpAddress ones = a;
+    memset(ones.addr, 0xFF, 4);
+    uint8_t mask[4];
+    network(ones, mask);
+    return SnmpValue::makeIpAddress(mask);
+}
+static SnmpValue getAdEntBcastAddr(const SnmpIpAddress&) { return integer(1); }  // broadcast: host part all ones
+static SnmpValue getAdEntReasmMaxSize(const SnmpIpAddress&) { return integer(65535); }
+static SnmpValue getAddressType(const SnmpIpAddress&) { return integer(1); }  // unicast
+/// RowPointer to the ipAddressPrefixTable row (its first column, ipAddressPrefixOrigin), which is
+/// not served; managers such as LibreNMS read the prefix length from the pointer's last arc
+static SnmpValue getAddressPrefix(const SnmpIpAddress& a) {
+    Oid p = {{1, 3, 6, 1, 2, 1, 4, 32, 1, 5, 1}, 11};
+    uint8_t len = a.ipv6 ? 16 : 4;
+    uint8_t net[16];
+    network(a, net);
+    appendArc(p, a.ipv6 ? 2 : 1);
+    appendArc(p, len);
+    for (uint8_t i = 0; i < len; i++) appendArc(p, net[i]);
+    appendArc(p, a.prefixLen);
+    return SnmpValue::makeOid(p);
+}
+static SnmpValue getAddressOrigin(const SnmpIpAddress& a) { return integer((int32_t)a.origin); }
+static SnmpValue getAddressStatus(const SnmpIpAddress& a) { return integer(a.preferred ? 1 : 2); }  // deprecated(2)
+static SnmpValue getAddressZeroTicks(const SnmpIpAddress&) { return timeTicks(0); }  // created, last changed
+static SnmpValue getAddressRowStatus(const SnmpIpAddress&) { return integer(1); }  // active
+static SnmpValue getAddressStorageType(const SnmpIpAddress&) { return integer(2); }  // volatile
+
+#define IP_ADDR_COL(c) {{1, 3, 6, 1, 2, 1, 4, 20, 1, c}, 10}
+#define IP_ADDRESS_COL(c) {{1, 3, 6, 1, 2, 1, 4, 34, 1, c}, 10}
+
+static const MibDynamicColumn DYNAMIC[] = {
+    {IP_ADDR_COL(1), ipv4Index, getAdEntAddr},
+    {IP_ADDR_COL(2), ipv4Index, getAddrIfIndex},
+    {IP_ADDR_COL(3), ipv4Index, getAdEntNetMask},
+    {IP_ADDR_COL(4), ipv4Index, getAdEntBcastAddr},
+    {IP_ADDR_COL(5), ipv4Index, getAdEntReasmMaxSize},
+    {IP_ADDRESS_COL(3), inetIndex, getAddrIfIndex},
+    {IP_ADDRESS_COL(4), inetIndex, getAddressType},
+    {IP_ADDRESS_COL(5), inetIndex, getAddressPrefix},
+    {IP_ADDRESS_COL(6), inetIndex, getAddressOrigin},
+    {IP_ADDRESS_COL(7), inetIndex, getAddressStatus},
+    {IP_ADDRESS_COL(8), inetIndex, getAddressZeroTicks},
+    {IP_ADDRESS_COL(9), inetIndex, getAddressZeroTicks},
+    {IP_ADDRESS_COL(10), inetIndex, getAddressRowStatus},
+    {IP_ADDRESS_COL(11), inetIndex, getAddressStorageType},
+};
+static const uint8_t DYNAMIC_SIZE = sizeof(DYNAMIC) / sizeof(DYNAMIC[0]);
+
+/// The instance OID of row in column c into out; false if the address has no row there
+static bool dynamicInstance(const MibDynamicColumn& c, const SnmpIpAddress& a, Oid& out) {
+    static Oid index;  // static: ~130 bytes off core 0's stack (SNMP runs on core 0 only)
+    if (!c.rowIndex(a, index)) return false;
+    out = c.column;
+    for (uint8_t i = 0; i < index.length; i++) appendArc(out, index.arcs[i]);
+    return true;
+}
+
 // ---- table, must be sorted by OID (checked by tests) ----
 
 #define SYSTEM(n) {{1, 3, 6, 1, 2, 1, 1, n, 0}, 9}
@@ -359,6 +485,12 @@ static SnmpValue getEntLastChangeTime(const SnmpDeviceState& s) { return s.host 
 #define SYS_OR_ROW(r) {SYS_OR_COL(2, r), getSysORID<r>}
 #define SNMP_GROUP(n) {{1, 3, 6, 1, 2, 1, 11, n, 0}, 9}
 #define SNMP_SET_SERIAL_NO {{1, 3, 6, 1, 6, 3, 1, 1, 6, 1, 0}, 11}
+#define MIB2(group, n) {{1, 3, 6, 1, 2, 1, group, n, 0}, 9}
+#define IP_COUNTER(n, field) {MIB2(4, n), getProtoCounter<&SnmpProtoCounters::field>}
+#define ICMP_IN(n) {MIB2(5, n), getIcmp<false, n - 1>}
+#define ICMP_OUT(n) {MIB2(5, n), getIcmp<true, n - 14>}
+#define TCP_COUNTER(n, field) {MIB2(6, n), getProtoCounter<&SnmpProtoCounters::field>}
+#define UDP_COUNTER(n, field) {MIB2(7, n), getProtoCounter<&SnmpProtoCounters::field>}
 #define HR(a, b) {{1, 3, 6, 1, 2, 1, 25, a, b, 0}, 10}
 #define HR_STORAGE(c, r) {{1, 3, 6, 1, 2, 1, 25, 2, 3, 1, c, r}, 12}
 #define HR_DEVICE(c, core) {{1, 3, 6, 1, 2, 1, 25, 3, 2, 1, c, 768 + core}, 12}
@@ -428,6 +560,56 @@ static const MibEntry MIB[] = {
     {IF(20), getIfOutErrors},
     {IF(21), getIfOutQLen},
     {IF(22), getIfSpecific},
+
+    // ip group (IPv4): lwIP does not forward, so ipForwDatagrams and ipRoutingDiscards stay 0
+    {MIB2(4, 1), getIpForwarding},
+    {MIB2(4, 2), getProtoConstant<&SnmpProtoCounters::ipDefaultTtl>},
+    IP_COUNTER(3, ipInReceives),
+    IP_COUNTER(4, ipInHdrErrors),
+    IP_COUNTER(5, ipInAddrErrors),
+    IP_COUNTER(6, ipForwDatagrams),
+    IP_COUNTER(7, ipInUnknownProtos),
+    IP_COUNTER(8, ipInDiscards),
+    IP_COUNTER(9, ipInDelivers),
+    IP_COUNTER(10, ipOutRequests),
+    IP_COUNTER(11, ipOutDiscards),
+    IP_COUNTER(12, ipOutNoRoutes),
+    {MIB2(4, 13), getProtoConstant<&SnmpProtoCounters::ipReasmTimeoutS>},
+    IP_COUNTER(14, ipReasmReqds),
+    IP_COUNTER(15, ipReasmOKs),
+    IP_COUNTER(16, ipReasmFails),
+    IP_COUNTER(17, ipFragOKs),
+    IP_COUNTER(18, ipFragFails),
+    IP_COUNTER(19, ipFragCreates),
+    IP_COUNTER(23, ipRoutingDiscards),
+
+    // icmp group (IPv4)
+    ICMP_IN(1), ICMP_IN(2), ICMP_IN(3), ICMP_IN(4), ICMP_IN(5), ICMP_IN(6), ICMP_IN(7),
+    ICMP_IN(8), ICMP_IN(9), ICMP_IN(10), ICMP_IN(11), ICMP_IN(12), ICMP_IN(13),
+    ICMP_OUT(14), ICMP_OUT(15), ICMP_OUT(16), ICMP_OUT(17), ICMP_OUT(18), ICMP_OUT(19), ICMP_OUT(20),
+    ICMP_OUT(21), ICMP_OUT(22), ICMP_OUT(23), ICMP_OUT(24), ICMP_OUT(25), ICMP_OUT(26),
+
+    // tcp group (IPv4 and IPv6); .13 tcpConnTable is not served
+    {MIB2(6, 1), getTcpRtoAlgorithm},
+    {MIB2(6, 2), getProtoConstant<&SnmpProtoCounters::tcpRtoMinMs>},
+    {MIB2(6, 3), getProtoConstant<&SnmpProtoCounters::tcpRtoMaxMs>},
+    {MIB2(6, 4), getProtoConstant<&SnmpProtoCounters::tcpMaxConn>},
+    TCP_COUNTER(5, tcpActiveOpens),
+    TCP_COUNTER(6, tcpPassiveOpens),
+    TCP_COUNTER(7, tcpAttemptFails),
+    TCP_COUNTER(8, tcpEstabResets),
+    {MIB2(6, 9), getTcpCurrEstab},
+    TCP_COUNTER(10, tcpInSegs),
+    TCP_COUNTER(11, tcpOutSegs),
+    TCP_COUNTER(12, tcpRetransSegs),
+    TCP_COUNTER(14, tcpInErrs),
+    TCP_COUNTER(15, tcpOutRsts),
+
+    // udp group (IPv4 and IPv6)
+    UDP_COUNTER(1, udpInDatagrams),
+    UDP_COUNTER(2, udpNoPorts),
+    UDP_COUNTER(3, udpInErrors),
+    UDP_COUNTER(4, udpOutDatagrams),
 
     // snmp group: counters of events the agent never sees or causes are 0
     {SNMP_GROUP(1), getSnmpStat<&SnmpStats::inPackets>},
@@ -565,25 +747,60 @@ static bool visible(const SnmpValue& v, MibView view) {
 
 bool mibGet(const Oid& oid, const SnmpDeviceState& state, MibObject& out) {
     const MibEntry* e = find(oid);
-    if (e == nullptr) return false;
-    out.value = e->get(state);
-    if (out.value.type == BerTag::NoSuchInstance) return false;
-    out.oid = e->oid;
-    return true;
-}
-
-bool mibGetNext(const Oid& oid, const SnmpDeviceState& state, MibView view, MibObject& out) {
-    for (const MibEntry* e = next(oid); e != nullptr; e = next(e->oid)) {
+    if (e != nullptr) {
         out.value = e->get(state);
-        if (visible(out.value, view)) {
-            out.oid = e->oid;
-            return true;
+        if (out.value.type == BerTag::NoSuchInstance) return false;
+        out.oid = e->oid;
+        return true;
+    }
+    if (state.ip == nullptr) return false;
+    static Oid instance;
+    for (uint8_t c = 0; c < DYNAMIC_SIZE; c++) {
+        if (!oidStartsWith(oid, DYNAMIC[c].column)) continue;
+        for (uint8_t r = 0; r < state.ip->count && r < SNMP_MAX_IP_ADDRESSES; r++) {
+            const SnmpIpAddress& a = state.ip->addr[r];
+            if (dynamicInstance(DYNAMIC[c], a, instance) && oidCompare(instance, oid) == 0) {
+                out.oid = instance;
+                out.value = DYNAMIC[c].get(a);
+                return true;
+            }
         }
     }
     return false;
 }
 
+bool mibGetNext(const Oid& oid, const SnmpDeviceState& state, MibView view, MibObject& out) {
+    bool found = false;
+    for (const MibEntry* e = next(oid); e != nullptr; e = next(e->oid)) {
+        out.value = e->get(state);
+        if (visible(out.value, view)) {
+            out.oid = e->oid;
+            found = true;
+            break;
+        }
+    }
+    if (state.ip == nullptr) return found;
+
+    // A row of a dynamic column may come first. The rows are in any order in the state: take the
+    // smallest instance after oid, so a walk goes on correctly even when addresses changed in between
+    static Oid instance;
+    for (uint8_t c = 0; c < DYNAMIC_SIZE; c++) {
+        for (uint8_t r = 0; r < state.ip->count && r < SNMP_MAX_IP_ADDRESSES; r++) {
+            const SnmpIpAddress& a = state.ip->addr[r];
+            if (!dynamicInstance(DYNAMIC[c], a, instance) || oidCompare(instance, oid) <= 0) continue;
+            if (found && oidCompare(instance, out.oid) >= 0) continue;
+            out.oid = instance;
+            out.value = DYNAMIC[c].get(a);  // never Counter64 or absent: visible in both views
+            found = true;
+        }
+    }
+    return found;
+}
+
 bool mibHasObject(const Oid& oid) {
+    for (uint8_t c = 0; c < DYNAMIC_SIZE; c++) {
+        if (oidStartsWith(oid, DYNAMIC[c].column)) return true;
+    }
     for (uint16_t i = 0; i < MIB_SIZE; i++) {
         // The object is the entry without its instance (.0, ifIndex, or lldpRemTable's three index arcs)
         Oid object = MIB[i].oid;

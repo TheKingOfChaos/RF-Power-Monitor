@@ -87,6 +87,48 @@ Requests the rate limiter drops never reach the agent, so no counter here sees t
 
 **snmpSetSerialNo** (`1.3.6.1.6.3.1.1.6.1.0`, INTEGER) is 0 and read-only: it coordinates Sets between managers, and the device accepts none. It sorts last, so a walk from the root ends with it.
 
+## IP, ICMP, TCP and UDP statistics (MIB-II)
+
+The scalars of the MIB-II ip (`1.3.6.1.2.1.4`), icmp (`.5`), tcp (`.6`) and udp (`.7`) groups (IP-MIB RFC 4293, TCP-MIB RFC 4022, UDP-MIB RFC 4113) come from lwIP's own MIB-II counters (`MIB2_STATS`). The firmware switches them on in `include/lwipopts.h`: the Arduino-Pico core turns lwIP's statistics off, and this file loads the core's options first and then changes only those. They cost 196 bytes of RAM. LibreNMS draws its IP, ICMP, TCP and UDP graphs from them.
+
+| Group | Objects | Notes |
+|---|---|---|
+| ip | `.4.1.0`-`.4.19.0`, `.4.23.0` | IPv4 only. ipForwarding 2 (not forwarding), ipDefaultTTL 255, ipReasmTimeout 15 (seconds). ipForwDatagrams and ipRoutingDiscards stay 0: the device does not route. |
+| icmp | `.5.1.0`-`.5.26.0` | IPv4 only. In: every type. Out: messages, errors, destination unreachable, time exceeded, echo requests, echo replies; lwIP never sends the other types, so their counters are 0. |
+| tcp | `.6.1.0`-`.6.12.0`, `.6.14.0`, `.6.15.0` | IPv4 and IPv6. tcpRtoAlgorithm 4 (vanj); tcpRtoMin 1000 and tcpRtoMax 60000 ms are lwIP's nominal values (lwIP's own SNMP agent reports the same); tcpMaxConn 5; tcpCurrEstab (Gauge32) counts connections in ESTABLISHED or CLOSE-WAIT. tcpConnTable (`.6.13`) is not served. |
+| udp | `.7.1.0`-`.7.4.0` | IPv4 and IPv6. udpInDatagrams counts datagrams delivered to an open port, udpNoPorts those to a closed one. |
+
+The counters start at 0 at boot. Counters lwIP keeps but never increments on this device (for example ipReasmFails without fragmented traffic) read 0, which is their true value.
+
+## IP addresses (IP-MIB)
+
+The device's addresses are listed twice, as IP-MIB defines: in the older `ipAddrTable` (IPv4 only, which LibreNMS reads for IPv4) and in `ipAddressTable` (IPv4 and IPv6). The rows follow the addresses the device has at the moment of the request: they appear and go as DHCP, SLAAC, DHCPv6 or the static settings change them, and a walk that was at an address that has just gone simply continues with the next one.
+
+**ipAddrTable** `1.3.6.1.2.1.4.20.1.<column>.<a.b.c.d>`, one row while the device has an IPv4 address
+
+| Column | Name | Value |
+|---|---|---|
+| 1 | ipAdEntAddr | The address (IpAddress) |
+| 2 | ipAdEntIfIndex | 1 |
+| 3 | ipAdEntNetMask | The subnet mask |
+| 4 | ipAdEntBcastAddr | 1 (broadcast with the host part all ones) |
+| 5 | ipAdEntReasmMaxSize | 65535 |
+
+**ipAddressTable** `1.3.6.1.2.1.4.34.1.<column>.<type>.<length>.<address bytes>`, type 1 = ipv4 (length 4), 2 = ipv6 (length 16); one row per valid address: the IPv4 address and every IPv6 address that is preferred or deprecated (not while duplicate detection runs)
+
+| Column | Name | Value |
+|---|---|---|
+| 3 | ipAddressIfIndex | 1 |
+| 4 | ipAddressType | 1 (unicast) |
+| 5 | ipAddressPrefix | Pointer to the prefix row, `1.3.6.1.2.1.4.32.1.5.1.<type>.<length>.<network bytes>.<prefix length>`. ipAddressPrefixTable itself is not served; managers read the prefix length from the pointer. IPv6 addresses are /64 (lwIP keeps no prefix length; link-local, SLAAC and the static address are /64). |
+| 6 | ipAddressOrigin | IPv4: 4 (dhcp) or 2 (manual, static IP). IPv6: 5 (linklayer: link-local and SLAAC, both from the MAC), 4 (dhcp: DHCPv6) or 2 (manual: the static address) |
+| 7 | ipAddressStatus | 1 (preferred) or 2 (deprecated) |
+| 8, 9 | ipAddressCreated, ipAddressLastChanged | TimeTicks 0 (not recorded) |
+| 10 | ipAddressRowStatus | 1 (active) |
+| 11 | ipAddressStorageType | 2 (volatile) |
+
+An IPv6 row's index is 28 arcs long, so the whole OID fits the agent's 32-arc limit.
+
 ## Host resources (HOST-RESOURCES-MIB) and inventory (ENTITY-MIB)
 
 LibreNMS and other managers read CPU load, memory and storage from the standard HOST-RESOURCES-MIB (RFC 2790), and the inventory from ENTITY-MIB (RFC 6933), so they show these without device-specific setup.
@@ -205,7 +247,7 @@ What the counters cannot see: the W5500 itself silently drops frames with a bad 
 
 The counters are 64-bit internally and start at 0 at boot. Link state and speed are read from the W5500 PHY register (`PHYCFGR`) every 500 ms; a link change is logged on the serial port.
 
-SNMPv1 has no Counter64 type, so a v1 request does not see the eight `ifHC*` columns at all (RFC 3584): a v1 Get of one is `noSuchName` and a v1 walk skips them. Without the LLDP-MIB objects a v1 walk returns 157 objects, a v2c walk 165 (with them, see below).
+SNMPv1 has no Counter64 type, so a v1 request does not see the eight `ifHC*` columns at all (RFC 3584): a v1 Get of one is `noSuchName` and a v1 walk skips them. Without the LLDP-MIB objects and the address rows a v1 walk returns 221 objects, a v2c walk 229 (with them, see below). Each address adds 9 rows to ipAddressTable, the IPv4 address 5 more to ipAddrTable.
 
 ## Switch and port (LLDP-MIB)
 
@@ -226,7 +268,7 @@ The device answers part of the standard LLDP-MIB (IEEE 802.1AB-2005 Annex F), so
 | 1.0.8802.1.1.2.1.4.1.1.11.0.1.1 | lldpRemSysCapSupported | BITS (2 bytes) | as sent, in BITS order (bit 0 = top bit of the first byte; the TLV counts from the bottom bit): bridge + router = `28 00` |
 | 1.0.8802.1.1.2.1.4.1.1.12.0.1.1 | lldpRemSysCapEnabled | BITS (2 bytes) | as sent |
 
-There is one remote row, index lldpRemTimeMark 0, lldpRemLocalPortNum 1, lldpRemIndex 1, and only while the device holds a neighbour (the status screen's `Switch:` line); otherwise v1 answers noSuchName and v2c noSuchInstance, and walks skip it. Text from the switch is cut to 64 characters (128 for the description) with non-printable bytes replaced by `?`. Not served: lldpRemManAddrTable (the management address; its index holds the address), lldpLocalSystemData, lldpStatistics and LLDP-V2-MIB. A v1 walk from the root returns 169 objects with a neighbour (160 without), a v2c walk 177 (168).
+There is one remote row, index lldpRemTimeMark 0, lldpRemLocalPortNum 1, lldpRemIndex 1, and only while the device holds a neighbour (the status screen's `Switch:` line); otherwise v1 answers noSuchName and v2c noSuchInstance, and walks skip it. Text from the switch is cut to 64 characters (128 for the description) with non-printable bytes replaced by `?`. Not served: lldpRemManAddrTable (the management address; its index holds the address), lldpLocalSystemData, lldpStatistics and LLDP-V2-MIB. A v1 walk from the root returns 233 objects with a neighbour (224 without), a v2c walk 241 (232), plus the address rows (with one IPv4 and two IPv6 addresses: 5 + 3 x 9 = 32).
 
 ## v1 and v2c differences
 
@@ -357,7 +399,7 @@ This needs the standard IETF MIBs, which Debian/Ubuntu ship separately: `sudo ap
 
 ## Limits
 
-- Up to 16 variable bindings per request and at most 16 in a GetBulk response. A larger GetBulk reply would let a small request with a faked source address make the device send a much larger packet to a victim (reflection); a bulk walk simply takes more requests (at least 12 for the 177 objects of a walk from the root). A GetBulk request also does not make its source trusted for the rate limiter.
+- Up to 16 variable bindings per request and at most 16 in a GetBulk response. A larger GetBulk reply would let a small request with a faked source address make the device send a much larger packet to a victim (reflection); a bulk walk simply takes more requests (at least 16 for the 241 objects of a walk from the root). A GetBulk request also does not make its source trusted for the rate limiter.
 - Requests up to 1472 bytes (one Ethernet frame); larger packets are dropped. Replies over IPv6 are at most 1452 bytes (the IPv6 header is 20 bytes longer; the device does not fragment); GetBulk replies are shortened to fit.
 - The network stack queues up to 5 UDP packets. Requests sent in a burst beyond that are dropped; SNMP managers retry, and normal polling or `snmpwalk` sends one request at a time.
 - If the device has not talked to a manager for a few minutes, it first has to look up the manager's MAC address (ARP). lwIP holds one reply during that lookup, so only one request of a burst arriving at that moment is answered.
@@ -376,6 +418,8 @@ This needs the standard IETF MIBs, which Debian/Ubuntu ship separately: `sudo ap
 | Ambient temperature (TMP1075) | `lib/tmp1075`, `src/ambient_temp.cpp` | `test/native/test_tmp1075`, `test/native/test_snmp_agent`, `test/hil/test_snmp.py` |
 | Trap encoding (v1 and v2c), throttle | `lib/snmp_agent/snmp_trap` | `test/native/test_snmp_trap` (byte-exact vs net-snmp `snmptrap -v1` and `-v2c`) |
 | Rate limiter, access log | `lib/access_control` | `test/native/test_access_control` |
+| IP address tables (rows that change at run time) | `lib/snmp_agent/snmp_mib` (dynamic columns), `src/net_stats.cpp` | `test/native/test_snmp_agent`, `test/hil/test_snmp.py`, `test/hil/test_ipv6.py` |
+| IP, ICMP, TCP, UDP counters | lwIP `MIB2_STATS` (`include/lwipopts.h`), `src/net_stats.cpp` | `test/native/test_snmp_agent`, `test/hil/test_snmp.py` |
 | CPU load (one-minute average per core) | `lib/cpu_load`, `src/host_stats.cpp` | `test/native/test_cpu_load`, `test/hil/test_host_resources.py` |
 | HOST-RESOURCES-MIB, ENTITY-MIB values | `lib/snmp_agent/snmp_mib`, `src/host_stats.cpp` | `test/native/test_snmp_agent`, `test/hil/test_host_resources.py` |
 | Traps on the device | `src/snmp_service.cpp` | `test/hil/test_snmp_traps.py` |
