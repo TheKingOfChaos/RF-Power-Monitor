@@ -61,8 +61,8 @@ check "get unknown is noSuchName" "${NO_SUCH}\.1\.3\.6\.1\.2\.1\.1\.99\.0" snmpg
 check "get 2nd unknown names it" "${NO_SUCH}\.1\.3\.6\.1\.9\.0" \
       snmpget $SNMP_OPTS $TARGET 1.3.6.1.2.1.1.1.0 1.3.6.1.9.0
 check "getnext enterprise"      '63050\.1\.0 = INTEGER: 1' snmpgetnext $SNMP_OPTS $TARGET 1.3.6.1.4.1.63050
-check "getnext past end"        "${NO_SUCH}\.1\.3\.6\.1\.4\.1\.63050\.6\.0" snmpgetnext $SNMP_OPTS $TARGET 1.3.6.1.4.1.63050.6.0
-check "v1 walk all, 59 objects" '^59$' bash -c "snmpwalk $SNMP_OPTS $TARGET .1 | grep -c ' = '"
+check "getnext past end"        "${NO_SUCH}\.1\.3\.6\.1\.6\.3\.1\.1\.6\.1\.0" snmpgetnext $SNMP_OPTS $TARGET 1.3.6.1.6.3.1.1.6.1.0
+check "v1 walk all, 118 objects" '^118$' bash -c "snmpwalk $SNMP_OPTS $TARGET .1 | grep -c ' = '"
 check "walk order"              '1\.1\.0.*1\.2\.0.*1\.3\.0.*1\.4\.0.*1\.5\.0.*1\.6\.0.*1\.7\.0.*63050\.1\.0.*63050\.2\.0.*63050\.3\.0' \
       bash -c "snmpwalk $SNMP_OPTS $TARGET .1 | cut -d' ' -f1 | tr '\n' ' '"
 check "walk enterprise, 6 objects" '^6$' bash -c "snmpwalk $SNMP_OPTS $TARGET 1.3.6.1.4.1.63050 | grep -c ' = '"
@@ -78,13 +78,13 @@ check "v2c noSuchInstance"      '1\.1\.5 = No Such Instance currently exists at 
       snmpget $V2 $TARGET 1.3.6.1.2.1.1.1.5
 check "v2c mixed get, no error" '1\.5\.0 = STRING: "host-agent".*1\.99\.0 = No Such Object' \
       snmpget $V2 $TARGET 1.3.6.1.2.1.1.5.0 1.3.6.1.2.1.1.99.0
-check "v2c getnext past end"    '63050\.6\.0 = No more variables left in this MIB View' \
-      snmpgetnext $V2 $TARGET 1.3.6.1.4.1.63050.6.0
-check "v2c walk all, 67 objects" '^67$' bash -c "snmpwalk $V2 $TARGET .1 | grep ' = ' | grep -vc 'No more variables'"
+check "v2c getnext past end"    '1\.1\.6\.1\.0 = No more variables left in this MIB View' \
+      snmpgetnext $V2 $TARGET 1.3.6.1.6.3.1.1.6.1.0
+check "v2c walk all, 126 objects" '^126$' bash -c "snmpwalk $V2 $TARGET .1 | grep ' = ' | grep -vc 'No more variables'"
 check "v2c walk ends at view end" 'No more variables left in this MIB View' snmpwalk $V2 $TARGET .1
 check "v2c walk order"          '1\.1\.0.*1\.7\.0.*63050\.1\.0.*63050\.3\.0' \
       bash -c "snmpwalk $V2 $TARGET .1 | cut -d' ' -f1 | tr '\n' ' '"
-check "bulkwalk all, 67 objects" '^67$' bash -c "snmpbulkwalk $V2 $TARGET .1 | grep ' = ' | grep -vc 'No more variables'"
+check "bulkwalk all, 126 objects" '^126$' bash -c "snmpbulkwalk $V2 $TARGET .1 | grep ' = ' | grep -vc 'No more variables'"
 check "bulkwalk = walk"         '^same$' bash -c "diff <(snmpwalk $V2 $TARGET .1 | grep ' = ' | cut -d' ' -f1) <(snmpbulkwalk $V2 $TARGET .1 | cut -d' ' -f1) >/dev/null && echo same"
 check "bulkget n1 r3"           '1\.1\.4\.0 = STRING.*1\.1\.1\.0 = STRING.*1\.1\.2\.0 = OID.*1\.1\.3\.0 = Timeticks' \
       snmpbulkget $V2 -Cn1 -Cr3 $TARGET 1.3.6.1.2.1.1.3.0 1.3.6.1.2.1.1
@@ -109,6 +109,16 @@ check "cpuTemperature"          '63050\.4\.0 = INTEGER: 250' snmpget $V2 $TARGET
 check "ambientTemperature"      '63050\.5\.0 = INTEGER: 215' snmpget $V2 $TARGET 1.3.6.1.4.1.63050.5.0
 check "mainsPowerAlarm"         '63050\.6\.0 = INTEGER: 0' snmpget $SNMP_OPTS $TARGET 1.3.6.1.4.1.63050.6.0
 
+# SNMPv2-MIB (RFC 3418): sysORTable, snmp group, snmpSetSerialNo, with net-snmp's names
+SNMPV2="-v2c -c public -r0 -t1 -M +/usr/share/snmp/mibs -m SNMPv2-MIB"
+check "sysORTable rows"         'sysORID\.1 = OID: SNMPv2-MIB::snmpMIB.*sysORDescr\.1 = STRING: SNMPv2-MIB.*sysORDescr\.9 = STRING: RF-POWER-MONITOR-MIB.*sysORUpTime\.9 = Timeticks: \(0\)' \
+      bash -c "snmpwalk $SNMPV2 $TARGET SNMPv2-MIB::sysORTable | tr '\n' ' '"
+check "sysORTable, 27 objects"  '^27$' bash -c "snmpwalk $SNMPV2 $TARGET SNMPv2-MIB::sysORTable | grep -c ' = '"
+check "snmp group, 30 objects"  '^30$' bash -c "snmpwalk $SNMPV2 $TARGET SNMPv2-MIB::snmp | grep ' = ' | grep -vc 'No more'"
+check "snmpInPkts counts"       'snmpInPkts\.0 = Counter32: [1-9][0-9]*' snmpget $SNMPV2 $TARGET SNMPv2-MIB::snmpInPkts.0
+check "bad community counted"   'snmpInBadCommunityNames\.0 = Counter32: [1-9]' snmpget $SNMPV2 $TARGET SNMPv2-MIB::snmpInBadCommunityNames.0
+check "snmpEnableAuthenTraps"   'snmpEnableAuthenTraps\.0 = INTEGER: enabled\(1\)' snmpget $SNMPV2 $TARGET SNMPv2-MIB::snmpEnableAuthenTraps.0
+check "snmpSetSerialNo"         'snmpSetSerialNo\.0 = INTEGER: 0' snmpget $SNMPV2 $TARGET SNMPv2-MIB::snmpSetSerialNo.0
 # LLDP-MIB (numeric: WSL's net-snmp has no LLDP-MIB); the host agent holds an EX2200-C neighbour
 LLDP=1.0.8802.1.1.2.1
 check "v2c LLDP-MIB walk, 12 objects" '^12$' bash -c "snmpwalk $V2 $TARGET 1.0.8802 | grep ' = ' | grep -vc 'No more'"

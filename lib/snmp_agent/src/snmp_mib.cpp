@@ -21,16 +21,57 @@ static SnmpValue getSysServices(const SnmpDeviceState&) {
     return SnmpValue::makeInteger(72);
 }
 
+static SnmpValue integer(int32_t v) { return SnmpValue::makeInteger(v); }
+static SnmpValue counter32(uint64_t v) { return SnmpValue::makeUnsigned(BerTag::Counter32, (uint32_t)v); }
+static SnmpValue counter64(uint64_t v) { return SnmpValue::makeCounter64(v); }
+static SnmpValue gauge(uint32_t v) { return SnmpValue::makeUnsigned(BerTag::Gauge32, v); }
+static SnmpValue timeTicks(uint32_t v) { return SnmpValue::makeUnsigned(BerTag::TimeTicks, v); }
+
+// ---- sysORTable (SNMPv2-MIB, RFC 3418): the MIB modules the agent implements ----
+
+struct SysOREntry {
+    Oid id;              ///< The module's MODULE-IDENTITY
+    const char* descr;
+};
+
+static const SysOREntry SYS_OR[] = {
+    {{{1, 3, 6, 1, 6, 3, 1}, 7}, "SNMPv2-MIB"},
+    {{{1, 3, 6, 1, 2, 1, 31}, 7}, "IF-MIB"},
+    {{{1, 3, 6, 1, 2, 1, 48}, 7}, "IP-MIB"},
+    {{{1, 3, 6, 1, 2, 1, 50}, 7}, "UDP-MIB"},
+    {{{1, 3, 6, 1, 2, 1, 49}, 7}, "TCP-MIB"},
+    {{{1, 3, 6, 1, 2, 1, 25, 7, 1}, 9}, "HOST-RESOURCES-MIB"},
+    {{{1, 3, 6, 1, 2, 1, 47}, 7}, "ENTITY-MIB"},
+    {{{1, 0, 8802, 1, 1, 2}, 6}, "LLDP-MIB"},
+    {{{1, 3, 6, 1, 4, 1, ENTERPRISE_NUMBER}, 7}, "RF-POWER-MONITOR-MIB"},
+};
+
+template <uint8_t ROW> static SnmpValue getSysORID(const SnmpDeviceState&) {
+    return SnmpValue::makeOid(SYS_OR[ROW - 1].id);
+}
+template <uint8_t ROW> static SnmpValue getSysORDescr(const SnmpDeviceState&) {
+    return SnmpValue::makeString(SYS_OR[ROW - 1].descr);
+}
+static SnmpValue getZeroTicks(const SnmpDeviceState&) { return timeTicks(0); }  // sysORLastChange, sysORUpTime
+
+// ---- snmp group (SNMPv2-MIB, RFC 3418; the RFC 1213 counters it keeps) ----
+
+/// One of the agent's counters, 0 without them
+template <uint32_t SnmpStats::*FIELD> static SnmpValue getSnmpStat(const SnmpDeviceState& s) {
+    return counter32(s.snmp ? s.snmp->*FIELD : 0);
+}
+static SnmpValue getSnmpOutPkts(const SnmpDeviceState& s) {
+    return counter32((uint64_t)(s.snmp ? s.snmp->outResponses : 0) + s.snmpOutTraps);
+}
+static SnmpValue getSnmpOutTraps(const SnmpDeviceState& s) { return counter32(s.snmpOutTraps); }
+static SnmpValue getSnmpEnableAuthenTraps(const SnmpDeviceState&) { return integer(1); }  // enabled
+static SnmpValue getSnmpSetSerialNo(const SnmpDeviceState&) { return integer(0); }  // no Set is ever accepted
+
 // ---- interfaces (IF-MIB, RFC 2863), one Ethernet interface with ifIndex 1 ----
 
 static const char* const IF_NAME = "eth0";
 static const int32_t IF_TYPE_ETHERNET_CSMACD = 6;
 static const int32_t IF_MTU = 1500;
-
-static SnmpValue integer(int32_t v) { return SnmpValue::makeInteger(v); }
-static SnmpValue counter32(uint64_t v) { return SnmpValue::makeUnsigned(BerTag::Counter32, (uint32_t)v); }
-static SnmpValue counter64(uint64_t v) { return SnmpValue::makeCounter64(v); }
-static SnmpValue gauge(uint32_t v) { return SnmpValue::makeUnsigned(BerTag::Gauge32, v); }
 
 static SnmpValue getIfNumber(const SnmpDeviceState&) { return integer(1); }
 static SnmpValue getIfIndex(const SnmpDeviceState&) { return integer(1); }
@@ -210,6 +251,10 @@ static SnmpValue getRemSysCapEnabled(const SnmpDeviceState& s) {
 // ---- table, must be sorted by OID (checked by tests) ----
 
 #define SYSTEM(n) {{1, 3, 6, 1, 2, 1, 1, n, 0}, 9}
+#define SYS_OR_COL(c, r) {{1, 3, 6, 1, 2, 1, 1, 9, 1, c, r}, 11}
+#define SYS_OR_ROW(r) {SYS_OR_COL(2, r), getSysORID<r>}
+#define SNMP_GROUP(n) {{1, 3, 6, 1, 2, 1, 11, n, 0}, 9}
+#define SNMP_SET_SERIAL_NO {{1, 3, 6, 1, 6, 3, 1, 1, 6, 1, 0}, 11}
 #define IF_NUMBER {{1, 3, 6, 1, 2, 1, 2, 1, 0}, 9}
 #define IF(n) {{1, 3, 6, 1, 2, 1, 2, 2, 1, n, 1}, 11}
 #define IFX(n) {{1, 3, 6, 1, 2, 1, 31, 1, 1, 1, n, 1}, 12}
@@ -238,6 +283,17 @@ static const MibEntry MIB[] = {
     {SYSTEM(5), getSysName},
     {SYSTEM(6), getSysLocation},
     {SYSTEM(7), getSysServices},
+    {SYSTEM(8), getZeroTicks},  // sysORLastChange: the table never changes
+    SYS_OR_ROW(1), SYS_OR_ROW(2), SYS_OR_ROW(3), SYS_OR_ROW(4), SYS_OR_ROW(5),
+    SYS_OR_ROW(6), SYS_OR_ROW(7), SYS_OR_ROW(8), SYS_OR_ROW(9),
+    {SYS_OR_COL(3, 1), getSysORDescr<1>}, {SYS_OR_COL(3, 2), getSysORDescr<2>},
+    {SYS_OR_COL(3, 3), getSysORDescr<3>}, {SYS_OR_COL(3, 4), getSysORDescr<4>},
+    {SYS_OR_COL(3, 5), getSysORDescr<5>}, {SYS_OR_COL(3, 6), getSysORDescr<6>},
+    {SYS_OR_COL(3, 7), getSysORDescr<7>}, {SYS_OR_COL(3, 8), getSysORDescr<8>},
+    {SYS_OR_COL(3, 9), getSysORDescr<9>},
+    {SYS_OR_COL(4, 1), getZeroTicks}, {SYS_OR_COL(4, 2), getZeroTicks}, {SYS_OR_COL(4, 3), getZeroTicks},
+    {SYS_OR_COL(4, 4), getZeroTicks}, {SYS_OR_COL(4, 5), getZeroTicks}, {SYS_OR_COL(4, 6), getZeroTicks},
+    {SYS_OR_COL(4, 7), getZeroTicks}, {SYS_OR_COL(4, 8), getZeroTicks}, {SYS_OR_COL(4, 9), getZeroTicks},
 
     {IF_NUMBER, getIfNumber},
     {IF(1), getIfIndex},
@@ -262,6 +318,38 @@ static const MibEntry MIB[] = {
     {IF(20), getIfOutErrors},
     {IF(21), getIfOutQLen},
     {IF(22), getIfSpecific},
+
+    // snmp group: counters of events the agent never sees or causes are 0
+    {SNMP_GROUP(1), getSnmpStat<&SnmpStats::inPackets>},
+    {SNMP_GROUP(2), getSnmpOutPkts},
+    {SNMP_GROUP(3), getSnmpStat<&SnmpStats::inBadVersions>},
+    {SNMP_GROUP(4), getSnmpStat<&SnmpStats::inBadCommunity>},  // snmpInBadCommunityNames
+    {SNMP_GROUP(5), getZeroCounter},   // snmpInBadCommunityUses: one community, allowed everything
+    {SNMP_GROUP(6), getSnmpStat<&SnmpStats::inParseErrors>},   // snmpInASNParseErrs
+    {SNMP_GROUP(8), getZeroCounter},   // snmpInTooBigs .. snmpInGenErrs: error PDUs in, never accepted
+    {SNMP_GROUP(9), getZeroCounter},
+    {SNMP_GROUP(10), getZeroCounter},
+    {SNMP_GROUP(11), getZeroCounter},
+    {SNMP_GROUP(12), getZeroCounter},
+    {SNMP_GROUP(13), getSnmpStat<&SnmpStats::inTotalReqVars>},
+    {SNMP_GROUP(14), getZeroCounter},  // snmpInTotalSetVars: nothing is writable
+    {SNMP_GROUP(15), getSnmpStat<&SnmpStats::inGetRequests>},
+    {SNMP_GROUP(16), getSnmpStat<&SnmpStats::inGetNextRequests>},
+    {SNMP_GROUP(17), getSnmpStat<&SnmpStats::inSetRequests>},
+    {SNMP_GROUP(18), getSnmpStat<&SnmpStats::inGetResponses>},
+    {SNMP_GROUP(19), getSnmpStat<&SnmpStats::inTraps>},
+    {SNMP_GROUP(20), getSnmpStat<&SnmpStats::outTooBig>},
+    {SNMP_GROUP(21), getSnmpStat<&SnmpStats::outNoSuchName>},
+    {SNMP_GROUP(22), getZeroCounter},  // snmpOutBadValues
+    {SNMP_GROUP(24), getZeroCounter},  // snmpOutGenErrs
+    {SNMP_GROUP(25), getZeroCounter},  // snmpOutGetRequests .. snmpOutSetRequests: the device is no manager
+    {SNMP_GROUP(26), getZeroCounter},
+    {SNMP_GROUP(27), getZeroCounter},
+    {SNMP_GROUP(28), getSnmpStat<&SnmpStats::outResponses>},   // snmpOutGetResponses
+    {SNMP_GROUP(29), getSnmpOutTraps},
+    {SNMP_GROUP(30), getSnmpEnableAuthenTraps},
+    {SNMP_GROUP(31), getSnmpStat<&SnmpStats::silentDrops>},
+    {SNMP_GROUP(32), getZeroCounter},  // snmpProxyDrops: no proxy
 
     {IFX(1), getIfName},
     {IFX(2), getIfInMcast},
@@ -289,6 +377,8 @@ static const MibEntry MIB[] = {
     {PRIVATE(4), getCpuTemperature},
     {PRIVATE(5), getAmbientTemperature},
     {PRIVATE(6), getMainsAlarm},
+
+    {SNMP_SET_SERIAL_NO, getSnmpSetSerialNo},
 };
 
 static const uint16_t MIB_SIZE = sizeof(MIB) / sizeof(MIB[0]);

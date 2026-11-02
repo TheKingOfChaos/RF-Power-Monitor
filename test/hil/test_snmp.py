@@ -39,6 +39,10 @@ NO_TMP1075 = bool(os.environ.get("RFPOWER_NO_TMP1075"))
 # Enterprise objects in walk order: ambientTemperature (.5) exists only with the TMP1075
 ENTERPRISE_OBJECTS = [n for n in range(1, 7) if not (NO_TMP1075 and n == 5)]
 LAST_ENTERPRISE = ENTERPRISE_OBJECTS[-1]
+# The object that sorts last: snmpSetSerialNo (SNMPv2-MIB)
+LAST_OID = ".1.3.6.1.6.3.1.1.6.1.0"
+# snmp group (SNMPv2-MIB): 1.3.6.1.2.1.11.1-32, 7 and 23 were never assigned
+SNMP_GROUP = [n for n in range(1, 33) if n not in (7, 23)]
 
 
 def all_oids(v1, neighbour):
@@ -51,11 +55,14 @@ def all_oids(v1, neighbour):
     oids = [lldp + ".3.7.1.%d.1" % i for i in range(2, 5)]
     if neighbour:
         oids += [lldp + ".4.1.1.%d.0.1.1" % i for i in range(4, 13)]
-    oids += [".1.3.6.1.2.1.1.%d.0" % i for i in range(1, 8)]
+    oids += [".1.3.6.1.2.1.1.%d.0" % i for i in range(1, 9)]
+    oids += [".1.3.6.1.2.1.1.9.1.%d.%d" % (c, r) for c in range(2, 5) for r in range(1, 10)]  # sysORTable
     oids += [".1.3.6.1.2.1.2.1.0"]
     oids += [".1.3.6.1.2.1.2.2.1.%d.1" % i for i in range(1, 23)]
+    oids += [".1.3.6.1.2.1.11.%d.0" % i for i in SNMP_GROUP]
     oids += [".1.3.6.1.2.1.31.1.1.1.%d.1" % i for i in range(1, 20) if not (v1 and 6 <= i <= 13)]
     oids += ["." + ENTERPRISE + ".%d.0" % i for i in ENTERPRISE_OBJECTS]
+    oids += [LAST_OID]
     return oids
 
 
@@ -165,10 +172,32 @@ class SnmpAgentTest(unittest.TestCase):
 
     def test_walk_system_group(self):
         rc, out = self.snmp("snmpwalk", "1.3.6.1.2.1.1")
-        self.assertEqual(7, sum(1 for l in out.splitlines() if " = " in l), out)
+        self.assertEqual(8 + 27, sum(1 for l in out.splitlines() if " = " in l), out)  # sysORTable 9 x 3
+
+    def test_snmp_group_counts_this_test_requests(self):
+        def counter(n):
+            rc, out = self.snmp("snmpget", "1.3.6.1.2.1.11.%d.0" % n)
+            m = re.search(r"Counter32: (\d+)", out)
+            self.assertIsNotNone(m, out)
+            return int(m.group(1))
+        before = counter(15)  # snmpInGetRequests
+        for _ in range(5):
+            self.snmp("snmpget", "1.3.6.1.2.1.1.3.0")
+        # The 5 gets, and the get reading the counter itself
+        self.assertGreaterEqual(counter(15) - before, 6)
+        self.assertGreaterEqual(counter(1), counter(15))  # snmpInPkts covers every request
+        rc, out = self.snmp("snmpget", "1.3.6.1.2.1.11.30.0", "1.3.6.1.6.3.1.1.6.1.0")
+        self.assertRegex(out, r"11\.30\.0 = INTEGER: 1")  # snmpEnableAuthenTraps
+        self.assertRegex(out, r"6\.1\.0 = INTEGER: 0")    # snmpSetSerialNo
+
+    def test_sysortable_names_the_mibs(self):
+        rc, out = self.snmp("snmpwalk", "1.3.6.1.2.1.1.9.1.3")
+        descrs = re.findall(r'STRING: "([^"]+)"', out)
+        self.assertEqual(["SNMPv2-MIB", "IF-MIB", "IP-MIB", "UDP-MIB", "TCP-MIB", "HOST-RESOURCES-MIB",
+                          "ENTITY-MIB", "LLDP-MIB", "RF-POWER-MONITOR-MIB"], descrs)
 
     def test_getnext_past_end(self):
-        last = "%s.%d.0" % (ENTERPRISE, LAST_ENTERPRISE)
+        last = LAST_OID[1:]
         rc, out = self.snmp("snmpgetnext", last)
         self.assertRegex(out, NO_SUCH + r"\." + last.replace(".", r"\."))
 
@@ -227,8 +256,8 @@ class SnmpAgentTest(unittest.TestCase):
                     if " = " in l and "No more" not in l]
         self.assertEqual(oids(walk), oids(bulk))
         self.assertEqual(len(all_oids(v1=False, neighbour=self.has_neighbour())), len(oids(bulk)))
-        # 58 or more objects at most 16 per GetBulk: at least 4 requests
-        self.assertGreaterEqual(self.dev.status()["getBulkRequests"] - before, 4)
+        # 117 or more objects at most 16 per GetBulk: at least 8 requests
+        self.assertGreaterEqual(self.dev.status()["getBulkRequests"] - before, 8)
 
     def test_bulkget_non_repeaters_and_repetitions(self):
         rc, out = self.snmp("snmpbulkget", "-Cn1", "-Cr3", "1.3.6.1.2.1.1.3.0", "1.3.6.1.2.1.1", version="2c")
@@ -247,7 +276,8 @@ class SnmpAgentTest(unittest.TestCase):
         rc, out = self.snmp("snmpbulkget", "-Cn0", "-Cr1000", ENTERPRISE, version="2c")
         self.assertEqual(0, rc, out)
         self.assertIn("No more variables left in this MIB View", out)
-        self.assertEqual(len(ENTERPRISE_OBJECTS), sum(1 for l in out.splitlines() if " = " in l and "No more" not in l))
+        # The enterprise objects, then snmpSetSerialNo, then the end
+        self.assertEqual(len(ENTERPRISE_OBJECTS) + 1, sum(1 for l in out.splitlines() if " = " in l and "No more" not in l))
 
     # ---- IF-MIB ----
 
@@ -452,8 +482,8 @@ class SnmpAgentTest(unittest.TestCase):
     # ---- security: rate limiting and access log ----
 
     def test_rate_limit_caps_one_source_and_recovers(self):
-        # 50 requests/s per source with a burst of 100. Send as fast as replies come back for 3 s.
-        time.sleep(2.5)                          # start with a full bucket
+        # 50 requests/s per source with a burst of 300. Send as fast as replies come back for 3 s.
+        time.sleep(6.5)                          # start with a full bucket (300 / 50 = 6 s)
         before = self.dev.status()["rateLimited"]
         answered = unanswered = 0
         start = time.time()
@@ -465,7 +495,7 @@ class SnmpAgentTest(unittest.TestCase):
                 answered += 1
         elapsed = time.time() - start
         print("\n    rate limit: %d answered, %d dropped in %.1f s" % (answered, unanswered, elapsed))
-        expected = 100 + 50 * elapsed
+        expected = 300 + 50 * elapsed
         self.assertGreater(unanswered, 0, "nothing was rate limited")
         self.assertLess(answered, expected * 1.15, "more answered than the limit allows")
         self.assertGreater(answered, expected * 0.7, "far fewer answered than the limit allows")

@@ -44,25 +44,6 @@ constexpr uint8_t SNMP_MAX_RESPONSE_VARBINDS = 64;
 constexpr uint8_t SNMP_MAX_BULK_VARBINDS = 16;
 
 /**
- * @brief Counters for the status screen
- */
-struct SnmpStats {
-    uint32_t inPackets;          ///< Every packet passed to handle()
-    uint32_t inBadVersions;      ///< Valid message, not SNMP v1
-    uint32_t inBadCommunity;     ///< Wrong community string
-    uint32_t inParseErrors;      ///< Malformed packets
-    uint32_t inUnsupported;      ///< Response/trap PDUs, too many varbinds
-    uint32_t inGetRequests;
-    uint32_t inGetNextRequests;
-    uint32_t inGetBulkRequests;
-    uint32_t inSetRequests;
-    uint32_t inV2cRequests;      ///< Requests in v2c (included in the counters above)
-    uint32_t outResponses;       ///< Responses returned for sending
-    uint32_t outNoSuchName;
-    uint32_t outTooBig;
-};
-
-/**
  * @brief What handle() did with the last request, for access logging and traps
  */
 enum class SnmpOutcome : uint8_t {
@@ -115,4 +96,5 @@ private:
     SnmpRequest _req;                   // ~1 KB, kept out of the stack
     Oid _cursor[SNMP_MAX_VARBINDS];     // GetBulk repeater positions, ~2 KB, kept out of the stack
     MibObject _found;                   // Last lookup result, ~300 bytes, kept out of the stack
+    uint8_t _retrieved = 0;             // Varbinds with a value in the response being built (snmpInTotalReqVars)
 };

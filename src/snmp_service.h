@@ -18,9 +18,11 @@
 /// Standard SNMP agent port
 constexpr uint16_t SNMP_PORT = 161;
 
-/// Requests per second each source may send on average, and in a burst
+/// Requests per second each source may send on average, and in a burst. The burst covers a whole
+/// snmpwalk (~300 objects from the root at ~250 requests/s); with 100 a walk of the 3.1.0 MIB lost
+/// one request near object 116 and stalled for the manager's retry timeout
 constexpr uint32_t SNMP_RATE_PER_SECOND = 50;
-constexpr uint32_t SNMP_RATE_BURST = 100;
+constexpr uint32_t SNMP_RATE_BURST = 300;
 
 /// Requests per second from all untrusted sources together, so rotating or
 /// spoofed source addresses cannot bypass the per-source limit. Sources that

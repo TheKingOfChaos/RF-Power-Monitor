@@ -94,8 +94,8 @@ SnmpParseResult snmpParseRequest(const uint8_t* packet, size_t length, SnmpReque
     if (!msg.peekTag(tag)) return SnmpParseResult::Malformed;
     bool request = tag == BerTag::GetRequest || tag == BerTag::GetNextRequest || tag == BerTag::SetRequest ||
                    (tag == BerTag::GetBulkRequest && version == SNMP_VERSION_2C);
+    out.pduType = tag;  // also for UnsupportedPdu, so the agent can count responses and traps
     if (!request) return SnmpParseResult::UnsupportedPdu;
-    out.pduType = tag;
 
     // For GetBulk the two integers are non-repeaters and max-repetitions
     BerReader pdu, list;

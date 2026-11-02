@@ -13,8 +13,11 @@
  *   1.3.6.1.2.1.1.5.0      sysName               OCTET STRING
  *   1.3.6.1.2.1.1.6.0      sysLocation           OCTET STRING
  *   1.3.6.1.2.1.1.7.0      sysServices           INTEGER (72)
+ *   1.3.6.1.2.1.1.8.0      sysORLastChange       TimeTicks (0)
+ *   1.3.6.1.2.1.1.9.1.c.n  sysORTable, columns 2-4 for the 9 MIB modules implemented
  *   1.3.6.1.2.1.2.1.0      ifNumber              INTEGER (1)
  *   1.3.6.1.2.1.2.2.1.x.1  ifTable, columns 1-22 for interface 1 (IF-MIB)
+ *   1.3.6.1.2.1.11.n.0     snmp group (SNMPv2-MIB), n = 1-32 without 7 and 23
  *   1.3.6.1.2.1.31.1.1.1.x.1  ifXTable, columns 1-19 for interface 1 (IF-MIB)
  *   1.3.6.1.4.1.63050.1.0  mainsPowerStatus      INTEGER 0 = lost, 1 = present
  *   1.3.6.1.4.1.63050.2.0  mainsPowerChanges     Counter32
@@ -22,6 +25,7 @@
  *   1.3.6.1.4.1.63050.4.0  cpuTemperature        INTEGER, tenths of a degree Celsius (RP2040 die)
  *   1.3.6.1.4.1.63050.5.0  ambientTemperature    INTEGER, tenths of a degree Celsius (TMP1075),
  *                                                absent while the sensor does not answer
+ *   1.3.6.1.6.3.1.1.6.1.0  snmpSetSerialNo       INTEGER (0)
  *
  * The ifHC* columns are Counter64. SNMPv1 cannot carry Counter64, so in v1
  * they do not exist (RFC 3584 4.2.2): Get returns noSuchName and GetNext
@@ -64,6 +68,29 @@ struct SnmpLldpState {
 static const char* const SNMP_IF_DESCR = "W5500 10/100 Ethernet";
 
 /**
+ * @brief The agent's counters: the status screen and the snmp group (SNMPv2-MIB, RFC 3418)
+ */
+struct SnmpStats {
+    uint32_t inPackets;          ///< Every packet passed to handle() (snmpInPkts)
+    uint32_t inBadVersions;      ///< Valid message, not SNMP v1 or v2c
+    uint32_t inBadCommunity;     ///< Wrong community string
+    uint32_t inParseErrors;      ///< Malformed packets (snmpInASNParseErrs)
+    uint32_t inUnsupported;      ///< Response/trap/inform/report PDUs, too many varbinds
+    uint32_t inGetResponses;     ///< Response PDUs received (also in inUnsupported)
+    uint32_t inTraps;            ///< v1 Trap and SNMPv2-Trap PDUs received (also in inUnsupported)
+    uint32_t inGetRequests;
+    uint32_t inGetNextRequests;
+    uint32_t inGetBulkRequests;
+    uint32_t inSetRequests;
+    uint32_t inV2cRequests;      ///< Requests in v2c (included in the counters above)
+    uint32_t inTotalReqVars;     ///< Varbinds answered with a value by Get, GetNext and GetBulk
+    uint32_t outResponses;       ///< Responses returned for sending
+    uint32_t outNoSuchName;
+    uint32_t outTooBig;
+    uint32_t silentDrops;        ///< Requests dropped because not even an empty response fit
+};
+
+/**
  * @brief Everything the MIB reports, captured once per request
  */
 struct SnmpDeviceState {
@@ -81,6 +108,8 @@ struct SnmpDeviceState {
     bool ambientTempValid;         ///< TMP1075 answers; false makes ambientTemperature absent
     int32_t ambientTempDeciC;      ///< TMP1075 temperature, tenths of a degree Celsius
     const SnmpLldpState* lldp;     ///< LLDP-MIB data; nullptr: no LLDP-MIB object has an instance
+    const SnmpStats* snmp;         ///< The agent's live counters (snmp group); nullptr: all 0
+    uint32_t snmpOutTraps;         ///< Traps sent (snmpOutTraps, part of snmpOutPkts)
 };
 
 /**

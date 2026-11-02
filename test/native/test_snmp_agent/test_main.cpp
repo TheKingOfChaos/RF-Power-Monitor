@@ -6,9 +6,13 @@
 #include <stdio.h>
 #include <string.h>
 #include <snmp_agent.h>
+#include <snmp_trap.h>
 
 static SnmpDeviceState state;
+/// The object that sorts last: snmpSetSerialNo (SNMPv2-MIB) const char* const LAST_OID = "1.3.6.1.6.3.1.1.6.1.0";
 static uint8_t resp[SNMP_MAX_MESSAGE];
+/// The object that sorts last: snmpSetSerialNo (SNMPv2-MIB)
+static const char* const LAST_OID = "1.3.6.1.6.3.1.1.6.1.0";
 
 void setUp() {
     state.uptimeTicks = 123456;
@@ -42,6 +46,8 @@ void setUp() {
     state.ambientTempValid = true;
     state.ambientTempDeciC = 271;
     state.lldp = nullptr;
+    state.snmp = nullptr;
+    state.snmpOutTraps = 0;
 }
 
 void tearDown() {}
@@ -213,18 +219,171 @@ static void test_mib_is_strictly_sorted() {
 }
 
 static void test_mib_contains_expected_objects() {
-    // lldpLocPortTable 2-4, lldpRemTable 4-12, system 1-7, ifNumber, ifTable 1-22, ifXTable 1-19, enterprise 1-6
-    char expected[80][48];
+    // lldpLocPortTable 2-4, lldpRemTable 4-12, system 1-8, sysORTable, ifNumber, ifTable 1-22, snmp group,
+    // ifXTable 1-19, enterprise 1-6, snmpSetSerialNo
+    static char expected[200][48];
     uint16_t n = 0;
     for (int i = 2; i <= 4; i++) snprintf(expected[n++], 48, "1.0.8802.1.1.2.1.3.7.1.%d.1", i);
     for (int i = 4; i <= 12; i++) snprintf(expected[n++], 48, "1.0.8802.1.1.2.1.4.1.1.%d.0.1.1", i);
-    for (int i = 1; i <= 7; i++) snprintf(expected[n++], 48, "1.3.6.1.2.1.1.%d.0", i);
+    for (int i = 1; i <= 8; i++) snprintf(expected[n++], 48, "1.3.6.1.2.1.1.%d.0", i);
+    for (int c = 2; c <= 4; c++) {
+        for (int r = 1; r <= 9; r++) snprintf(expected[n++], 48, "1.3.6.1.2.1.1.9.1.%d.%d", c, r);
+    }
     snprintf(expected[n++], 48, "1.3.6.1.2.1.2.1.0");
     for (int i = 1; i <= 22; i++) snprintf(expected[n++], 48, "1.3.6.1.2.1.2.2.1.%d.1", i);
+    for (int i = 1; i <= 32; i++) {
+        if (i != 7 && i != 23) snprintf(expected[n++], 48, "1.3.6.1.2.1.11.%d.0", i);  // 7 and 23 never assigned
+    }
     for (int i = 1; i <= 19; i++) snprintf(expected[n++], 48, "1.3.6.1.2.1.31.1.1.1.%d.1", i);
     for (int i = 1; i <= 6; i++) snprintf(expected[n++], 48, "1.3.6.1.4.1.63050.%d.0", i);
+    snprintf(expected[n++], 48, "1.3.6.1.6.3.1.1.6.1.0");
     TEST_ASSERT_EQUAL_UINT16(n, mibSize());
     for (uint16_t i = 0; i < n; i++) TEST_ASSERT_EQUAL_STRING(expected[i], str(mibEntry(i).oid));
+}
+
+// ---- SNMPv2-MIB (RFC 3418) ----
+
+/// Value of one counter of the snmp group, 1.3.6.1.2.1.11.<n>.0, read with a v2c Get
+static uint32_t snmpCounter(SnmpAgent& agent, int n) {
+    char text[32];
+    snprintf(text, sizeof(text), "1.3.6.1.2.1.11.%d.0", n);
+    const char* oids[] = {text};
+    Reply r = requestV2c(agent, BerTag::GetRequest, oids, 1);
+    TEST_ASSERT_EQUAL_HEX8_MESSAGE(BerTag::Counter32, r.tags[0], text);
+    return r.uints[0];
+}
+
+static void test_sysortable_lists_nine_mibs() {
+    SnmpAgent agent("public");
+    const char* ids[] = {"1.3.6.1.6.3.1",      "1.3.6.1.2.1.31", "1.3.6.1.2.1.48", "1.3.6.1.2.1.50",
+                         "1.3.6.1.2.1.49",     "1.3.6.1.2.1.25.7.1", "1.3.6.1.2.1.47", "1.0.8802.1.1.2",
+                         "1.3.6.1.4.1.63050"};
+    const char* descrs[] = {"SNMPv2-MIB", "IF-MIB", "IP-MIB", "UDP-MIB", "TCP-MIB", "HOST-RESOURCES-MIB",
+                            "ENTITY-MIB", "LLDP-MIB", "RF-POWER-MONITOR-MIB"};
+    for (int row = 1; row <= 9; row++) {
+        char id[32], descr[32], up[32];
+        snprintf(id, sizeof(id), "1.3.6.1.2.1.1.9.1.2.%d", row);
+        snprintf(descr, sizeof(descr), "1.3.6.1.2.1.1.9.1.3.%d", row);
+        snprintf(up, sizeof(up), "1.3.6.1.2.1.1.9.1.4.%d", row);
+        const char* oids[] = {id, descr, up};
+        Reply r = request(agent, BerTag::GetRequest, oids, 3);
+        TEST_ASSERT_EQUAL_INT32(0, r.errorStatus);
+        TEST_ASSERT_EQUAL_STRING(ids[row - 1], str(r.oids[0]));
+        TEST_ASSERT_EQUAL_STRING(descrs[row - 1], r.strings[1]);
+        TEST_ASSERT_EQUAL_HEX8(BerTag::TimeTicks, r.tags[2]);
+        TEST_ASSERT_EQUAL_UINT32(0, r.uints[2]);
+    }
+    const char* last[] = {"1.3.6.1.2.1.1.8.0"};  // sysORLastChange
+    Reply r = request(agent, BerTag::GetRequest, last, 1);
+    TEST_ASSERT_EQUAL_HEX8(BerTag::TimeTicks, r.tags[0]);
+    TEST_ASSERT_EQUAL_UINT32(0, r.uints[0]);
+}
+
+static void test_snmp_group_counts_requests() {
+    SnmpAgent agent("public");
+    state.snmp = &agent.stats();
+    const char* three[] = {"1.3.6.1.2.1.1.1.0", "1.3.6.1.2.1.1.3.0", "1.3.6.1.2.1.1.5.0"};
+    const char* one[] = {"1.3.6.1.2.1.1.1.0"};
+    request(agent, BerTag::GetRequest, three, 3);
+    request(agent, BerTag::GetNextRequest, one, 1);
+    const char* counters[] = {"1.3.6.1.2.1.11.1.0", "1.3.6.1.2.1.11.15.0", "1.3.6.1.2.1.11.16.0",
+                              "1.3.6.1.2.1.11.13.0", "1.3.6.1.2.1.11.28.0"};
+    Reply r = request(agent, BerTag::GetRequest, counters, 5);
+    TEST_ASSERT_EQUAL_INT32(0, r.errorStatus);
+    TEST_ASSERT_EQUAL_UINT32(3, r.uints[0]);  // snmpInPkts: this request included
+    TEST_ASSERT_EQUAL_UINT32(2, r.uints[1]);  // snmpInGetRequests
+    TEST_ASSERT_EQUAL_UINT32(1, r.uints[2]);  // snmpInGetNexts
+    TEST_ASSERT_EQUAL_UINT32(4, r.uints[3]);  // snmpInTotalReqVars: 3 + 1, this response not yet
+    TEST_ASSERT_EQUAL_UINT32(2, r.uints[4]);  // snmpOutGetResponses
+}
+
+static void test_snmp_in_pkts_includes_the_current_request() {
+    SnmpAgent agent("public");
+    state.snmp = &agent.stats();
+    TEST_ASSERT_EQUAL_UINT32(1, snmpCounter(agent, 1));
+}
+
+static void test_snmp_total_req_vars_skips_errors_and_exceptions() {
+    SnmpAgent agent("public");
+    state.snmp = &agent.stats();
+    const char* bad[] = {"1.3.6.1.2.1.1.1.0", "1.3.6.1.9"};
+    request(agent, BerTag::GetRequest, bad, 2);    // v1 noSuchName: nothing retrieved
+    requestV2c(agent, BerTag::GetRequest, bad, 2);  // v2c: sysDescr retrieved, noSuchObject not
+    TEST_ASSERT_EQUAL_UINT32(1, snmpCounter(agent, 13));
+}
+
+static void test_snmp_bad_version_community_and_parse_errors_are_counted() {
+    SnmpAgent agent("public");
+    state.snmp = &agent.stats();
+    uint8_t req[256];
+    const char* oids[] = {"1.3.6.1.2.1.1.1.0"};
+    size_t len = buildRequest(req, sizeof(req), BerTag::GetRequest, oids, 1, "public", 3);  // SNMPv3
+    agent.handle(req, len, resp, sizeof(resp), state);
+    len = buildRequest(req, sizeof(req), BerTag::GetRequest, oids, 1, "wrong");
+    agent.handle(req, len, resp, sizeof(resp), state);
+    agent.handle(req, 5, resp, sizeof(resp), state);  // truncated
+    TEST_ASSERT_EQUAL_UINT32(1, snmpCounter(agent, 3));  // snmpInBadVersions
+    TEST_ASSERT_EQUAL_UINT32(1, snmpCounter(agent, 4));  // snmpInBadCommunityNames
+    TEST_ASSERT_EQUAL_UINT32(1, snmpCounter(agent, 6));  // snmpInASNParseErrs
+}
+
+static void test_snmp_in_traps_counts_trap_pdus() {
+    SnmpAgent agent("public");
+    state.snmp = &agent.stats();
+    static const uint8_t addr[4] = {10, 0, 0, 2};
+    uint8_t trap[256];
+    size_t len = snmpBuildColdStartTrapV2c("public", addr, 100, 7, trap, sizeof(trap));
+    TEST_ASSERT_GREATER_THAN(0, len);
+    TEST_ASSERT_EQUAL_size_t(0, agent.handle(trap, len, resp, sizeof(resp), state));
+    len = snmpBuildColdStartTrap("public", addr, 100, trap, sizeof(trap));
+    TEST_ASSERT_EQUAL_size_t(0, agent.handle(trap, len, resp, sizeof(resp), state));
+    const char* oids[] = {"1.3.6.1.2.1.1.1.0"};
+    len = buildRequest(trap, sizeof(trap), BerTag::GetResponse, oids, 1);
+    TEST_ASSERT_EQUAL_size_t(0, agent.handle(trap, len, resp, sizeof(resp), state));
+    TEST_ASSERT_EQUAL_UINT32(2, snmpCounter(agent, 19));  // snmpInTraps
+    TEST_ASSERT_EQUAL_UINT32(1, snmpCounter(agent, 18));  // snmpInGetResponses
+}
+
+static void test_snmp_silent_drops_counts_no_room() {
+    SnmpAgent agent("public");
+    state.snmp = &agent.stats();
+    uint8_t tiny[10];
+    TEST_ASSERT_EQUAL_size_t(0, agent.handle(NETSNMP_GET_SYSDESCR, sizeof(NETSNMP_GET_SYSDESCR), tiny,
+                                             sizeof(tiny), state));
+    TEST_ASSERT_EQUAL_UINT32(1, agent.stats().silentDrops);
+    TEST_ASSERT_EQUAL_UINT32(1, snmpCounter(agent, 31));
+}
+
+static void test_snmp_out_pkts_adds_traps() {
+    SnmpAgent agent("public");
+    state.snmp = &agent.stats();
+    state.snmpOutTraps = 5;
+    TEST_ASSERT_EQUAL_UINT32(5, snmpCounter(agent, 29));  // snmpOutTraps
+    TEST_ASSERT_EQUAL_UINT32(6, snmpCounter(agent, 2));   // snmpOutPkts: 1 response so far + 5 traps
+}
+
+static void test_snmp_enable_authen_traps_is_enabled() {
+    SnmpAgent agent("public");
+    const char* oids[] = {"1.3.6.1.2.1.11.30.0"};
+    Reply r = request(agent, BerTag::GetRequest, oids, 1);
+    TEST_ASSERT_EQUAL_HEX8(BerTag::Integer, r.tags[0]);
+    TEST_ASSERT_EQUAL_INT32(1, r.ints[0]);
+}
+
+static void test_snmp_counters_are_zero_without_stats() {
+    SnmpAgent agent("public");
+    state.snmp = nullptr;
+    TEST_ASSERT_EQUAL_UINT32(0, snmpCounter(agent, 1));
+}
+
+static void test_snmp_set_serial_no_is_zero_and_read_only() {
+    SnmpAgent agent("public");
+    const char* oids[] = {"1.3.6.1.6.3.1.1.6.1.0"};
+    Reply r = request(agent, BerTag::GetRequest, oids, 1);
+    TEST_ASSERT_EQUAL_HEX8(BerTag::Integer, r.tags[0]);
+    TEST_ASSERT_EQUAL_INT32(0, r.ints[0]);
+    r = requestV2c(agent, BerTag::SetRequest, oids, 1);
+    TEST_ASSERT_EQUAL_INT32((int32_t)SnmpError::NotWritable, r.errorStatus);
 }
 
 // ---- IF-MIB and temperature ----
@@ -423,11 +582,12 @@ static void test_ambient_temperature_absent_is_skipped_by_getbulk() {
     SnmpAgent agent("public");
     state.ambientTempValid = false;
     const char* oids[] = {"1.3.6.1.4.1.63050.3.0", "1.3.6.1.4.1.63050.4.0"};
-    Reply r = bulk(agent, 1, 2, oids, 2);
+    Reply r = bulk(agent, 1, 3, oids, 2);
     TEST_ASSERT_EQUAL_INT32(0, r.errorStatus);
     TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050.4.0", str(r.names[0]));  // non-repeater
     TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050.6.0", str(r.names[1]));  // repeater skips .5.0
-    TEST_ASSERT_EQUAL_HEX8(BerTag::EndOfMibView, r.tags[2]);              // then ends
+    TEST_ASSERT_EQUAL_STRING(LAST_OID, str(r.names[2]));                  // snmpSetSerialNo
+    TEST_ASSERT_EQUAL_HEX8(BerTag::EndOfMibView, r.tags[3]);              // then ends
     for (uint8_t i = 0; i < r.count; i++) TEST_ASSERT_NOT_EQUAL(BerTag::NoSuchInstance, r.tags[i]);
 }
 
@@ -608,9 +768,9 @@ static void test_getnext_after_ambient_temperature_is_mains_alarm() {
     TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050.6.0", str(r.names[0]));
 }
 
-static void test_getnext_after_mains_alarm_is_end_of_mib() {
+static void test_getnext_after_the_last_object_is_end_of_mib() {
     SnmpAgent agent("public");
-    const char* oids[] = {"1.3.6.1.4.1.63050.6.0"};
+    const char* oids[] = {LAST_OID};
     Reply r = request(agent, BerTag::GetNextRequest, oids, 1);
     TEST_ASSERT_EQUAL_INT32((int32_t)SnmpError::NoSuchName, r.errorStatus);
     r = requestV2c(agent, BerTag::GetNextRequest, oids, 1);
@@ -638,12 +798,14 @@ static void test_mib_get_and_get_next() {
     TEST_ASSERT_EQUAL_STRING("1.3.6.1.2.1.1.1.0", nextOf("1.3"));
     TEST_ASSERT_EQUAL_STRING("1.3.6.1.2.1.1.4.0", nextOf("1.3.6.1.2.1.1.3.0"));
     TEST_ASSERT_EQUAL_STRING("1.3.6.1.2.1.1.4.0", nextOf("1.3.6.1.2.1.1.3.0.5"));
-    TEST_ASSERT_EQUAL_STRING("1.3.6.1.2.1.2.1.0", nextOf("1.3.6.1.2.1.1.7.0"));
+    TEST_ASSERT_EQUAL_STRING("1.3.6.1.2.1.1.8.0", nextOf("1.3.6.1.2.1.1.7.0"));
+    TEST_ASSERT_EQUAL_STRING("1.3.6.1.2.1.2.1.0", nextOf("1.3.6.1.2.1.1.9.1.4.9"));
     TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050.1.0", nextOf("1.3.6.1.4.1.63050"));
     TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050.4.0", nextOf("1.3.6.1.4.1.63050.3.0"));
     TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050.5.0", nextOf("1.3.6.1.4.1.63050.4.0"));
     TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050.6.0", nextOf("1.3.6.1.4.1.63050.5.0"));
-    TEST_ASSERT_EQUAL_STRING("end", nextOf("1.3.6.1.4.1.63050.6.0"));
+    TEST_ASSERT_EQUAL_STRING(LAST_OID, nextOf("1.3.6.1.4.1.63050.6.0"));
+    TEST_ASSERT_EQUAL_STRING("end", nextOf(LAST_OID));
     TEST_ASSERT_EQUAL_STRING("end", nextOf("2.0"));
 }
 
@@ -804,7 +966,7 @@ static void test_getnext_with_several_varbinds() {
 
 static void test_getnext_past_end_reports_index_of_that_varbind() {
     SnmpAgent agent("public");
-    const char* oids[] = {"1.3.6.1.2.1.1.1.0", "1.3.6.1.4.1.63050.6.0"};
+    const char* oids[] = {"1.3.6.1.2.1.1.1.0", LAST_OID};
     Reply r = request(agent, BerTag::GetNextRequest, oids, 2);
     TEST_ASSERT_EQUAL_INT32((int32_t)SnmpError::NoSuchName, r.errorStatus);
     TEST_ASSERT_EQUAL_INT32(2, r.errorIndex);
@@ -889,12 +1051,12 @@ static void test_v2c_get_reports_exceptions_per_varbind_without_error_status() {
 
 static void test_v2c_getnext_past_end_is_end_of_mib_view() {
     SnmpAgent agent("public");
-    const char* oids[] = {"1.3.6.1.2.1.1.7.0", "1.3.6.1.4.1.63050.6.0"};
+    const char* oids[] = {"1.3.6.1.2.1.1.7.0", LAST_OID};
     Reply r = requestV2c(agent, BerTag::GetNextRequest, oids, 2);
     TEST_ASSERT_EQUAL_INT32(0, r.errorStatus);
-    TEST_ASSERT_EQUAL_STRING("1.3.6.1.2.1.2.1.0", str(r.names[0]));   // ifNumber follows the system group
+    TEST_ASSERT_EQUAL_STRING("1.3.6.1.2.1.1.8.0", str(r.names[0]));   // sysORLastChange follows sysServices
     TEST_ASSERT_EQUAL_HEX8(BerTag::EndOfMibView, r.tags[1]);
-    TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050.6.0", str(r.names[1]));
+    TEST_ASSERT_EQUAL_STRING(LAST_OID, str(r.names[1]));
 }
 
 static void test_v2c_walk_ends_with_end_of_mib_view() {
@@ -931,7 +1093,7 @@ static void test_v1_behaviour_is_unchanged_for_the_same_requests() {
     SnmpAgent agent("public");
     const char* unknown[] = {"1.3.6.1.2.1.1.99.0"};
     TEST_ASSERT_EQUAL_INT32((int32_t)SnmpError::NoSuchName, request(agent, BerTag::GetRequest, unknown, 1).errorStatus);
-    const char* last[] = {"1.3.6.1.4.1.63050.6.0"};
+    const char* last[] = {LAST_OID};
     TEST_ASSERT_EQUAL_INT32((int32_t)SnmpError::NoSuchName, request(agent, BerTag::GetNextRequest, last, 1).errorStatus);
     const char* name[] = {"1.3.6.1.2.1.1.5.0"};
     Reply r = request(agent, BerTag::SetRequest, name, 1);
@@ -1262,6 +1424,17 @@ int main() {
     UNITY_BEGIN();
     RUN_TEST(test_mib_is_strictly_sorted);
     RUN_TEST(test_mib_contains_expected_objects);
+    RUN_TEST(test_sysortable_lists_nine_mibs);
+    RUN_TEST(test_snmp_group_counts_requests);
+    RUN_TEST(test_snmp_in_pkts_includes_the_current_request);
+    RUN_TEST(test_snmp_total_req_vars_skips_errors_and_exceptions);
+    RUN_TEST(test_snmp_bad_version_community_and_parse_errors_are_counted);
+    RUN_TEST(test_snmp_in_traps_counts_trap_pdus);
+    RUN_TEST(test_snmp_silent_drops_counts_no_room);
+    RUN_TEST(test_snmp_out_pkts_adds_traps);
+    RUN_TEST(test_snmp_enable_authen_traps_is_enabled);
+    RUN_TEST(test_snmp_counters_are_zero_without_stats);
+    RUN_TEST(test_snmp_set_serial_no_is_zero_and_read_only);
     RUN_TEST(test_mib_get_and_get_next);
     RUN_TEST(test_mib_get_returns_the_instance_and_value);
     RUN_TEST(test_mib_get_absent_instance_is_false);
@@ -1289,7 +1462,7 @@ int main() {
     RUN_TEST(test_mib2_walk_unchanged);
     RUN_TEST(test_get_mains_alarm_reports_state);
     RUN_TEST(test_getnext_after_ambient_temperature_is_mains_alarm);
-    RUN_TEST(test_getnext_after_mains_alarm_is_end_of_mib);
+    RUN_TEST(test_getnext_after_the_last_object_is_end_of_mib);
     RUN_TEST(test_no_such_instance_for_wrong_if_index);
     RUN_TEST(test_get_netsnmp_request_returns_sysdescr);
     RUN_TEST(test_get_every_object_value_and_type);

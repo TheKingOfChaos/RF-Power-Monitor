@@ -98,6 +98,7 @@ int main(int argc, char** argv) {
         state.ambientTempValid = true;
         state.ambientTempDeciC = 215;
         state.lldp = &LLDP;
+        state.snmp = &agent.stats();
 
         size_t len = agent.handle(in, (size_t)n, out, sizeof(out), state);
         if (len) sendto(fd, out, len, 0, (sockaddr*)&peer, peerLen);

@@ -22,6 +22,8 @@ The device runs an SNMP agent on UDP port 161 and sends traps. Every object is r
 | `1.3.6.1.2.1.1.5.0` | sysName | OCTET STRING | The hostname (menu option 4 or web page), default `rf-power-monitor` |
 | `1.3.6.1.2.1.1.6.0` | sysLocation | OCTET STRING | From the settings (menu option 4 or web page), default empty |
 | `1.3.6.1.2.1.1.7.0` | sysServices | INTEGER | 72 (end-to-end + applications) |
+| `1.3.6.1.2.1.1.8.0` | sysORLastChange | TimeTicks | 0 (the table below never changes) |
+| `1.3.6.1.2.1.1.9.1.{2,3,4}.n` | sysORTable: sysORID, sysORDescr, sysORUpTime | OID, OCTET STRING, TimeTicks 0 | One row per MIB the agent implements, see below |
 | `1.3.6.1.4.1.63050.1.0` | mainsPowerStatus | INTEGER | `1` = present, `0` = lost |
 | `1.3.6.1.4.1.63050.2.0` | mainsPowerChanges | Counter32 | Mains changes since boot (2 per outage) |
 | `1.3.6.1.4.1.63050.3.0` | mainsPowerLastChange | TimeTicks | sysUpTime at the last change, 0 if none |
@@ -36,6 +38,54 @@ The device runs an SNMP agent on UDP port 161 and sends traps. Every object is r
 `mainsPowerStatus` is debounced: a change must last 5 ms to count and is reported within 10 ms of the input changing. On the carrier board the detector holds the input 30-50 ms after mains is lost, so a loss shows within 80 ms of mains going off. To detect an outage between two polls, compare `mainsPowerChanges` with the previous poll; `mainsPowerLastChange` tells you when it happened.
 
 `mainsPowerAlarm` becomes `1` once mains has been lost for 60 s without a break, counted from the debounced loss (from start-up if the device starts without mains), and goes back to `0` when mains returns. A loss that is restored, even briefly, starts a new 60 s. Alert on this object rather than on `mainsPowerStatus` to ignore short outages; when it becomes `1` the device sends one `mainsPowerLostTooLong` trap (below). The 60 s is fixed.
+
+## SNMPv2-MIB: sysORTable, snmp group, snmpSetSerialNo
+
+The agent implements the whole of SNMPv2-MIB (RFC 3418).
+
+**sysORTable** (`1.3.6.1.2.1.1.9.1.<column>.<n>`) lists the MIB modules the agent implements, n = 1-9:
+
+| n | sysORID | sysORDescr |
+|---|---|---|
+| 1 | `1.3.6.1.6.3.1` (snmpMIB) | SNMPv2-MIB |
+| 2 | `1.3.6.1.2.1.31` (ifMIB) | IF-MIB |
+| 3 | `1.3.6.1.2.1.48` (ipMIB) | IP-MIB |
+| 4 | `1.3.6.1.2.1.50` (udpMIB) | UDP-MIB |
+| 5 | `1.3.6.1.2.1.49` (tcpMIB) | TCP-MIB |
+| 6 | `1.3.6.1.2.1.25.7.1` (hostResourcesMibModule) | HOST-RESOURCES-MIB |
+| 7 | `1.3.6.1.2.1.47` (entityMIB) | ENTITY-MIB |
+| 8 | `1.0.8802.1.1.2` (lldpMIB) | LLDP-MIB |
+| 9 | `1.3.6.1.4.1.63050` | RF-POWER-MONITOR-MIB |
+
+sysORUpTime is 0 for every row: all are there from boot.
+
+**snmp group** (`1.3.6.1.2.1.11.<n>.0`, Counter32 unless noted), the agent's own counters since boot. They are also on the status screen.
+
+| n | Object | Value |
+|---|---|---|
+| 1 | snmpInPkts | Every packet the agent read, including the request being answered |
+| 2 | snmpOutPkts | Responses plus traps sent |
+| 3 | snmpInBadVersions | Neither v1 nor v2c (SNMPv3 included) |
+| 4 | snmpInBadCommunityNames | Wrong community |
+| 5 | snmpInBadCommunityUses | 0: the one community may do everything there is (read) |
+| 6 | snmpInASNParseErrs | Malformed packets |
+| 8-12 | snmpInTooBigs, snmpInNoSuchNames, snmpInBadValues, snmpInReadOnlys, snmpInGenErrs | 0: these count error responses received, which the agent never accepts |
+| 13 | snmpInTotalReqVars | Varbinds answered with a value by Get, GetNext and GetBulk (exceptions and error responses not counted) |
+| 14 | snmpInTotalSetVars | 0: nothing is writable |
+| 15, 16, 17 | snmpInGetRequests, snmpInGetNexts, snmpInSetRequests | Requests with the right community (GetBulk has no counter here) |
+| 18, 19 | snmpInGetResponses, snmpInTraps | Response and trap PDUs received (dropped unanswered) |
+| 20, 21 | snmpOutTooBigs, snmpOutNoSuchNames | Error responses sent |
+| 22, 24 | snmpOutBadValues, snmpOutGenErrs | 0 |
+| 25-27 | snmpOutGetRequests, snmpOutGetNexts, snmpOutSetRequests | 0: the device is not a manager |
+| 28 | snmpOutGetResponses | Responses sent |
+| 29 | snmpOutTraps | Traps sent |
+| 30 | snmpEnableAuthenTraps | INTEGER 1 (enabled): the device sends authenticationFailure (read-only) |
+| 31 | snmpSilentDrops | Requests dropped because not even an empty response fit in 1472 bytes |
+| 32 | snmpProxyDrops | 0: no proxy |
+
+Requests the rate limiter drops never reach the agent, so no counter here sees them; the status screen counts them (`rate limited`).
+
+**snmpSetSerialNo** (`1.3.6.1.6.3.1.1.6.1.0`, INTEGER) is 0 and read-only: it coordinates Sets between managers, and the device accepts none. It sorts last, so a walk from the root ends with it.
 
 ## Interfaces (IF-MIB)
 
@@ -85,7 +135,7 @@ What the counters cannot see: the W5500 itself silently drops frames with a bad 
 
 The counters are 64-bit internally and start at 0 at boot. Link state and speed are read from the W5500 PHY register (`PHYCFGR`) every 500 ms; a link change is logged on the serial port.
 
-SNMPv1 has no Counter64 type, so a v1 request does not see the eight `ifHC*` columns at all (RFC 3584): a v1 Get of one is `noSuchName` and a v1 walk skips them. Without the LLDP-MIB objects a v1 walk returns 47 objects, a v2c walk 55 (with them, see below).
+SNMPv1 has no Counter64 type, so a v1 request does not see the eight `ifHC*` columns at all (RFC 3584): a v1 Get of one is `noSuchName` and a v1 walk skips them. Without the LLDP-MIB objects a v1 walk returns 106 objects, a v2c walk 114 (with them, see below).
 
 ## Switch and port (LLDP-MIB)
 
@@ -106,7 +156,7 @@ The device answers part of the standard LLDP-MIB (IEEE 802.1AB-2005 Annex F), so
 | 1.0.8802.1.1.2.1.4.1.1.11.0.1.1 | lldpRemSysCapSupported | BITS (2 bytes) | as sent, in BITS order (bit 0 = top bit of the first byte; the TLV counts from the bottom bit): bridge + router = `28 00` |
 | 1.0.8802.1.1.2.1.4.1.1.12.0.1.1 | lldpRemSysCapEnabled | BITS (2 bytes) | as sent |
 
-There is one remote row, index lldpRemTimeMark 0, lldpRemLocalPortNum 1, lldpRemIndex 1, and only while the device holds a neighbour (the status screen's `Switch:` line); otherwise v1 answers noSuchName and v2c noSuchInstance, and walks skip it. Text from the switch is cut to 64 characters (128 for the description) with non-printable bytes replaced by `?`. Not served: lldpRemManAddrTable (the management address; its index holds the address), lldpLocalSystemData, lldpStatistics and LLDP-V2-MIB. A v1 walk from the root returns 59 objects with a neighbour (50 without), a v2c walk 67 (58).
+There is one remote row, index lldpRemTimeMark 0, lldpRemLocalPortNum 1, lldpRemIndex 1, and only while the device holds a neighbour (the status screen's `Switch:` line); otherwise v1 answers noSuchName and v2c noSuchInstance, and walks skip it. Text from the switch is cut to 64 characters (128 for the description) with non-printable bytes replaced by `?`. Not served: lldpRemManAddrTable (the management address; its index holds the address), lldpLocalSystemData, lldpStatistics and LLDP-V2-MIB. A v1 walk from the root returns 118 objects with a neighbour (109 without), a v2c walk 126 (117).
 
 ## v1 and v2c differences
 
@@ -177,7 +227,7 @@ Remaining risk: DHCP has no authentication. A host that sees the device's DHCP r
 
 ## Rate limiting and access log
 
-Each source address (IPv4 or the full IPv6 address) may send 50 requests per second on average, with bursts of up to 100. Requests beyond that are dropped without a response and counted on the status screen ("rate limited"). Up to 8 sources are tracked at once; when more appear, the one seen least recently is forgotten. A flood from one source does not affect others.
+Each source address (IPv4 or the full IPv6 address) may send 50 requests per second on average, with bursts of up to 300 (enough for a whole snmpwalk at full speed). Requests beyond that are dropped without a response and counted on the status screen ("rate limited"). Up to 8 sources are tracked at once; when more appear, the one seen least recently is forgotten. A flood from one source does not affect others.
 
 On top of that, all untrusted sources together may send at most 100 requests per second (bursts of 200). Source addresses are easy to fake with UDP, and a new address starts with a full bucket, so without this global limit an attacker rotating through many addresses could bypass the per-source limit. A request refused for its own source does not count against the global limit.
 
@@ -237,7 +287,7 @@ This needs the standard IETF MIBs, which Debian/Ubuntu ship separately: `sudo ap
 
 ## Limits
 
-- Up to 16 variable bindings per request and at most 16 in a GetBulk response. A larger GetBulk reply would let a small request with a faked source address make the device send a much larger packet to a victim (reflection); a bulk walk simply takes more requests (at least 5 for the 67 objects of a walk from the root). A GetBulk request also does not make its source trusted for the rate limiter.
+- Up to 16 variable bindings per request and at most 16 in a GetBulk response. A larger GetBulk reply would let a small request with a faked source address make the device send a much larger packet to a victim (reflection); a bulk walk simply takes more requests (at least 8 for the 126 objects of a walk from the root). A GetBulk request also does not make its source trusted for the rate limiter.
 - Requests up to 1472 bytes (one Ethernet frame); larger packets are dropped. Replies over IPv6 are at most 1452 bytes (the IPv6 header is 20 bytes longer; the device does not fragment); GetBulk replies are shortened to fit.
 - The network stack queues up to 5 UDP packets. Requests sent in a burst beyond that are dropped; SNMP managers retry, and normal polling or `snmpwalk` sends one request at a time.
 - If the device has not talked to a manager for a few minutes, it first has to look up the manager's MAC address (ARP). lwIP holds one reply during that lookup, so only one request of a burst arriving at that moment is answered.

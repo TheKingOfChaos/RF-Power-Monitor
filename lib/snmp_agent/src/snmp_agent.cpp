@@ -24,6 +24,7 @@ size_t SnmpAgent::respondError(const SnmpRequest& req, SnmpError error, uint8_t 
     }
     if (len == 0) {
         _outcome = SnmpOutcome::NoRoom;
+        _stats.silentDrops++;
         return 0;
     }
 
@@ -37,6 +38,7 @@ size_t SnmpAgent::finishResponse(SnmpResponseBuilder& builder, uint8_t* response
     size_t len = builder.finish();
     if (len == 0) return respondError(_req, SnmpError::TooBig, 0, response, capacity);
     _stats.outResponses++;
+    _stats.inTotalReqVars += _retrieved;
     return len;
 }
 
@@ -44,6 +46,7 @@ size_t SnmpAgent::handle(const uint8_t* request, size_t length, uint8_t* respons
                          const SnmpDeviceState& state) {
     _stats.inPackets++;
     _outcome = SnmpOutcome::Responded;
+    _retrieved = 0;
 
     switch (snmpParseRequest(request, length, _req)) {
     case SnmpParseResult::Ok:
@@ -57,6 +60,11 @@ size_t SnmpAgent::handle(const uint8_t* request, size_t length, uint8_t* respons
         _outcome = SnmpOutcome::BadVersion;
         return 0;
     case SnmpParseResult::UnsupportedPdu:
+        if (_req.pduType == BerTag::GetResponse) _stats.inGetResponses++;
+        if (_req.pduType == BerTag::Trap || _req.pduType == BerTag::SNMPv2Trap) _stats.inTraps++;
+        _stats.inUnsupported++;
+        _outcome = SnmpOutcome::Unsupported;
+        return 0;
     case SnmpParseResult::TooManyVarbinds:
         _stats.inUnsupported++;
         _outcome = SnmpOutcome::Unsupported;
@@ -118,6 +126,7 @@ size_t SnmpAgent::handleV1(uint8_t* response, size_t capacity, const SnmpDeviceS
         if (!builder.add(_found.oid, _found.value)) {
             return respondError(_req, SnmpError::TooBig, 0, response, capacity);
         }
+        _retrieved++;
     }
     return finishResponse(builder, response, capacity);
 }
@@ -140,12 +149,16 @@ size_t SnmpAgent::handleV2c(uint8_t* response, size_t capacity, const SnmpDevice
         const Oid& name = _req.names[i];
         bool added;
         if (getNext) {
-            added = mibGetNext(name, state, MibView::V2c, _found)
-                        ? builder.add(_found.oid, _found.value)
-                        : builder.add(name, SnmpValue::makeException(BerTag::EndOfMibView));
+            if (mibGetNext(name, state, MibView::V2c, _found)) {
+                added = builder.add(_found.oid, _found.value);
+                _retrieved++;
+            } else {
+                added = builder.add(name, SnmpValue::makeException(BerTag::EndOfMibView));
+            }
         } else {
             if (mibGet(name, state, _found)) {
                 added = builder.add(name, _found.value);
+                _retrieved++;
             } else {
                 uint8_t ex = mibHasObject(name) ? BerTag::NoSuchInstance : BerTag::NoSuchObject;
                 added = builder.add(name, SnmpValue::makeException(ex));
@@ -173,9 +186,10 @@ size_t SnmpAgent::handleGetBulk(uint8_t* response, size_t capacity, const SnmpDe
             full = true;
             break;
         }
-        bool added = mibGetNext(_req.names[i], state, MibView::V2c, _found)
-                         ? builder.tryAdd(_found.oid, _found.value)
-                         : builder.tryAdd(_req.names[i], SnmpValue::makeException(BerTag::EndOfMibView));
+        bool found = mibGetNext(_req.names[i], state, MibView::V2c, _found);
+        bool added = found ? builder.tryAdd(_found.oid, _found.value)
+                           : builder.tryAdd(_req.names[i], SnmpValue::makeException(BerTag::EndOfMibView));
+        if (found && added) _retrieved++;
         full = !added;
     }
 
@@ -191,7 +205,10 @@ size_t SnmpAgent::handleGetBulk(uint8_t* response, size_t capacity, const SnmpDe
             bool added;
             if (mibGetNext(_cursor[j], state, MibView::V2c, _found)) {
                 added = builder.tryAdd(_found.oid, _found.value);
-                if (added) _cursor[j] = _found.oid;
+                if (added) {
+                    _cursor[j] = _found.oid;
+                    _retrieved++;
+                }
                 allEnded = false;
             } else {
                 added = builder.tryAdd(_cursor[j], SnmpValue::makeException(BerTag::EndOfMibView));

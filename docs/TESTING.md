@@ -230,6 +230,7 @@ The port is the one the device names over LLDP, used only if the switch also lis
 ### IF-MIB and temperatures in the native suites
 - `test_if_stats` (`lib/if_stats`): frame classification (unicast, multicast, broadcast, runt frames), receive verdicts (IPv4/ARP delivered, IPv6 only when enabled, other EtherTypes unknown, length boundaries 13/14/1514/1515), each received frame in exactly one counter, discards, octet and packet counting, 64-bit counters past 2^32, W5500 PHYCFGR decoding (link, 10/100, duplex) and speed in bit/s
 - `test_snmp_agent`: ifTable and ifXTable values from the device state, ifInDiscards/ifInErrors/ifInUnknownProtos, ifPhysAddress is the MAC, Counter64 values, link down shows `down` and speed 0, no such instance for interface 2, Counter64 objects do not exist for v1 (Get and walk, RFC 3584), a v1 walk returns every other object, CPU temperature; ambient temperature when the sensor answers, and without it noSuchInstance (v2c Get), noSuchName (v1 Get) and skipped by GetNext, GetBulk and walks
+- `test_snmp_agent` SNMPv2-MIB: sysORTable rows, snmp group counts (snmpInPkts includes the current request, snmpInTotalReqVars skips errors and exceptions, trap and response PDUs, silent drops, traps in snmpOutPkts), snmpSetSerialNo read-only
 - `test_snmp_agent` GetBulk: a walk returns the whole MIB then endOfMibView, replies are capped at 16 varbinds (no amplification), a GetBulk does not make its source trusted
 
 ### `test/native/test_web_ui`: the web page (`lib/web_ui`)
@@ -319,7 +320,7 @@ Uses `test/settings_a.json` and `test/settings_b.json`, never the real settings.
 ### `test/hil/test_snmp.py`: the SNMP agent on the device
 - `snmpget` of sysDescr, sysObjectID, several varbinds in order; sysUpTime advances ~100 ticks per second
 - Mains objects present and consistent with the serial status screen
-- `snmpwalk` of everything from `.1` (v1: 50 objects in order, 59 while the device has an LLDP neighbour, LLDP-MIB first; End of MIB; v1 does not see the eight Counter64 columns), the system group (7) and the enterprise subtree (6; 5 with `RFPOWER_NO_TMP1075`)
+- `snmpwalk` of everything from `.1` (v1: 109 objects in order, 118 while the device has an LLDP neighbour, LLDP-MIB first; End of MIB; v1 does not see the eight Counter64 columns), the system group (7) and the enterprise subtree (6; 5 with `RFPOWER_NO_TMP1075`)
 - IF-MIB: ifDescr, ifType, ifMtu, admin/oper status, ifName; ifSpeed, ifHighSpeed and ifPhysAddress match the status screen; 20 requests raise the 64-bit packet and octet counters; ifInOctets is the low half of ifHCInOctets; the receive drop counters match the status screen; Counter64 is noSuchName in v1
 - cpuTemperature between 10 and 85 °C and within 2 °C of the status screen
 - ambientTemperature between 5 and 50 °C, within 0.5 °C of the status screen and below the CPU temperature (skipped with `RFPOWER_NO_TMP1075=1`, for a module without the carrier board)
@@ -330,7 +331,7 @@ Uses `test/settings_a.json` and `test/settings_b.json`, never the real settings.
 - Access log lists bad community and bad version from this PC, newest first; SetRequests are logged
 - The device must use community `public` for this suite
 
-- v2c: get, exceptions instead of errors, walk of all 58 objects (67 with an LLDP neighbour) ending with endOfMibView, `snmpbulkwalk` returns the same objects as `snmpwalk`, `snmpbulkget -Cn1 -Cr3`, `-Cr1000` capped at 16 varbinds and reaching endOfMibView, Set notWritable, wrong community; SNMPv3 gets no reply and is counted; v1/v2c counters
+- v2c: get, exceptions instead of errors, walk of all 117 objects (126 with an LLDP neighbour) ending with endOfMibView, `snmpbulkwalk` returns the same objects as `snmpwalk`, `snmpbulkget -Cn1 -Cr3`, `-Cr1000` capped at 16 varbinds and reaching endOfMibView, Set notWritable, wrong community; SNMPv3 gets no reply and is counted; v1/v2c counters
 
 - 30 requests: every reply echoes its request id, worst case under 100 ms
 - 300 malformed packets in bursts: agent keeps answering; oversized packet ignored; 5 simultaneous requests all answered

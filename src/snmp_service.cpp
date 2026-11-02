@@ -80,6 +80,9 @@ static SnmpDeviceState captureState() {
     // LLDP-MIB: a static copy (core 0 only), so the response never reads the table lwIP updates
     static SnmpLldpState lldp;
     if (lldpServiceSnmpState(lldp)) s.lldp = &lldp;
+    // snmp group: the agent's live counters, so snmpInPkts includes the request being answered
+    s.snmp = &agent.stats();
+    s.snmpOutTraps = serviceStats.trapsSent;
     return s;
 }
 

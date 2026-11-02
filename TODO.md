@@ -134,7 +134,7 @@ An item is only ticked when it is implemented **and** its tests exist and pass (
 - [x] First CI run on GitHub (after push) — green since 2.5.1 (2026-10-31)
 
 ## 8. Security
-- [x] Request rate limiting: 50/s per source, burst 100, 8 sources tracked (`lib/access_control`) — native + HIL
+- [x] Request rate limiting: 50/s per source, burst 300 (100 before 3.1.0), 8 sources tracked (`lib/access_control`) — native + HIL
 - [x] Global limit 100/s, burst 200, so rotating/spoofed sources cannot reset the per-source buckets (found by automated security review) — native `test_rotating_sources_cannot_exceed_global_limit`
 - [x] Sources with the right community are trusted: own shared bucket and evicted last, so a spoofed flood cannot starve managers — native `test_trusted_manager_is_not_starved_by_spoofed_flood`, `test_spoofed_sources_cannot_evict_trusted_ones`
 - [x] Trust bounded: trusted sources share 200/s (burst 400), at most 4 trusted, trust expires after 10 min idle, cleared when the community changes — native `test_trusted_sources_share_their_own_bounded_bucket`, `test_number_of_trusted_sources_is_capped`, `test_trust_expires_after_inactivity`, `test_clear_trust_revokes_every_trusted_source`; HIL checks the clear on community change
@@ -220,7 +220,7 @@ An item is only ticked when it is implemented **and** its tests exist and pass (
 
 ## 17. Standard MIBs (3.1.0, plan docs/superpowers/plans/2026-11-02-standard-mibs.md)
 - [x] sysContact and sysLocation on the web page (Device name card) — native `test_device_name_*`, HIL `test_contact_and_location_from_web_reach_snmp`
-- [ ] SNMPv2-MIB complete: sysORTable, snmp group, snmpSetSerialNo
+- [x] SNMPv2-MIB complete: sysORTable, snmp group, snmpSetSerialNo — native `test_sysortable_*`/`test_snmp_*`, net-snmp, HIL `test_snmp_group_counts_this_test_requests`, `test_sysortable_names_the_mibs`
 - [ ] HOST-RESOURCES-MIB: CPU load per core, RAM, LittleFS; ENTITY-MIB inventory
 - [ ] IP/ICMP/UDP/TCP statistics from lwIP's MIB-II counters
 - [ ] IP-MIB ipAddrTable and ipAddressTable (IPv4 and IPv6)
