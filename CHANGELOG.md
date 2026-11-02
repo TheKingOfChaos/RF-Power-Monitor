@@ -1,6 +1,6 @@
 # Changelog
 
-All notable changes to the RF-UPS-Monitor firmware are recorded here.
+All notable changes to the RF-Power-Monitor firmware are recorded here.
 
 The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and the project uses [Semantic Versioning](https://semver.org/): the version is `FIRMWARE_VERSION` in [include/version.h](include/version.h), shown in the boot banner and in sysDescr, and each release has a git tag `vX.Y.Z`.
 
