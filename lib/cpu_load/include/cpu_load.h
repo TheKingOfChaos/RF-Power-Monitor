@@ -10,12 +10,14 @@
  *     the time outside that delay.
  *   - LoopLoad: core 0 never sleeps; it polls the network, SNMP, the web page and the menu in a loop.
  *     Work makes passes longer, so fewer fit in a second. The load of a second is how many passes it
- *     lost against the most passes per second of the last minute (an idle second): 1 - passes / most.
- *     An idle device reads 0-1 %. Idle passes vary a lot (58-150 us measured, now and then 1-2 ms),
- *     so comparing single passes with the shortest one read ~20 % on an idle device; whole seconds
- *     vary by under 1 %.
- *     Limit: under load that lasts over a minute without a single idle second, the reference drops and
- *     the load reads too low.
+ *     lost against the most passes per second of the last 15 minutes (an idle second):
+ *     1 - passes / most. An idle device reads 0-1 %. Idle passes vary a lot (58-150 us measured, now
+ *     and then 1-2 ms), so comparing single passes with the shortest one read ~20 % on an idle device;
+ *     whole seconds vary by under 1 %. The reference spans 15 minutes, far longer than the one-minute
+ *     average, so load lasting several minutes still reads high (with a one-minute reference it fell
+ *     to 0 % after a minute of load); a reference from a busier or idler time leaves after 15 minutes.
+ *     Limit: under load that lasts over 15 minutes without a single idle second, the reference drops
+ *     and the load reads too low.
  *
  * Times are time_us_32() values: differences are taken modulo 2^32, so the 71-minute wrap is harmless.
  * Pure C++, no allocation; unit tested on the host.
@@ -25,6 +27,9 @@
 
 /// Seconds averaged (hrProcessorLoad: one minute)
 constexpr uint8_t CPU_LOAD_SECONDS = 60;
+
+/// Minutes LoopLoad remembers the most passes per second for (its idle reference)
+constexpr uint8_t LOOP_LOAD_REFERENCE_MINUTES = 15;
 
 class CpuLoad {
 public:
@@ -57,9 +62,11 @@ public:
 
 private:
     CpuLoad _load;
-    uint32_t _passes[CPU_LOAD_SECONDS] = {};  ///< Passes in each completed second, ring
+    uint32_t _minuteMost[LOOP_LOAD_REFERENCE_MINUTES] = {};  ///< Most passes per second of each completed minute, ring
     uint8_t _next = 0;
     uint8_t _count = 0;
+    uint32_t _currentMost = 0;                ///< Most passes per second in the open minute
+    uint8_t _secondsInMinute = 0;
     bool _started = false;
     uint32_t _secondStartUs = 0;
     uint32_t _secondPasses = 0;               ///< Passes in the open second

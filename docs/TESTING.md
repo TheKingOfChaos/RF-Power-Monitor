@@ -264,7 +264,7 @@ The port is the one the device names over LLDP, used only if the switch also lis
 ### `test/native/test_cpu_load`: processor load (`lib/cpu_load`)
 
 - CpuLoad: 0 before the first second, half busy reads 50, one-minute average (a busy half minute leaves after a minute), never above 100, timer wrap
-- LoopLoad (core 0): an idle loop reads 0, also with the jittery pass times measured on the device (58-150 us, now and then 1.5 ms), one 500 ms pass raises the second it ends in, sustained long passes read high, the idle reference follows the last minute, timer wrap
+- LoopLoad (core 0): an idle loop reads 0, also with the jittery pass times measured on the device (58-150 us, now and then 1.5 ms), one 500 ms pass raises the second it ends in, sustained long passes read high (also after five minutes of load), the idle reference leaves after 15 minutes, timer wrap
 
 ### `test/hil/test_host_resources.py`: HOST-RESOURCES-MIB and ENTITY-MIB on the device
 

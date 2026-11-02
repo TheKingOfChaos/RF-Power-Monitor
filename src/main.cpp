@@ -231,7 +231,7 @@ void setup() {
 }
 
 void loop() {
-    hostStatsLoopPass();  // core 0 load: how much longer this pass takes than an idle one
+    hostStatsLoopPass();  // core 0 load: passes per second against an idle second (lib/cpu_load)
     watchdogPoll();
     diagPoll();
     DIAG_MARK(1);

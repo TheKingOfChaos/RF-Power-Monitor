@@ -174,7 +174,7 @@ The LittleFS row disappears if the filesystem cannot be read.
 
 How the load is measured (`lib/cpu_load`):
 - **Core 1** sleeps 1 ms after each round of sampling the mains input and the reset button; its load is the time it spends outside that sleep (about 1 %).
-- **Core 0** never sleeps: it polls the network, SNMP, the web page and the menu in a loop. Work makes the loop's passes longer, so fewer fit in a second. Its load is `1 - passes in a second / most passes per second in the last minute`. An idle device does about 14,000 passes per second and reads 0 %; a minute of SNMP walks and web page loads at full speed read 87 % in the HIL test. If the device were busy for more than a minute without one idle second, the reference would drop and the load read too low.
+- **Core 0** never sleeps: it polls the network, SNMP, the web page and the menu in a loop. Work makes the loop's passes longer, so fewer fit in a second. Its load is `1 - passes in a second / most passes per second in the last 15 minutes`. An idle device does about 14,000 passes per second and reads 0 %; a minute of SNMP walks and web page loads at full speed read 87-95 % in the HIL test. The 15-minute reference keeps load that lasts several minutes reading high; only if the device were busy for more than 15 minutes without one idle second would the reference drop and the load read too low.
 
 Both are also on the status screen (`CPU load: core 0 0 %, core 1 1 % (last minute)`).
 

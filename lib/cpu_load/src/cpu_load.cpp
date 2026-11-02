@@ -41,14 +41,19 @@ void LoopLoad::pass(uint32_t nowUs) {
 
     // Passes per second: scale a second that ran long (one slow pass at its end) to one second
     uint32_t passes = (uint32_t)((uint64_t)_secondPasses * SECOND_US / elapsed);
-    _passes[_next] = passes;
-    _next = (uint8_t)((_next + 1) % CPU_LOAD_SECONDS);
-    if (_count < CPU_LOAD_SECONDS) _count++;
+    if (passes > _currentMost) _currentMost = passes;
 
-    // The idle reference: the most passes of a second in the last minute, this one included
-    uint32_t most = 0;
+    // The idle reference: the most passes of a second in the last 15 minutes, this one included
+    uint32_t most = _currentMost;
     for (uint8_t i = 0; i < _count; i++) {
-        if (_passes[i] > most) most = _passes[i];
+        if (_minuteMost[i] > most) most = _minuteMost[i];
+    }
+    if (++_secondsInMinute >= 60) {
+        _minuteMost[_next] = _currentMost;
+        _next = (uint8_t)((_next + 1) % LOOP_LOAD_REFERENCE_MINUTES);
+        if (_count < LOOP_LOAD_REFERENCE_MINUTES) _count++;
+        _currentMost = 0;
+        _secondsInMinute = 0;
     }
     uint32_t busyUs = most == 0 ? 0 : (uint32_t)((uint64_t)elapsed * (most - passes) / most);
     _load.add(nowUs, busyUs);

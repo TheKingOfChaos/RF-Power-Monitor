@@ -122,11 +122,20 @@ static void test_loop_load_long_passes_read_high() {
     TEST_ASSERT_LESS_OR_EQUAL_UINT8(72, p);
 }
 
+static void test_loop_load_sustained_load_keeps_reading_high() {
+    LoopLoad load;
+    uint32_t now = loop(load, 0, 3, 40);
+    // Five minutes where every pass takes 400 us instead of 40: still about 90 % busy, not
+    // "idle" because the busy rate has become the most passes per second of the last minute
+    loop(load, now, 300, 400);
+    TEST_ASSERT_GREATER_OR_EQUAL_UINT8(80, load.percent());
+}
+
 static void test_loop_load_baseline_follows_the_last_minute() {
     LoopLoad load;
     uint32_t now = loop(load, 0, 1, 10);  // a short pass early on (before the network started)
-    now = loop(load, now, 61, 40);        // then 40 us is the idle pass
-    now = loop(load, now, 60, 40);        // a minute with the 10 us baseline gone
+    now = loop(load, now, 16 * 60, 40);   // then 40 us is the idle pass; the reference spans 15 minutes
+    now = loop(load, now, 60, 40);        // a minute with the 10 us reference gone
     TEST_ASSERT_LESS_OR_EQUAL_UINT8(1, load.percent());
 }
 
@@ -150,6 +159,7 @@ int main() {
     RUN_TEST(test_loop_load_idle_loop_with_jittery_passes_reads_low);
     RUN_TEST(test_loop_load_busy_passes_raise_load);
     RUN_TEST(test_loop_load_long_passes_read_high);
+    RUN_TEST(test_loop_load_sustained_load_keeps_reading_high);
     RUN_TEST(test_loop_load_baseline_follows_the_last_minute);
     RUN_TEST(test_loop_load_survives_timer_wrap);
     return UNITY_END();
