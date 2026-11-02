@@ -37,7 +37,8 @@ More diagrams (firmware architecture, SNMP request flow, mains flow, settings, t
 | Interface statistics (IF-MIB ifTable/ifXTable, 64-bit counters) | Working, counted by the firmware |
 | CPU temperature (RP2040 internal sensor) | Working |
 | Ambient temperature (TMP1075 on the carrier board, I2C) | Working |
-| LibreNMS OS definition (mains state, temperature, change counter) | Working, tested with LibreNMS 26.9.1 |
+| Standard MIBs: SNMPv2-MIB complete, HOST-RESOURCES-MIB (CPU load per core, RAM, LittleFS), ENTITY-MIB (inventory), IP-MIB addresses, MIB-II ip/icmp/tcp/udp counters | Working (3.1.0) |
+| LibreNMS OS definition (mains state, temperature, change counter, CPU, memory, storage, addresses, inventory) | Working, tested with LibreNMS 26.10.2 |
 
 See [TODO.md](TODO.md) for the detailed plan.
 
@@ -48,7 +49,7 @@ See [TODO.md](TODO.md) for the detailed plan.
 | [docs/SETUP_MANUAL.md](docs/SETUP_MANUAL.md) | **Installing a device**: safety, assembly, first configuration, LibreNMS, proving the alarm works, checklist |
 | [docs/USER_MANUAL.md](docs/USER_MANUAL.md) | **Daily use**: LEDs, web page, what to do on an alarm, changing settings, the serial menu (every option and status line), factory reset, firmware update, troubleshooting |
 | This README | Hardware, wiring, serial menu, web page, network, IPv6, mains monitoring, factory reset, settings, building, SNMP overview, troubleshooting |
-| [docs/MIB.md](docs/MIB.md) | Every SNMP object (system, IF-MIB, RF-POWER-MONITOR-MIB), traps, v1/v2c differences, rate limiting, errors, limits |
+| [docs/MIB.md](docs/MIB.md) | Every SNMP object (SNMPv2-MIB, IF-MIB, IP/ICMP/TCP/UDP, HOST-RESOURCES-MIB, ENTITY-MIB, LLDP-MIB, RF-POWER-MONITOR-MIB), traps, v1/v2c differences, rate limiting, errors, limits |
 | [docs/LIBRENMS.md](docs/LIBRENMS.md) | Monitoring the device with LibreNMS: install, sensors, alerts, traps, Docker test setup |
 | [docs/TESTING.md](docs/TESTING.md) | Test layers, how to run them, automated mains tests with a smart plug, what each suite covers |
 | [CHANGELOG.md](CHANGELOG.md) | What changed in each version |

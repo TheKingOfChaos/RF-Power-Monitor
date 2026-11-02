@@ -7,6 +7,8 @@ over:
     - { graph: device_bits, text: 'Device Traffic' }
     - { graph: device_state, text: 'Mains Power' }
     - { graph: device_temperature, text: 'Temperature' }
+    - { graph: device_processor, text: 'CPU' }
+    - { graph: device_mempool, text: 'Memory' }
 discovery:
     -
         sysObjectID:

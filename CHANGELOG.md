@@ -6,7 +6,11 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [3.1.0] - 2026-11-02
+ MIBs, so LibreNMS and other managers show CPU load, memory, storage, addresses, inventory and protocol statistics without device-specific setup.
+
 ### Added
+- LibreNMS: CPU and Memory graphs on the device overview, the serial number from ENTITY-MIB. Checked with LibreNMS 26.10.2.
 - IP-MIB address tables: ipAddrTable (IPv4) and ipAddressTable (IPv4 and IPv6, with prefix, origin and status), rows that follow the addresses the device has at the moment, so LibreNMS shows the IPv4 and IPv6 addresses on eth0.
 - MIB-II ip, icmp, tcp and udp groups (IP-MIB, TCP-MIB, UDP-MIB scalars): lwIP's own MIB-II counters, switched on in the new `include/lwipopts.h` (196 bytes of RAM), so LibreNMS graphs IP, ICMP, TCP and UDP traffic.
 - HOST-RESOURCES-MIB (RFC 2790): CPU load of both cores (hrProcessorLoad, one-minute average), RAM and the LittleFS partition (hrStorageTable), hrMemorySize and hrSystem, so LibreNMS graphs processors, memory and storage. Also on the status screen.

@@ -224,10 +224,10 @@ An item is only ticked when it is implemented **and** its tests exist and pass (
 - [x] HOST-RESOURCES-MIB: CPU load per core, RAM, LittleFS; ENTITY-MIB inventory — native `test_cpu_load`, `test_hr_*`, `test_entity_*`, net-snmp, HIL `test_host_resources.py`
 - [x] IP/ICMP/UDP/TCP statistics from lwIP's MIB-II counters — native `test_ip_*`/`test_icmp_*`/`test_tcp_*`/`test_udp_*`, net-snmp, HIL `test_icmp_echo_counters_follow_ping`, `test_udp_*`, `test_tcp_*`
 - [x] IP-MIB ipAddrTable and ipAddressTable (IPv4 and IPv6) — native `test_ip_tables_*`/`test_ipaddress*`/`test_dynamic_rows_*`, net-snmp, HIL `test_snmp_ip_addresses_match_status_screen`, `test_snmp_ipv6_addresses_match_status_screen`
-- [ ] LibreNMS shows location, CPU, memory, storage, addresses, inventory, netstats
+- [x] LibreNMS shows location, CPU, memory, storage, addresses, inventory, netstats — LibreNMS 26.10.2 rediscovery 2026-11-02 (docs/LIBRENMS.md)
 
 ## Notes
 - SNMP must be v1 and v2c (no v3) and our own code; networking may use libraries
-- Memory limits: 70 % flash, 50 % RAM (3.0.0: 17.5 % flash / 45.4 % RAM, built with -Os)
+- Memory limits: 70 % flash, 50 % RAM (3.1.0: 19.6 % flash / 47.3 % RAM, built with -Os)
 - Version: `include/version.h`; every user-visible change goes into CHANGELOG.md under [Unreleased]
 - Core 0 has an 8 KB stack (core1_separate_stack, since 2.3.0) shared with USB/lwIP/W5500 interrupts: keep big buffers static

@@ -17,6 +17,14 @@ The device works in LibreNMS as a plain SNMP device out of the box: it answers S
 | Count sensor "Mains power changes since boot" | `mainsPowerChanges` |
 | Uptime, reboot detection | sysUpTime |
 | Neighbours tab: the switch and port the device is plugged into | LLDP-MIB `lldpRemTable` (firmware 2.7.0) |
+| Location and contact on the device page (and the map, once the location has coordinates) | sysLocation, sysContact: set on the device's web page or menu option 4 |
+| Processors: "RP2040 core 0 (network, SNMP)" and "RP2040 core 1 (mains input)", load per core | HOST-RESOURCES-MIB `hrProcessorLoad` (firmware 3.1.0) |
+| Memory "RAM" (256 KB) | HOST-RESOURCES-MIB `hrStorageTable`, hrStorageRam (3.1.0) |
+| Storage "LittleFS (settings)" (256 KB) | HOST-RESOURCES-MIB `hrStorageTable`, hrStorageFlashMemory (3.1.0) |
+| IPv4 and IPv6 addresses on `eth0` | IP-MIB `ipAddrTable`, `ipAddressTable` (3.1.0) |
+| Inventory: model, hardware and firmware revision, manufacturer, serial number; the serial also on the Overview | ENTITY-MIB `entPhysicalTable` (3.1.0), `serial` in the discovery definition |
+| Netstats graphs: IP, ICMP, TCP, UDP, SNMP | MIB-II ip/icmp/tcp/udp groups (lwIP's counters), SNMPv2-MIB snmp group (3.1.0) |
+| Overview graphs: CPU and Memory next to traffic, mains and temperature | `over:` in the detection definition |
 
 The temperature sensors set their low limit explicitly to −20 °C (the RP2040's minimum rating): without it LibreNMS sets a low limit 10 °C below the first reading (29.4 °C in the test), which alarms as soon as the room cools down. The CPU sensor keeps the index `boardTemperature.0` from before the MIB object was renamed `cpuTemperature`, so an existing installation keeps its graph after updating the definitions; replace the MIB file in LibreNMS together with the YAML files. The ambient limits suit a room with equipment; change them per device in LibreNMS if the box sits somewhere warmer.
 
@@ -40,6 +48,12 @@ rm html/images/os/rfupsmonitor.svg html/images/logos/rfupsmonitor.svg
 ```
 
 then copy the new files as under Install, rediscover the device (it becomes OS RF-Power-Monitor; its sensors are created again, so their history starts over) and restart snmptrapd so it loads the new MIB. Until the restart it names the traps `RF-UPS-MONITOR-MIB::...`; the trap script below accepts both names.
+
+LibreNMS reads CPU, memory, storage, addresses and inventory through its generic modules (`processors`, `mempools`, `storage`, `ipv4-addresses`, `ipv6-addresses`, `entity-physical`, `netstats`), as it does for any device; only the overview graphs and the serial come from our definition files. They appear after the next discovery (every 6 hours) or at once with `./lnms device:discover <device>`.
+
+The location follows sysLocation at every poll. Clearing it on the device does not clear it in LibreNMS (LibreNMS keeps the last one); set or remove it on the device's page in LibreNMS (Edit → Override sysLocation) if needed.
+
+Checked 2026-11-02 with LibreNMS 26.10.2 (Docker) against firmware 3.1.0: both processors (0-1 % idle), memory RAM 52 %, storage LittleFS 32 of 256 KB, ipv4 10.132.0.58/22, ipv6 fe80:: and the ULA address (/64, origin linklayer), the inventory entry with serial, manufacturer and revisions, the serial on the device, RRD files for netstats ip/icmp/tcp/udp/snmp, and a location set on the device shown after the next poll. Hardware and version still come from sysDescr.
 
 ## Install
 
