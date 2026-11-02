@@ -126,7 +126,7 @@ If you don't want the web page at all, turn it off with menu option `8`.
 
    ![LibreNMS: Add Device](images/librenms/add-device.png)
 
-   LibreNMS detects it as **RF-Power-Monitor** and creates its sensors: *Mains power*, *Mains lost over 60 s*, *CPU* and *Ambient* temperature, and *Mains power changes since boot*. The device page then looks like this:
+   LibreNMS detects it as **RF-Power-Monitor** and creates its sensors: *Mains power*, *Mains lost over 60 s*, *CPU* and *Ambient* temperature, and *Mains power changes since boot*; with firmware 3.1.0 and later also the two processor cores, memory, the settings flash as storage, the addresses, the serial number and the location you set. The device page then looks like this (contact replaced by a placeholder):
 
    ![LibreNMS: the device page with its sensors](images/librenms/device-overview.png)
 

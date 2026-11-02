@@ -44,7 +44,7 @@ Connect a USB cable and open a terminal (PuTTY: Serial, the device's COM port, 1
 
 ### LibreNMS
 
-The device page shows the sensors *Mains power* (OK / warning), *Mains lost over 60 s* (OK / critical), *CPU* and *Ambient* temperature and *Mains power changes since boot*, the Ethernet port with its traffic, and in the **Switch** box the switch and port the device is plugged into (from LLDP, updated at each discovery; the box needs the RF-Power-Monitor plugin on the LibreNMS server). Since firmware 3.1.0 it also shows the device's location and contact (set them on the web page), the load of both processor cores and the memory in use (overview graphs *CPU* and *Memory*), the settings flash as storage, the IPv4 and IPv6 addresses on the port, the serial number, an **Inventory** entry, and IP/ICMP/TCP/UDP/SNMP traffic graphs under **Graphs → Netstats**. The screenshot below is from before 3.1.0:
+The device page shows the sensors *Mains power* (OK / warning), *Mains lost over 60 s* (OK / critical), *CPU* and *Ambient* temperature and *Mains power changes since boot*, the Ethernet port with its traffic, and in the **Switch** box the switch and port the device is plugged into (from LLDP, updated at each discovery; the box needs the RF-Power-Monitor plugin on the LibreNMS server). Since firmware 3.1.0 it also shows the device's location and contact (set them on the web page), the load of both processor cores and the memory in use (overview graphs *CPU* and *Memory*), the settings flash as storage, the IPv4 and IPv6 addresses on the port, the serial number, an **Inventory** entry, and IP/ICMP/TCP/UDP/SNMP traffic graphs under **Graphs → Netstats** (firmware 3.2.0, contact replaced by a placeholder):
 
 ![LibreNMS: the device page](images/librenms/device-overview.png)
 
@@ -55,6 +55,10 @@ Under **Logs → Event Log** you see what happened: the traps the device sent (m
 The **Neighbours** tab shows the switch and port the device is plugged into (from LLDP):
 
 ![LibreNMS: the Neighbours tab](images/librenms/device-neighbours.png)
+
+The **Inventory** (top menu, or the device's Inventory tab) lists the device with its model and serial number:
+
+![LibreNMS: the device in the inventory](images/librenms/device-inventory.png)
 
 ## When the alarm comes
 
