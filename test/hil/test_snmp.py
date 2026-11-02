@@ -575,32 +575,49 @@ class SnmpAgentTest(unittest.TestCase):
 
     # ---- security: rate limiting and access log ----
 
-    def test_rate_limit_caps_one_source_and_recovers(self):
-        # 50 requests/s per source with a burst of 300. Send as fast as replies come back for 3 s.
-        time.sleep(6.5)                          # start with a full bucket (300 / 50 = 6 s)
-        before = self.dev.status()["rateLimited"]
-        answered = unanswered = 0
-        start = time.time()
-        while time.time() - start < 3.0:
-            resp, _ = raw_get(self.ip, 7000 + answered + unanswered, timeout=0.05)
-            if resp is None:
-                unanswered += 1
-            else:
-                answered += 1
-        elapsed = time.time() - start
-        print("\n    rate limit: %d answered, %d dropped in %.1f s" % (answered, unanswered, elapsed))
-        expected = 300 + 50 * elapsed
-        self.assertGreater(unanswered, 0, "nothing was rate limited")
-        self.assertLess(answered, expected * 1.15, "more answered than the limit allows")
-        self.assertGreater(answered, expected * 0.7, "far fewer answered than the limit allows")
-
+    def revoke_trust(self):
+        """Changing the community revokes all rate-limit trust: switch away and back."""
         st = self.dev.status()
-        self.assertGreater(st["rateLimited"], before)
+        self.dev.set_snmp("rl-test", st["sysName"], st["sysContact"], st["sysLocation"])
+        self.dev.set_snmp("public", st["sysName"], st["sysContact"], st["sysLocation"])
+        self.assertEqual("public", self.dev.status()["community"])
+
+    def test_rate_limit_caps_one_source_and_recovers(self):
+        # An untrusted source: 50 requests/s with a burst of 100. Requests with a wrong community are
+        # never answered, so they keep this PC untrusted; the status screen counts the ones dropped.
+        self.revoke_trust()
+        time.sleep(2.5)                          # start with a full bucket
+        bad = bytearray(GET_SYSDESCR)
+        bad[7:13] = b"wrongc"
+        before = self.dev.status()["rateLimited"]
+        start = time.time()
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as s:
+            for _ in range(300):
+                s.sendto(bytes(bad), (self.ip, 161))
+                time.sleep(0.002)                # ~1 s for all, without overflowing the UDP queue
+        elapsed = time.time() - start
+        time.sleep(0.5)
+        dropped = self.dev.status()["rateLimited"] - before
+        print("\n    rate limit (untrusted): %d of 300 dropped in %.1f s" % (dropped, elapsed))
+        expected = 300 - (100 + 50 * elapsed)    # what the bucket cannot pass
+        self.assertGreater(dropped, expected * 0.7, "far fewer dropped than the limit requires")
+        self.assertLess(dropped, expected * 1.3 + 10, "more dropped than the limit allows")
         entries = [e for e in self.dev.access_log() if e[1] == "rate limited"]
         self.assertTrue(entries, "rate limiting not in the access log")
 
         time.sleep(2.5)                          # bucket refills
         self.assertIsNotNone(raw_get(self.ip, 1, timeout=0.5)[0], "source still blocked after refill")
+
+    def test_trusted_manager_walks_back_to_back(self):
+        # Once it used the right community, a manager may walk the whole MIB repeatedly at full speed
+        self.assertIsNotNone(raw_get(self.ip, 6999, timeout=1.0)[0])  # trusted from here on
+        time.sleep(2.5)
+        before = self.dev.status()["rateLimited"]
+        for _ in range(2):
+            rc, out = self.snmp("snmpwalk", ".1", version="2c")
+            self.assertEqual(0, rc, out[-300:])
+            self.assertIn("No more variables left in this MIB View", out)
+        self.assertEqual(before, self.dev.status()["rateLimited"], "a trusted walk was rate limited")
 
     def test_access_log_lists_rejected_requests_with_source(self):
         pc = local_ip_towards(self.ip)

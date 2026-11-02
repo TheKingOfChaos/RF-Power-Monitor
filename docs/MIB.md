@@ -112,7 +112,7 @@ The device's addresses are listed twice, as IP-MIB defines: in the older `ipAddr
 | 2 | ipAdEntIfIndex | 1 |
 | 3 | ipAdEntNetMask | The subnet mask |
 | 4 | ipAdEntBcastAddr | 1 (broadcast with the host part all ones) |
-| 5 | ipAdEntReasmMaxSize | 65535 |
+| 5 | ipAdEntReasmMaxSize | 14820: the largest datagram lwIP reassembles (`IP_REASS_MAX_PBUFS` 10 fragments of 1480 bytes, plus the header) |
 
 **ipAddressTable** `1.3.6.1.2.1.4.34.1.<column>.<type>.<length>.<address bytes>`, type 1 = ipv4 (length 4), 2 = ipv6 (length 16); one row per valid address: the IPv4 address and every IPv6 address that is preferred or deprecated (not while duplicate detection runs)
 
@@ -339,7 +339,7 @@ Remaining risk: DHCP has no authentication. A host that sees the device's DHCP r
 
 ## Rate limiting and access log
 
-Each source address (IPv4 or the full IPv6 address) may send 50 requests per second on average, with bursts of up to 300 (enough for a whole snmpwalk at full speed). Requests beyond that are dropped without a response and counted on the status screen ("rate limited"). Up to 8 sources are tracked at once; when more appear, the one seen least recently is forgotten. A flood from one source does not affect others.
+Each source address (IPv4 or the full IPv6 address) may send 50 requests per second on average, with bursts of up to 100; a source that has sent the right community (trusted, below) may send 200 per second with bursts of 400, so whole snmpwalks run at full speed, also back to back (all trusted sources together stay within the trusted limit below). Requests beyond that are dropped without a response and counted on the status screen ("rate limited"). Up to 8 sources are tracked at once; when more appear, the one seen least recently is forgotten. A flood from one source does not affect others.
 
 On top of that, all untrusted sources together may send at most 100 requests per second (bursts of 200). Source addresses are easy to fake with UDP, and a new address starts with a full bucket, so without this global limit an attacker rotating through many addresses could bypass the per-source limit. A request refused for its own source does not count against the global limit.
 

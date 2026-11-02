@@ -655,6 +655,7 @@ static void withAddresses() {
     ips.addr[1].preferred = true;
     setIpv6(ips.addr[2], "fe800000000000001cb2cffffe4ea22c", SnmpAddrOrigin::LinkLayer);
     ips.count = 3;
+    ips.reasmMaxSize = 14820;  // lwIP: 10 fragments of 1480 bytes plus the header
     state.ip = &ips;
 }
 
@@ -705,7 +706,7 @@ static void test_ipaddrtable_row_for_ipv4() {
     TEST_ASSERT_EQUAL_INT32(1, r.ints[1]);  // ifIndex
     TEST_ASSERT_EQUAL_MEMORY(mask, r.strings[2], 4);
     TEST_ASSERT_EQUAL_INT32(1, r.ints[3]);  // broadcast: host part all ones
-    TEST_ASSERT_EQUAL_INT32(65535, r.ints[4]);
+    TEST_ASSERT_EQUAL_INT32(14820, r.ints[4]);  // what the stack can reassemble, from the state
     // Only IPv4 rows: the column ends after the one address
     const char* next[] = {"1.3.6.1.2.1.4.20.1.1.10.132.0.58"};
     r = requestV2c(agent, BerTag::GetNextRequest, next, 1);
@@ -776,6 +777,23 @@ static void test_dynamic_rows_getnext_continues_after_a_removed_row() {
     const char* last[] = {addrOid(3, "2.16.255.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1")};
     r = requestV2c(agent, BerTag::GetNextRequest, last, 1);
     TEST_ASSERT_EQUAL_STRING(addrOid(4, V4_ROW), str(r.names[0]));
+}
+
+static void test_dynamic_rows_getnext_takes_an_address_added_mid_walk() {
+    SnmpAgent agent("public");
+    withAddresses();
+    // A DHCPv6 address fd00::1 arrives between two GetNexts; its index sorts between IPv4 and fd16::
+    static const char* const NEW_ROW = "2.16.253.0.0.0.0.0.0.0.0.0.0.0.0.0.0.1";
+    setIpv6(ips.addr[3], "fd000000000000000000000000000001", SnmpAddrOrigin::Dhcp);
+    ips.count = 4;
+    // From the IPv4 row the walk goes on to the new row, which sorts next
+    const char* fromV4[] = {addrOid(3, V4_ROW)};
+    Reply r = requestV2c(agent, BerTag::GetNextRequest, fromV4, 1);
+    TEST_ASSERT_EQUAL_STRING(addrOid(3, NEW_ROW), str(r.names[0]));
+    // A walk already past it does not go back: no repeat, no loop
+    const char* fromGlobal[] = {addrOid(3, GLOBAL_ROW)};
+    r = requestV2c(agent, BerTag::GetNextRequest, fromGlobal, 1);
+    TEST_ASSERT_EQUAL_STRING(addrOid(3, LL_ROW), str(r.names[0]));
 }
 
 static void test_dynamic_rows_getbulk_walks_columns_in_order() {
@@ -1911,6 +1929,7 @@ int main() {
     RUN_TEST(test_ipaddress_row_values);
     RUN_TEST(test_ipaddress_prefix_pointer_carries_prefix_length);
     RUN_TEST(test_dynamic_rows_getnext_continues_after_a_removed_row);
+    RUN_TEST(test_dynamic_rows_getnext_takes_an_address_added_mid_walk);
     RUN_TEST(test_dynamic_rows_getbulk_walks_columns_in_order);
     RUN_TEST(test_ipv6_index_is_28_arcs);
     RUN_TEST(test_ip_address_walk_in_v1_sees_every_row);

@@ -18,11 +18,9 @@
 /// Standard SNMP agent port
 constexpr uint16_t SNMP_PORT = 161;
 
-/// Requests per second each source may send on average, and in a burst. The burst covers a whole
-/// snmpwalk (~300 objects from the root at ~250 requests/s); with 100 a walk of the 3.1.0 MIB lost
-/// one request near object 116 and stalled for the manager's retry timeout
+/// Requests per second each source may send on average, and in a burst
 constexpr uint32_t SNMP_RATE_PER_SECOND = 50;
-constexpr uint32_t SNMP_RATE_BURST = 300;
+constexpr uint32_t SNMP_RATE_BURST = 100;
 
 /// Requests per second from all untrusted sources together, so rotating or
 /// spoofed source addresses cannot bypass the per-source limit. Sources that
@@ -36,6 +34,12 @@ constexpr uint32_t SNMP_TRUSTED_RATE_PER_SECOND = 200;
 constexpr uint32_t SNMP_TRUSTED_RATE_BURST = 400;
 constexpr uint8_t SNMP_MAX_TRUSTED_SOURCES = 4;
 constexpr uint32_t SNMP_TRUST_TIMEOUT_MS = 10UL * 60 * 1000;
+/// Burst and rate of each trusted source: whole snmpwalks from the root (~300 objects at ~250 requests/s)
+/// run at full speed, also back to back. With 50/s and a burst of 100 for everyone a walk of the 3.1.0
+/// MIB lost a request near object 116 and stalled for the manager's retry timeout. All trusted sources
+/// together stay within SNMP_TRUSTED_RATE_*; unknown sources keep SNMP_RATE_*.
+constexpr uint32_t SNMP_TRUSTED_SOURCE_BURST = 400;
+constexpr uint32_t SNMP_TRUSTED_SOURCE_RATE = 200;
 
 /// At most one authenticationFailure trap per interval
 constexpr uint32_t AUTH_TRAP_INTERVAL_MS = 10000;

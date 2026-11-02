@@ -180,6 +180,74 @@ static void test_trusted_sources_share_their_own_bounded_bucket() {
     TEST_ASSERT_UINT32_WITHIN(5, 400 + 200, allowed);
 }
 
+// The firmware's limits: 50/s per source, burst 100; untrusted together 100/s, burst 200;
+// trusted together 200/s, burst 400, and 400 per trusted source
+static RateLimiter firmwareLimiter() {
+    RateLimiter r(50, 100, 100, 200);
+    r.configureTrusted(200, 400, 4, 600000, 400, 200);
+    return r;
+}
+
+/// Requests from source answered at one instant, out of n
+static uint32_t burstOf(RateLimiter& r, SourceKey source, uint32_t n, uint32_t nowMs) {
+    uint32_t allowed = 0;
+    for (uint32_t i = 0; i < n; i++) {
+        if (r.allow(source, nowMs)) allowed++;
+    }
+    return allowed;
+}
+
+static void test_trusted_source_may_burst_a_whole_walk() {
+    // A walk from the root is ~300 requests at full speed; it must not lose one
+    RateLimiter r = firmwareLimiter();
+    TEST_ASSERT_TRUE(r.allow(PC, 0));
+    r.markTrusted(PC);  // the first request had the right community
+    TEST_ASSERT_EQUAL_UINT32(300, burstOf(r, PC, 300, 1));
+}
+
+static void test_trusted_source_can_walk_twice_in_a_row() {
+    // Two walks of ~280 requests back to back, each in about 1.1 s at full speed
+    RateLimiter r = firmwareLimiter();
+    r.allow(PC, 0);
+    r.markTrusted(PC);
+    uint32_t allowed = 0;
+    for (uint32_t i = 0; i < 560; i++) {
+        if (r.allow(PC, 1 + i * 4)) allowed++;  // one request every 4 ms (250/s)
+    }
+    TEST_ASSERT_EQUAL_UINT32(560, allowed);
+}
+
+static void test_trusted_sources_together_stay_within_their_shared_limit() {
+    // A higher rate per trusted source does not raise the cap of all trusted sources together
+    RateLimiter r = firmwareLimiter();
+    r.allow(PC, 0);
+    r.markTrusted(PC);
+    burstOf(r, PC, 400, 0);                                  // the shared bucket is empty now
+    TEST_ASSERT_UINT32_WITHIN(2, 200, burstOf(r, PC, 1000, 1000));  // 1 s later: 200/s, shared
+}
+
+static void test_untrusted_source_burst_stays_100() {
+    RateLimiter r = firmwareLimiter();
+    TEST_ASSERT_EQUAL_UINT32(100, burstOf(r, PC, 300, 0));
+}
+
+static void test_revoked_trust_returns_to_the_untrusted_burst() {
+    RateLimiter r = firmwareLimiter();
+    r.allow(PC, 0);
+    r.markTrusted(PC);
+    r.clearTrust();  // the community changed
+    TEST_ASSERT_EQUAL_UINT32(100, burstOf(r, PC, 300, 1));
+}
+
+static void test_trusted_source_burst_defaults_to_the_untrusted_one() {
+    // Without a trusted per-source burst the old behaviour stays: 100 for everyone
+    RateLimiter r(50, 100, 100, 200);
+    r.configureTrusted(200, 400, 4, 600000);
+    r.allow(PC, 0);
+    r.markTrusted(PC);
+    TEST_ASSERT_EQUAL_UINT32(99, burstOf(r, PC, 300, 1));
+}
+
 static void test_number_of_trusted_sources_is_capped() {
     RateLimiter r(1, 1, 1, 1);
     r.configureTrusted(1000, 1000, 2);
@@ -519,6 +587,12 @@ int main() {
     RUN_TEST(test_untrusted_entries_are_evicted_before_trusted_ones);
     RUN_TEST(test_mark_trusted_of_unknown_source_is_ignored);
     RUN_TEST(test_trusted_sources_share_their_own_bounded_bucket);
+    RUN_TEST(test_trusted_source_may_burst_a_whole_walk);
+    RUN_TEST(test_trusted_source_can_walk_twice_in_a_row);
+    RUN_TEST(test_trusted_sources_together_stay_within_their_shared_limit);
+    RUN_TEST(test_untrusted_source_burst_stays_100);
+    RUN_TEST(test_revoked_trust_returns_to_the_untrusted_burst);
+    RUN_TEST(test_trusted_source_burst_defaults_to_the_untrusted_one);
     RUN_TEST(test_number_of_trusted_sources_is_capped);
     RUN_TEST(test_evicted_trusted_source_frees_its_slot);
     RUN_TEST(test_clear_trust_revokes_every_trusted_source);

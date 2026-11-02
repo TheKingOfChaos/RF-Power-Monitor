@@ -1010,13 +1010,21 @@ static void test_device_name_post_rejects_bad_location() {
     TEST_ASSERT_EQUAL(0, fb->hostnameSaves);
 }
 
-static void test_device_name_post_without_contact_field_is_rejected() {
+static void test_device_name_post_without_contact_or_location_keeps_them() {
+    // A page loaded from firmware 3.0.0 (still open in a browser) sends only the hostname
     webSetUp();
+    strcpy(fb->st.sysContact, "ops@x");
+    strcpy(fb->st.sysLocation, "Rack 4");
     std::string csrf;
     std::string token = logIn(csrf);
-    TEST_ASSERT_EQUAL(400, statusCode(post("/hostname", "csrf=" + csrf + "&hostname=a1&location=x", token)));
-    TEST_ASSERT_EQUAL(400, statusCode(post("/hostname", "csrf=" + csrf + "&hostname=a1&contact=x", token)));
-    TEST_ASSERT_EQUAL(0, fb->hostnameSaves);
+    TEST_ASSERT_EQUAL(200, statusCode(post("/hostname", "csrf=" + csrf + "&hostname=a1", token)));
+    TEST_ASSERT_EQUAL_STRING("a1", fb->savedHostname.c_str());
+    TEST_ASSERT_EQUAL_STRING("ops@x", fb->savedContact.c_str());
+    TEST_ASSERT_EQUAL_STRING("Rack 4", fb->savedLocation.c_str());
+    // Only one of them: the other keeps its value
+    TEST_ASSERT_EQUAL(200, statusCode(post("/hostname", "csrf=" + csrf + "&hostname=a1&location=Bench", token)));
+    TEST_ASSERT_EQUAL_STRING("ops@x", fb->savedContact.c_str());
+    TEST_ASSERT_EQUAL_STRING("Bench", fb->savedLocation.c_str());
 }
 
 static void test_invalid_community_is_not_saved() {
@@ -1340,6 +1348,39 @@ static void test_longest_values_still_fit_the_page() {
     TEST_ASSERT_TRUE(page.find("</html>") != std::string::npos);
 }
 
+static void test_longest_values_with_an_error_message_still_fit_the_page() {
+    // The longest page again, now with the error box of a refused form on top
+    webSetUp();
+    strcpy(fb->st.community, std::string(31, '"').c_str());
+    strcpy(fb->st.hostname, std::string(32, 'h').c_str());
+    strcpy(fb->st.sysContact, std::string(63, '"').c_str());
+    strcpy(fb->st.sysLocation, std::string(63, '"').c_str());
+    strcpy(fb->st.staticIPv6, "fd16:d833:4f0e:3ece:ffff:ffff:ffff:fffe");
+    strcpy(fb->st.ipv6Gateway, "fd16:d833:4f0e:3ece:ffff:ffff:ffff:ffff");
+    strcpy(fb->st.ipv6, "fd16:d833:4f0e:3ece:ffff:ffff:ffff:fffe");
+    strcpy(fb->st.ip, "255.255.255.255");
+    strcpy(fb->st.liveMask, "255.255.255.255");
+    strcpy(fb->st.liveGateway, "255.255.255.255");
+    strcpy(fb->st.dns, "255.255.255.255");
+    strcpy(fb->st.lldpSwitch, std::string(sizeof(fb->st.lldpSwitch) - 1, '"').c_str());
+    strcpy(fb->st.lldpSwitchAddr, "fd16:d833:4f0e:3ece:ffff:ffff:ffff:fffe");
+    std::string csrf;
+    std::string token = logIn(csrf);
+    const std::string refused[][2] = {
+        {"/hostname", "&hostname=-bad-&contact=&location="},
+        {"/hostname", "&hostname=a1&contact=" + std::string(64, 'c') + "&location="},
+        {"/network", "&mode=static&ip=10.10.6.250&mask=255.255.0.0&gateway=192.168.1.1"},
+        {"/ipv6", "&ipv6=fe80::1&ipv6gw="},
+        {"/community", "&community=" + std::string(32, 'x')},
+    };
+    for (const auto& form : refused) {
+        std::string page = post(form[0], "csrf=" + csrf + form[1], token);
+        TEST_ASSERT_EQUAL_MESSAGE(400, statusCode(page), form[0].c_str());
+        TEST_ASSERT_TRUE_MESSAGE(page.find("alert alert-danger") != std::string::npos, form[0].c_str());
+        TEST_ASSERT_TRUE_MESSAGE(page.find("</html>") != std::string::npos, form[0].c_str());
+    }
+}
+
 static void test_pages_carry_the_project_name() {
     webSetUp();
     std::string login = get("/");  // no session: the login page
@@ -1515,7 +1556,7 @@ int main() {
     RUN_TEST(test_device_name_post_accepts_empty_contact_and_location);
     RUN_TEST(test_device_name_post_rejects_bad_contact);
     RUN_TEST(test_device_name_post_rejects_bad_location);
-    RUN_TEST(test_device_name_post_without_contact_field_is_rejected);
+    RUN_TEST(test_device_name_post_without_contact_or_location_keeps_them);
     RUN_TEST(test_invalid_community_is_not_saved);
     RUN_TEST(test_switch_to_dhcp_keeps_static_values_and_reboots);
     RUN_TEST(test_static_ip_is_validated_saved_and_reboots);
@@ -1537,6 +1578,7 @@ int main() {
     RUN_TEST(test_session_found_among_many_other_cookies);
     RUN_TEST(test_every_single_byte_corruption_gets_a_well_formed_response);
     RUN_TEST(test_longest_values_still_fit_the_page);
+    RUN_TEST(test_longest_values_with_an_error_message_still_fit_the_page);
     RUN_TEST(test_pages_carry_the_project_name);
     RUN_TEST(test_status_page_shows_switch);
     RUN_TEST(test_status_page_escapes_switch_name);

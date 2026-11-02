@@ -134,7 +134,7 @@ An item is only ticked when it is implemented **and** its tests exist and pass (
 - [x] First CI run on GitHub (after push) — green since 2.5.1 (2026-10-31)
 
 ## 8. Security
-- [x] Request rate limiting: 50/s per source, burst 300 (100 before 3.1.0), 8 sources tracked (`lib/access_control`) — native + HIL
+- [x] Request rate limiting: 50/s per source, burst 100 (200/s, burst 400 for a trusted source, 3.1.0), 8 sources tracked (`lib/access_control`) — native + HIL
 - [x] Global limit 100/s, burst 200, so rotating/spoofed sources cannot reset the per-source buckets (found by automated security review) — native `test_rotating_sources_cannot_exceed_global_limit`
 - [x] Sources with the right community are trusted: own shared bucket and evicted last, so a spoofed flood cannot starve managers — native `test_trusted_manager_is_not_starved_by_spoofed_flood`, `test_spoofed_sources_cannot_evict_trusted_ones`
 - [x] Trust bounded: trusted sources share 200/s (burst 400), at most 4 trusted, trust expires after 10 min idle, cleared when the community changes — native `test_trusted_sources_share_their_own_bounded_bucket`, `test_number_of_trusted_sources_is_capped`, `test_trust_expires_after_inactivity`, `test_clear_trust_revokes_every_trusted_source`; HIL checks the clear on community change
@@ -228,6 +228,6 @@ An item is only ticked when it is implemented **and** its tests exist and pass (
 
 ## Notes
 - SNMP must be v1 and v2c (no v3) and our own code; networking may use libraries
-- Memory limits: 70 % flash, 50 % RAM (3.1.0: 19.6 % flash / 47.3 % RAM, built with -Os)
+- Memory limits: 70 % flash, 50 % RAM (3.1.0: 19.6 % flash / 47.3 % RAM, built with -Os). About 7 KB of RAM is left below the 50 % limit: check the build's RAM line before adding buffers (the web page body and response alone are 22 KB)
 - Version: `include/version.h`; every user-visible change goes into CHANGELOG.md under [Unreleased]
 - Core 0 has an 8 KB stack (core1_separate_stack, since 2.3.0) shared with USB/lwIP/W5500 interrupts: keep big buffers static

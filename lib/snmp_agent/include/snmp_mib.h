@@ -92,6 +92,7 @@ constexpr uint8_t SNMP_MAX_IP_ADDRESSES = 5;
  * @brief The interface's valid addresses, in any order (the MIB sorts the rows by their index)
  */
 struct SnmpIpState {
+    uint32_t reasmMaxSize;  ///< ipAdEntReasmMaxSize: the largest IPv4 datagram the stack reassembles
     uint8_t count;
     SnmpIpAddress addr[SNMP_MAX_IP_ADDRESSES];
 };

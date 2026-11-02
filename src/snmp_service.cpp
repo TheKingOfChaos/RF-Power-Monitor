@@ -191,7 +191,7 @@ static void sendTrap(size_t len, const char* what) {
 
 bool snmpBegin() {
     limiter.configureTrusted(SNMP_TRUSTED_RATE_PER_SECOND, SNMP_TRUSTED_RATE_BURST, SNMP_MAX_TRUSTED_SOURCES,
-                             SNMP_TRUST_TIMEOUT_MS);
+                             SNMP_TRUST_TIMEOUT_MS, SNMP_TRUSTED_SOURCE_BURST, SNMP_TRUSTED_SOURCE_RATE);
     started = udp.begin(SNMP_PORT) == 1;
     Serial.printf(started ? "SNMP agent listening on UDP %u\r\n" : "SNMP: cannot bind UDP %u\r\n", SNMP_PORT);
     return started;

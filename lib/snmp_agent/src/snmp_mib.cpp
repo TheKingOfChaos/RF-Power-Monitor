@@ -382,7 +382,7 @@ struct MibDynamicColumn {
     Oid column;
     /// The row's index arcs; false if this address has no row in this table (IPv6 in ipAddrTable)
     bool (*rowIndex)(const SnmpIpAddress& a, Oid& index);
-    SnmpValue (*get)(const SnmpIpAddress& a);
+    SnmpValue (*get)(const SnmpDeviceState& s, const SnmpIpAddress& a);
 };
 
 static void appendArc(Oid& o, uint32_t arc) {
@@ -417,21 +417,24 @@ static void network(const SnmpIpAddress& a, uint8_t* out) {
     }
 }
 
-static SnmpValue getAdEntAddr(const SnmpIpAddress& a) { return SnmpValue::makeIpAddress(a.addr); }
-static SnmpValue getAddrIfIndex(const SnmpIpAddress&) { return integer(1); }
-static SnmpValue getAdEntNetMask(const SnmpIpAddress& a) {
+static SnmpValue getAdEntAddr(const SnmpDeviceState&, const SnmpIpAddress& a) { return SnmpValue::makeIpAddress(a.addr); }
+static SnmpValue getAddrIfIndex(const SnmpDeviceState&, const SnmpIpAddress&) { return integer(1); }
+static SnmpValue getAdEntNetMask(const SnmpDeviceState&, const SnmpIpAddress& a) {
     SnmpIpAddress ones = a;
     memset(ones.addr, 0xFF, 4);
     uint8_t mask[4];
     network(ones, mask);
     return SnmpValue::makeIpAddress(mask);
 }
-static SnmpValue getAdEntBcastAddr(const SnmpIpAddress&) { return integer(1); }  // broadcast: host part all ones
-static SnmpValue getAdEntReasmMaxSize(const SnmpIpAddress&) { return integer(65535); }
-static SnmpValue getAddressType(const SnmpIpAddress&) { return integer(1); }  // unicast
+static SnmpValue getAdEntBcastAddr(const SnmpDeviceState&, const SnmpIpAddress&) { return integer(1); }  // broadcast: host part all ones
+/// What lwIP reassembles at most (filled from its options by the firmware)
+static SnmpValue getAdEntReasmMaxSize(const SnmpDeviceState& s, const SnmpIpAddress&) {
+    return integer((int32_t)s.ip->reasmMaxSize);
+}
+static SnmpValue getAddressType(const SnmpDeviceState&, const SnmpIpAddress&) { return integer(1); }  // unicast
 /// RowPointer to the ipAddressPrefixTable row (its first column, ipAddressPrefixOrigin), which is
 /// not served; managers such as LibreNMS read the prefix length from the pointer's last arc
-static SnmpValue getAddressPrefix(const SnmpIpAddress& a) {
+static SnmpValue getAddressPrefix(const SnmpDeviceState&, const SnmpIpAddress& a) {
     Oid p = {{1, 3, 6, 1, 2, 1, 4, 32, 1, 5, 1}, 11};
     uint8_t len = a.ipv6 ? 16 : 4;
     uint8_t net[16];
@@ -442,11 +445,11 @@ static SnmpValue getAddressPrefix(const SnmpIpAddress& a) {
     appendArc(p, a.prefixLen);
     return SnmpValue::makeOid(p);
 }
-static SnmpValue getAddressOrigin(const SnmpIpAddress& a) { return integer((int32_t)a.origin); }
-static SnmpValue getAddressStatus(const SnmpIpAddress& a) { return integer(a.preferred ? 1 : 2); }  // deprecated(2)
-static SnmpValue getAddressZeroTicks(const SnmpIpAddress&) { return timeTicks(0); }  // created, last changed
-static SnmpValue getAddressRowStatus(const SnmpIpAddress&) { return integer(1); }  // active
-static SnmpValue getAddressStorageType(const SnmpIpAddress&) { return integer(2); }  // volatile
+static SnmpValue getAddressOrigin(const SnmpDeviceState&, const SnmpIpAddress& a) { return integer((int32_t)a.origin); }
+static SnmpValue getAddressStatus(const SnmpDeviceState&, const SnmpIpAddress& a) { return integer(a.preferred ? 1 : 2); }  // deprecated(2)
+static SnmpValue getAddressZeroTicks(const SnmpDeviceState&, const SnmpIpAddress&) { return timeTicks(0); }  // created, last changed
+static SnmpValue getAddressRowStatus(const SnmpDeviceState&, const SnmpIpAddress&) { return integer(1); }  // active
+static SnmpValue getAddressStorageType(const SnmpDeviceState&, const SnmpIpAddress&) { return integer(2); }  // volatile
 
 #define IP_ADDR_COL(c) {{1, 3, 6, 1, 2, 1, 4, 20, 1, c}, 10}
 #define IP_ADDRESS_COL(c) {{1, 3, 6, 1, 2, 1, 4, 34, 1, c}, 10}
@@ -731,12 +734,12 @@ static const MibEntry* find(const Oid& oid) {
     return nullptr;
 }
 
-/// First static entry whose OID sorts after oid, or nullptr
-static const MibEntry* next(const Oid& oid) {
+/// Index of the first static entry whose OID sorts after oid, MIB_SIZE if none
+static uint16_t firstAfter(const Oid& oid) {
     for (uint16_t i = 0; i < MIB_SIZE; i++) {
-        if (oidCompare(MIB[i].oid, oid) > 0) return &MIB[i];
+        if (oidCompare(MIB[i].oid, oid) > 0) return i;
     }
-    return nullptr;
+    return MIB_SIZE;
 }
 
 /// true if a GetNext in view may return this value
@@ -761,7 +764,7 @@ bool mibGet(const Oid& oid, const SnmpDeviceState& state, MibObject& out) {
             const SnmpIpAddress& a = state.ip->addr[r];
             if (dynamicInstance(DYNAMIC[c], a, instance) && oidCompare(instance, oid) == 0) {
                 out.oid = instance;
-                out.value = DYNAMIC[c].get(a);
+                out.value = DYNAMIC[c].get(state, a);
                 return true;
             }
         }
@@ -771,10 +774,11 @@ bool mibGet(const Oid& oid, const SnmpDeviceState& state, MibObject& out) {
 
 bool mibGetNext(const Oid& oid, const SnmpDeviceState& state, MibView view, MibObject& out) {
     bool found = false;
-    for (const MibEntry* e = next(oid); e != nullptr; e = next(e->oid)) {
-        out.value = e->get(state);
+    // The table is sorted: absent or hidden entries are skipped by walking on, not by searching again
+    for (uint16_t i = firstAfter(oid); i < MIB_SIZE; i++) {
+        out.value = MIB[i].get(state);
         if (visible(out.value, view)) {
-            out.oid = e->oid;
+            out.oid = MIB[i].oid;
             found = true;
             break;
         }
@@ -790,7 +794,7 @@ bool mibGetNext(const Oid& oid, const SnmpDeviceState& state, MibView view, MibO
             if (!dynamicInstance(DYNAMIC[c], a, instance) || oidCompare(instance, oid) <= 0) continue;
             if (found && oidCompare(instance, out.oid) >= 0) continue;
             out.oid = instance;
-            out.value = DYNAMIC[c].get(a);  // never Counter64 or absent: visible in both views
+            out.value = DYNAMIC[c].get(state, a);  // never Counter64 or absent: visible in both views
             found = true;
         }
     }

@@ -32,15 +32,30 @@ RateLimiter::Bucket* RateLimiter::find(SourceKey source, uint32_t nowMs) {
 }
 
 void RateLimiter::configureTrusted(uint32_t globalRatePerSecond, uint32_t globalBurst, uint8_t maxTrusted,
-                                   uint32_t trustTimeoutMs) {
+                                   uint32_t trustTimeoutMs, uint32_t sourceBurst, uint32_t sourceRatePerSecond) {
     _trustedGlobal = {globalRatePerSecond, globalBurst, globalBurst * 1000u, 0, false};
     _maxTrusted = maxTrusted > MAX_SOURCES ? MAX_SOURCES : maxTrusted;
     _trustTimeoutMs = trustTimeoutMs;
+    _trustedSourceBurst = sourceBurst;
+    _trustedSourceRate = sourceRatePerSecond;
+}
+
+uint32_t RateLimiter::sourceBurst(const Bucket& b) const {
+    return b.trusted && _trustedSourceBurst > 0 ? _trustedSourceBurst : _burst;
+}
+
+uint32_t RateLimiter::sourceRate(const Bucket& b) const {
+    return b.trusted && _trustedSourceRate > 0 ? _trustedSourceRate : _rate;
 }
 
 void RateLimiter::markTrusted(SourceKey source) {
     for (Bucket& b : _buckets) {
-        if (b.used && b.source == source && !b.trusted && trustedCount() < _maxTrusted) b.trusted = true;
+        if (b.used && b.source == source && !b.trusted && trustedCount() < _maxTrusted) {
+            b.trusted = true;
+            // The larger burst at once, so the manager's first walk already runs at full speed
+            uint32_t full = _trustedSourceBurst * 1000;
+            if (b.milliTokens < full) b.milliTokens = full;
+        }
     }
 }
 
@@ -88,7 +103,8 @@ bool RateLimiter::allow(SourceKey source, uint32_t nowMs) {
     expireTrust(nowMs);
 
     Bucket* b = find(source, nowMs);
-    refill(b->milliTokens, b->lastMs, _rate, _burst, nowMs);
+    // Capped at the burst of what the source is now: a source that lost its trust drops back
+    refill(b->milliTokens, b->lastMs, sourceRate(*b), sourceBurst(*b), nowMs);
 
     // Trusted and untrusted sources each share their own bucket
     SharedBucket& shared = b->trusted ? _trustedGlobal : _global;

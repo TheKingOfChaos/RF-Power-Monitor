@@ -12,7 +12,6 @@
 #include <lwip/priv/tcp_priv.h>
 #include "dhcp6_service.h"
 #include "ipv6_static.h"
-#include "dhcp6_service.h"
 #include "lldp_service.h"
 #include "diag.h"
 #include "pins.h"
@@ -242,6 +241,8 @@ void netStatsCaptureProto(SnmpProtoCounters& out) {
 
 void netStatsCaptureAddresses(SnmpIpState& out) {
     memset(&out, 0, sizeof(out));
+    // lwIP holds at most IP_REASS_MAX_PBUFS fragments for reassembly: full-size ones carry 1480 bytes
+    out.reasmMaxSize = IP_REASS_MAX_PBUFS * (1500 - 20) + 20;
     if (statsNetif == nullptr) return;
     DriverLock lock;  // lwIP changes the addresses in its own context (DHCP, SLAAC, DAD)
     const ip4_addr_t* v4 = netif_ip4_addr(statsNetif);

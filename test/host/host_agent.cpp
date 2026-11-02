@@ -114,7 +114,7 @@ int main(int argc, char** argv) {
         proto.tcpMaxConn = 5;
         state.proto = &proto;
         // 10.132.0.58/22 from DHCP, and a SLAAC address (fd16:d833:4f0e:3ece:1cb2:cfff:fe4e:a22c/64)
-        static SnmpIpState ip = {2,
+        static SnmpIpState ip = {14820, 2,
                                  {{false, {10, 132, 0, 58}, 22, SnmpAddrOrigin::Dhcp, true},
                                   {true,
                                    {0xfd, 0x16, 0xd8, 0x33, 0x4f, 0x0e, 0x3e, 0xce, 0x1c, 0xb2, 0xcf, 0xff, 0xfe, 0x4e,

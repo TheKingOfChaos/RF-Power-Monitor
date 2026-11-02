@@ -504,10 +504,18 @@ const char* WebApp::hostname(const HttpRequest& req, size_t slot, WebBackend& ba
         return mainPage(400, "Bad Request", slot, backend,
                         "The hostname must be 1-32 letters, digits and '-', not starting or ending with '-'.", true, len);
     }
+    // A field the form did not send (a page from firmware before 3.1.0) keeps its stored value
     char contact[SYS_TEXT_MAX_LENGTH + 2], location[SYS_TEXT_MAX_LENGTH + 2];
-    if (!formValue(req.body(), req.bodyLength(), "contact", contact, sizeof(contact)) ||
-        !formValue(req.body(), req.bodyLength(), "location", location, sizeof(location)) ||
-        !settingsTextIsValid(contact, SYS_TEXT_MAX_LENGTH, true) ||
+    bool haveContact = formValue(req.body(), req.bodyLength(), "contact", contact, sizeof(contact));
+    bool haveLocation = formValue(req.body(), req.bodyLength(), "location", location, sizeof(location));
+    if (!haveContact || !haveLocation) {
+        WebStatus& st = _status;
+        memset(&st, 0, sizeof(st));
+        backend.status(st);
+        if (!haveContact) strcpy(contact, st.sysContact);
+        if (!haveLocation) strcpy(location, st.sysLocation);
+    }
+    if (!settingsTextIsValid(contact, SYS_TEXT_MAX_LENGTH, true) ||
         !settingsTextIsValid(location, SYS_TEXT_MAX_LENGTH, true)) {
         return mainPage(400, "Bad Request", slot, backend,
                         "Contact and location must be 0-63 printable characters.", true, len);

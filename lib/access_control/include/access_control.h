@@ -98,9 +98,14 @@ public:
      * @param globalRatePerSecond Shared limit for all trusted sources; 0 disables it
      * @param maxTrusted          Most sources trusted at once
      * @param trustTimeoutMs      Trust is dropped after this long without requests; 0 = never
+     * @param sourceBurst         Burst of each trusted source (its average stays ratePerSecond), so a
+     *                            manager's walk runs at full speed; 0 = the untrusted burst. A source
+     *                            gets it in full when it becomes trusted, and loses it with its trust
+     * @param sourceRatePerSecond Average of each trusted source; 0 = the untrusted rate. All trusted
+     *                            sources together still stay within globalRatePerSecond
      */
     void configureTrusted(uint32_t globalRatePerSecond, uint32_t globalBurst, uint8_t maxTrusted,
-                          uint32_t trustTimeoutMs = 0);
+                          uint32_t trustTimeoutMs = 0, uint32_t sourceBurst = 0, uint32_t sourceRatePerSecond = 0);
 
     /**
      * @brief Take one token for this source
@@ -144,6 +149,9 @@ private:
     };
 
     Bucket* find(SourceKey source, uint32_t nowMs);
+    /// The source's own burst and rate: the trusted ones while it is trusted
+    uint32_t sourceBurst(const Bucket& b) const;
+    uint32_t sourceRate(const Bucket& b) const;
     void expireTrust(uint32_t nowMs);
     static void refill(uint32_t& milliTokens, uint32_t& lastMs, uint32_t rate, uint32_t burst, uint32_t nowMs);
     static void refillShared(SharedBucket& b, uint32_t nowMs);
@@ -154,6 +162,8 @@ private:
     SharedBucket _trustedGlobal = {0, 0, 0, 0, false};
     uint8_t _maxTrusted = MAX_SOURCES;
     uint32_t _trustTimeoutMs = 0;
+    uint32_t _trustedSourceBurst = 0;  // 0: trusted sources keep _burst
+    uint32_t _trustedSourceRate = 0;   // 0: trusted sources keep _rate
     uint32_t _refused = 0;
     Bucket _buckets[MAX_SOURCES] = {};
 };
