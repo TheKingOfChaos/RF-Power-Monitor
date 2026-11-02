@@ -21,6 +21,10 @@ services:
     command: [mysqld, --innodb-file-per-table=1, --lower-case-table-names=0,
               --character-set-server=utf8mb4, --collation-server=utf8mb4_unicode_ci]
     environment:
+      # Same zone as the LibreNMS containers: LibreNMS stores times such as last_polled in local time
+      # and the dispatcher compares them with the database's NOW(). With the database on UTC, every
+      # device looked polled an hour in the future and was polled only about once an hour.
+      TZ: Europe/Copenhagen
       MARIADB_RANDOM_ROOT_PASSWORD: "yes"
       MYSQL_DATABASE: librenms
       MYSQL_USER: librenms
