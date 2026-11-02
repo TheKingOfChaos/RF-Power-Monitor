@@ -44,7 +44,7 @@ Connect a USB cable and open a terminal (PuTTY: Serial, the device's COM port, 1
 
 ### LibreNMS
 
-The device page shows the sensors *Mains power* (OK / warning), *Mains lost over 60 s* (OK / critical), *CPU* and *Ambient* temperature and *Mains power changes since boot*, and the Ethernet port with its traffic:
+The device page shows the sensors *Mains power* (OK / warning), *Mains lost over 60 s* (OK / critical), *CPU* and *Ambient* temperature and *Mains power changes since boot*, the Ethernet port with its traffic, and in the **Switch** box the switch and port the device is plugged into (from LLDP, updated at each discovery; the box needs the RF-Power-Monitor plugin on the LibreNMS server):
 
 ![LibreNMS: the device page](images/librenms/device-overview.png)
 

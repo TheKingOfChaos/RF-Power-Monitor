@@ -43,6 +43,8 @@ services:
       - ${REPO:-../..}/mibs/RF-POWER-MONITOR-MIB.txt:/opt/librenms/mibs/rfpowermonitor/RF-POWER-MONITOR-MIB:ro
       - ${REPO:-../..}/librenms/images/os/rfpowermonitor.svg:/opt/librenms/html/images/os/rfpowermonitor.svg:ro
       - ${REPO:-../..}/librenms/images/logos/rfpowermonitor.svg:/opt/librenms/html/images/logos/rfpowermonitor.svg:ro
+      # "Switch" box on the device Overview (only the web container renders it)
+      - ${REPO:-../..}/librenms/plugins/RFPowerMonitor:/opt/librenms/app/Plugins/RFPowerMonitor:ro
 
   dispatcher:
     image: librenms/librenms:latest

@@ -135,7 +135,7 @@ If you don't want the web page at all, turn it off with menu option `8`.
 
    ![LibreNMS: alert rules, with "State Sensor Critical"](images/librenms/alert-rules.png)
 
-5. **Neighbours**: if the switch speaks LLDP, the device's Neighbours tab shows the switch and port. LibreNMS may try to add the switch as a device by itself; to stop that, see [docs/LIBRENMS.md](LIBRENMS.md#switch-and-port-lldp).
+5. **Neighbours**: if the switch speaks LLDP, the device's Neighbours tab shows the switch and port, and with the RF-Power-Monitor plugin installed (docs/LIBRENMS.md, Install) the Overview page shows them in a **Switch** box. LibreNMS may try to add the switch as a device by itself; to stop that, see [docs/LIBRENMS.md](LIBRENMS.md#switch-and-port-lldp).
 
    ![LibreNMS: the switch and port on the Neighbours tab](images/librenms/device-neighbours.png)
 

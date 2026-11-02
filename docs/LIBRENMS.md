@@ -56,6 +56,8 @@ cp <this repo>/mibs/RF-POWER-MONITOR-MIB.txt mibs/rfpowermonitor/RF-POWER-MONITO
 # RF logo: icon in device lists, logo on the device page
 cp <this repo>/librenms/images/os/rfpowermonitor.svg html/images/os/
 cp <this repo>/librenms/images/logos/rfpowermonitor.svg html/images/logos/
+# Optional: "Switch" box on the device's Overview page (plugin, see Switch and port below)
+cp -r <this repo>/librenms/plugins/RFPowerMonitor app/Plugins/
 ```
 
 Then add the device with SNMP v2c and its community (menu option 4 on the device; change it from `public`):
@@ -87,6 +89,8 @@ Since 2.7.0 the device answers the standard LLDP-MIB (`lldpLocPortTable`, `lldpR
 ```bash
 ./lnms device:discover <device> -m discovery-protocols
 ```
+
+With the plugin in `librenms/plugins/RFPowerMonitor` (copied to `app/Plugins/`, see Install) the device's **Overview** page also has a **Switch** box under the system box: the switch's name, its port, its system description and the device port LLDP was seen on, or "No switch seen" when discovery found none. It shows the same links as the Neighbours tab, so it changes at the same time, with each discovery. LibreNMS turns a newly copied plugin on by itself (Overview → Plugins → Plugin Admin lists it), and the box only appears on RF-Power-Monitor devices. Checked 2026-11-02 with LibreNMS 26.10.2.
 
 Junos sends its port as a number (its ifIndex, e.g. `523`) and the name only as description; LibreNMS labels the remote port with the port ID, so the device serves the name (`ge-0/0/9.0`) instead, as on its status screen.
 
@@ -146,6 +150,7 @@ The compose network has IPv6 (`enable_ipv6`, NATed by Docker), so the containers
 |---|---|
 | [librenms/os_detection/rfpowermonitor.yaml](../librenms/os_detection/rfpowermonitor.yaml) | Matches sysObjectID `.1.3.6.1.4.1.63050`; OS name, type, icon, MIB directory, overview graphs |
 | [librenms/os_discovery/rfpowermonitor.yaml](../librenms/os_discovery/rfpowermonitor.yaml) | Version and hardware from sysDescr; the state, temperature and count sensors |
+| [librenms/plugins/RFPowerMonitor/](../librenms/plugins/RFPowerMonitor/) | Optional plugin: the Switch box (LLDP neighbour) on the device's Overview page |
 | [mibs/RF-POWER-MONITOR-MIB.txt](../mibs/RF-POWER-MONITOR-MIB.txt) | Lets LibreNMS resolve the `RF-POWER-MONITOR-MIB::` names |
 | [librenms/test/snmptrap-agent-addr.php](../librenms/test/snmptrap-agent-addr.php) | Docker setup only: matches traps to the device by the address in them (v1 agent-addr, v2c snmpTrapAddress.0), which Docker's port forwarding would otherwise hide, and polls the sensors after a mains trap so the alert follows within seconds |
 | [librenms/images/os/rfpowermonitor.svg](../librenms/images/os/rfpowermonitor.svg), [librenms/images/logos/rfpowermonitor.svg](../librenms/images/logos/rfpowermonitor.svg) | The RF logo (from [logo/](../logo/)): square icon for device lists, wider logo for the device page. Named by `icon:` in the detection file; without them LibreNMS shows the generic icon |
