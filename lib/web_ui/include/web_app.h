@@ -11,7 +11,7 @@
  *   POST /logout
  *   POST /network   DHCP or static IP; saves and reboots
  *   POST /community SNMP community; saves, active immediately
- *   POST /hostname  hostname (sysName, DHCP, mDNS); saves, active immediately
+ *   POST /hostname  hostname (sysName, DHCP, mDNS), sysContact, sysLocation; saves, active immediately
  *   POST /ipv6      static IPv6 address and gateway (empty = none); saves and reboots
  *   POST /reboot
  *   POST /disable   turn the web interface off (asks first; confirm=yes does it)
@@ -25,6 +25,7 @@
 #include <stdint.h>
 #include <access_control.h>
 #include <netconfig.h>
+#include <settings_codec.h>
 #include "http_request.h"
 #include "web_auth.h"
 
@@ -61,6 +62,8 @@ struct WebStatus {
     char ipv6Gateway[IPV6_TEXT_MAX];  ///< Stored static IPv6 gateway, empty = none
     char community[32];
     char hostname[33];    ///< Valid hostname in use (DHCP, mDNS name.local, sysName)
+    char sysContact[SYS_TEXT_MAX_LENGTH + 1];   ///< SNMP sysContact, may be empty
+    char sysLocation[SYS_TEXT_MAX_LENGTH + 1];  ///< SNMP sysLocation, may be empty
     char lldpSwitch[144];     ///< LLDP neighbour, "<name>, port <port>" or "none seen" (lldpSwitchText)
     char lldpSwitchAddr[46];  ///< Its management address, empty if none
 };
@@ -83,8 +86,9 @@ public:
     virtual bool saveIPv6(const char* address, const char* gateway) = 0;
     /// Save and apply a new SNMP community
     virtual bool saveCommunity(const char* community) = 0;
-    /// Save and apply a new hostname (already validated): sysName, DHCP and mDNS
-    virtual bool saveHostname(const char* hostname) = 0;
+    /// Save and apply the hostname (sysName, DHCP and mDNS), sysContact and sysLocation in one save
+    /// (all already validated); on failure nothing changes
+    virtual bool saveDeviceName(const char* hostname, const char* contact, const char* location) = 0;
     /// Save webEnabled = false; the server closes port 80 after this response
     virtual bool disableWeb() = 0;
     /// Reboot once the response has been sent
@@ -95,9 +99,9 @@ public:
     virtual void log(const SourceKey& source, WebEvent event) = 0;
 };
 
-/// Largest page; the status page with the longest values is 9472 bytes (test_longest_values_still_fit_the_page),
-/// over 900 of them for a switch name of quotes (each escaped to &quot;)
-static const size_t WEB_BODY_MAX = 9856;
+/// Largest page; the status page with the longest values is 10857 bytes (test_longest_values_still_fit_the_page),
+/// over 900 of them for a switch name of quotes and 756 for a contact and location of quotes (each escaped to &quot;)
+static const size_t WEB_BODY_MAX = 11264;
 /// Longest Cookie header read; browsers send every cookie of the host, not only ours
 static const size_t WEB_COOKIE_HEADER_MAX = 1024;
 static const size_t WEB_RESPONSE_MAX = WEB_BODY_MAX + 768;

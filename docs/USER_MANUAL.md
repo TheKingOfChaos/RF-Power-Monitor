@@ -74,9 +74,9 @@ Everything can be done in the serial menu; most things on the web page too.
 |---|---|---|---|
 | DHCP or static IPv4 | 2 / 3 | Network | after a restart (automatic) |
 | Static IPv6 address | 9 | IPv6 | after a restart (automatic) |
-| Name (hostname / sysName) | 4 | Device name | at once |
+| Name (hostname / sysName), contact, location | 4 | Device name | at once |
 | SNMP community | 4 | SNMP community | at once |
-| Contact, location, trap destination and version | 4 | | at once |
+| Trap destination and version | 4 | | at once |
 | Web password | 6 (`-` = back to the default) | | at once, logs browsers out |
 | New random default web password | 7 | | at once |
 | Web page on/off | 8 | Turn off… (only the menu turns it on again) | at once |

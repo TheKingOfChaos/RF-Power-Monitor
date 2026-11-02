@@ -5,7 +5,7 @@ The device runs an SNMP agent on UDP port 161 and sends traps. Every object is r
 - **Transport:** UDP port 161 over IPv4 and IPv6 (see the README, IPv6).
 - **Versions:** SNMPv1 and SNMPv2c. Each request is answered in the version it was sent in. SNMPv3 requests get no response.
 - **Community:** from the settings, default `public`, changed with menu option 4 (active immediately). A request with the wrong community gets no response; it is counted on the status screen.
-- **sysName, sysContact, sysLocation:** set with menu option 4 (sysName also on the web page); read-only over SNMP. sysName is the device hostname, also used for DHCP and mDNS (`<sysName>.local`).
+- **sysName, sysContact, sysLocation:** set with menu option 4 or on the web page (Device name); read-only over SNMP. sysName is the device hostname, also used for DHCP and mDNS (`<sysName>.local`).
 - **Interfaces:** the standard IF-MIB (`ifTable`, `ifXTable`) for the one Ethernet port, so generic managers such as LibreNMS graph its traffic.
 - **Operations:** GetRequest, GetNextRequest (and so `snmpwalk`), and in v2c GetBulkRequest (`snmpbulkwalk`, `snmpbulkget`). SetRequest is rejected (v1 `noSuchName`, v2c `notWritable`/`noCreation`).
 - **Enterprise number:** 63050 (`1.3.6.1.4.1.63050`), assigned to this project.
@@ -18,9 +18,9 @@ The device runs an SNMP agent on UDP port 161 and sends traps. Every object is r
 | `1.3.6.1.2.1.1.1.0` | sysDescr | OCTET STRING | `RF-Power-Monitor 3.0.0 mains power monitor (RP2040, W5500)` (with the firmware version) |
 | `1.3.6.1.2.1.1.2.0` | sysObjectID | OBJECT IDENTIFIER | `1.3.6.1.4.1.63050` |
 | `1.3.6.1.2.1.1.3.0` | sysUpTime | TimeTicks | Hundredths of a second since boot |
-| `1.3.6.1.2.1.1.4.0` | sysContact | OCTET STRING | From the settings (menu option 4), default empty |
+| `1.3.6.1.2.1.1.4.0` | sysContact | OCTET STRING | From the settings (menu option 4 or web page), default empty |
 | `1.3.6.1.2.1.1.5.0` | sysName | OCTET STRING | The hostname (menu option 4 or web page), default `rf-power-monitor` |
-| `1.3.6.1.2.1.1.6.0` | sysLocation | OCTET STRING | From the settings (menu option 4), default empty |
+| `1.3.6.1.2.1.1.6.0` | sysLocation | OCTET STRING | From the settings (menu option 4 or web page), default empty |
 | `1.3.6.1.2.1.1.7.0` | sysServices | INTEGER | 72 (end-to-end + applications) |
 | `1.3.6.1.4.1.63050.1.0` | mainsPowerStatus | INTEGER | `1` = present, `0` = lost |
 | `1.3.6.1.4.1.63050.2.0` | mainsPowerChanges | Counter32 | Mains changes since boot (2 per outage) |

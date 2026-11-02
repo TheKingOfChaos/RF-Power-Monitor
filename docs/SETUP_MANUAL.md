@@ -87,7 +87,7 @@ Menu option `4` asks for these in turn. Press Enter to keep the value in bracket
 |---|---|
 | Community | The SNMP "password" your manager uses. Change it from `public`. |
 | Hostname | The device's name, for example `power-serverroom`. It is the SNMP sysName, the name in DHCP, and the mDNS name (`power-serverroom.local`). Letters, digits and `-`. |
-| sysContact, sysLocation | Who to call and where the box is. Shown in LibreNMS. |
+| sysContact, sysLocation | Who to call and where the box is. Shown in LibreNMS. Also on the web page (Device name). |
 | Trap destination | The address of the LibreNMS server (it receives traps on UDP 162), or `-` for no traps. |
 | Trap version | `2c` (recommended). |
 

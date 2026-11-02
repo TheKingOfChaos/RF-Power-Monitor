@@ -27,7 +27,7 @@ More diagrams (firmware architecture, SNMP request flow, mains flow, settings, t
 | SNMP v1 and v2c agent (Get, GetNext, GetBulk, walk, bulkwalk) | Working, tested with net-snmp |
 | SNMP traps in v1 or v2c (coldStart, authenticationFailure, mainsPowerLost/Restored, mainsPowerLostTooLong) | Working, mains traps verified with real mains |
 | SNMP rate limiting and access log | Working |
-| Web page with login: status, DHCP/static IP, SNMP community, hostname, restart | Working |
+| Web page with login: status, DHCP/static IP, SNMP community, hostname, contact and location, restart | Working |
 | Hostname for SNMP sysName, DHCP and mDNS (`name.local`) | Working |
 | Web interface can be turned off (serial menu or the page itself) | Working |
 | IPv6 (dual stack): SNMP, web page and mDNS over IPv6, SLAAC, per-address rate limiting | Working |
@@ -263,7 +263,7 @@ The device serves a small configuration page on **http://&lt;device IP&gt;/** (p
 - **Login:** user `admin`. Until you set your own password, the password is the device's **default password**: 10 random characters generated on first boot, different for every device, and shown only on the serial status screen (menu option 1): `Web login: user admin, default password "k7wqz3mtd9"`. A factory reset does not change it; menu option 7 replaces it with a new random one.
 - **Own password:** serial menu option 6 sets one (8-32 characters, no spaces; typed characters are shown as `*`), or `-` goes back to the device default. Changing it logs every browser out. The password is stored as a salted SHA-256 hash (2000 rounds), never as text; checking it takes about half a second, done in small steps so SNMP keeps answering meanwhile. It can only be changed from the serial menu, so someone who learns it cannot lock you out.
 - **Status:** mains power (green or red badge) and change count, mains alarm (none / lost over 60 s), uptime, CPU and ambient temperature, Ethernet link, the switch and port (LLDP), hostname and `.local` name, IP address, IPv6 address and link-local address (when the device has them), MAC address, network mode, static IPv6 address (when set), firmware version (top bar). With DHCP the Network card's boxes show the address, subnet mask and gateway the DHCP server gave (and the DNS server below them); choosing Static and saving keeps that address.
-- **Device name:** the hostname (also SNMP sysName and mDNS name), active immediately.
+- **Device name:** the hostname (also SNMP sysName and mDNS name), sysContact and sysLocation (0-63 printable characters each, may be empty), active immediately.
 - **Network:** DHCP or static IP (address, mask and gateway are checked as in the serial menu). Saving restarts the device; the page tells you the new address.
 - **IPv6:** static IPv6 address and gateway, checked as in the serial menu (option 9); empty fields remove them. Saving restarts the device.
 - **SNMP community:** active immediately, no restart.

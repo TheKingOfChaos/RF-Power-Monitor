@@ -218,6 +218,14 @@ An item is only ticked when it is implemented **and** its tests exist and pass (
 - [x] Rename the GitHub repository: `TheKingOfChaos/RF-Power-Monitor` (2026-11-02; GitHub redirects the old URLs), links in CHANGELOG, `library.json` and the MIB updated
 - [ ] Rename the local folder (the user's call)
 
+## 17. Standard MIBs (3.1.0, plan docs/superpowers/plans/2026-11-02-standard-mibs.md)
+- [x] sysContact and sysLocation on the web page (Device name card) — native `test_device_name_*`, HIL `test_contact_and_location_from_web_reach_snmp`
+- [ ] SNMPv2-MIB complete: sysORTable, snmp group, snmpSetSerialNo
+- [ ] HOST-RESOURCES-MIB: CPU load per core, RAM, LittleFS; ENTITY-MIB inventory
+- [ ] IP/ICMP/UDP/TCP statistics from lwIP's MIB-II counters
+- [ ] IP-MIB ipAddrTable and ipAddressTable (IPv4 and IPv6)
+- [ ] LibreNMS shows location, CPU, memory, storage, addresses, inventory, netstats
+
 ## Notes
 - SNMP must be v1 and v2c (no v3) and our own code; networking may use libraries
 - Memory limits: 70 % flash, 50 % RAM (3.0.0: 17.5 % flash / 45.4 % RAM, built with -Os)

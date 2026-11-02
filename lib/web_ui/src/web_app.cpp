@@ -359,9 +359,12 @@ const char* WebApp::mainPage(int code, const char* reason, size_t slot, WebBacke
     b.add("<div class=\"card-body\"><form method=\"post\" action=\"/hostname\">");
     csrfField(b, csrf);
     textInput(b, "Hostname", "hostname", st.hostname, HOSTNAME_MAX_LENGTH,
-              "Also the SNMP sysName and the mDNS name (name.local). 1-32 letters, digits and hyphens. "
-              "Active immediately.");
-    b.add("<button class=\"btn btn-primary\" type=\"submit\">Save</button></form></div></div>");
+              "Also the SNMP sysName and the mDNS name (name.local). 1-32 letters, digits and hyphens.");
+    textInput(b, "Contact (sysContact)", "contact", st.sysContact, SYS_TEXT_MAX_LENGTH,
+              "Who to call, e.g. an e-mail address. 0-63 printable characters. Shown in LibreNMS.");
+    textInput(b, "Location (sysLocation)", "location", st.sysLocation, SYS_TEXT_MAX_LENGTH,
+              "Where the device is. 0-63 printable characters. Shown in LibreNMS.");
+    b.add("<p class=\"form-text\">All three are active immediately.</p><button class=\"btn btn-primary\" type=\"submit\">Save</button></form></div></div>");
 
     cardStart(b, "SNMP", "mt-4");
     b.add("<div class=\"card-body\"><form method=\"post\" action=\"/community\">");
@@ -501,10 +504,18 @@ const char* WebApp::hostname(const HttpRequest& req, size_t slot, WebBackend& ba
         return mainPage(400, "Bad Request", slot, backend,
                         "The hostname must be 1-32 letters, digits and '-', not starting or ending with '-'.", true, len);
     }
-    if (!backend.saveHostname(value)) {
+    char contact[SYS_TEXT_MAX_LENGTH + 2], location[SYS_TEXT_MAX_LENGTH + 2];
+    if (!formValue(req.body(), req.bodyLength(), "contact", contact, sizeof(contact)) ||
+        !formValue(req.body(), req.bodyLength(), "location", location, sizeof(location)) ||
+        !settingsTextIsValid(contact, SYS_TEXT_MAX_LENGTH, true) ||
+        !settingsTextIsValid(location, SYS_TEXT_MAX_LENGTH, true)) {
+        return mainPage(400, "Bad Request", slot, backend,
+                        "Contact and location must be 0-63 printable characters.", true, len);
+    }
+    if (!backend.saveDeviceName(value, contact, location)) {
         return mainPage(500, "Internal Server Error", slot, backend, "Saving failed, nothing changed.", true, len);
     }
-    return mainPage(200, "OK", slot, backend, "Hostname saved and active.", false, len);
+    return mainPage(200, "OK", slot, backend, "Hostname, contact and location saved and active.", false, len);
 }
 
 const char* WebApp::disable(const HttpRequest& req, size_t slot, WebBackend& backend, size_t& len) {

@@ -7,6 +7,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ## [Unreleased]
 
 ### Added
+- Web page: the Device name card also sets sysContact and sysLocation (0-63 printable characters, may be empty), active at once like the hostname. Before, only the serial menu could set them, so LibreNMS showed no location.
 - Setup manual (docs/SETUP_MANUAL.md: installing a device, first configuration, LibreNMS, proving the alarm) and user manual (docs/USER_MANUAL.md: daily use, alarms, settings, factory reset, firmware update, troubleshooting).
 - HIL tests for the "no link" and "no DHCP server" states (`test/hil/test_switch_port.py`, opt-in `RFPOWER_SWITCH_CONFIG`): they disable the device's switch port or drop DHCP on it over the switch's console, with `commit confirmed` so the switch undoes a change a test could not, and check that the device recovers from both without a reboot.
 - LibreNMS plugin `librenms/plugins/RFPowerMonitor` (optional, copy to `app/Plugins/`): a **Switch** box on the device's Overview page with the switch, port and system description the device sees over LLDP, from the same links as the Neighbours tab. The Docker test setup mounts it. Checked with LibreNMS 26.10.2.

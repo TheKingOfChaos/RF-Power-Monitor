@@ -20,6 +20,7 @@ import statistics
 import threading
 import time
 import unittest
+from urllib.parse import quote_plus
 
 from device import Device
 from snmp_tools import local_ip_towards, net_snmp, raw_get
@@ -203,11 +204,13 @@ class WebPageTest(unittest.TestCase):
     def test_hostname_from_web_applies_to_snmp_mdns_and_status(self):
         self.wait_lockout_over()
         web = self.logged_in()
-        before = self.dev.status()["hostname"]
+        st = self.dev.status()
+        before, contact, location = st["hostname"], st["sysContact"], st["sysLocation"]
         self.assertEqual(self.ip, self.resolve_mdns(before))
         new = "hil-ups-%d" % (int(time.time()) % 10000)  # fresh name: no stale mDNS cache entry
+        keep = {"contact": quote_plus(contact), "location": quote_plus(location)}
         try:
-            status, _, page = web.post("/hostname", hostname=new)
+            status, _, page = web.post("/hostname", hostname=new, **keep)
             self.assertEqual(200, status, page)
             self.assertIn("<td>%s.local</td>" % new, page)
             st = self.dev.status()
@@ -217,13 +220,43 @@ class WebPageTest(unittest.TestCase):
             self.assertIn('STRING: "%s"' % new, out)
             self.assertEqual(self.ip, self.resolve_mdns(new), "%s.local does not resolve" % new)
             # Invalid names change nothing
-            status, _, _ = web.post("/hostname", hostname="bad name")
+            status, _, _ = web.post("/hostname", hostname="bad name", **keep)
             self.assertEqual(400, status)
             self.assertEqual(new, self.dev.status()["hostname"])
         finally:
-            status, _, _ = web.post("/hostname", hostname=before)
+            status, _, _ = web.post("/hostname", hostname=before, **keep)
             self.assertEqual(200, status)
         self.assertEqual(before, self.dev.status()["hostname"])
+
+    def test_contact_and_location_from_web_reach_snmp(self):
+        self.wait_lockout_over()
+        web = self.logged_in()
+        st = self.dev.status()
+        hostname, contact, location = st["hostname"], st["sysContact"], st["sysLocation"]
+        # No '"' in the values: net-snmp prints it as \" (escaping is covered by the native tests)
+        new_contact, new_location = "ops@example.com (HIL)", "Rack 4 <test> & co"
+        try:
+            status, _, page = web.post("/hostname", hostname=hostname, contact=quote_plus(new_contact),
+                                       location=quote_plus(new_location))
+            self.assertEqual(200, status, page)
+            self.assertIn("contact and location saved and active.", page)
+            self.assertIn('value="Rack 4 &lt;test&gt; &amp; co"', page)
+            st = self.dev.status()
+            self.assertEqual(new_contact, st["sysContact"])
+            self.assertEqual(new_location, st["sysLocation"])
+            rc, out = net_snmp("snmpget", self.ip, "1.3.6.1.2.1.1.4.0", "1.3.6.1.2.1.1.6.0")
+            self.assertIn('STRING: "%s"' % new_contact, out)
+            self.assertIn('STRING: "%s"' % new_location, out)
+            # Too long: refused, nothing changes
+            status, _, _ = web.post("/hostname", hostname=hostname, contact="c" * 64, location="")
+            self.assertEqual(400, status)
+            self.assertEqual(new_contact, self.dev.status()["sysContact"])
+        finally:
+            status, _, _ = web.post("/hostname", hostname=hostname, contact=quote_plus(contact),
+                                    location=quote_plus(location))
+            self.assertEqual(200, status)
+        st = self.dev.status()
+        self.assertEqual((contact, location), (st["sysContact"], st["sysLocation"]))
 
     def test_invalid_community_is_rejected(self):
         self.wait_lockout_over()

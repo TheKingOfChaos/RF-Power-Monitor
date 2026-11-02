@@ -129,6 +129,8 @@ public:
         strlcpy(st.ipv6Gateway, currentSettings.ipv6Gateway, sizeof(st.ipv6Gateway));
         strlcpy(st.community, currentSettings.community, sizeof(st.community));
         strlcpy(st.hostname, hostnameCurrent(), sizeof(st.hostname));
+        strlcpy(st.sysContact, currentSettings.sysContact, sizeof(st.sysContact));
+        strlcpy(st.sysLocation, currentSettings.sysLocation, sizeof(st.sysLocation));
         lldpServiceSwitchText(st.lldpSwitch, sizeof(st.lldpSwitch));
         lldpServiceSwitchAddress(st.lldpSwitchAddr, sizeof(st.lldpSwitchAddr));
     }
@@ -178,9 +180,11 @@ public:
         return false;
     }
 
-    bool saveHostname(const char* hostname) override {
+    bool saveDeviceName(const char* hostname, const char* contact, const char* location) override {
         settingsBackup = currentSettings;
         strlcpy(currentSettings.sysName, hostname, sizeof(currentSettings.sysName));
+        strlcpy(currentSettings.sysContact, contact, sizeof(currentSettings.sysContact));
+        strlcpy(currentSettings.sysLocation, location, sizeof(currentSettings.sysLocation));
         if (saveSettings()) {
             hostnameApply();
             return true;

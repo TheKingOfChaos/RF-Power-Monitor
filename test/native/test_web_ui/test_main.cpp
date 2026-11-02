@@ -520,6 +520,7 @@ public:
     int ipv6Saves = 0;
     bool savedDhcp = false;
     std::string savedIP, savedMask, savedGateway, savedCommunity, savedHostname, savedIPv6, savedIPv6Gateway;
+    std::string savedContact, savedLocation;
     int failed = 0, locked = 0, loggedIn = 0;
     uint8_t seed = 1;
     WebStatus st;
@@ -576,10 +577,16 @@ public:
         if (saveOk) strcpy(st.community, c);
         return saveOk;
     }
-    bool saveHostname(const char* h) override {
+    bool saveDeviceName(const char* h, const char* contact, const char* location) override {
         hostnameSaves++;
         savedHostname = h;
-        if (saveOk) strcpy(st.hostname, h);
+        savedContact = contact;
+        savedLocation = location;
+        if (saveOk) {
+            strcpy(st.hostname, h);
+            strcpy(st.sysContact, contact);
+            strcpy(st.sysLocation, location);
+        }
         return saveOk;
     }
     bool disableWeb() override {
@@ -874,7 +881,7 @@ static void test_actions_need_a_session() {
     webSetUp();
     const char* paths[] = {"/community", "/network", "/reboot", "/logout", "/hostname", "/disable", "/ipv6"};
     for (const char* p : paths) {
-        std::string resp = post(p, "community=x&mode=dhcp&hostname=x&confirm=yes&ipv6=fd00::1&ipv6gw=&csrf=00");
+        std::string resp = post(p, "community=x&mode=dhcp&hostname=x&contact=&location=&confirm=yes&ipv6=fd00::1&ipv6gw=&csrf=00");
         TEST_ASSERT_EQUAL_MESSAGE(403, statusCode(resp), p);
         resp = post(p, "community=x&mode=dhcp", std::string(32, 'a'));
         TEST_ASSERT_EQUAL_MESSAGE(403, statusCode(resp), p);
@@ -914,10 +921,10 @@ static void test_change_hostname() {
     std::string page = get("/", token);
     TEST_ASSERT_TRUE(page.find("<td>rf-power-monitor</td>") != std::string::npos);
     TEST_ASSERT_TRUE(page.find("<td>rf-power-monitor.local</td>") != std::string::npos);
-    std::string resp = post("/hostname", "csrf=" + csrf + "&hostname=ups-rack4", token);
+    std::string resp = post("/hostname", "csrf=" + csrf + "&hostname=ups-rack4&contact=&location=", token);
     TEST_ASSERT_EQUAL(200, statusCode(resp));
     TEST_ASSERT_EQUAL_STRING("ups-rack4", fb->savedHostname.c_str());
-    TEST_ASSERT_TRUE(resp.find("Hostname saved and active.") != std::string::npos);
+    TEST_ASSERT_TRUE(resp.find("Hostname, contact and location saved and active.") != std::string::npos);
     TEST_ASSERT_TRUE(resp.find("<td>ups-rack4.local</td>") != std::string::npos);
     TEST_ASSERT_EQUAL(0, fb->reboots);
 }
@@ -928,14 +935,88 @@ static void test_invalid_hostname_is_not_saved() {
     std::string token = logIn(csrf);
     std::string bad[] = {"", "ups+rack", "-ups", "ups-", "ups.local", "ups_4", std::string(33, 'h'), "%3Cb%3E"};
     for (const std::string& h : bad) {
-        std::string resp = post("/hostname", "csrf=" + csrf + "&hostname=" + h, token);
+        std::string resp = post("/hostname", "csrf=" + csrf + "&hostname=" + h + "&contact=&location=", token);
         TEST_ASSERT_EQUAL_MESSAGE(400, statusCode(resp), h.c_str());
         TEST_ASSERT_TRUE(resp.find("alert alert-danger") != std::string::npos);
     }
     TEST_ASSERT_EQUAL(0, fb->hostnameSaves);
-    TEST_ASSERT_EQUAL(200, statusCode(post("/hostname", "csrf=" + csrf + "&hostname=" + std::string(32, 'h'), token)));
+    TEST_ASSERT_EQUAL(200, statusCode(post("/hostname", "csrf=" + csrf + "&hostname=" + std::string(32, 'h') +
+                                           "&contact=&location=", token)));
     fb->saveOk = false;
-    TEST_ASSERT_EQUAL(500, statusCode(post("/hostname", "csrf=" + csrf + "&hostname=other", token)));
+    TEST_ASSERT_EQUAL(500, statusCode(post("/hostname", "csrf=" + csrf + "&hostname=other&contact=&location=", token)));
+}
+
+static void test_device_name_form_shows_contact_and_location() {
+    webSetUp();
+    strcpy(fb->st.sysContact, "ops \"A\" <x>");
+    strcpy(fb->st.sysLocation, "Rack 4");
+    std::string csrf;
+    std::string page = get("/", logIn(csrf));
+    TEST_ASSERT_TRUE(page.find("name=\"contact\"") != std::string::npos);
+    TEST_ASSERT_TRUE(page.find("name=\"location\"") != std::string::npos);
+    TEST_ASSERT_TRUE(page.find("value=\"ops &quot;A&quot; &lt;x&gt;\"") != std::string::npos);
+    TEST_ASSERT_TRUE(page.find("value=\"Rack 4\"") != std::string::npos);
+}
+
+static void test_device_name_post_saves_all_three() {
+    webSetUp();
+    std::string csrf;
+    std::string token = logIn(csrf);
+    std::string resp = post("/hostname", "csrf=" + csrf + "&hostname=a1&contact=ops%40x&location=Rack+4", token);
+    TEST_ASSERT_EQUAL(200, statusCode(resp));
+    TEST_ASSERT_EQUAL_STRING("a1", fb->savedHostname.c_str());
+    TEST_ASSERT_EQUAL_STRING("ops@x", fb->savedContact.c_str());
+    TEST_ASSERT_EQUAL_STRING("Rack 4", fb->savedLocation.c_str());
+    TEST_ASSERT_TRUE(resp.find("saved and active.") != std::string::npos);
+    TEST_ASSERT_EQUAL(0, fb->reboots);
+}
+
+static void test_device_name_post_accepts_empty_contact_and_location() {
+    webSetUp();
+    strcpy(fb->st.sysContact, "old");
+    strcpy(fb->st.sysLocation, "old");
+    std::string csrf;
+    std::string token = logIn(csrf);
+    TEST_ASSERT_EQUAL(200, statusCode(post("/hostname", "csrf=" + csrf + "&hostname=a1&contact=&location=", token)));
+    TEST_ASSERT_EQUAL(1, fb->hostnameSaves);
+    TEST_ASSERT_EQUAL_STRING("", fb->savedContact.c_str());
+    TEST_ASSERT_EQUAL_STRING("", fb->savedLocation.c_str());
+}
+
+static void test_device_name_post_rejects_bad_contact() {
+    webSetUp();
+    std::string csrf;
+    std::string token = logIn(csrf);
+    std::string bad[] = {std::string(64, 'c'), "a%01b", "tab%09"};
+    for (const std::string& v : bad) {
+        std::string resp = post("/hostname", "csrf=" + csrf + "&hostname=a1&contact=" + v + "&location=", token);
+        TEST_ASSERT_EQUAL_MESSAGE(400, statusCode(resp), v.c_str());
+        TEST_ASSERT_TRUE(resp.find("alert alert-danger") != std::string::npos);
+    }
+    TEST_ASSERT_EQUAL(0, fb->hostnameSaves);
+    TEST_ASSERT_EQUAL(200, statusCode(post("/hostname", "csrf=" + csrf + "&hostname=a1&contact=" + std::string(63, 'c') +
+                                           "&location=", token)));
+}
+
+static void test_device_name_post_rejects_bad_location() {
+    webSetUp();
+    std::string csrf;
+    std::string token = logIn(csrf);
+    std::string bad[] = {std::string(64, 'l'), "a%01b", "%7F"};
+    for (const std::string& v : bad) {
+        std::string resp = post("/hostname", "csrf=" + csrf + "&hostname=a1&contact=&location=" + v, token);
+        TEST_ASSERT_EQUAL_MESSAGE(400, statusCode(resp), v.c_str());
+    }
+    TEST_ASSERT_EQUAL(0, fb->hostnameSaves);
+}
+
+static void test_device_name_post_without_contact_field_is_rejected() {
+    webSetUp();
+    std::string csrf;
+    std::string token = logIn(csrf);
+    TEST_ASSERT_EQUAL(400, statusCode(post("/hostname", "csrf=" + csrf + "&hostname=a1&location=x", token)));
+    TEST_ASSERT_EQUAL(400, statusCode(post("/hostname", "csrf=" + csrf + "&hostname=a1&contact=x", token)));
+    TEST_ASSERT_EQUAL(0, fb->hostnameSaves);
 }
 
 static void test_invalid_community_is_not_saved() {
@@ -1241,6 +1322,8 @@ static void test_longest_values_still_fit_the_page() {
     webSetUp();
     strcpy(fb->st.community, std::string(31, '"').c_str());  // every character escaped to 6
     strcpy(fb->st.hostname, std::string(32, 'h').c_str());
+    strcpy(fb->st.sysContact, std::string(63, '"').c_str());
+    strcpy(fb->st.sysLocation, std::string(63, '"').c_str());
     strcpy(fb->st.staticIPv6, "fd16:d833:4f0e:3ece:ffff:ffff:ffff:fffe");
     strcpy(fb->st.ipv6Gateway, "fd16:d833:4f0e:3ece:ffff:ffff:ffff:ffff");
     strcpy(fb->st.ipv6, "fd16:d833:4f0e:3ece:ffff:ffff:ffff:fffe");
@@ -1427,6 +1510,12 @@ int main() {
     RUN_TEST(test_change_community);
     RUN_TEST(test_change_hostname);
     RUN_TEST(test_invalid_hostname_is_not_saved);
+    RUN_TEST(test_device_name_form_shows_contact_and_location);
+    RUN_TEST(test_device_name_post_saves_all_three);
+    RUN_TEST(test_device_name_post_accepts_empty_contact_and_location);
+    RUN_TEST(test_device_name_post_rejects_bad_contact);
+    RUN_TEST(test_device_name_post_rejects_bad_location);
+    RUN_TEST(test_device_name_post_without_contact_field_is_rejected);
     RUN_TEST(test_invalid_community_is_not_saved);
     RUN_TEST(test_switch_to_dhcp_keeps_static_values_and_reboots);
     RUN_TEST(test_static_ip_is_validated_saved_and_reboots);

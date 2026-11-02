@@ -343,6 +343,7 @@ Uses `test/settings_a.json` and `test/settings_b.json`, never the real settings.
 - Actions need session and CSRF token; community change applies to SNMP at once (old community refused) and is restored; invalid community and invalid static address rejected without restart
 - Restart button and DHCP save restart the device (sysUpTime restarts, default password kept); static IP from the web page and back (opt-in `RFPOWER_STATIC_IP`)
 - Hostname from the web page: status screen, SNMP sysName and mDNS (`name.local` resolved by the PC) follow at once without restart; invalid names refused; restored afterwards
+- Contact and location from the web page: status screen and SNMP sysContact/sysLocation follow at once; a 64-character contact is refused; restored afterwards
 - Web interface off via serial option 8: port 80 closed, SNMP keeps working, off survives a restart, back on; the page turning itself off asks first, then closes port 80, and serial option 8 reopens it at once; three logins per round leave closed connections in TIME-WAIT on port 80, and turning the web interface off and on still opens the port within 3 s, three rounds in a row (`SO_REUSE`; without it the port stayed closed for about 2 minutes)
 - Logo and favicon: `/favicon.svg` is the path from `logo/RF-canopy-RGB-Orange.svg`, logo in the navbar and on the login card
 - New default password via serial option 7: `n` changes nothing; `y` gives a new 10-character password, logs browsers out, refuses the old one and keeps the new one across a restart; an own password stays in use
