@@ -138,6 +138,8 @@ docker compose down -v                   # remove everything again
 
 The poller polls every 5 minutes; traffic rates appear after the second poll. The device gets the RF icon at its first poll (LibreNMS stores the icon when it polls), so after updating the definitions on an existing installation the icon changes at the next poll.
 
+**Screenshots for the manuals.** `librenms/test/screenshots.ps1` retakes `docs/images/librenms/device-overview.png`, `device-eventlog.png`, `device-neighbours.png` and `device-inventory.png` from this LibreNMS: it logs in with the account in `secret/librenms.md` (gitignored) inside the Playwright Docker image and replaces the contact address on the page by `ops@example.com`. Docker Desktop must be running. Let LibreNMS poll the device for a few days first, so the graphs have data.
+
 ### Traps in Docker
 
 The `snmptrapd` container receives traps on UDP 162 of the PC. Set the device's trap destination to the PC's address (menu option 4); both trap versions work. Docker Desktop replaces the sender's address with its own (172.18.0.1), so LibreNMS alone could not find the device ("Could not find device for trap"). The device's traps also carry its address, v1 in agent-addr and v2c (from firmware 2.5.1) in `snmpTrapAddress.0`, which snmptrapd shows for both; [librenms/test/snmptrap-agent-addr.php](../librenms/test/snmptrap-agent-addr.php), mounted over LibreNMS's `snmptrap.php`, puts that address back before LibreNMS handles the trap. Without NAT in between, on a normal LibreNMS server, the script is not needed. Only traps with the community in `TRAP_COMMUNITY` (default `public`) are accepted, e.g. `TRAP_COMMUNITY=mycommunity docker compose up -d`.
