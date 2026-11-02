@@ -155,7 +155,7 @@ def system_overview():
     d.zone("z-board", 420, 80, 650, 640, "RF-Power-Monitor board", ZONE_BLUE)
     d.box("flash", 470, 140, 300, 90, "Internal flash (LittleFS)\nsettings_a / settings_b.json", GREEN, 16)
     d.box("pico", 470, 290, 300, 220,
-          "Raspberry Pi Pico\n(RP2040)\n\nCore 0: network, SNMP, web page,\nLLDP, menu, CPU temperature,\n"
+          "Raspberry Pi Pico\n(RP2040)\n\nCore 0: network, SNMP, web page,\nLLDP, menu, temperatures, load,\n"
           "watchdog 8 s (fed while core 1 runs)\nCore 1: GPIO27 + GPIO22, 1 kHz",
           BLUE, 16)
     d.box("w5500", 880, 330, 170, 150, "W5500\nEthernet\nSPI0: GPIO16-19\nRST 20, INT 21", CYAN, 16)
@@ -193,7 +193,7 @@ def firmware_architecture():
     d.zone("z-src", 40, 100, 1650, 330, "src/  firmware on the Pico (Arduino)", ZONE_BLUE)
     cols = [70, 300, 530, 760, 990, 1220, 1450]
     src = [("main", "main.cpp\nboot, Ethernet,\nloop, starts core 1"), ("cli", "cli.cpp\nserial menu"),
-           ("svc", "snmp_service.cpp\nUDP 161, traps,\ndevice state"), ("temp", "cpu_temp.cpp\nambient_temp.cpp\nRP2040, TMP1075"),
+           ("svc", "snmp_service.cpp\nUDP 161, traps,\ndevice state"), ("temp", "cpu_temp.cpp\nambient_temp.cpp\nhost_stats.cpp: CPU\nload, RAM, LittleFS"),
            ("net", "net_stats.cpp\nframe counters,\nW5500 PHY, hooks"), ("reset", "factory_reset.cpp\nGPIO22 on core 1"),
            ("web", "web_service.cpp\nweb page, TCP 80,\nnon-blocking")]
     for x, (eid, text) in zip(cols, src):
@@ -210,7 +210,7 @@ def firmware_architecture():
     d.zone("z-pure", 40, 340 + dy, 1650, 330, "lib/  pure C++, host tested", ZONE_GREEN, title_at="bottom",
            title_x=760)
     pure = [("codec", "settings_codec\nJSON, validation,\nA/B selection"), ("netcfg", "netconfig\nIPv4/IPv6 parse +\nvalidate"),
-            ("agent", "snmp_agent\nMIB, Get / GetNext /\nGetBulk, traps"), ("acl", "access_control\nrate limiter,\naccess log"),
+            ("agent", "snmp_agent\nMIB + address rows,\nGet/Next/Bulk, traps"), ("acl", "access_control\nrate limiter,\naccess log"),
             ("ifst", "if_stats\nframe classes,\nPHYCFGR decode"), ("power", "power_monitor\ndebouncer, mains\nalarm, reset button"),
             ("webui", "web_ui\nHTTP parser, login,\nsessions, pages")]
     for x, (eid, text) in zip(cols, pure):
@@ -218,7 +218,7 @@ def firmware_architecture():
     d.box("d6c", 100, 548 + dy, 180, 72, "dhcp6_client\nDHCPv6 messages,\nclient state", GREEN, 16)
     d.box("lldp", 300, 548 + dy, 210, 72, "lldp\nLLDPDU build/parse,\nneighbour, timing", GREEN, 16)
     d.box("ber", 530, 560 + dy, 210, 90, "snmp_ber\nBER codec, OIDs,\nCounter64", GREEN, 16)
-    d.box("tmp1075", 760, 548 + dy, 200, 72, "tmp1075\nregister to 0.1 C,\nread state", GREEN, 16)
+    d.box("tmp1075", 760, 548 + dy, 200, 72, "tmp1075, cpu_load\n0.1 C, read state;\nload per core", GREEN, 16)
     d.box("dhcpopt", 990, 548 + dy, 210, 72, "dhcp_option\nask for / read\nDHCP option 224", GREEN, 16)
     d.box("wdl", 1220, 548 + dy, 210, 72, "watchdog_logic\nheartbeat check,\nrestart count", GREEN, 16)
 
@@ -258,7 +258,7 @@ def snmp_request_flow():
           "Dropped without a reply: counted on the status screen, logged in the access log (menu 5)", RED, 18)
     d.box("udp", 40, 220, 200, 90, "UDP datagram\non port 161", CYAN, 18)
     d.box("size", 290, 205, 200, 120, "at most\n1472 bytes?", YELLOW, 18, shape="diamond")
-    d.box("rate", 580, 200, 230, 130, "Rate limiter\nper source 50/s\nuntrusted total 100/s\ntrusted total 200/s",
+    d.box("rate", 580, 200, 230, 130, "Rate limiter\nper source 50/s\n(trusted: 200/s)\nuntrusted total 100/s\ntrusted total 200/s",
           ORANGE, 16)
     d.box("parse", 910, 210, 230, 110, "Parse BER message\nversion, community,\nPDU, max 16 varbinds", BLUE, 16)
     d.box("ver", 1190, 205, 180, 120, "version?", YELLOW, 18, shape="diamond")
@@ -273,7 +273,7 @@ def snmp_request_flow():
 
     d.box("comm", 1190, 470, 180, 130, "community\ncorrect?", YELLOW, 18, shape="diamond")
     d.box("pdu", 840, 480, 260, 110, "Handle the PDU\nGet, GetNext, GetBulk (v2c)\nSet is rejected", BLUE, 16)
-    d.box("mib", 520, 480, 260, 110, "MIB table\nLLDP-MIB, system,\nIF-MIB, 63050: up to\n67 objects (59 in v1)", GREEN, 16)
+    d.box("mib", 520, 480, 260, 110, "MIB: SNMPv2, IF, IP,\nHOST-RES., ENTITY,\nLLDP, 63050: 241 obj.\n+ one row per address", GREEN, 16)
     d.box("build", 180, 480, 280, 110, "Build GetResponse\nv1 errors / v2c exceptions\nGetBulk at most 16 varbinds",
           BLUE, 16)
     d.box("sent", 180, 680, 280, 90, "Reply sent\nsource now trusted\n(not for GetBulk)", GREEN, 16)
@@ -339,9 +339,9 @@ def test_layers():
         ("hil", "HIL (Python): menu, SNMP, traps, web, IPv6, DHCP opt. 224,\nLLDP (switch console), watchdog, reboot",
          ORANGE),
         ("emb", "On-device Unity tests: LittleFS, W5500, GPIO27 sampler", YELLOW),
-        ("host", "Host agent vs real net-snmp (WSL): 65 checks incl. LLDP-MIB, MIB validation", CYAN),
+        ("host", "Host agent vs real net-snmp (WSL): 92 checks, all MIBs, MIB validation", CYAN),
         ("san", "Sanitizers (WSL): every native suite under ASan + UBSan", CYAN),
-        ("native", "Native unit tests: about 600 tests of lib/, frames from the device,\nKea, Junos and net-snmp",
+        ("native", "Native unit tests: about 670 tests of lib/, frames from the device,\nKea, Junos and net-snmp",
          GREEN),
     ]
     for i, (eid, text, bg) in enumerate(layers):

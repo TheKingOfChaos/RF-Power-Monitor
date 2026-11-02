@@ -44,7 +44,7 @@ Connect a USB cable and open a terminal (PuTTY: Serial, the device's COM port, 1
 
 ### LibreNMS
 
-The device page shows the sensors *Mains power* (OK / warning), *Mains lost over 60 s* (OK / critical), *CPU* and *Ambient* temperature and *Mains power changes since boot*, the Ethernet port with its traffic, and in the **Switch** box the switch and port the device is plugged into (from LLDP, updated at each discovery; the box needs the RF-Power-Monitor plugin on the LibreNMS server):
+The device page shows the sensors *Mains power* (OK / warning), *Mains lost over 60 s* (OK / critical), *CPU* and *Ambient* temperature and *Mains power changes since boot*, the Ethernet port with its traffic, and in the **Switch** box the switch and port the device is plugged into (from LLDP, updated at each discovery; the box needs the RF-Power-Monitor plugin on the LibreNMS server). Since firmware 3.1.0 it also shows the device's location and contact (set them on the web page), the load of both processor cores and the memory in use (overview graphs *CPU* and *Memory*), the settings flash as storage, the IPv4 and IPv6 addresses on the port, the serial number, an **Inventory** entry, and IP/ICMP/TCP/UDP/SNMP traffic graphs under **Graphs → Netstats**. The screenshot below is from before 3.1.0:
 
 ![LibreNMS: the device page](images/librenms/device-overview.png)
 
@@ -138,6 +138,10 @@ Switch: core-sw1, port ge-0/0/9.0
 Web interface: on (TCP port 80)
 Web login: user admin, default password "k7wqz3mtd9" (change with option 6)
 Core 0 stack: 6272 bytes never used
+CPU load: core 0 0 %, core 1 1 % (last minute)
+RAM used: 133444 of 262144 bytes
+LittleFS used: 32768 of 262144 bytes
+Serial number: E6641CB2CF4CA22C
 Last restart: reboot (0 watchdog restarts since power-on)
 Mode: DHCP
 Stored static IP: 192.168.1.100 / 255.255.255.0, gateway 192.168.1.1
