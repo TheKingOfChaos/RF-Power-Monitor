@@ -183,7 +183,8 @@ static void test_trap_varbinds_are_the_mib_objects() {
     for (uint8_t i = 0; i < 3; i++) {
         Oid expected = {{1, 3, 6, 1, 4, 1, 63050, (uint32_t)i + 1, 0}, 9};
         TEST_ASSERT_EQUAL(0, oidCompare(expected, d.names[i]));
-        TEST_ASSERT_NOT_NULL(mibFind(d.names[i]));
+        static MibObject found;
+        TEST_ASSERT_TRUE(mibGet(d.names[i], mainsState(false, 5, 7), found));
     }
     TEST_ASSERT_EQUAL_HEX8(BerTag::Integer, d.tags[0]);
     TEST_ASSERT_EQUAL_HEX8(BerTag::Counter32, d.tags[1]);

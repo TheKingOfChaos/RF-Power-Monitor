@@ -103,6 +103,7 @@ public:
 private:
     bool communityMatches(const SnmpRequest& req) const;
     size_t respondError(const SnmpRequest& req, SnmpError error, uint8_t index, uint8_t* out, size_t cap);
+    bool resolveV1(const Oid& name, bool getNext, const SnmpDeviceState& state);
     size_t handleV1(uint8_t* response, size_t capacity, const SnmpDeviceState& state);
     size_t handleV2c(uint8_t* response, size_t capacity, const SnmpDeviceState& state);
     size_t handleGetBulk(uint8_t* response, size_t capacity, const SnmpDeviceState& state);
@@ -113,4 +114,5 @@ private:
     SnmpOutcome _outcome = SnmpOutcome::Responded;
     SnmpRequest _req;                   // ~1 KB, kept out of the stack
     Oid _cursor[SNMP_MAX_VARBINDS];     // GetBulk repeater positions, ~2 KB, kept out of the stack
+    MibObject _found;                   // Last lookup result, ~300 bytes, kept out of the stack
 };

@@ -93,26 +93,40 @@ struct MibEntry {
 };
 
 /**
- * @brief Number of objects in the MIB
+ * @brief An instance with its current value, as found by mibGet / mibGetNext (~300 bytes: keep it off the stack)
  */
-uint8_t mibSize();
+struct MibObject {
+    Oid oid;
+    SnmpValue value;
+};
+
+/// Which instances a GetNext may return
+enum class MibView : uint8_t {
+    V2c,  ///< Every instance that has a value now
+    V1    ///< Also skips Counter64, which v1 cannot encode (RFC 3584 4.2.2.1)
+};
 
 /**
- * @brief Object by index, in OID order (0 .. mibSize()-1)
+ * @brief Number of entries in the static table
  */
-const MibEntry& mibEntry(uint8_t index);
+uint16_t mibSize();
 
 /**
- * @brief Exact match for GetRequest
- * @return nullptr if no object has this OID
+ * @brief Static entry by index, in OID order (0 .. mibSize()-1)
  */
-const MibEntry* mibFind(const Oid& oid);
+const MibEntry& mibEntry(uint16_t index);
 
 /**
- * @brief First object whose OID sorts after the given one, for GetNextRequest
- * @return nullptr past the end of the MIB
+ * @brief The exact instance oid with its value now, for GetRequest
+ * @return false if oid is no instance, or the instance is absent now (getter says noSuchInstance)
  */
-const MibEntry* mibNext(const Oid& oid);
+bool mibGet(const Oid& oid, const SnmpDeviceState& state, MibObject& out);
+
+/**
+ * @brief The first instance after oid that has a value now and is visible in view, for GetNext and GetBulk
+ * @return false past the end of the MIB
+ */
+bool mibGetNext(const Oid& oid, const SnmpDeviceState& state, MibView view, MibObject& out);
 
 /**
  * @brief true if oid lies under an object of the MIB (a scalar's OID without

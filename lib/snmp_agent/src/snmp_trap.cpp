@@ -69,9 +69,9 @@ static const uint32_t MAINS_OBJECTS[] = {1, 2, 3, 6};
 static bool mainsVarbinds(const SnmpDeviceState& state, uint8_t count, Oid* names, SnmpValue* values) {
     for (uint8_t i = 0; i < count; i++) {
         names[i] = {{1, 3, 6, 1, 4, 1, ENTERPRISE_NUMBER, MAINS_OBJECTS[i], 0}, 9};
-        const MibEntry* e = mibFind(names[i]);
-        if (e == nullptr) return false;
-        values[i] = e->get(state);
+        static MibObject found;  // ~300 bytes: off the stack (traps are built on core 0 only)
+        if (!mibGet(names[i], state, found)) return false;
+        values[i] = found.value;
     }
     return true;
 }

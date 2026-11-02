@@ -291,36 +291,64 @@ static const MibEntry MIB[] = {
     {PRIVATE(6), getMainsAlarm},
 };
 
-static const uint8_t MIB_SIZE = sizeof(MIB) / sizeof(MIB[0]);
+static const uint16_t MIB_SIZE = sizeof(MIB) / sizeof(MIB[0]);
 
-uint8_t mibSize() {
+uint16_t mibSize() {
     return MIB_SIZE;
 }
 
-const MibEntry& mibEntry(uint8_t index) {
+const MibEntry& mibEntry(uint16_t index) {
     return MIB[index < MIB_SIZE ? index : MIB_SIZE - 1];
 }
 
-const MibEntry* mibFind(const Oid& oid) {
-    for (uint8_t i = 0; i < MIB_SIZE; i++) {
+/// Static entry with exactly this OID, or nullptr
+static const MibEntry* find(const Oid& oid) {
+    for (uint16_t i = 0; i < MIB_SIZE; i++) {
         if (oidCompare(MIB[i].oid, oid) == 0) return &MIB[i];
     }
     return nullptr;
 }
 
+/// First static entry whose OID sorts after oid, or nullptr
+static const MibEntry* next(const Oid& oid) {
+    for (uint16_t i = 0; i < MIB_SIZE; i++) {
+        if (oidCompare(MIB[i].oid, oid) > 0) return &MIB[i];
+    }
+    return nullptr;
+}
+
+/// true if a GetNext in view may return this value
+static bool visible(const SnmpValue& v, MibView view) {
+    if (v.type == BerTag::NoSuchInstance) return false;
+    return view == MibView::V2c || v.type != BerTag::Counter64;
+}
+
+bool mibGet(const Oid& oid, const SnmpDeviceState& state, MibObject& out) {
+    const MibEntry* e = find(oid);
+    if (e == nullptr) return false;
+    out.value = e->get(state);
+    if (out.value.type == BerTag::NoSuchInstance) return false;
+    out.oid = e->oid;
+    return true;
+}
+
+bool mibGetNext(const Oid& oid, const SnmpDeviceState& state, MibView view, MibObject& out) {
+    for (const MibEntry* e = next(oid); e != nullptr; e = next(e->oid)) {
+        out.value = e->get(state);
+        if (visible(out.value, view)) {
+            out.oid = e->oid;
+            return true;
+        }
+    }
+    return false;
+}
+
 bool mibHasObject(const Oid& oid) {
-    for (uint8_t i = 0; i < MIB_SIZE; i++) {
+    for (uint16_t i = 0; i < MIB_SIZE; i++) {
         // The object is the entry without its instance (.0, ifIndex, or lldpRemTable's three index arcs)
         Oid object = MIB[i].oid;
         object.length -= MIB[i].indexArcs;
         if (oidStartsWith(oid, object)) return true;
     }
     return false;
-}
-
-const MibEntry* mibNext(const Oid& oid) {
-    for (uint8_t i = 0; i < MIB_SIZE; i++) {
-        if (oidCompare(MIB[i].oid, oid) > 0) return &MIB[i];
-    }
-    return nullptr;
 }

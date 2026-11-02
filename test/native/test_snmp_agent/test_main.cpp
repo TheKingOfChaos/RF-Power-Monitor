@@ -207,7 +207,7 @@ static Reply bulk(SnmpAgent& agent, int32_t nonRepeaters, int32_t maxRepetitions
 // ---- MIB table ----
 
 static void test_mib_is_strictly_sorted() {
-    for (uint8_t i = 1; i < mibSize(); i++) {
+    for (uint16_t i = 1; i < mibSize(); i++) {
         TEST_ASSERT_LESS_THAN_MESSAGE(0, oidCompare(mibEntry(i - 1).oid, mibEntry(i).oid), str(mibEntry(i).oid));
     }
 }
@@ -215,7 +215,7 @@ static void test_mib_is_strictly_sorted() {
 static void test_mib_contains_expected_objects() {
     // lldpLocPortTable 2-4, lldpRemTable 4-12, system 1-7, ifNumber, ifTable 1-22, ifXTable 1-19, enterprise 1-6
     char expected[80][48];
-    uint8_t n = 0;
+    uint16_t n = 0;
     for (int i = 2; i <= 4; i++) snprintf(expected[n++], 48, "1.0.8802.1.1.2.1.3.7.1.%d.1", i);
     for (int i = 4; i <= 12; i++) snprintf(expected[n++], 48, "1.0.8802.1.1.2.1.4.1.1.%d.0.1.1", i);
     for (int i = 1; i <= 7; i++) snprintf(expected[n++], 48, "1.3.6.1.2.1.1.%d.0", i);
@@ -223,8 +223,8 @@ static void test_mib_contains_expected_objects() {
     for (int i = 1; i <= 22; i++) snprintf(expected[n++], 48, "1.3.6.1.2.1.2.2.1.%d.1", i);
     for (int i = 1; i <= 19; i++) snprintf(expected[n++], 48, "1.3.6.1.2.1.31.1.1.1.%d.1", i);
     for (int i = 1; i <= 6; i++) snprintf(expected[n++], 48, "1.3.6.1.4.1.63050.%d.0", i);
-    TEST_ASSERT_EQUAL_UINT8(n, mibSize());
-    for (uint8_t i = 0; i < n; i++) TEST_ASSERT_EQUAL_STRING(expected[i], str(mibEntry(i).oid));
+    TEST_ASSERT_EQUAL_UINT16(n, mibSize());
+    for (uint16_t i = 0; i < n; i++) TEST_ASSERT_EQUAL_STRING(expected[i], str(mibEntry(i).oid));
 }
 
 // ---- IF-MIB and temperature ----
@@ -349,7 +349,7 @@ static void test_v1_walk_has_every_object_except_counter64() {
     SnmpAgent agent("public");
     withSwitch(true);  // every object has an instance, LLDP-MIB included
     char current[128] = "1.0";
-    uint8_t visited = 0;
+    uint16_t visited = 0;
     for (;;) {
         const char* oids[] = {current};
         Reply r = request(agent, BerTag::GetNextRequest, oids, 1);
@@ -359,7 +359,7 @@ static void test_v1_walk_has_every_object_except_counter64() {
         visited++;
         TEST_ASSERT_TRUE_MESSAGE(visited <= mibSize(), "walk did not terminate");
     }
-    TEST_ASSERT_EQUAL_UINT8(mibSize() - 8, visited);
+    TEST_ASSERT_EQUAL_UINT16(mibSize() - 8, visited);
 }
 
 static void test_cpu_temperature() {
@@ -624,20 +624,50 @@ static void test_no_such_instance_for_wrong_if_index() {
     TEST_ASSERT_EQUAL_HEX8(BerTag::NoSuchInstance, r.tags[0]);
 }
 
-static void test_mib_find_and_next() {
-    TEST_ASSERT_NOT_NULL(mibFind(oid("1.3.6.1.2.1.1.3.0")));
-    TEST_ASSERT_NULL(mibFind(oid("1.3.6.1.2.1.1.3")));        // not a leaf instance
-    TEST_ASSERT_NULL(mibFind(oid("1.3.6.1.2.1.1.3.0.0")));
-    TEST_ASSERT_EQUAL_STRING("1.3.6.1.2.1.1.1.0", str(mibNext(oid("1.3"))->oid));
-    TEST_ASSERT_EQUAL_STRING("1.3.6.1.2.1.1.4.0", str(mibNext(oid("1.3.6.1.2.1.1.3.0"))->oid));
-    TEST_ASSERT_EQUAL_STRING("1.3.6.1.2.1.1.4.0", str(mibNext(oid("1.3.6.1.2.1.1.3.0.5"))->oid));
-    TEST_ASSERT_EQUAL_STRING("1.3.6.1.2.1.2.1.0", str(mibNext(oid("1.3.6.1.2.1.1.7.0"))->oid));
-    TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050.1.0", str(mibNext(oid("1.3.6.1.4.1.63050"))->oid));
-    TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050.4.0", str(mibNext(oid("1.3.6.1.4.1.63050.3.0"))->oid));
-    TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050.5.0", str(mibNext(oid("1.3.6.1.4.1.63050.4.0"))->oid));
-    TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050.6.0", str(mibNext(oid("1.3.6.1.4.1.63050.5.0"))->oid));
-    TEST_ASSERT_NULL(mibNext(oid("1.3.6.1.4.1.63050.6.0")));
-    TEST_ASSERT_NULL(mibNext(oid("2.0")));
+static MibObject found;  // ~300 bytes: not on the stack
+
+/// OID of the next instance after text in the v2c view, or "end"
+static const char* nextOf(const char* text) {
+    return mibGetNext(oid(text), state, MibView::V2c, found) ? str(found.oid) : "end";
+}
+
+static void test_mib_get_and_get_next() {
+    TEST_ASSERT_TRUE(mibGet(oid("1.3.6.1.2.1.1.3.0"), state, found));
+    TEST_ASSERT_FALSE(mibGet(oid("1.3.6.1.2.1.1.3"), state, found));  // not a leaf instance
+    TEST_ASSERT_FALSE(mibGet(oid("1.3.6.1.2.1.1.3.0.0"), state, found));
+    TEST_ASSERT_EQUAL_STRING("1.3.6.1.2.1.1.1.0", nextOf("1.3"));
+    TEST_ASSERT_EQUAL_STRING("1.3.6.1.2.1.1.4.0", nextOf("1.3.6.1.2.1.1.3.0"));
+    TEST_ASSERT_EQUAL_STRING("1.3.6.1.2.1.1.4.0", nextOf("1.3.6.1.2.1.1.3.0.5"));
+    TEST_ASSERT_EQUAL_STRING("1.3.6.1.2.1.2.1.0", nextOf("1.3.6.1.2.1.1.7.0"));
+    TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050.1.0", nextOf("1.3.6.1.4.1.63050"));
+    TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050.4.0", nextOf("1.3.6.1.4.1.63050.3.0"));
+    TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050.5.0", nextOf("1.3.6.1.4.1.63050.4.0"));
+    TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050.6.0", nextOf("1.3.6.1.4.1.63050.5.0"));
+    TEST_ASSERT_EQUAL_STRING("end", nextOf("1.3.6.1.4.1.63050.6.0"));
+    TEST_ASSERT_EQUAL_STRING("end", nextOf("2.0"));
+}
+
+static void test_mib_get_returns_the_instance_and_value() {
+    TEST_ASSERT_TRUE(mibGet(oid("1.3.6.1.2.1.1.3.0"), state, found));
+    TEST_ASSERT_EQUAL_STRING("1.3.6.1.2.1.1.3.0", str(found.oid));
+    TEST_ASSERT_EQUAL_HEX8(BerTag::TimeTicks, found.value.type);
+    TEST_ASSERT_EQUAL_UINT32(123456, found.value.unsigned32);
+}
+
+static void test_mib_get_absent_instance_is_false() {
+    state.ambientTempValid = false;
+    TEST_ASSERT_FALSE(mibGet(oid("1.3.6.1.4.1.63050.5.0"), state, found));
+    TEST_ASSERT_TRUE(mibHasObject(oid("1.3.6.1.4.1.63050.5.0")));  // still an object: v2c noSuchInstance
+    // GetNext skips it
+    TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050.6.0", nextOf("1.3.6.1.4.1.63050.4.0"));
+}
+
+static void test_mib_getnext_v1_skips_counter64() {
+    TEST_ASSERT_TRUE(mibGetNext(oid("1.3.6.1.2.1.31.1.1.1.5.1"), state, MibView::V2c, found));
+    TEST_ASSERT_EQUAL_STRING("1.3.6.1.2.1.31.1.1.1.6.1", str(found.oid));
+    TEST_ASSERT_EQUAL_HEX8(BerTag::Counter64, found.value.type);
+    TEST_ASSERT_TRUE(mibGetNext(oid("1.3.6.1.2.1.31.1.1.1.5.1"), state, MibView::V1, found));
+    TEST_ASSERT_EQUAL_STRING("1.3.6.1.2.1.31.1.1.1.14.1", str(found.oid));
 }
 
 // ---- GetRequest ----
@@ -731,8 +761,8 @@ static void test_walk_from_root_visits_every_object_in_order_then_ends() {
     SnmpAgent agent("public");
     withSwitch(true);  // every object has an instance, LLDP-MIB included
     char current[128] = "1.0";
-    uint8_t visited = 0;
-    uint8_t expectedIndex = 0;
+    uint16_t visited = 0;
+    uint16_t expectedIndex = 0;
     for (;;) {
         const char* oids[] = {current};
         Reply r = request(agent, BerTag::GetNextRequest, oids, 1);
@@ -750,7 +780,7 @@ static void test_walk_from_root_visits_every_object_in_order_then_ends() {
         strcpy(current, str(r.names[0]));
         visited++;
     }
-    TEST_ASSERT_EQUAL_UINT8(mibSize(), expectedIndex);
+    TEST_ASSERT_EQUAL_UINT16(mibSize(), expectedIndex);
     TEST_ASSERT_EQUAL_UINT32(visited + 1, agent.stats().inGetNextRequests);
 }
 
@@ -871,7 +901,7 @@ static void test_v2c_walk_ends_with_end_of_mib_view() {
     SnmpAgent agent("public");
     withSwitch(true);  // every object has an instance, LLDP-MIB included
     char current[128] = "1.0";
-    uint8_t visited = 0;
+    uint16_t visited = 0;
     for (;;) {
         const char* oids[] = {current};
         Reply r = requestV2c(agent, BerTag::GetNextRequest, oids, 1);
@@ -882,7 +912,7 @@ static void test_v2c_walk_ends_with_end_of_mib_view() {
         strcpy(current, str(r.names[0]));
         visited++;
     }
-    TEST_ASSERT_EQUAL_UINT8(mibSize(), visited);
+    TEST_ASSERT_EQUAL_UINT16(mibSize(), visited);
 }
 
 static void test_v2c_set_is_not_writable_or_no_creation() {
@@ -962,7 +992,7 @@ static void test_getbulk_walk_returns_whole_mib_then_end_of_mib_view() {
                 break;
             }
             TEST_ASSERT_TRUE(seen < mibSize());
-            TEST_ASSERT_EQUAL_STRING(str(mibEntry((uint8_t)seen).oid), str(r.names[i]));
+            TEST_ASSERT_EQUAL_STRING(str(mibEntry((uint16_t)seen).oid), str(r.names[i]));
             seen++;
         }
         strcpy(current, str(r.names[r.count - 1]));
@@ -1032,7 +1062,7 @@ static void test_getbulk_truncates_to_fit_instead_of_too_big() {
     TEST_ASSERT_GREATER_THAN(0, r.count);
     TEST_ASSERT_LESS_THAN(mibSize(), r.count);
     // What is there is the start of the MIB, in order
-    for (uint8_t i = 0; i < r.count; i++) TEST_ASSERT_EQUAL_STRING(str(mibEntry(i).oid), str(r.names[i]));
+    for (uint16_t i = 0; i < r.count; i++) TEST_ASSERT_EQUAL_STRING(str(mibEntry(i).oid), str(r.names[i]));
 }
 
 static void test_getbulk_too_big_when_not_even_the_non_repeaters_fit() {
@@ -1232,7 +1262,10 @@ int main() {
     UNITY_BEGIN();
     RUN_TEST(test_mib_is_strictly_sorted);
     RUN_TEST(test_mib_contains_expected_objects);
-    RUN_TEST(test_mib_find_and_next);
+    RUN_TEST(test_mib_get_and_get_next);
+    RUN_TEST(test_mib_get_returns_the_instance_and_value);
+    RUN_TEST(test_mib_get_absent_instance_is_false);
+    RUN_TEST(test_mib_getnext_v1_skips_counter64);
     RUN_TEST(test_if_table_values);
     RUN_TEST(test_if_receive_discards_errors_and_unknown_protocols);
     RUN_TEST(test_if_phys_address_is_the_mac);
