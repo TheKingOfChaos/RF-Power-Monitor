@@ -10,7 +10,7 @@ Current version: **3.0.0** (see [CHANGELOG.md](CHANGELOG.md)).
 
 - **Mains side:** an isolated detector (optocoupler with filtering) turns mains presence into a clean 3.3 V level on GPIO27. In the test setup an IKEA smart plug in front of it lets the tests switch mains off and on.
 - **Board:** the Pico's core 1 samples GPIO27 and the reset button (GPIO22) every millisecond; core 0 runs the network, the SNMP agent and the serial menu. Settings live in the Pico's flash in two copies, and the W5500 provides 10/100 Ethernet over SPI.
-- **Network:** the device gets its address by DHCP (or a static IP), is reachable as `rf-power-monitor.local` (mDNS), answers SNMP v1/v2c on UDP 161 for LibreNMS or net-snmp, sends traps on UDP 162, and serves a configuration web page with login on TCP 80 ([Web page](#web-page)).
+- **Network:** the device gets its address by DHCP (or a static IP), is reachable as `RF-Power-XXXXXX.local` (mDNS; XXXXXX = the last 6 hex digits of its MAC), answers SNMP v1/v2c on UDP 161 for LibreNMS or net-snmp, sends traps on UDP 162, and serves a configuration web page with login on TCP 80 ([Web page](#web-page)).
 - **PC:** the USB serial port carries the configuration menu and the hardware-in-the-loop tests.
 
 More diagrams (firmware architecture, SNMP request flow, mains flow, settings, tests) are in [docs/diagrams/](docs/diagrams/README.md).
@@ -132,13 +132,13 @@ Ethernet: link up, 100 Mbit/s, in 184054263 bytes / 1351415 packets, out 149671 
 Ethernet drops: 0 discarded (no buffer), 0 errors, 211829 unknown protocol, 0 send errors
 SNMP security: 0 rate limited, 0 access log events
 SNMP community: "public"
-sysName: "rf-power-monitor"
+sysName: "RF-Power-4EA22C"
 sysContact: ""
 sysLocation: ""
 Trap destination: "" (4 sent, 0 failed)
 Trap destination source: fixed (menu option 4)
 Trap version: v2c
-Hostname: rf-power-monitor (DHCP, mDNS rf-power-monitor.local)
+Hostname: RF-Power-4EA22C (DHCP, mDNS RF-Power-4EA22C.local)
 Switch: core-sw1, port ge-0/0/9.0 (10.10.0.2)
 Web interface: on (TCP port 80)
 Web login: user admin, default password "k7wqz3mtd9" (change with option 6)
@@ -206,7 +206,7 @@ Nothing changes until you answer `y`. Changes are saved to flash and the device 
 > 4
 Press Enter to keep the value in brackets, '-' to clear it.
 Community [public]: s3cret
-Hostname (sysName) [rf-power-monitor]: ups-rack4
+Hostname (sysName) [RF-Power-4EA22C]: ups-rack4
 sysContact []: ops@example.com
 sysLocation []: Server room, rack 4
 Trap destination IP or dhcp []: 10.10.6.65
@@ -222,7 +222,7 @@ SNMP settings saved and active
 - sysContact, sysLocation: 0-63 printable ASCII characters.
 - Trap destination: an IPv4 or IPv6 address that receives traps on UDP 162, `-` for no traps, or `dhcp` to take it from DHCP option 224 (see [docs/MIB.md](docs/MIB.md#trap-destination-from-dhcp)). Choosing `dhcp` keeps the fixed address for switching back. An IPv6 destination must be a global or ULA address (not link-local) and is stored in its short form (`2001:db8::162`).
 - Trap version: `1` (SNMPv1 Trap-PDU) or `2c` (SNMPv2-Trap, default). An IPv6 destination needs `2c`: a v1 trap carries the device's address in an IPv4-only field, so the menu refuses `1` with an IPv6 destination.
-- Saved to flash and active immediately, no reboot. A factory reset restores `public`, `rf-power-monitor`, empty contact and location, no trap destination and v2c traps.
+- Saved to flash and active immediately, no reboot. A factory reset restores `public`, the default name `RF-Power-<MAC tail>`, empty contact and location, no trap destination and v2c traps.
 
 **5. Access log** lists the most recent rejected SNMP requests and failed web logins, newest first: wrong community, SNMPv3, malformed packets, rate-limited sources, SetRequests, `web login failed` and `web locked out`. A repeat of the newest entry (same source and event) is counted on that line:
 
@@ -263,7 +263,7 @@ If you lock yourself out with a wrong static address, use the serial menu to swi
 
 ## Web page
 
-The device serves a small configuration page on **http://&lt;device IP&gt;/** (port 80): log in, see the status, change the network settings (IPv4 and static IPv6), the hostname and the SNMP community, restart the device, or turn the page off. It is also reachable as **http://rf-power-monitor.local/** (mDNS, see [Hostname](#hostname)) and over IPv6 as **http://[&lt;IPv6 address&gt;]/**. Everything on the page can also be done in the serial menu.
+The device serves a small configuration page on **http://&lt;device IP&gt;/** (port 80): log in, see the status, change the network settings (IPv4 and static IPv6), the hostname and the SNMP community, restart the device, or turn the page off. It is also reachable as **http://RF-Power-XXXXXX.local/** (XXXXXX = the last 6 hex digits of the MAC; mDNS, see [Hostname](#hostname)) and over IPv6 as **http://[&lt;IPv6 address&gt;]/**. Everything on the page can also be done in the serial menu.
 
 - **Login:** user `admin`. Until you set your own password, the password is the device's **default password**: 10 random characters generated on first boot, different for every device, and shown only on the serial status screen (menu option 1): `Web login: user admin, default password "k7wqz3mtd9"`. A factory reset does not change it; menu option 7 replaces it with a new random one.
 - **Own password:** serial menu option 6 sets one (8-32 characters, no spaces; typed characters are shown as `*`), or `-` goes back to the device default. Changing it logs every browser out. The password is stored as a salted SHA-256 hash (2000 rounds), never as text; checking it takes about half a second, done in small steps so SNMP keeps answering meanwhile. It can only be changed from the serial menu, so someone who learns it cannot lock you out.
@@ -322,15 +322,15 @@ It also reads the LLDP frames the switch sends and shows the switch and the port
 
 ## Hostname
 
-The device has one name, the **hostname** (default `rf-power-monitor`), used in three places:
+The device has one name, the **hostname**, used in three places. By default it is `RF-Power-` and the last 6 hex digits of the device's MAC address (`RF-Power-4EA22C` for MAC `1E:B2:CF:4E:A2:2C`), so every device on a LAN has its own name; enter `-` for it in menu option 4 to go back to it. Devices updated from firmware before 3.2.0 that still had the old default `rf-power-monitor` switch to it as well. The name is used in three places:
 
 - **SNMP sysName**: LibreNMS and other managers show it as the device name.
 - **DHCP**: sent to the DHCP server with every request (option 12), so the lease list of your router shows the name.
-- **mDNS**: the device answers as **`<hostname>.local`**, so `http://rf-power-monitor.local/` and `snmpwalk -v2c -c public rf-power-monitor.local` work without knowing the IP address (Windows 10 and later, macOS, Linux with Avahi; not from inside WSL with its default NAT networking, where mDNS from the LAN does not arrive). The web page is also announced as an `_http._tcp` service.
+- **mDNS**: the device answers as **`<hostname>.local`**, so `http://RF-Power-4EA22C.local/` and `snmpwalk -v2c -c public RF-Power-4EA22C.local` (with your device's name) work without knowing the IP address (Windows 10 and later, macOS, Linux with Avahi; not from inside WSL with its default NAT networking, where mDNS from the LAN does not arrive). The web page is also announced as an `_http._tcp` service.
 
 Set it with menu option 4 (first question after the community) or on the web page. It must be 1-32 letters, digits and `-`, not starting or ending with `-`. A change applies immediately: mDNS announces the new name and the DHCP lease is renewed with it; no restart.
 
-A sysName set with older firmware may contain spaces or other characters; it is kept as it is, and the device uses a cleaned-up version for DHCP and mDNS (`Server room UPS` becomes `Server-room-UPS`). The status screen shows the name in use: `Hostname: rf-power-monitor (DHCP, mDNS rf-power-monitor.local)`.
+A sysName set with older firmware may contain spaces or other characters; it is kept as it is, and the device uses a cleaned-up version for DHCP and mDNS (`Server room UPS` becomes `Server-room-UPS`). The status screen shows the name in use: `Hostname: RF-Power-4EA22C (DHCP, mDNS RF-Power-4EA22C.local)`.
 
 ## IPv6
 
@@ -342,7 +342,7 @@ The device runs IPv4 and IPv6 side by side (dual stack):
 - **Addresses:** a link-local address (`fe80::`, from the MAC as EUI-64) always, a global or ULA address from the router's advertisement (SLAAC) when the LAN has an IPv6 router, and optionally a static address (below). The status screen lists them (`IPv6: FD16:D833:4F0E:3ECE:1CB2:CFFF:FE4E:A22C`), the web page shows them in the status table.
 - **Static address:** serial menu option 9 or the web page set one static IPv6 address (always /64) and an optional gateway. It is added next to SLAAC, not instead of it, and goes through duplicate address detection: if another host already uses it, the status screen says `(DUPLICATE: another host uses it, not in use)`. With a gateway set, all off-link IPv6 traffic goes through it (it overrides routers from advertisements); without one, the advertised routers are used. Takes effect after the restart that saving triggers.
 - **SNMP** answers over IPv6 on UDP 161 like over IPv4 (replies up to 1452 bytes, one Ethernet frame: the device does not fragment IPv6 packets), e.g. `snmpget -v2c -c public udp6:[fd16:d833:4f0e:3ece:1cb2:cfff:fe4e:a22c] 1.3.6.1.2.1.1.1.0`. LibreNMS polls it over IPv6 when added with transport `udp6` (tested with LibreNMS 26.9.1, see [docs/LIBRENMS.md](docs/LIBRENMS.md#ipv6)).
-- **Web page:** `http://[<IPv6 address>]/`; **mDNS:** `rf-power-monitor.local` resolves to the IPv6 address too.
+- **Web page:** `http://[<IPv6 address>]/`; **mDNS:** `RF-Power-XXXXXX.local` resolves to the IPv6 address too.
 - **Rate limiting and access log:** per full source address, as for IPv4; the access log shows the address (`fd16:d833:4f0e:3ece:9000:9aaa:490a:3189`). Not per /64: on a LAN every host shares one /64, and a manager's trust must not pass to its neighbours. A host that rotates through many IPv6 addresses is held by the shared limit for untrusted sources, like faked IPv4 addresses.
 - **Traps** can go to an IPv6 destination (menu option 4), as v2c only. `snmpTrapAddress.0` in the trap still holds the device's IPv4 address, and is left out while it has none.
 - **DHCPv6 address:** when a router advertisement carries the M flag ("take addresses from DHCPv6"), the device asks a DHCPv6 server for one address (stateful DHCPv6, RFC 8415) and uses it next to the others, after duplicate address detection. It renews and rebinds the lease on the server's timers, removes the address when the lease runs out, and declines an address another host already uses. If the server moves it to another address, the old one stays (deprecated) until its lease ends. When the Ethernet link comes back up (the cable may now be on another network) it sends a Confirm and drops the address if the server says it is not on this link. A server's SOL_MAX_RT option sets how often it looks for a server. Its client id is DUID-LL from the MAC (`00:03:00:01:1e:b2:cf:4e:a2:2c`), stable across restarts without storing anything, and it sends its hostname (Client FQDN, option 39) so the server can register it in DNS. There is no setting: on networks without the M flag (most) nothing happens. The status screen shows `DHCPv6: bound, fd54::d600:1 (valid 87 s), ...` and marks the address `(dhcpv6)`; the web page has an "IPv6 (DHCPv6)" row. If all four IPv6 address slots are taken (link-local, SLAAC, static and one more), the DHCPv6 address is not added and the status screen and web page say so; no address is ever evicted. The DHCPv6 address takes the highest free slot, so a router advertisement for the same prefix keeps updating the SLAAC address and not this one.
@@ -376,7 +376,7 @@ After the restart the device sends a coldStart trap as after any start, and the 
 
 1. Press and hold the button on GPIO22. The onboard LED blinks slowly (2 Hz) while it is held, and the serial log prints `Factory reset button pressed`.
 2. After 10 seconds the LED blinks fast, and the log prints `Factory reset after 10000 ms hold`. You can release the button.
-3. Settings return to defaults: DHCP on (stored static IP back to `192.168.1.100`), no static IPv6 address, community `public`, sysName `rf-power-monitor`, empty sysContact and sysLocation, no trap destination (fixed), the web interface on, and the web page back on the device default password (the default password itself stays the same).
+3. Settings return to defaults: DHCP on (stored static IP back to `192.168.1.100`), no static IPv6 address, community `public`, sysName not set (the device uses `RF-Power-<MAC tail>`), empty sysContact and sysLocation, no trap destination (fixed), the web interface on, and the web page back on the device default password (the default password itself stays the same).
 4. The device reboots, well within 2 seconds of the trigger.
 
 Releasing the button earlier cancels the reset (`released after ... ms, no reset`). The device keeps working normally while the button is held: SNMP answers, the menu responds and mains monitoring continues. A button held down while the device starts is ignored until it has been released once, so a stuck button cannot cause a reset loop.
@@ -390,14 +390,14 @@ Settings are stored as JSON on the Pico's internal flash (LittleFS) in two copie
 ```json
 {"community":"public","dhcpEnabled":true,"staticIP":"192.168.1.100",
  "subnetMask":"255.255.255.0","gateway":"192.168.1.1","ipv6Address":"","ipv6Gateway":"",
- "sysName":"rf-power-monitor","sysContact":"","sysLocation":"","trapTarget":"",
+ "sysName":"","sysContact":"","sysLocation":"","trapTarget":"",
  "trapVersion":2,"trapFromDhcp":false,"webEnabled":true,"webPassword":"","version":1,"sequence":7}
 ```
 
 | Field | Meaning |
 |---|---|
 | `community` | SNMP community string, 1-31 printable characters |
-| `sysName` | Hostname and SNMP sysName (new values: a valid hostname; older free text still loads); optional, default `rf-power-monitor` |
+| `sysName` | Hostname and SNMP sysName (new values: a valid hostname; older free text still loads); optional, default empty (the device then uses `RF-Power-<MAC tail>`; `rf-power-monitor` from older firmware counts as empty` |
 | `sysContact`, `sysLocation` | SNMP system group text, 0-63 printable characters; optional, default empty |
 | `trapTarget` | IPv4 or IPv6 address that receives traps, empty = no traps; IPv6 only with `trapVersion` 2 (unless `trapFromDhcp`); optional. Firmware before 2.6.0 rejects a file with an IPv6 address here and uses the other copy or defaults |
 | `trapVersion` | `1` = SNMPv1 Trap-PDU, `2` = SNMPv2-Trap (default); optional |

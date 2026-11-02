@@ -166,8 +166,8 @@ class SerialMenuTest(unittest.TestCase):
         self.assertIn("Too long, at most 31 characters", out)
         d.send("c" * 31, expect=r"\(sysName\) \[.*\]: $")             # exactly the maximum
 
-        # The sysName is also the hostname: one DNS label of at most 32 characters
-        for bad in ("n" * 33, "ups rack", "-", "ups.local", "-ups", "ups_4"):
+        # The sysName is also the hostname: one DNS label of at most 32 characters ('-' alone means the default)
+        for bad in ("n" * 33, "ups rack", "ups.local", "-ups", "ups_4"):
             out = d.send(bad, expect=r"\(sysName\) \[.*\]: $")
             self.assertIn("Not a valid hostname", out, bad)
         out = d.send("x" * 100, expect=r"\(sysName\) \[.*\]: $")      # longer than the input line

@@ -1,6 +1,7 @@
 #include "hostname.h"
 
 #include <lwip/apps/mdns.h>
+#include <lwip/dhcp.h>
 #include <netconfig.h>
 #include <settings.h>
 #include "net_stats.h"
@@ -8,6 +9,7 @@
 extern CountingW5500lwIP eth;  // main.cpp
 
 static char current[HOSTNAME_MAX_LENGTH + 1] = "";
+static uint8_t mac[6] = {0, 0, 0, 0, 0, 0};  // known once Ethernet has started (hostnameSetMac)
 static bool mdnsStarted = false;
 static bool advertiseWeb = true;  // announce the web page as _http._tcp
 static s8_t httpSlot = -1;         // its mDNS service slot, -1 = not announced
@@ -23,7 +25,7 @@ static void syncWebService(netif* nif) {
 }
 
 void hostnameBegin() {
-    hostnameFromText(currentSettings.sysName, current);
+    hostnameForDevice(currentSettings.sysName, mac, current);
     DriverLock lock;
     eth.setHostname(current);  // used by DHCP once Ethernet starts
 }
@@ -47,13 +49,26 @@ void hostnameNetworkUp() {
 
 void hostnameApply() {
     char next[HOSTNAME_MAX_LENGTH + 1];
-    hostnameFromText(currentSettings.sysName, next);
+    hostnameForDevice(currentSettings.sysName, mac, next);
     if (strcmp(next, current) == 0) return;
     strcpy(current, next);
+    netif* nif = eth.getNetIf();
     DriverLock lock;
-    eth.setHostname(current);  // also renews a DHCP lease, so the server learns the new name
+    if (dhcp_supplied_address(nif)) {
+        eth.setHostname(current);  // also renews the DHCP lease, so the server learns the new name
+    } else {
+        // No lease (yet): the core's setHostname() would call dhcp_renew(), which in the middle of
+        // DISCOVER/REQUEST sends a renewal for an address the device does not have, and DHCP never
+        // gets a lease. lwIP reads the name from the netif for every DHCP message: point it here.
+        nif->hostname = current;
+    }
     if (mdnsStarted) mdns_resp_rename_netif(eth.getNetIf(), current);
     Serial.printf("\r\nHostname: %s (DHCP, mDNS %s.local)\r\n", current, current);
+}
+
+void hostnameSetMac(const uint8_t address[6]) {
+    memcpy(mac, address, sizeof(mac));
+    hostnameApply();  // the default name has the MAC in it: DHCP renew if it changed
 }
 
 const char* hostnameCurrent() {

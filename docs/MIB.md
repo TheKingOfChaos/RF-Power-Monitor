@@ -19,7 +19,7 @@ The device runs an SNMP agent on UDP port 161 and sends traps. Every object is r
 | `1.3.6.1.2.1.1.2.0` | sysObjectID | OBJECT IDENTIFIER | `1.3.6.1.4.1.63050` |
 | `1.3.6.1.2.1.1.3.0` | sysUpTime | TimeTicks | Hundredths of a second since boot |
 | `1.3.6.1.2.1.1.4.0` | sysContact | OCTET STRING | From the settings (menu option 4 or web page), default empty |
-| `1.3.6.1.2.1.1.5.0` | sysName | OCTET STRING | The hostname (menu option 4 or web page), default `rf-power-monitor` |
+| `1.3.6.1.2.1.1.5.0` | sysName | OCTET STRING | The hostname (menu option 4 or web page), default `RF-Power-` and the last 6 hex digits of the MAC (`RF-Power-4EA22C`) |
 | `1.3.6.1.2.1.1.6.0` | sysLocation | OCTET STRING | From the settings (menu option 4 or web page), default empty |
 | `1.3.6.1.2.1.1.7.0` | sysServices | INTEGER | 72 (end-to-end + applications) |
 | `1.3.6.1.2.1.1.8.0` | sysORLastChange | TimeTicks | 0 (the table below never changes) |

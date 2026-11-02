@@ -10,6 +10,7 @@
 #include "ambient_temp.h"
 #include "cpu_temp.h"
 #include "host_stats.h"
+#include "hostname.h"
 #include "lldp_service.h"
 #include "net_stats.h"
 #include "source_key.h"
@@ -60,7 +61,7 @@ static SnmpDeviceState captureState() {
     // Read from the settings on every request, so menu changes apply immediately
     s.sysDescr = SYS_DESCR;
     s.sysContact = currentSettings.sysContact;
-    s.sysName = currentSettings.sysName;
+    s.sysName = hostnameCurrent();  // the name in use: the setting, or RF-Power-<MAC tail> while it is not set
     s.sysLocation = currentSettings.sysLocation;
     netStatsCapture(s.iface);
     s.cpuTempDeciC = cpuTempDeciC();

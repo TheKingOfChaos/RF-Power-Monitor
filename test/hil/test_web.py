@@ -228,6 +228,24 @@ class WebPageTest(unittest.TestCase):
             self.assertEqual(200, status)
         self.assertEqual(before, self.dev.status()["hostname"])
 
+    def test_default_hostname_is_rf_power_and_the_mac_tail(self):
+        st = self.dev.status()
+        before = st["sysName"]
+        default = "RF-Power-" + st["mac"].replace(":", "")[-6:]
+        try:
+            # '-' in menu option 4 sets the hostname back to the default
+            self.dev.set_snmp(st["community"], "-", st["sysContact"], st["sysLocation"])
+            st = self.dev.status()
+            self.assertEqual(default, st["hostname"])
+            self.assertEqual(default, st["sysName"])
+            rc, out = net_snmp("snmpget", self.ip, "1.3.6.1.2.1.1.5.0")
+            self.assertIn('STRING: "%s"' % default, out)
+            self.assertEqual(self.ip, self.resolve_mdns(default.lower()), "%s.local does not resolve" % default)
+        finally:
+            self.dev.set_snmp(st["community"], "-" if before == default else before, st["sysContact"],
+                              st["sysLocation"])
+        self.assertEqual(before, self.dev.status()["sysName"])
+
     def test_contact_and_location_from_web_reach_snmp(self):
         self.wait_lockout_over()
         web = self.logged_in()

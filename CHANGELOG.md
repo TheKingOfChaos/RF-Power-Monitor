@@ -6,6 +6,14 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [3.2.0] - 2026-11-02
+
+### Changed
+- Default hostname (and SNMP sysName, DHCP and mDNS name) is `RF-Power-` and the last 6 hex digits of the MAC address, e.g. `RF-Power-4EA22C`, so several devices on one LAN no longer share `rf-power-monitor`. A device updated from older firmware that still has the old default switches to the new name; a name you chose stays. Menu option 4 takes `-` for the hostname to go back to the default.
+
+### Fixed
+- Setting the hostname while the device had no DHCP lease (the new MAC-based name at start-up, or menu option 4 during DHCP discovery) made the core renew a lease it did not have, and DHCP could stop looking for a server (found with the new default name: no lease). The name is now only renewed once a lease exists; before that the next DHCP message just carries it.
+
 ## [3.1.0] - 2026-11-02
 
 Standard MIBs, so LibreNMS and other managers show CPU load, memory, storage, addresses, inventory and protocol statistics without device-specific setup.

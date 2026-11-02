@@ -99,7 +99,7 @@ class FactoryResetTest(unittest.TestCase):
             st = d.status()
             self.assertEqual("DHCP", st["mode"])
             self.assertEqual("public", st["community"])
-            self.assertEqual("rf-power-monitor", st["sysName"])
+            self.assertEqual("RF-Power-" + st["mac"].replace(":", "")[-6:], st["sysName"])  # the default name
             self.assertEqual("", st["sysContact"])
             self.assertEqual("", st["sysLocation"])
             self.assertEqual("", st["trapTarget"])

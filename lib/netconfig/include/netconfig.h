@@ -93,6 +93,25 @@ bool hostnameIsValid(const char* name);
  */
 void hostnameFromText(const char* text, char* out);
 
+/// The sysName stored by firmware before 3.2.0 as its default; it counts as "not set"
+static const char HOSTNAME_OLD_DEFAULT[] = "rf-power-monitor";
+
+/**
+ * @brief The default hostname: "RF-Power-" and the last three MAC bytes in upper-case hex
+ *        ("RF-Power-4EA22C"), so each device on a LAN has its own name
+ * @param out At least HOSTNAME_MAX_LENGTH + 1 bytes
+ */
+void hostnameDefault(const uint8_t mac[6], char* out);
+
+/**
+ * @brief The hostname the device uses: the sysName setting, or the MAC default when it is not set
+ *
+ * Not set: empty or null (new device, factory reset) or HOSTNAME_OLD_DEFAULT. A set name is used as
+ * hostnameFromText() makes it; the MAC default also replaces text with nothing usable in it.
+ * @param out At least HOSTNAME_MAX_LENGTH + 1 bytes
+ */
+void hostnameForDevice(const char* sysName, const uint8_t mac[6], char* out);
+
 // ---- IPv6 ----
 
 /// Longest IPv6 text accepted or produced, including the NUL ("ffff:ffff:ffff:ffff:ffff:ffff:ffff:ffff")

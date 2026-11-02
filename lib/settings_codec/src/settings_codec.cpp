@@ -10,7 +10,8 @@ static const char* const DEFAULT_COMMUNITY = "public";
 static const char* const DEFAULT_STATIC_IP = "192.168.1.100";
 static const char* const DEFAULT_SUBNET_MASK = "255.255.255.0";
 static const char* const DEFAULT_GATEWAY = "192.168.1.1";
-static const char* const DEFAULT_SYS_NAME = "rf-power-monitor";
+/// Not set: the device then uses RF-Power-<last 6 MAC hex digits> (netconfig hostnameForDevice)
+static const char* const DEFAULT_SYS_NAME = "";
 
 // Room for the parsed document: the object, its members and copies of all strings
 static const size_t JSON_FIELDS = 20;  // 17 used, room for a few more

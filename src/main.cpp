@@ -214,6 +214,9 @@ void setup() {
 
     // Bring up Ethernet and the SNMP agent
     if (startEthernet()) {
+        uint8_t mac[6];
+        eth.macAddress(mac);  // the driver makes it from the board ID in begin()
+        hostnameSetMac(mac);  // the default name RF-Power-<MAC tail> needs it
         netStatsBegin(eth.getNetIf());
         ipv6StaticBegin(eth.getNetIf());
         dhcp6Begin(eth.getNetIf());  // waits for a router advertisement with the M flag

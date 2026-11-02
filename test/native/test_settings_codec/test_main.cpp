@@ -177,7 +177,7 @@ static void test_defaults_include_sys_text() {
     Settings s;
     memset(&s, 0xAA, sizeof(s));
     settingsDefaults(s);
-    TEST_ASSERT_EQUAL_STRING("rf-power-monitor", s.sysName);
+    TEST_ASSERT_EQUAL_STRING("", s.sysName);  // not set: the device uses RF-Power-<MAC tail> (netconfig)
     TEST_ASSERT_EQUAL_STRING("", s.sysContact);
     TEST_ASSERT_EQUAL_STRING("", s.sysLocation);
 }
@@ -236,7 +236,7 @@ static void test_file_without_sys_text_loads_with_defaults() {
     // Files written by firmware up to v3.1.0 have no sysName/sysContact/sysLocation
     Settings s;
     TEST_ASSERT_EQUAL(SettingsParseError::None, settingsFromJson(LEGACY_V1_JSON, s));
-    TEST_ASSERT_EQUAL_STRING("rf-power-monitor", s.sysName);
+    TEST_ASSERT_EQUAL_STRING("", s.sysName);
     TEST_ASSERT_EQUAL_STRING("", s.sysContact);
     TEST_ASSERT_EQUAL_STRING("", s.sysLocation);
 }

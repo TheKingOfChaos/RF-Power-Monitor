@@ -127,13 +127,13 @@ Ethernet: link up, 100 Mbit/s, in 184054263 bytes / 1351415 packets, out 149671 
 Ethernet drops: 0 discarded (no buffer), 0 errors, 211829 unknown protocol, 0 send errors
 SNMP security: 0 rate limited, 0 access log events
 SNMP community: "public"
-sysName: "rf-power-monitor"
+sysName: "RF-Power-4EA22C"
 sysContact: ""
 sysLocation: ""
 Trap destination: "192.0.2.65" (4 sent, 0 failed)
 Trap destination source: fixed (menu option 4)
 Trap version: v2c
-Hostname: rf-power-monitor (DHCP, mDNS rf-power-monitor.local)
+Hostname: RF-Power-4EA22C (DHCP, mDNS RF-Power-4EA22C.local)
 Switch: core-sw1, port ge-0/0/9.0
 Web interface: on (TCP port 80)
 Web login: user admin, default password "k7wqz3mtd9" (change with option 6)
@@ -240,7 +240,7 @@ Use this if you can no longer reach the device (wrong static address, unknown co
 
 1. Press and hold the button **SW1** on the carrier (under the module). The onboard LED blinks slowly.
 2. Keep holding for **10 seconds**, until the LED blinks fast. Then let go.
-3. The device restarts with the defaults: DHCP, community `public`, name `rf-power-monitor`, no contact, location or trap destination, no static IPv6, web page on and back on its default password.
+3. The device restarts with the defaults: DHCP, community `public`, name `RF-Power-<last 6 MAC hex digits>`, no contact, location or trap destination, no static IPv6, web page on and back on its default password.
 
 Letting go before 10 s cancels the reset. The device keeps working while you hold the button. The default web password itself is not changed by a reset; it is still on the status screen. After a reset, set the community, name and trap destination again (setup manual, step 4).
 

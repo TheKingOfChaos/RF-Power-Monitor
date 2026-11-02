@@ -151,7 +151,7 @@ static void printStatus() {
     Serial.printf("SNMP security: %lu rate limited, %lu access log events\r\n",
                   (unsigned long)svc.rateLimited, (unsigned long)snmpAccessLog().total());
     Serial.printf("SNMP community: \"%s\"\r\n", currentSettings.community);
-    Serial.printf("sysName: \"%s\"\r\n", currentSettings.sysName);
+    Serial.printf("sysName: \"%s\"\r\n", hostnameCurrent());  // the name in use, also when the setting is empty
     Serial.printf("sysContact: \"%s\"\r\n", currentSettings.sysContact);
     Serial.printf("sysLocation: \"%s\"\r\n", currentSettings.sysLocation);
     // The destination in use first, then where it comes from
@@ -309,11 +309,16 @@ static bool takeText(const char* input, const char* current, char* dest, size_t 
 }
 
 /**
- * @brief Accept the hostname (also sysName): Enter keeps the current value, else it must be a valid hostname
+ * @brief Accept the hostname (also sysName): Enter keeps the current value, '-' goes back to the default
+ *        (RF-Power-<MAC tail>), else it must be a valid hostname
  */
 static bool takeHostname(const char* input, const char* current, char* dest) {
     if (input[0] == '\0') {
         strlcpy(dest, current, SYS_TEXT_MAX_LENGTH + 1);  // may be free text from older firmware
+        return true;
+    }
+    if (strcmp(input, "-") == 0) {
+        dest[0] = '\0';  // not set: the default name
         return true;
     }
     if (!hostnameIsValid(input)) {
@@ -331,7 +336,7 @@ static bool takeHostname(const char* input, const char* current, char* dest) {
 static void promptSnmp() {
     switch (state) {
     case CLI_SNMP_COMMUNITY: prompt("Community", currentSettings.community); break;
-    case CLI_SNMP_NAME:      prompt("Hostname (sysName)", currentSettings.sysName); break;
+    case CLI_SNMP_NAME:      prompt("Hostname (sysName)", hostnameCurrent()); break;  // Enter keeps the setting
     case CLI_SNMP_CONTACT:   prompt("sysContact", currentSettings.sysContact); break;
     case CLI_SNMP_LOCATION:  prompt("sysLocation", currentSettings.sysLocation); break;
     case CLI_SNMP_TRAP:

@@ -126,6 +126,20 @@ void hostnameFromText(const char* text, char* out) {
     }
 }
 
+void hostnameDefault(const uint8_t mac[6], char* out) {
+    snprintf(out, HOSTNAME_MAX_LENGTH + 1, "RF-Power-%02X%02X%02X", mac[3], mac[4], mac[5]);
+}
+
+void hostnameForDevice(const char* sysName, const uint8_t mac[6], char* out) {
+    bool unset = sysName == nullptr || sysName[0] == '\0' || strcmp(sysName, HOSTNAME_OLD_DEFAULT) == 0;
+    if (!unset) {
+        hostnameFromText(sysName, out);
+        // hostnameFromText falls back to the project name when nothing usable is left: use the device's own
+        if (strcmp(out, HOSTNAME_FALLBACK) != 0) return;
+    }
+    hostnameDefault(mac, out);
+}
+
 // ---- IPv6 ----
 
 /// Value of a hex digit, -1 for anything else

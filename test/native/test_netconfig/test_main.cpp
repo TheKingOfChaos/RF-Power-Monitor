@@ -201,6 +201,44 @@ static void test_hostname_from_free_text() {
     }
 }
 
+static const uint8_t DEVICE_MAC[6] = {0x1E, 0xB2, 0xCF, 0x4E, 0xA2, 0x2C};
+
+static void test_default_hostname_is_rf_power_and_the_mac_tail() {
+    char out[HOSTNAME_MAX_LENGTH + 1];
+    hostnameDefault(DEVICE_MAC, out);
+    TEST_ASSERT_EQUAL_STRING("RF-Power-4EA22C", out);
+    TEST_ASSERT_TRUE(hostnameIsValid(out));
+    const uint8_t zeros[6] = {0, 0, 0, 0, 0, 0};
+    hostnameDefault(zeros, out);
+    TEST_ASSERT_EQUAL_STRING("RF-Power-000000", out);  // leading zeros kept: always 6 digits
+}
+
+static void test_unset_hostname_uses_the_mac_default() {
+    char out[HOSTNAME_MAX_LENGTH + 1];
+    // Empty (new device, factory reset) and the old default from firmware before 3.2.0 count as not set
+    const char* unset[] = {"", nullptr, "rf-power-monitor"};
+    for (const char* name : unset) {
+        hostnameForDevice(name, DEVICE_MAC, out);
+        TEST_ASSERT_EQUAL_STRING_MESSAGE("RF-Power-4EA22C", out, name ? name : "(null)");
+    }
+}
+
+static void test_chosen_hostname_is_kept() {
+    char out[HOSTNAME_MAX_LENGTH + 1];
+    hostnameForDevice("ups-rack4", DEVICE_MAC, out);
+    TEST_ASSERT_EQUAL_STRING("ups-rack4", out);
+    hostnameForDevice("RF-Power-Monitor", DEVICE_MAC, out);  // only the exact old default counts as unset
+    TEST_ASSERT_EQUAL_STRING("RF-Power-Monitor", out);
+    hostnameForDevice("Rack 4 / UPS", DEVICE_MAC, out);       // free text from older firmware, cleaned up
+    TEST_ASSERT_EQUAL_STRING("Rack-4-UPS", out);
+}
+
+static void test_unusable_hostname_text_falls_back_to_the_mac_default() {
+    char out[HOSTNAME_MAX_LENGTH + 1];
+    hostnameForDevice(" !!! ", DEVICE_MAC, out);
+    TEST_ASSERT_EQUAL_STRING("RF-Power-4EA22C", out);
+}
+
 static void test_every_printable_text_gives_a_valid_hostname() {
     char text[70], out[HOSTNAME_MAX_LENGTH + 1];
     for (int start = 0x20; start < 0x7F; start++) {
@@ -441,6 +479,10 @@ int main() {
     RUN_TEST(test_hostname_rules);
     RUN_TEST(test_hostname_fallback_is_the_project_name);
     RUN_TEST(test_hostname_from_free_text);
+    RUN_TEST(test_default_hostname_is_rf_power_and_the_mac_tail);
+    RUN_TEST(test_unset_hostname_uses_the_mac_default);
+    RUN_TEST(test_chosen_hostname_is_kept);
+    RUN_TEST(test_unusable_hostname_text_falls_back_to_the_mac_default);
     RUN_TEST(test_every_printable_text_gives_a_valid_hostname);
     RUN_TEST(test_parse_ipv6_compressed_and_full_forms);
     RUN_TEST(test_parse_ipv6_double_colon_at_start_middle_end);

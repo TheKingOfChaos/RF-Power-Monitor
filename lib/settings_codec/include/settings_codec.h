@@ -103,7 +103,7 @@ enum class SettingsSlot : uint8_t { None, A, B };
 
 /**
  * @brief Fill settings with factory defaults (DHCP, community "public",
- *        sysName "rf-power-monitor", empty sysContact and sysLocation)
+ *        empty sysName (the device then uses RF-Power-<MAC tail>), empty sysContact and sysLocation)
  */
 void settingsDefaults(Settings& s);
 

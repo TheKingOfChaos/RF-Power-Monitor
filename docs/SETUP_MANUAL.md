@@ -94,7 +94,7 @@ Menu option `4` asks for these in turn. Press Enter to keep the value in bracket
 ```
 > 4
 Community [public]: s3cret
-Hostname (sysName) [rf-power-monitor]: power-serverroom
+Hostname (sysName) [RF-Power-4EA22C]: power-serverroom
 sysContact []: ops@example.com
 sysLocation []: Server room, rack 4
 Trap destination IP or dhcp []: 10.10.6.65
