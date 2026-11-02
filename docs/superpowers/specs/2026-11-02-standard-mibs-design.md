@@ -61,7 +61,7 @@ Success: after a rediscovery in the local LibreNMS (`librenms/test`, http://loca
   - Never above 100.
   - One-minute averaging in a pure, host-tested library.
   - Sampling cost small enough not to change the HIL timing tests.
-- **Protocol statistics (IP/ICMP/UDP/TCP):** lwIP has exact MIB-II counters (`MIB2_STATS`), but the core's `lwipopts.h` sets `LWIP_STATS 0` unconditionally, so a `-D` in platformio.ini may not override it. The builder checks whether they can be enabled (and what RAM they cost). If not, the counters are counted from frames in the existing `src/net_stats.cpp` hooks with the pure `lib/if_stats`. TCP stats are the most likely to be dropped; if so, drop TCP-MIB from sysORTable too.
+- **Protocol statistics (IP/ICMP/UDP/TCP):** these come from lwIP's exact MIB-II counters (`MIB2_STATS`), turned back on at the user's request (2026-11-02). The core's `lwipopts.h` sets `LWIP_STATS 0` unconditionally, so our `include/lwipopts.h` loads it with `#include_next` and overrides it. A spike built, and every lwIP module counted.
 - **Counters we cannot measure** (my call, one rule for every group):
   - A counter for an event that cannot happen on this device (snmpInTraps, ipForwDatagrams, ...) is served as 0. That is its true value.
   - A counter for an event that does happen but the firmware cannot see is also served as 0, and docs/MIB.md says it is not measured, like ifOutDiscards today. This keeps groups complete so LibreNMS's graphs find every object they expect.
