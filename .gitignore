@@ -8,3 +8,5 @@ platformio.local*.ini
 CLAUDE.local.md
 librenms/test/compose.override.yml
 secret/
+# superpowers plan workspaces (ledgers, briefs)
+.superpowers/
