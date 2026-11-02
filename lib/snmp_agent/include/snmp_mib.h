@@ -18,7 +18,10 @@
  *   1.3.6.1.2.1.2.1.0      ifNumber              INTEGER (1)
  *   1.3.6.1.2.1.2.2.1.x.1  ifTable, columns 1-22 for interface 1 (IF-MIB)
  *   1.3.6.1.2.1.11.n.0     snmp group (SNMPv2-MIB), n = 1-32 without 7 and 23
+ *   1.3.6.1.2.1.25...      HOST-RESOURCES-MIB: hrSystem, hrMemorySize, hrStorageTable (1 RAM, 2 LittleFS),
+ *                          hrDeviceTable and hrProcessorTable (768 core 0, 769 core 1)
  *   1.3.6.1.2.1.31.1.1.1.x.1  ifXTable, columns 1-19 for interface 1 (IF-MIB)
+ *   1.3.6.1.2.1.47.1.1.1.1.x.1  entPhysicalTable columns 2-16 for the device (ENTITY-MIB), entLastChangeTime
  *   1.3.6.1.4.1.63050.1.0  mainsPowerStatus      INTEGER 0 = lost, 1 = present
  *   1.3.6.1.4.1.63050.2.0  mainsPowerChanges     Counter32
  *   1.3.6.1.4.1.63050.3.0  mainsPowerLastChange  TimeTicks (sysUpTime at the last change)
@@ -68,6 +71,21 @@ struct SnmpLldpState {
 static const char* const SNMP_IF_DESCR = "W5500 10/100 Ethernet";
 
 /**
+ * @brief HOST-RESOURCES-MIB and ENTITY-MIB data (static in the firmware, reached by pointer)
+ */
+struct SnmpHostState {
+    uint32_t ramTotalBytes;        ///< Main SRAM (hrStorageRam size, hrMemorySize)
+    uint32_t ramUsedBytes;         ///< Static data, stacks and heap in use: total minus free heap
+    bool fsValid;                  ///< LittleFS mounted; false makes its hrStorage row absent
+    uint32_t fsTotalBytes;         ///< LittleFS size
+    uint32_t fsUsedBytes;          ///< LittleFS blocks in use
+    uint8_t cpuLoad[2];            ///< hrProcessorLoad of core 0 and core 1, percent over the last minute
+    const char* serialNumber;      ///< entPhysicalSerialNum: the flash chip's unique ID in hex
+    const char* firmwareRevision;  ///< entPhysicalFirmwareRev
+    const char* hardwareRevision;  ///< entPhysicalHardwareRev
+};
+
+/**
  * @brief The agent's counters: the status screen and the snmp group (SNMPv2-MIB, RFC 3418)
  */
 struct SnmpStats {
@@ -110,6 +128,7 @@ struct SnmpDeviceState {
     const SnmpLldpState* lldp;     ///< LLDP-MIB data; nullptr: no LLDP-MIB object has an instance
     const SnmpStats* snmp;         ///< The agent's live counters (snmp group); nullptr: all 0
     uint32_t snmpOutTraps;         ///< Traps sent (snmpOutTraps, part of snmpOutPkts)
+    const SnmpHostState* host;     ///< HOST-RESOURCES-MIB and ENTITY-MIB; nullptr: none of their objects exist
 };
 
 /**

@@ -9,6 +9,7 @@
 #include <snmp_trap.h>
 
 static SnmpDeviceState state;
+static SnmpHostState host;
 /// The object that sorts last: snmpSetSerialNo (SNMPv2-MIB) const char* const LAST_OID = "1.3.6.1.6.3.1.1.6.1.0";
 static uint8_t resp[SNMP_MAX_MESSAGE];
 /// The object that sorts last: snmpSetSerialNo (SNMPv2-MIB)
@@ -48,6 +49,17 @@ void setUp() {
     state.lldp = nullptr;
     state.snmp = nullptr;
     state.snmpOutTraps = 0;
+    host.ramTotalBytes = 262144;
+    host.ramUsedBytes = 131000;  // 127.9 KB: rounds up to 128
+    host.fsValid = true;
+    host.fsTotalBytes = 262144;
+    host.fsUsedBytes = 16384;
+    host.cpuLoad[0] = 7;
+    host.cpuLoad[1] = 1;
+    host.serialNumber = "E6614103E7452D2F";
+    host.firmwareRevision = "3.1.0";
+    host.hardwareRevision = "W5500-EVB-Pico-PoE + carrier rev 1.1";
+    state.host = &host;
 }
 
 void tearDown() {}
@@ -234,7 +246,24 @@ static void test_mib_contains_expected_objects() {
     for (int i = 1; i <= 32; i++) {
         if (i != 7 && i != 23) snprintf(expected[n++], 48, "1.3.6.1.2.1.11.%d.0", i);  // 7 and 23 never assigned
     }
+    // HOST-RESOURCES-MIB: hrSystem, hrMemorySize, hrStorageTable (RAM 1, LittleFS 2),
+    // hrDeviceTable and hrProcessorTable (cores 768 and 769)
+    static const int HR_SYSTEM[] = {1, 5, 6, 7};
+    for (int i : HR_SYSTEM) snprintf(expected[n++], 48, "1.3.6.1.2.1.25.1.%d.0", i);
+    snprintf(expected[n++], 48, "1.3.6.1.2.1.25.2.2.0");
+    for (int c = 1; c <= 7; c++) {
+        for (int r = 1; r <= 2; r++) snprintf(expected[n++], 48, "1.3.6.1.2.1.25.2.3.1.%d.%d", c, r);
+    }
+    for (int c = 1; c <= 6; c++) {
+        for (int r = 768; r <= 769; r++) snprintf(expected[n++], 48, "1.3.6.1.2.1.25.3.2.1.%d.%d", c, r);
+    }
+    for (int c = 1; c <= 2; c++) {
+        for (int r = 768; r <= 769; r++) snprintf(expected[n++], 48, "1.3.6.1.2.1.25.3.3.1.%d.%d", c, r);
+    }
     for (int i = 1; i <= 19; i++) snprintf(expected[n++], 48, "1.3.6.1.2.1.31.1.1.1.%d.1", i);
+    // ENTITY-MIB: entPhysicalTable columns 2-16 of the one entity, entLastChangeTime
+    for (int i = 2; i <= 16; i++) snprintf(expected[n++], 48, "1.3.6.1.2.1.47.1.1.1.1.%d.1", i);
+    snprintf(expected[n++], 48, "1.3.6.1.2.1.47.1.4.1.0");
     for (int i = 1; i <= 6; i++) snprintf(expected[n++], 48, "1.3.6.1.4.1.63050.%d.0", i);
     snprintf(expected[n++], 48, "1.3.6.1.6.3.1.1.6.1.0");
     TEST_ASSERT_EQUAL_UINT16(n, mibSize());
@@ -384,6 +413,131 @@ static void test_snmp_set_serial_no_is_zero_and_read_only() {
     TEST_ASSERT_EQUAL_INT32(0, r.ints[0]);
     r = requestV2c(agent, BerTag::SetRequest, oids, 1);
     TEST_ASSERT_EQUAL_INT32((int32_t)SnmpError::NotWritable, r.errorStatus);
+}
+
+// ---- HOST-RESOURCES-MIB (RFC 2790) ----
+
+static void test_hr_system_values() {
+    SnmpAgent agent("public");
+    const char* oids[] = {"1.3.6.1.2.1.25.1.1.0", "1.3.6.1.2.1.25.1.5.0", "1.3.6.1.2.1.25.1.6.0",
+                          "1.3.6.1.2.1.25.1.7.0", "1.3.6.1.2.1.25.2.2.0"};
+    Reply r = request(agent, BerTag::GetRequest, oids, 5);
+    TEST_ASSERT_EQUAL_INT32(0, r.errorStatus);
+    TEST_ASSERT_EQUAL_HEX8(BerTag::TimeTicks, r.tags[0]);  // hrSystemUptime = sysUpTime
+    TEST_ASSERT_EQUAL_UINT32(123456, r.uints[0]);
+    TEST_ASSERT_EQUAL_HEX8(BerTag::Gauge32, r.tags[1]);    // hrSystemNumUsers
+    TEST_ASSERT_EQUAL_UINT32(0, r.uints[1]);
+    TEST_ASSERT_EQUAL_HEX8(BerTag::Gauge32, r.tags[2]);    // hrSystemProcesses: the two core loops
+    TEST_ASSERT_EQUAL_UINT32(2, r.uints[2]);
+    TEST_ASSERT_EQUAL_HEX8(BerTag::Integer, r.tags[3]);    // hrSystemMaxProcesses
+    TEST_ASSERT_EQUAL_INT32(2, r.ints[3]);
+    TEST_ASSERT_EQUAL_INT32(256, r.ints[4]);               // hrMemorySize in KB
+}
+
+static void test_hr_storage_reports_ram_and_littlefs() {
+    SnmpAgent agent("public");
+    const char* ram[] = {"1.3.6.1.2.1.25.2.3.1.1.1", "1.3.6.1.2.1.25.2.3.1.2.1", "1.3.6.1.2.1.25.2.3.1.3.1",
+                         "1.3.6.1.2.1.25.2.3.1.4.1", "1.3.6.1.2.1.25.2.3.1.5.1", "1.3.6.1.2.1.25.2.3.1.6.1",
+                         "1.3.6.1.2.1.25.2.3.1.7.1"};
+    Reply r = request(agent, BerTag::GetRequest, ram, 7);
+    TEST_ASSERT_EQUAL_INT32(0, r.errorStatus);
+    TEST_ASSERT_EQUAL_INT32(1, r.ints[0]);
+    TEST_ASSERT_EQUAL_STRING("1.3.6.1.2.1.25.2.1.2", str(r.oids[1]));  // hrStorageRam
+    TEST_ASSERT_EQUAL_STRING("RAM", r.strings[2]);
+    TEST_ASSERT_EQUAL_INT32(1024, r.ints[3]);
+    TEST_ASSERT_EQUAL_INT32(256, r.ints[4]);
+    TEST_ASSERT_EQUAL_INT32(128, r.ints[5]);
+    TEST_ASSERT_EQUAL_HEX8(BerTag::Counter32, r.tags[6]);
+    const char* fs[] = {"1.3.6.1.2.1.25.2.3.1.1.2", "1.3.6.1.2.1.25.2.3.1.2.2", "1.3.6.1.2.1.25.2.3.1.3.2",
+                        "1.3.6.1.2.1.25.2.3.1.5.2", "1.3.6.1.2.1.25.2.3.1.6.2"};
+    r = request(agent, BerTag::GetRequest, fs, 5);
+    TEST_ASSERT_EQUAL_INT32(0, r.errorStatus);
+    TEST_ASSERT_EQUAL_INT32(2, r.ints[0]);
+    TEST_ASSERT_EQUAL_STRING("1.3.6.1.2.1.25.2.1.9", str(r.oids[1]));  // hrStorageFlashMemory
+    TEST_ASSERT_EQUAL_STRING("LittleFS (settings)", r.strings[2]);
+    TEST_ASSERT_EQUAL_INT32(256, r.ints[3]);
+    TEST_ASSERT_EQUAL_INT32(16, r.ints[4]);
+}
+
+static void test_hr_storage_used_rounds_up_to_whole_kb() {
+    SnmpAgent agent("public");
+    host.fsUsedBytes = 1;
+    host.ramUsedBytes = 1024;
+    const char* oids[] = {"1.3.6.1.2.1.25.2.3.1.6.2", "1.3.6.1.2.1.25.2.3.1.6.1"};
+    Reply r = request(agent, BerTag::GetRequest, oids, 2);
+    TEST_ASSERT_EQUAL_INT32(1, r.ints[0]);
+    TEST_ASSERT_EQUAL_INT32(1, r.ints[1]);
+}
+
+static void test_hr_storage_littlefs_row_absent_when_invalid() {
+    SnmpAgent agent("public");
+    host.fsValid = false;
+    const char* oids[] = {"1.3.6.1.2.1.25.2.3.1.5.2"};
+    Reply r = requestV2c(agent, BerTag::GetRequest, oids, 1);
+    TEST_ASSERT_EQUAL_HEX8(BerTag::NoSuchInstance, r.tags[0]);
+    const char* after[] = {"1.3.6.1.2.1.25.2.3.1.5.1"};  // the RAM row: next is RAM's next column
+    r = requestV2c(agent, BerTag::GetNextRequest, after, 1);
+    TEST_ASSERT_EQUAL_STRING("1.3.6.1.2.1.25.2.3.1.6.1", str(r.names[0]));
+}
+
+static void test_hr_processor_load_per_core() {
+    SnmpAgent agent("public");
+    const char* oids[] = {"1.3.6.1.2.1.25.3.3.1.2.768", "1.3.6.1.2.1.25.3.3.1.2.769", "1.3.6.1.2.1.25.3.3.1.1.768"};
+    Reply r = request(agent, BerTag::GetRequest, oids, 3);
+    TEST_ASSERT_EQUAL_INT32(0, r.errorStatus);
+    TEST_ASSERT_EQUAL_HEX8(BerTag::Integer, r.tags[0]);
+    TEST_ASSERT_EQUAL_INT32(7, r.ints[0]);
+    TEST_ASSERT_EQUAL_INT32(1, r.ints[1]);
+    TEST_ASSERT_EQUAL_STRING("0.0", str(r.oids[2]));  // hrProcessorFrwID: unknown
+}
+
+static void test_hr_device_rows_describe_both_cores() {
+    SnmpAgent agent("public");
+    const char* oids[] = {"1.3.6.1.2.1.25.3.2.1.1.768", "1.3.6.1.2.1.25.3.2.1.2.768", "1.3.6.1.2.1.25.3.2.1.3.768",
+                          "1.3.6.1.2.1.25.3.2.1.3.769", "1.3.6.1.2.1.25.3.2.1.5.769", "1.3.6.1.2.1.25.3.2.1.6.769"};
+    Reply r = request(agent, BerTag::GetRequest, oids, 6);
+    TEST_ASSERT_EQUAL_INT32(0, r.errorStatus);
+    TEST_ASSERT_EQUAL_INT32(768, r.ints[0]);
+    TEST_ASSERT_EQUAL_STRING("1.3.6.1.2.1.25.3.1.3", str(r.oids[1]));  // hrDeviceProcessor
+    TEST_ASSERT_EQUAL_STRING("RP2040 core 0 (network, SNMP)", r.strings[2]);
+    TEST_ASSERT_EQUAL_STRING("RP2040 core 1 (mains input)", r.strings[3]);
+    TEST_ASSERT_EQUAL_INT32(2, r.ints[4]);  // running
+    TEST_ASSERT_EQUAL_HEX8(BerTag::Counter32, r.tags[5]);
+}
+
+static void test_host_resources_absent_without_host_state() {
+    SnmpAgent agent("public");
+    state.host = nullptr;
+    const char* oids[] = {"1.3.6.1.2.1.25.3.3.1.2.768", "1.3.6.1.2.1.25.2.3.1.5.1", "1.3.6.1.2.1.47.1.1.1.1.11.1"};
+    Reply r = requestV2c(agent, BerTag::GetRequest, oids, 3);
+    for (int i = 0; i < 3; i++) TEST_ASSERT_EQUAL_HEX8(BerTag::NoSuchInstance, r.tags[i]);
+    const char* before[] = {"1.3.6.1.2.1.11.32.0"};  // snmpProxyDrops: then HOST-RESOURCES, all skipped
+    r = requestV2c(agent, BerTag::GetNextRequest, before, 1);
+    TEST_ASSERT_EQUAL_STRING("1.3.6.1.2.1.31.1.1.1.1.1", str(r.names[0]));
+}
+
+// ---- ENTITY-MIB (RFC 6933) ----
+
+static void test_entity_row_names_the_device() {
+    SnmpAgent agent("public");
+    const char* oids[] = {"1.3.6.1.2.1.47.1.1.1.1.2.1",  "1.3.6.1.2.1.47.1.1.1.1.3.1",  "1.3.6.1.2.1.47.1.1.1.1.5.1",
+                          "1.3.6.1.2.1.47.1.1.1.1.7.1",  "1.3.6.1.2.1.47.1.1.1.1.8.1",  "1.3.6.1.2.1.47.1.1.1.1.9.1",
+                          "1.3.6.1.2.1.47.1.1.1.1.11.1", "1.3.6.1.2.1.47.1.1.1.1.12.1", "1.3.6.1.2.1.47.1.1.1.1.13.1",
+                          "1.3.6.1.2.1.47.1.1.1.1.16.1", "1.3.6.1.2.1.47.1.1.1.1.6.1",  "1.3.6.1.2.1.47.1.4.1.0"};
+    Reply r = request(agent, BerTag::GetRequest, oids, 12);
+    TEST_ASSERT_EQUAL_INT32(0, r.errorStatus);
+    TEST_ASSERT_EQUAL_STRING("RF-Power-Monitor mains power monitor", r.strings[0]);
+    TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050", str(r.oids[1]));
+    TEST_ASSERT_EQUAL_INT32(3, r.ints[2]);                                 // chassis
+    TEST_ASSERT_EQUAL_STRING("power-monitor", r.strings[3]);               // = sysName
+    TEST_ASSERT_EQUAL_STRING("W5500-EVB-Pico-PoE + carrier rev 1.1", r.strings[4]);
+    TEST_ASSERT_EQUAL_STRING("3.1.0", r.strings[5]);
+    TEST_ASSERT_EQUAL_STRING("E6614103E7452D2F", r.strings[6]);
+    TEST_ASSERT_EQUAL_STRING("Kenneth Foli J\xC3\xB8rgensen", r.strings[7]);  // UTF-8
+    TEST_ASSERT_EQUAL_STRING("RF-Power-Monitor", r.strings[8]);
+    TEST_ASSERT_EQUAL_INT32(2, r.ints[9]);                                 // isFRU false
+    TEST_ASSERT_EQUAL_INT32(-1, r.ints[10]);                               // parentRelPos: no parent
+    TEST_ASSERT_EQUAL_HEX8(BerTag::TimeTicks, r.tags[11]);
 }
 
 // ---- IF-MIB and temperature ----
@@ -1435,6 +1589,14 @@ int main() {
     RUN_TEST(test_snmp_enable_authen_traps_is_enabled);
     RUN_TEST(test_snmp_counters_are_zero_without_stats);
     RUN_TEST(test_snmp_set_serial_no_is_zero_and_read_only);
+    RUN_TEST(test_hr_system_values);
+    RUN_TEST(test_hr_storage_reports_ram_and_littlefs);
+    RUN_TEST(test_hr_storage_used_rounds_up_to_whole_kb);
+    RUN_TEST(test_hr_storage_littlefs_row_absent_when_invalid);
+    RUN_TEST(test_hr_processor_load_per_core);
+    RUN_TEST(test_hr_device_rows_describe_both_cores);
+    RUN_TEST(test_host_resources_absent_without_host_state);
+    RUN_TEST(test_entity_row_names_the_device);
     RUN_TEST(test_mib_get_and_get_next);
     RUN_TEST(test_mib_get_returns_the_instance_and_value);
     RUN_TEST(test_mib_get_absent_instance_is_false);

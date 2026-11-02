@@ -31,28 +31,28 @@ uint8_t CpuLoad::percent() const {
 void LoopLoad::pass(uint32_t nowUs) {
     if (!_started) {
         _started = true;
-        _lastUs = nowUs;
         _secondStartUs = nowUs;
         _load.add(nowUs, 0);
         return;
     }
-    uint32_t passUs = nowUs - _lastUs;
-    _lastUs = nowUs;
-    uint16_t shortPass = passUs > 0xFFFF ? 0xFFFF : (uint16_t)passUs;
-    if (shortPass < _secondMin) _secondMin = shortPass;
+    _secondPasses++;
+    uint32_t elapsed = nowUs - _secondStartUs;
+    if (elapsed < SECOND_US) return;
 
-    // The idle pass: the shortest of the last minute, this pass included
-    uint16_t baseline = _secondMin;
+    // Passes per second: scale a second that ran long (one slow pass at its end) to one second
+    uint32_t passes = (uint32_t)((uint64_t)_secondPasses * SECOND_US / elapsed);
+    _passes[_next] = passes;
+    _next = (uint8_t)((_next + 1) % CPU_LOAD_SECONDS);
+    if (_count < CPU_LOAD_SECONDS) _count++;
+
+    // The idle reference: the most passes of a second in the last minute, this one included
+    uint32_t most = 0;
     for (uint8_t i = 0; i < _count; i++) {
-        if (_minima[i] < baseline) baseline = _minima[i];
+        if (_passes[i] > most) most = _passes[i];
     }
-    _load.add(nowUs, passUs - baseline);
+    uint32_t busyUs = most == 0 ? 0 : (uint32_t)((uint64_t)elapsed * (most - passes) / most);
+    _load.add(nowUs, busyUs);
 
-    if (nowUs - _secondStartUs >= SECOND_US) {
-        _minima[_next] = _secondMin;
-        _next = (uint8_t)((_next + 1) % CPU_LOAD_SECONDS);
-        if (_count < CPU_LOAD_SECONDS) _count++;
-        _secondStartUs = nowUs;
-        _secondMin = 0xFFFF;
-    }
+    _secondStartUs = nowUs;
+    _secondPasses = 0;
 }

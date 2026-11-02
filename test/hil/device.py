@@ -145,6 +145,14 @@ class Device:
         m = re.search(r"^Last restart: (.+) \((\d+) watchdog restarts since power-on\)\r?$", out, re.MULTILINE)
         info["lastRestart"] = m.group(1) if m else None
         info["watchdogRestarts"] = int(m.group(2)) if m else None
+        m = re.search(r"^CPU load: core 0 (\d+) %, core 1 (\d+) %", out, re.MULTILINE)
+        info["cpuLoad"] = (int(m.group(1)), int(m.group(2))) if m else None
+        m = re.search(r"^RAM used: (\d+) of (\d+) bytes", out, re.MULTILINE)
+        info["ramUsed"] = (int(m.group(1)), int(m.group(2))) if m else None
+        m = re.search(r"^LittleFS used: (\d+) of (\d+) bytes", out, re.MULTILINE)
+        info["fsUsed"] = (int(m.group(1)), int(m.group(2))) if m else None
+        m = re.search(r"^Serial number: ([0-9A-F]+)\r?$", out, re.MULTILINE)
+        info["serialNumber"] = m.group(1) if m else None
         for key, label in (("community", "SNMP community"), ("sysName", "sysName"),
                            ("sysContact", "sysContact"), ("sysLocation", "sysLocation")):
             m = re.search(r'^%s: "(.*)"\r?$' % label, out, re.MULTILINE)

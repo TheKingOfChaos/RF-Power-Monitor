@@ -87,6 +87,76 @@ Requests the rate limiter drops never reach the agent, so no counter here sees t
 
 **snmpSetSerialNo** (`1.3.6.1.6.3.1.1.6.1.0`, INTEGER) is 0 and read-only: it coordinates Sets between managers, and the device accepts none. It sorts last, so a walk from the root ends with it.
 
+## Host resources (HOST-RESOURCES-MIB) and inventory (ENTITY-MIB)
+
+LibreNMS and other managers read CPU load, memory and storage from the standard HOST-RESOURCES-MIB (RFC 2790), and the inventory from ENTITY-MIB (RFC 6933), so they show these without device-specific setup.
+
+**hrSystem and memory** `1.3.6.1.2.1.25`
+
+| OID | Name | Type | Value |
+|---|---|---|---|
+| `.1.1.0` | hrSystemUptime | TimeTicks | Same as sysUpTime |
+| `.1.5.0` | hrSystemNumUsers | Gauge32 | 0 |
+| `.1.6.0` | hrSystemProcesses | Gauge32 | 2: the loops of core 0 and core 1 |
+| `.1.7.0` | hrSystemMaxProcesses | INTEGER | 2 |
+| `.2.2.0` | hrMemorySize | INTEGER (KB) | 256 |
+
+hrSystemDate is not served: the device has no clock.
+
+**hrStorageTable** `1.3.6.1.2.1.25.2.3.1.<column>.<index>`, index 1 = RAM, 2 = LittleFS
+
+| Column | Name | RAM (1) | LittleFS (2) |
+|---|---|---|---|
+| 1 | hrStorageIndex | 1 | 2 |
+| 2 | hrStorageType | hrStorageRam (`.25.2.1.2`) | hrStorageFlashMemory (`.25.2.1.9`) |
+| 3 | hrStorageDescr | `RAM` | `LittleFS (settings)` |
+| 4 | hrStorageAllocationUnits | 1024 | 1024 |
+| 5 | hrStorageSize | 256 (the RP2040's 256 KB main SRAM) | 256 (the 0.25 MB settings partition) |
+| 6 | hrStorageUsed | KB in use, rounded up: static data, both stacks and the heap in use (256 KB minus free heap; the status screen shows `RAM used`) | KB of LittleFS blocks in use, read every 10 s |
+| 7 | hrStorageAllocationFailures | Counter32 0 | Counter32 0 |
+
+The LittleFS row disappears if the filesystem cannot be read.
+
+**hrDeviceTable** `1.3.6.1.2.1.25.3.2.1.<column>.<index>` and **hrProcessorTable** `1.3.6.1.2.1.25.3.3.1.<column>.<index>`, index 768 = core 0, 769 = core 1
+
+| Column | Name | Value |
+|---|---|---|
+| hrDevice 1 | hrDeviceIndex | 768, 769 |
+| hrDevice 2 | hrDeviceType | hrDeviceProcessor (`.25.3.1.3`) |
+| hrDevice 3 | hrDeviceDescr | `RP2040 core 0 (network, SNMP)`, `RP2040 core 1 (mains input)` |
+| hrDevice 4 | hrDeviceID | `0.0` (unknown) |
+| hrDevice 5 | hrDeviceStatus | 2 (running) |
+| hrDevice 6 | hrDeviceErrors | Counter32 0 |
+| hrProcessor 1 | hrProcessorFrwID | `0.0` (unknown) |
+| hrProcessor 2 | hrProcessorLoad | INTEGER 0-100: percent of the last minute the core was not idle |
+
+How the load is measured (`lib/cpu_load`):
+- **Core 1** sleeps 1 ms after each round of sampling the mains input and the reset button; its load is the time it spends outside that sleep (about 1 %).
+- **Core 0** never sleeps: it polls the network, SNMP, the web page and the menu in a loop. Work makes the loop's passes longer, so fewer fit in a second. Its load is `1 - passes in a second / most passes per second in the last minute`. An idle device does about 14,000 passes per second and reads 0 %; a minute of SNMP walks and web page loads at full speed read 87 % in the HIL test. If the device were busy for more than a minute without one idle second, the reference would drop and the load read too low.
+
+Both are also on the status screen (`CPU load: core 0 0 %, core 1 1 % (last minute)`).
+
+**entPhysicalTable** `1.3.6.1.2.1.47.1.1.1.1.<column>.1`: one entity, the device
+
+| Column | Name | Value |
+|---|---|---|
+| 2 | entPhysicalDescr | `RF-Power-Monitor mains power monitor` |
+| 3 | entPhysicalVendorType | `1.3.6.1.4.1.63050` (= sysObjectID) |
+| 4 | entPhysicalContainedIn | 0 |
+| 5 | entPhysicalClass | 3 (chassis) |
+| 6 | entPhysicalParentRelPos | -1 |
+| 7 | entPhysicalName | sysName |
+| 8 | entPhysicalHardwareRev | `W5500-EVB-Pico-PoE + carrier rev 1.1` (`HARDWARE_REVISION` in `include/version.h`) |
+| 9 | entPhysicalFirmwareRev | The firmware version, as in sysDescr |
+| 10 | entPhysicalSoftwareRev | empty |
+| 11 | entPhysicalSerialNum | The flash chip's unique ID, 16 hex digits (also on the status screen) |
+| 12 | entPhysicalMfgName | `Kenneth Foli Jørgensen` (UTF-8) |
+| 13 | entPhysicalModelName | `RF-Power-Monitor` |
+| 14, 15 | entPhysicalAlias, entPhysicalAssetID | empty |
+| 16 | entPhysicalIsFRU | 2 (false) |
+
+`entLastChangeTime` (`1.3.6.1.2.1.47.1.4.1.0`) is 0: the table never changes.
+
 ## Interfaces (IF-MIB)
 
 The device has one interface, index 1: the W5500 Ethernet port. `ifNumber.0` (`1.3.6.1.2.1.2.1.0`) is 1.
@@ -135,7 +205,7 @@ What the counters cannot see: the W5500 itself silently drops frames with a bad 
 
 The counters are 64-bit internally and start at 0 at boot. Link state and speed are read from the W5500 PHY register (`PHYCFGR`) every 500 ms; a link change is logged on the serial port.
 
-SNMPv1 has no Counter64 type, so a v1 request does not see the eight `ifHC*` columns at all (RFC 3584): a v1 Get of one is `noSuchName` and a v1 walk skips them. Without the LLDP-MIB objects a v1 walk returns 106 objects, a v2c walk 114 (with them, see below).
+SNMPv1 has no Counter64 type, so a v1 request does not see the eight `ifHC*` columns at all (RFC 3584): a v1 Get of one is `noSuchName` and a v1 walk skips them. Without the LLDP-MIB objects a v1 walk returns 157 objects, a v2c walk 165 (with them, see below).
 
 ## Switch and port (LLDP-MIB)
 
@@ -156,7 +226,7 @@ The device answers part of the standard LLDP-MIB (IEEE 802.1AB-2005 Annex F), so
 | 1.0.8802.1.1.2.1.4.1.1.11.0.1.1 | lldpRemSysCapSupported | BITS (2 bytes) | as sent, in BITS order (bit 0 = top bit of the first byte; the TLV counts from the bottom bit): bridge + router = `28 00` |
 | 1.0.8802.1.1.2.1.4.1.1.12.0.1.1 | lldpRemSysCapEnabled | BITS (2 bytes) | as sent |
 
-There is one remote row, index lldpRemTimeMark 0, lldpRemLocalPortNum 1, lldpRemIndex 1, and only while the device holds a neighbour (the status screen's `Switch:` line); otherwise v1 answers noSuchName and v2c noSuchInstance, and walks skip it. Text from the switch is cut to 64 characters (128 for the description) with non-printable bytes replaced by `?`. Not served: lldpRemManAddrTable (the management address; its index holds the address), lldpLocalSystemData, lldpStatistics and LLDP-V2-MIB. A v1 walk from the root returns 118 objects with a neighbour (109 without), a v2c walk 126 (117).
+There is one remote row, index lldpRemTimeMark 0, lldpRemLocalPortNum 1, lldpRemIndex 1, and only while the device holds a neighbour (the status screen's `Switch:` line); otherwise v1 answers noSuchName and v2c noSuchInstance, and walks skip it. Text from the switch is cut to 64 characters (128 for the description) with non-printable bytes replaced by `?`. Not served: lldpRemManAddrTable (the management address; its index holds the address), lldpLocalSystemData, lldpStatistics and LLDP-V2-MIB. A v1 walk from the root returns 169 objects with a neighbour (160 without), a v2c walk 177 (168).
 
 ## v1 and v2c differences
 
@@ -287,7 +357,7 @@ This needs the standard IETF MIBs, which Debian/Ubuntu ship separately: `sudo ap
 
 ## Limits
 
-- Up to 16 variable bindings per request and at most 16 in a GetBulk response. A larger GetBulk reply would let a small request with a faked source address make the device send a much larger packet to a victim (reflection); a bulk walk simply takes more requests (at least 8 for the 126 objects of a walk from the root). A GetBulk request also does not make its source trusted for the rate limiter.
+- Up to 16 variable bindings per request and at most 16 in a GetBulk response. A larger GetBulk reply would let a small request with a faked source address make the device send a much larger packet to a victim (reflection); a bulk walk simply takes more requests (at least 12 for the 177 objects of a walk from the root). A GetBulk request also does not make its source trusted for the rate limiter.
 - Requests up to 1472 bytes (one Ethernet frame); larger packets are dropped. Replies over IPv6 are at most 1452 bytes (the IPv6 header is 20 bytes longer; the device does not fragment); GetBulk replies are shortened to fit.
 - The network stack queues up to 5 UDP packets. Requests sent in a burst beyond that are dropped; SNMP managers retry, and normal polling or `snmpwalk` sends one request at a time.
 - If the device has not talked to a manager for a few minutes, it first has to look up the manager's MAC address (ARP). lwIP holds one reply during that lookup, so only one request of a burst arriving at that moment is answered.
@@ -306,6 +376,8 @@ This needs the standard IETF MIBs, which Debian/Ubuntu ship separately: `sudo ap
 | Ambient temperature (TMP1075) | `lib/tmp1075`, `src/ambient_temp.cpp` | `test/native/test_tmp1075`, `test/native/test_snmp_agent`, `test/hil/test_snmp.py` |
 | Trap encoding (v1 and v2c), throttle | `lib/snmp_agent/snmp_trap` | `test/native/test_snmp_trap` (byte-exact vs net-snmp `snmptrap -v1` and `-v2c`) |
 | Rate limiter, access log | `lib/access_control` | `test/native/test_access_control` |
+| CPU load (one-minute average per core) | `lib/cpu_load`, `src/host_stats.cpp` | `test/native/test_cpu_load`, `test/hil/test_host_resources.py` |
+| HOST-RESOURCES-MIB, ENTITY-MIB values | `lib/snmp_agent/snmp_mib`, `src/host_stats.cpp` | `test/native/test_snmp_agent`, `test/hil/test_host_resources.py` |
 | Traps on the device | `src/snmp_service.cpp` | `test/hil/test_snmp_traps.py` |
 | Against real net-snmp, without hardware | `test/host/host_agent.cpp` | `scripts/host_agent_check.sh` |
 | UDP port 161 on the device | `src/snmp_service.cpp` | `test/hil/test_snmp.py` |

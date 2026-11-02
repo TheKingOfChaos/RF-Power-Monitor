@@ -81,6 +81,19 @@ static void test_loop_load_idle_loop_reads_zero() {
     TEST_ASSERT_EQUAL_UINT8(0, load.percent());
 }
 
+static void test_loop_load_idle_loop_with_jittery_passes_reads_low() {
+    // Pass times measured on the device with nothing to do: mostly 64-72 us, a cluster at 100-108 us,
+    // the odd 58 us pass and a 1.5 ms pass now and then. All of that is idle.
+    static const uint32_t PATTERN[] = {64, 66, 64, 68, 72, 64, 104, 66, 58, 64, 76, 64, 100, 68, 64, 66};
+    LoopLoad load;
+    uint32_t now = 0;
+    for (uint32_t i = 0; now < 70 * SECOND; i++) {
+        now += (i % 1000 == 999) ? 1500 : PATTERN[i % 16];
+        load.pass(now);
+    }
+    TEST_ASSERT_LESS_OR_EQUAL_UINT8(2, load.percent());
+}
+
 static void test_loop_load_busy_passes_raise_load() {
     LoopLoad load;
     uint32_t now = loop(load, 0, 2, 40);   // idle baseline: 40 us per pass
@@ -134,6 +147,7 @@ int main() {
     RUN_TEST(test_cpu_load_never_exceeds_100);
     RUN_TEST(test_cpu_load_survives_timer_wrap);
     RUN_TEST(test_loop_load_idle_loop_reads_zero);
+    RUN_TEST(test_loop_load_idle_loop_with_jittery_passes_reads_low);
     RUN_TEST(test_loop_load_busy_passes_raise_load);
     RUN_TEST(test_loop_load_long_passes_read_high);
     RUN_TEST(test_loop_load_baseline_follows_the_last_minute);

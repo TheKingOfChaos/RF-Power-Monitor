@@ -9,6 +9,7 @@
 #include <snmp_trap.h>
 #include "ambient_temp.h"
 #include "cpu_temp.h"
+#include "host_stats.h"
 #include "lldp_service.h"
 #include "net_stats.h"
 #include "source_key.h"
@@ -83,6 +84,7 @@ static SnmpDeviceState captureState() {
     // snmp group: the agent's live counters, so snmpInPkts includes the request being answered
     s.snmp = &agent.stats();
     s.snmpOutTraps = serviceStats.trapsSent;
+    s.host = &hostStatsSnapshot();
     return s;
 }
 

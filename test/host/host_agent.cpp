@@ -99,6 +99,9 @@ int main(int argc, char** argv) {
         state.ambientTempDeciC = 215;
         state.lldp = &LLDP;
         state.snmp = &agent.stats();
+        static const SnmpHostState HOST = {262144, 131000, true, 262144, 16384, {7, 1}, "E6614103E7452D2F", "3.1.0",
+                                           "W5500-EVB-Pico-PoE + carrier rev 1.1"};
+        state.host = &HOST;
 
         size_t len = agent.handle(in, (size_t)n, out, sizeof(out), state);
         if (len) sendto(fd, out, len, 0, (sockaddr*)&peer, peerLen);

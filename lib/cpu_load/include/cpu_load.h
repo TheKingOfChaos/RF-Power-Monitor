@@ -9,10 +9,13 @@
  *   - CpuLoad: the caller knows its busy time. Core 1 sleeps in delay(1) each pass, so its busy time is
  *     the time outside that delay.
  *   - LoopLoad: core 0 never sleeps; it polls the network, SNMP, the web page and the menu in a loop.
- *     A pass with nothing to do still costs time, so the busy time of a pass is how much longer it took
- *     than the shortest pass of the last minute (an idle pass). An idle device reads 0 %.
- *     Limit: under load that lasts over a minute without a single idle pass, the baseline rises and the
- *     load reads too low.
+ *     Work makes passes longer, so fewer fit in a second. The load of a second is how many passes it
+ *     lost against the most passes per second of the last minute (an idle second): 1 - passes / most.
+ *     An idle device reads 0-1 %. Idle passes vary a lot (58-150 us measured, now and then 1-2 ms),
+ *     so comparing single passes with the shortest one read ~20 % on an idle device; whole seconds
+ *     vary by under 1 %.
+ *     Limit: under load that lasts over a minute without a single idle second, the reference drops and
+ *     the load reads too low.
  *
  * Times are time_us_32() values: differences are taken modulo 2^32, so the 71-minute wrap is harmless.
  * Pure C++, no allocation; unit tested on the host.
@@ -54,11 +57,10 @@ public:
 
 private:
     CpuLoad _load;
-    uint16_t _minima[CPU_LOAD_SECONDS] = {};  ///< Shortest pass of each completed second (us), ring
+    uint32_t _passes[CPU_LOAD_SECONDS] = {};  ///< Passes in each completed second, ring
     uint8_t _next = 0;
     uint8_t _count = 0;
     bool _started = false;
-    uint32_t _lastUs = 0;                     ///< Start of the previous pass
     uint32_t _secondStartUs = 0;
-    uint16_t _secondMin = 0xFFFF;             ///< Shortest pass in the open second
+    uint32_t _secondPasses = 0;               ///< Passes in the open second
 };

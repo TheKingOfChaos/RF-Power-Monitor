@@ -221,7 +221,7 @@ An item is only ticked when it is implemented **and** its tests exist and pass (
 ## 17. Standard MIBs (3.1.0, plan docs/superpowers/plans/2026-11-02-standard-mibs.md)
 - [x] sysContact and sysLocation on the web page (Device name card) — native `test_device_name_*`, HIL `test_contact_and_location_from_web_reach_snmp`
 - [x] SNMPv2-MIB complete: sysORTable, snmp group, snmpSetSerialNo — native `test_sysortable_*`/`test_snmp_*`, net-snmp, HIL `test_snmp_group_counts_this_test_requests`, `test_sysortable_names_the_mibs`
-- [ ] HOST-RESOURCES-MIB: CPU load per core, RAM, LittleFS; ENTITY-MIB inventory
+- [x] HOST-RESOURCES-MIB: CPU load per core, RAM, LittleFS; ENTITY-MIB inventory — native `test_cpu_load`, `test_hr_*`, `test_entity_*`, net-snmp, HIL `test_host_resources.py`
 - [ ] IP/ICMP/UDP/TCP statistics from lwIP's MIB-II counters
 - [ ] IP-MIB ipAddrTable and ipAddressTable (IPv4 and IPv6)
 - [ ] LibreNMS shows location, CPU, memory, storage, addresses, inventory, netstats

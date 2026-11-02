@@ -10,6 +10,7 @@
 #include "cpu_temp.h"
 #include "dhcp6_service.h"
 #include "factory_reset.h"
+#include "host_stats.h"
 #include "hostname.h"
 #include "ipv6_static.h"
 #include "lldp_service.h"
@@ -205,6 +206,8 @@ void setup() {
     Serial.printf("Block size: %u bytes\r\n", fs_info.blockSize);
     Serial.printf("Page size: %u bytes\r\n", fs_info.pageSize);
 
+    hostStatsBegin();  // serial number and LittleFS figures for HOST-RESOURCES-MIB / ENTITY-MIB
+
     // Load settings
     settingsLoaded = loadSettings();
     hostnameBegin();  // before Ethernet, so the first DHCP request carries the name
@@ -228,6 +231,7 @@ void setup() {
 }
 
 void loop() {
+    hostStatsLoopPass();  // core 0 load: how much longer this pass takes than an idle one
     watchdogPoll();
     diagPoll();
     DIAG_MARK(1);
@@ -267,6 +271,7 @@ void loop() {
     DIAG_MARK(4);
     cpuTempPoll();
     ambientTempPoll();
+    hostStatsPoll();
 
     // SNMP requests
     DIAG_MARK(5);
@@ -294,8 +299,12 @@ void setup1() {
 }
 
 void loop1() {
+    uint32_t start = time_us_32();
     mainsSample();
     factoryResetSample();
     watchdogCore1Beat();
+    // Core 1 load: the time outside delay(1)
+    uint32_t end = time_us_32();
+    hostStatsCore1Busy(end, end - start);
     delay(1);
 }

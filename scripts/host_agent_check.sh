@@ -62,7 +62,7 @@ check "get 2nd unknown names it" "${NO_SUCH}\.1\.3\.6\.1\.9\.0" \
       snmpget $SNMP_OPTS $TARGET 1.3.6.1.2.1.1.1.0 1.3.6.1.9.0
 check "getnext enterprise"      '63050\.1\.0 = INTEGER: 1' snmpgetnext $SNMP_OPTS $TARGET 1.3.6.1.4.1.63050
 check "getnext past end"        "${NO_SUCH}\.1\.3\.6\.1\.6\.3\.1\.1\.6\.1\.0" snmpgetnext $SNMP_OPTS $TARGET 1.3.6.1.6.3.1.1.6.1.0
-check "v1 walk all, 118 objects" '^118$' bash -c "snmpwalk $SNMP_OPTS $TARGET .1 | grep -c ' = '"
+check "v1 walk all, 169 objects" '^169$' bash -c "snmpwalk $SNMP_OPTS $TARGET .1 | grep -c ' = '"
 check "walk order"              '1\.1\.0.*1\.2\.0.*1\.3\.0.*1\.4\.0.*1\.5\.0.*1\.6\.0.*1\.7\.0.*63050\.1\.0.*63050\.2\.0.*63050\.3\.0' \
       bash -c "snmpwalk $SNMP_OPTS $TARGET .1 | cut -d' ' -f1 | tr '\n' ' '"
 check "walk enterprise, 6 objects" '^6$' bash -c "snmpwalk $SNMP_OPTS $TARGET 1.3.6.1.4.1.63050 | grep -c ' = '"
@@ -80,12 +80,12 @@ check "v2c mixed get, no error" '1\.5\.0 = STRING: "host-agent".*1\.99\.0 = No S
       snmpget $V2 $TARGET 1.3.6.1.2.1.1.5.0 1.3.6.1.2.1.1.99.0
 check "v2c getnext past end"    '1\.1\.6\.1\.0 = No more variables left in this MIB View' \
       snmpgetnext $V2 $TARGET 1.3.6.1.6.3.1.1.6.1.0
-check "v2c walk all, 126 objects" '^126$' bash -c "snmpwalk $V2 $TARGET .1 | grep ' = ' | grep -vc 'No more variables'"
+check "v2c walk all, 177 objects" '^177$' bash -c "snmpwalk $V2 $TARGET .1 | grep ' = ' | grep -vc 'No more variables'"
 check "v2c walk ends at view end" 'No more variables left in this MIB View' snmpwalk $V2 $TARGET .1
 check "v2c walk order"          '1\.1\.0.*1\.7\.0.*63050\.1\.0.*63050\.3\.0' \
       bash -c "snmpwalk $V2 $TARGET .1 | cut -d' ' -f1 | tr '\n' ' '"
-check "bulkwalk all, 126 objects" '^126$' bash -c "snmpbulkwalk $V2 $TARGET .1 | grep ' = ' | grep -vc 'No more variables'"
-check "bulkwalk = walk"         '^same$' bash -c "diff <(snmpwalk $V2 $TARGET .1 | grep ' = ' | cut -d' ' -f1) <(snmpbulkwalk $V2 $TARGET .1 | cut -d' ' -f1) >/dev/null && echo same"
+check "bulkwalk all, 177 objects" '^177$' bash -c "snmpbulkwalk $V2 $TARGET .1 | grep ' = ' | grep -vc 'No more variables'"
+check "bulkwalk = walk"         '^same$' bash -c "diff <(snmpwalk $V2 $TARGET .1 | grep ' = ' | cut -d' ' -f1) <(snmpbulkwalk $V2 $TARGET .1 | grep ' = ' | cut -d' ' -f1) >/dev/null && echo same"
 check "bulkget n1 r3"           '1\.1\.4\.0 = STRING.*1\.1\.1\.0 = STRING.*1\.1\.2\.0 = OID.*1\.1\.3\.0 = Timeticks' \
       snmpbulkget $V2 -Cn1 -Cr3 $TARGET 1.3.6.1.2.1.1.3.0 1.3.6.1.2.1.1
 check "bulkget capped at 16"    '^16$' bash -c "snmpbulkget $V2 -Cn0 -Cr100 $TARGET .1 | grep -c ' = '"
@@ -119,6 +119,26 @@ check "snmpInPkts counts"       'snmpInPkts\.0 = Counter32: [1-9][0-9]*' snmpget
 check "bad community counted"   'snmpInBadCommunityNames\.0 = Counter32: [1-9]' snmpget $SNMPV2 $TARGET SNMPv2-MIB::snmpInBadCommunityNames.0
 check "snmpEnableAuthenTraps"   'snmpEnableAuthenTraps\.0 = INTEGER: enabled\(1\)' snmpget $SNMPV2 $TARGET SNMPv2-MIB::snmpEnableAuthenTraps.0
 check "snmpSetSerialNo"         'snmpSetSerialNo\.0 = INTEGER: 0' snmpget $SNMPV2 $TARGET SNMPv2-MIB::snmpSetSerialNo.0
+
+# HOST-RESOURCES-MIB and ENTITY-MIB with net-snmp's names (the host agent reports fixed values)
+HRMIB="-v2c -c public -r0 -t1 -M +/usr/share/snmp/mibs -m HOST-RESOURCES-MIB:HOST-RESOURCES-TYPES"
+check "hrStorage RAM"           'hrStorageType\.1 = OID: HOST-RESOURCES-TYPES::hrStorageRam.*hrStorageDescr\.1 = STRING: RAM.*hrStorageAllocationUnits\.1 = INTEGER: 1024 Bytes.*hrStorageSize\.1 = INTEGER: 256.*hrStorageUsed\.1 = INTEGER: 128' \
+      bash -c "snmpwalk $HRMIB $TARGET HOST-RESOURCES-MIB::hrStorageTable | grep '\.1 = ' | tr '\n' ' '"
+check "hrStorage LittleFS"      'hrStorageType\.2 = OID: HOST-RESOURCES-TYPES::hrStorageFlashMemory.*hrStorageSize\.2 = INTEGER: 256.*hrStorageUsed\.2 = INTEGER: 16' \
+      bash -c "snmpwalk $HRMIB $TARGET HOST-RESOURCES-MIB::hrStorageTable | grep '\.2 = ' | tr '\n' ' '"
+check "hrProcessorLoad"         'hrProcessorLoad\.768 = INTEGER: 7.*hrProcessorLoad\.769 = INTEGER: 1' \
+      bash -c "snmpwalk $HRMIB $TARGET HOST-RESOURCES-MIB::hrProcessorLoad | tr '\n' ' '"
+check "hrDevice processors"     'hrDeviceType\.768 = OID: HOST-RESOURCES-TYPES::hrDeviceProcessor.*hrDeviceDescr\.769 = STRING: RP2040 core 1 \(mains input\).*hrDeviceStatus\.769 = INTEGER: running\(2\)' \
+      bash -c "snmpwalk $HRMIB $TARGET HOST-RESOURCES-MIB::hrDeviceTable | tr '\n' ' '"
+check "hrMemorySize"            'hrMemorySize\.0 = INTEGER: 256 KBytes' snmpget $HRMIB $TARGET HOST-RESOURCES-MIB::hrMemorySize.0
+# ENTITY-MIB numerically: WSL's ENTITY-MIB needs IANA-ENTITY-MIB, which snmp-mibs-downloader lacks
+ENTP=1.3.6.1.2.1.47.1.1.1.1
+check "entPhysicalTable row"    '5\.1 = INTEGER: 3.*8\.1 = STRING: "W5500-EVB-Pico-PoE \+ carrier rev 1\.1".*9\.1 = STRING: "3\.1\.0".*11\.1 = STRING: "E6614103E7452D2F".*13\.1 = STRING: "RF-Power-Monitor".*16\.1 = INTEGER: 2' \
+      bash -c "snmpwalk $V2 $TARGET $ENTP | tr '\n' ' '"
+check "entPhysicalTable, 15 columns" '^15$' bash -c "snmpwalk $V2 $TARGET $ENTP | grep -c ' = '"
+check "entPhysicalMfgName UTF-8" '^4b656e6e65746820466f6c69204ac3b87267656e73656e$' \
+      bash -c "snmpget -v2c -c public -r0 -t1 -On -Ox -M /dev/null $TARGET 1.3.6.1.2.1.47.1.1.1.1.12.1 | sed 's/.*Hex-STRING: //' | tr -d ' \n' | tr 'A-F' 'a-f'"
+
 # LLDP-MIB (numeric: WSL's net-snmp has no LLDP-MIB); the host agent holds an EX2200-C neighbour
 LLDP=1.0.8802.1.1.2.1
 check "v2c LLDP-MIB walk, 12 objects" '^12$' bash -c "snmpwalk $V2 $TARGET 1.0.8802 | grep ' = ' | grep -vc 'No more'"

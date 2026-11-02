@@ -116,7 +116,7 @@ Connect to the Pico's USB serial port (`COM16` here) at **115200 baud, 8N1**, wi
 >
 ```
 
-**1. Show status** prints the mains power state and mains alarm, the CPU and ambient temperature (`no sensor` without the TMP1075), the Ethernet link speed, traffic and drop counters, the SNMP counters and settings (community, sysName, sysContact, sysLocation), the switch and port the device is plugged into (LLDP), the web interface, core 0 stack headroom, the last restart cause and watchdog restarts, the configured network mode, the stored static settings, the DHCPv6 state, and the live interface: state, MAC, IP, subnet, gateway and DNS.
+**1. Show status** prints the mains power state and mains alarm, the CPU and ambient temperature (`no sensor` without the TMP1075), the Ethernet link speed, traffic and drop counters, the SNMP counters and settings (community, sysName, sysContact, sysLocation), the switch and port the device is plugged into (LLDP), the web interface, core 0 stack headroom, the CPU load of both cores (last minute), RAM and LittleFS use, the serial number (the flash chip's unique ID), the last restart cause and watchdog restarts, the configured network mode, the stored static settings, the DHCPv6 state, and the live interface: state, MAC, IP, subnet, gateway and DNS.
 
 ```
 > 1
@@ -142,6 +142,10 @@ Switch: core-sw1, port ge-0/0/9.0 (10.10.0.2)
 Web interface: on (TCP port 80)
 Web login: user admin, default password "k7wqz3mtd9" (change with option 6)
 Core 0 stack: 6272 bytes never used
+CPU load: core 0 0 %, core 1 1 % (last minute)
+RAM used: 133444 of 262144 bytes
+LittleFS used: 32768 of 262144 bytes
+Serial number: E6641CB2CF4CA22C
 Last restart: reboot (0 watchdog restarts since power-on)
 Mode: DHCP
 Stored static IP: 10.10.6.249 / 255.255.0.0, gateway 10.10.0.1
@@ -449,6 +453,8 @@ src/cli.cpp                 Serial menu
 src/factory_reset.cpp       Reset button on core 1, reset on core 0
 src/web_service.cpp         Web page on TCP 80: non-blocking connection handling, default password
 src/stack_watch.cpp         Core 0 stack high-water mark for the status screen
+src/host_stats.cpp          CPU load, RAM, LittleFS and serial number for HOST-RESOURCES-MIB / ENTITY-MIB
+lib/cpu_load/               One-minute processor load per core (pure, host tested)
 src/hostname.cpp            Hostname for DHCP and mDNS (name.local), applied without restart
 src/source_key.h            Source address -> rate-limit key (full IPv4 or IPv6 address)
 src/ipv6_static.cpp         Static IPv6 address and gateway (lwIP hook in include/lwip_hooks.h)

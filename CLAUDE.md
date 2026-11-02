@@ -43,6 +43,7 @@ Details and setup are in `docs/TESTING.md`.
 - `lib/settings`: LittleFS A/B storage on top of `settings_codec`
 - `lib/snmp_ber`: BER codec and OIDs (pure, host tested, sanitizer checked)
 - `lib/snmp_agent`: SNMP v1/v2c messages, MIB table, request handling, traps (pure); `src/snmp_service.cpp` runs it on UDP 161. MIB docs in `docs/MIB.md`
+- `lib/cpu_load` (pure): one-minute processor load per core (hrProcessorLoad); `src/host_stats.cpp` measures both cores, RAM, LittleFS and the serial number for HOST-RESOURCES-MIB and ENTITY-MIB
 - `lib/if_stats` (pure): frame counting and PHY decoding; `src/net_stats.cpp` hooks the lwIP netif and reads the W5500 PHY; `src/cpu_temp.cpp` reads the RP2040 temperature; `lib/tmp1075` (pure) and `src/ambient_temp.cpp` read the carrier's TMP1075 on I2C0
 - `lib/power_monitor` (pure: mains debouncer, 60 s mains alarm, reset button) and `lib/mains_input` (GPIO27 on core 1, `setup1()`/`loop1()` in `main.cpp`); `src/factory_reset.cpp` samples GPIO22 on core 1
 - `lib/dhcp6_client` (pure): stateful DHCPv6 (one IA_NA, RFC 8415): messages, frames, router-advertisement flags, client state machine; `src/dhcp6_service.cpp` runs it, sending and receiving frames around lwIP (whose stateless DHCPv6 owns UDP 546) via the `src/net_stats.cpp` hooks. HIL test network in `test/hil/dhcp6/` (unicast RA + Kea in WSL as root, opt-in `RFPOWER_DHCP6_TEST=1`)

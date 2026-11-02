@@ -248,6 +248,110 @@ static SnmpValue getRemSysCapEnabled(const SnmpDeviceState& s) {
     return n ? caps(n->capsEnabled, buf) : noInstance();
 }
 
+// ---- HOST-RESOURCES-MIB (RFC 2790): two processors, RAM and the LittleFS partition ----
+
+static const uint32_t HR_UNIT = 1024;  ///< hrStorageAllocationUnits: sizes and use in KB
+
+/// hrStorage row R (1 RAM, 2 LittleFS) exists now
+static bool storageRow(const SnmpDeviceState& s, uint8_t row) {
+    return s.host != nullptr && (row == 1 || s.host->fsValid);
+}
+static uint32_t storageBytes(const SnmpHostState& h, uint8_t row, bool used) {
+    if (row == 1) return used ? h.ramUsedBytes : h.ramTotalBytes;
+    return used ? h.fsUsedBytes : h.fsTotalBytes;
+}
+
+static SnmpValue getHrSystemUptime(const SnmpDeviceState& s) {
+    return s.host ? timeTicks(s.uptimeTicks) : noInstance();
+}
+static SnmpValue getHrSystemNumUsers(const SnmpDeviceState& s) { return s.host ? gauge(0) : noInstance(); }
+/// The two core loops are the only "processes"
+static SnmpValue getHrSystemProcesses(const SnmpDeviceState& s) { return s.host ? gauge(2) : noInstance(); }
+static SnmpValue getHrSystemMaxProcesses(const SnmpDeviceState& s) { return s.host ? integer(2) : noInstance(); }
+static SnmpValue getHrMemorySize(const SnmpDeviceState& s) {
+    return s.host ? integer((int32_t)(s.host->ramTotalBytes / HR_UNIT)) : noInstance();
+}
+
+template <uint8_t ROW> static SnmpValue getHrStorageIndex(const SnmpDeviceState& s) {
+    return storageRow(s, ROW) ? integer(ROW) : noInstance();
+}
+template <uint8_t ROW> static SnmpValue getHrStorageType(const SnmpDeviceState& s) {
+    // hrStorageTypes: hrStorageRam(2), hrStorageFlashMemory(9)
+    static const Oid RAM = {{1, 3, 6, 1, 2, 1, 25, 2, 1, 2}, 10};
+    static const Oid FLASH = {{1, 3, 6, 1, 2, 1, 25, 2, 1, 9}, 10};
+    return storageRow(s, ROW) ? SnmpValue::makeOid(ROW == 1 ? RAM : FLASH) : noInstance();
+}
+template <uint8_t ROW> static SnmpValue getHrStorageDescr(const SnmpDeviceState& s) {
+    return storageRow(s, ROW) ? SnmpValue::makeString(ROW == 1 ? "RAM" : "LittleFS (settings)") : noInstance();
+}
+template <uint8_t ROW> static SnmpValue getHrStorageUnits(const SnmpDeviceState& s) {
+    return storageRow(s, ROW) ? integer((int32_t)HR_UNIT) : noInstance();
+}
+template <uint8_t ROW> static SnmpValue getHrStorageSize(const SnmpDeviceState& s) {
+    return storageRow(s, ROW) ? integer((int32_t)(storageBytes(*s.host, ROW, false) / HR_UNIT)) : noInstance();
+}
+/// Rounded up, so a partly used KB counts
+template <uint8_t ROW> static SnmpValue getHrStorageUsed(const SnmpDeviceState& s) {
+    if (!storageRow(s, ROW)) return noInstance();
+    return integer((int32_t)((storageBytes(*s.host, ROW, true) + HR_UNIT - 1) / HR_UNIT));
+}
+template <uint8_t ROW> static SnmpValue getHrStorageFailures(const SnmpDeviceState& s) {
+    return storageRow(s, ROW) ? counter32(0) : noInstance();
+}
+
+/// hrDeviceIndex of core 0 and core 1 (net-snmp also numbers processors from 768)
+static const uint32_t HR_CORE0 = 768;
+
+template <uint8_t CORE> static SnmpValue getHrDeviceIndex(const SnmpDeviceState& s) {
+    return s.host ? integer((int32_t)(HR_CORE0 + CORE)) : noInstance();
+}
+static SnmpValue getHrDeviceType(const SnmpDeviceState& s) {
+    static const Oid PROCESSOR = {{1, 3, 6, 1, 2, 1, 25, 3, 1, 3}, 10};  // hrDeviceProcessor
+    return s.host ? SnmpValue::makeOid(PROCESSOR) : noInstance();
+}
+template <uint8_t CORE> static SnmpValue getHrDeviceDescr(const SnmpDeviceState& s) {
+    if (!s.host) return noInstance();
+    return SnmpValue::makeString(CORE == 0 ? "RP2040 core 0 (network, SNMP)" : "RP2040 core 1 (mains input)");
+}
+static SnmpValue getZeroDotZero(const SnmpDeviceState& s) {
+    static const Oid ZERO = {{0, 0}, 2};
+    return s.host ? SnmpValue::makeOid(ZERO) : noInstance();
+}
+static SnmpValue getHrDeviceStatus(const SnmpDeviceState& s) { return s.host ? integer(2) : noInstance(); }  // running
+static SnmpValue getHrDeviceErrors(const SnmpDeviceState& s) { return s.host ? counter32(0) : noInstance(); }
+template <uint8_t CORE> static SnmpValue getHrProcessorLoad(const SnmpDeviceState& s) {
+    return s.host ? integer(s.host->cpuLoad[CORE]) : noInstance();
+}
+
+// ---- ENTITY-MIB (RFC 6933): the device itself, entPhysicalIndex 1 ----
+
+static SnmpValue hostString(const SnmpDeviceState& s, const char* text) {
+    return s.host ? SnmpValue::makeString(text) : noInstance();
+}
+static SnmpValue getEntDescr(const SnmpDeviceState& s) { return hostString(s, "RF-Power-Monitor mains power monitor"); }
+static SnmpValue getEntVendorType(const SnmpDeviceState& s) {
+    return s.host ? getSysObjectId(s) : noInstance();
+}
+static SnmpValue getEntContainedIn(const SnmpDeviceState& s) { return s.host ? integer(0) : noInstance(); }
+static SnmpValue getEntClass(const SnmpDeviceState& s) { return s.host ? integer(3) : noInstance(); }  // chassis
+static SnmpValue getEntParentRelPos(const SnmpDeviceState& s) { return s.host ? integer(-1) : noInstance(); }
+static SnmpValue getEntName(const SnmpDeviceState& s) { return hostString(s, s.sysName); }
+static SnmpValue getEntHardwareRev(const SnmpDeviceState& s) {
+    return s.host ? SnmpValue::makeString(s.host->hardwareRevision) : noInstance();
+}
+static SnmpValue getEntFirmwareRev(const SnmpDeviceState& s) {
+    return s.host ? SnmpValue::makeString(s.host->firmwareRevision) : noInstance();
+}
+static SnmpValue getEntEmpty(const SnmpDeviceState& s) { return hostString(s, ""); }  // software rev, alias, asset ID
+static SnmpValue getEntSerialNum(const SnmpDeviceState& s) {
+    return s.host ? SnmpValue::makeString(s.host->serialNumber) : noInstance();
+}
+/// UTF-8, as SnmpAdminString allows
+static SnmpValue getEntMfgName(const SnmpDeviceState& s) { return hostString(s, "Kenneth Foli J\xC3\xB8rgensen"); }
+static SnmpValue getEntModelName(const SnmpDeviceState& s) { return hostString(s, "RF-Power-Monitor"); }
+static SnmpValue getEntIsFRU(const SnmpDeviceState& s) { return s.host ? integer(2) : noInstance(); }  // false
+static SnmpValue getEntLastChangeTime(const SnmpDeviceState& s) { return s.host ? timeTicks(0) : noInstance(); }
+
 // ---- table, must be sorted by OID (checked by tests) ----
 
 #define SYSTEM(n) {{1, 3, 6, 1, 2, 1, 1, n, 0}, 9}
@@ -255,6 +359,12 @@ static SnmpValue getRemSysCapEnabled(const SnmpDeviceState& s) {
 #define SYS_OR_ROW(r) {SYS_OR_COL(2, r), getSysORID<r>}
 #define SNMP_GROUP(n) {{1, 3, 6, 1, 2, 1, 11, n, 0}, 9}
 #define SNMP_SET_SERIAL_NO {{1, 3, 6, 1, 6, 3, 1, 1, 6, 1, 0}, 11}
+#define HR(a, b) {{1, 3, 6, 1, 2, 1, 25, a, b, 0}, 10}
+#define HR_STORAGE(c, r) {{1, 3, 6, 1, 2, 1, 25, 2, 3, 1, c, r}, 12}
+#define HR_DEVICE(c, core) {{1, 3, 6, 1, 2, 1, 25, 3, 2, 1, c, 768 + core}, 12}
+#define HR_PROCESSOR(c, core) {{1, 3, 6, 1, 2, 1, 25, 3, 3, 1, c, 768 + core}, 12}
+#define ENT_PHYSICAL(c) {{1, 3, 6, 1, 2, 1, 47, 1, 1, 1, 1, c, 1}, 13}
+#define ENT_LAST_CHANGE {{1, 3, 6, 1, 2, 1, 47, 1, 4, 1, 0}, 11}
 #define IF_NUMBER {{1, 3, 6, 1, 2, 1, 2, 1, 0}, 9}
 #define IF(n) {{1, 3, 6, 1, 2, 1, 2, 2, 1, n, 1}, 11}
 #define IFX(n) {{1, 3, 6, 1, 2, 1, 31, 1, 1, 1, n, 1}, 12}
@@ -351,6 +461,28 @@ static const MibEntry MIB[] = {
     {SNMP_GROUP(31), getSnmpStat<&SnmpStats::silentDrops>},
     {SNMP_GROUP(32), getZeroCounter},  // snmpProxyDrops: no proxy
 
+    // HOST-RESOURCES-MIB; hrSystemDate is left out: the device has no clock
+    {HR(1, 1), getHrSystemUptime},
+    {HR(1, 5), getHrSystemNumUsers},
+    {HR(1, 6), getHrSystemProcesses},
+    {HR(1, 7), getHrSystemMaxProcesses},
+    {HR(2, 2), getHrMemorySize},
+    {HR_STORAGE(1, 1), getHrStorageIndex<1>},    {HR_STORAGE(1, 2), getHrStorageIndex<2>},
+    {HR_STORAGE(2, 1), getHrStorageType<1>},     {HR_STORAGE(2, 2), getHrStorageType<2>},
+    {HR_STORAGE(3, 1), getHrStorageDescr<1>},    {HR_STORAGE(3, 2), getHrStorageDescr<2>},
+    {HR_STORAGE(4, 1), getHrStorageUnits<1>},    {HR_STORAGE(4, 2), getHrStorageUnits<2>},
+    {HR_STORAGE(5, 1), getHrStorageSize<1>},     {HR_STORAGE(5, 2), getHrStorageSize<2>},
+    {HR_STORAGE(6, 1), getHrStorageUsed<1>},     {HR_STORAGE(6, 2), getHrStorageUsed<2>},
+    {HR_STORAGE(7, 1), getHrStorageFailures<1>}, {HR_STORAGE(7, 2), getHrStorageFailures<2>},
+    {HR_DEVICE(1, 0), getHrDeviceIndex<0>},      {HR_DEVICE(1, 1), getHrDeviceIndex<1>},
+    {HR_DEVICE(2, 0), getHrDeviceType},          {HR_DEVICE(2, 1), getHrDeviceType},
+    {HR_DEVICE(3, 0), getHrDeviceDescr<0>},      {HR_DEVICE(3, 1), getHrDeviceDescr<1>},
+    {HR_DEVICE(4, 0), getZeroDotZero},           {HR_DEVICE(4, 1), getZeroDotZero},  // hrDeviceID: unknown
+    {HR_DEVICE(5, 0), getHrDeviceStatus},        {HR_DEVICE(5, 1), getHrDeviceStatus},
+    {HR_DEVICE(6, 0), getHrDeviceErrors},        {HR_DEVICE(6, 1), getHrDeviceErrors},
+    {HR_PROCESSOR(1, 0), getZeroDotZero},        {HR_PROCESSOR(1, 1), getZeroDotZero},  // hrProcessorFrwID
+    {HR_PROCESSOR(2, 0), getHrProcessorLoad<0>}, {HR_PROCESSOR(2, 1), getHrProcessorLoad<1>},
+
     {IFX(1), getIfName},
     {IFX(2), getIfInMcast},
     {IFX(3), getIfInBcast},
@@ -370,6 +502,24 @@ static const MibEntry MIB[] = {
     {IFX(17), getIfConnectorPresent},
     {IFX(18), getIfAlias},
     {IFX(19), getIfCounterDiscontinuityTime},
+
+    // ENTITY-MIB: entPhysicalTable, one row (the device), then entLastChangeTime
+    {ENT_PHYSICAL(2), getEntDescr},
+    {ENT_PHYSICAL(3), getEntVendorType},
+    {ENT_PHYSICAL(4), getEntContainedIn},
+    {ENT_PHYSICAL(5), getEntClass},
+    {ENT_PHYSICAL(6), getEntParentRelPos},
+    {ENT_PHYSICAL(7), getEntName},
+    {ENT_PHYSICAL(8), getEntHardwareRev},
+    {ENT_PHYSICAL(9), getEntFirmwareRev},
+    {ENT_PHYSICAL(10), getEntEmpty},  // entPhysicalSoftwareRev
+    {ENT_PHYSICAL(11), getEntSerialNum},
+    {ENT_PHYSICAL(12), getEntMfgName},
+    {ENT_PHYSICAL(13), getEntModelName},
+    {ENT_PHYSICAL(14), getEntEmpty},  // entPhysicalAlias
+    {ENT_PHYSICAL(15), getEntEmpty},  // entPhysicalAssetID
+    {ENT_PHYSICAL(16), getEntIsFRU},
+    {ENT_LAST_CHANGE, getEntLastChangeTime},
 
     {PRIVATE(1), getMainsStatus},
     {PRIVATE(2), getMainsChanges},

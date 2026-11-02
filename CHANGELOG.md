@@ -7,6 +7,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ## [Unreleased]
 
 ### Added
+- HOST-RESOURCES-MIB (RFC 2790): CPU load of both cores (hrProcessorLoad, one-minute average), RAM and the LittleFS partition (hrStorageTable), hrMemorySize and hrSystem, so LibreNMS graphs processors, memory and storage. Also on the status screen.
+- ENTITY-MIB (RFC 6933): one inventory entry with model, hardware and firmware revision, manufacturer and serial number (the flash chip's unique ID).
 - SNMPv2-MIB complete (RFC 3418): sysORLastChange and sysORTable (the 9 MIB modules the agent implements), the snmp group (snmpInPkts ... snmpProxyDrops: the agent's own counters, so LibreNMS can graph SNMP traffic) and snmpSetSerialNo (read-only 0). A walk from the root now returns 126 objects (v2c, with an LLDP neighbour).
 - Web page: the Device name card also sets sysContact and sysLocation (0-63 printable characters, may be empty), active at once like the hostname. Before, only the serial menu could set them, so LibreNMS showed no location.
 - Setup manual (docs/SETUP_MANUAL.md: installing a device, first configuration, LibreNMS, proving the alarm) and user manual (docs/USER_MANUAL.md: daily use, alarms, settings, factory reset, firmware update, troubleshooting).

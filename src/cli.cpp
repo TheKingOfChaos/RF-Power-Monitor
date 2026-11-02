@@ -11,6 +11,7 @@
 #include "lldp_service.h"
 #include "net_stats.h"
 #include "snmp_service.h"
+#include "host_stats.h"
 #include "stack_watch.h"
 #include "watchdog.h"
 #include "web_service.h"
@@ -202,6 +203,16 @@ static void printStatus() {
         Serial.println("Web login: user admin, own password (option 6)");
     }
     Serial.printf("Core 0 stack: %u bytes never used\r\n", (unsigned)stackWatchNeverUsed());
+    {
+        const SnmpHostState& h = hostStatsSnapshot();
+        Serial.printf("CPU load: core 0 %u %%, core 1 %u %% (last minute)\r\n", h.cpuLoad[0], h.cpuLoad[1]);
+        Serial.printf("RAM used: %lu of %lu bytes\r\n", (unsigned long)h.ramUsedBytes, (unsigned long)h.ramTotalBytes);
+        if (h.fsValid) {
+            Serial.printf("LittleFS used: %lu of %lu bytes\r\n", (unsigned long)h.fsUsedBytes,
+                          (unsigned long)h.fsTotalBytes);
+        }
+        Serial.printf("Serial number: %s\r\n", h.serialNumber);
+    }
     Serial.printf("Last restart: %s (%lu watchdog restarts since power-on)\r\n",
                   restartCauseName(watchdogRestartCause()), (unsigned long)watchdogRestarts());
     if (diagReport()) Serial.println(diagReport());

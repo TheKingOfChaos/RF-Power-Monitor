@@ -60,7 +60,15 @@ def all_oids(v1, neighbour):
     oids += [".1.3.6.1.2.1.2.1.0"]
     oids += [".1.3.6.1.2.1.2.2.1.%d.1" % i for i in range(1, 23)]
     oids += [".1.3.6.1.2.1.11.%d.0" % i for i in SNMP_GROUP]
+    # HOST-RESOURCES-MIB: hrSystem, hrMemorySize, hrStorage (RAM, LittleFS), hrDevice and hrProcessor (2 cores)
+    hr = ".1.3.6.1.2.1.25"
+    oids += [hr + ".1.%d.0" % i for i in (1, 5, 6, 7)] + [hr + ".2.2.0"]
+    oids += [hr + ".2.3.1.%d.%d" % (c, r) for c in range(1, 8) for r in (1, 2)]
+    oids += [hr + ".3.2.1.%d.%d" % (c, r) for c in range(1, 7) for r in (768, 769)]
+    oids += [hr + ".3.3.1.%d.%d" % (c, r) for c in range(1, 3) for r in (768, 769)]
     oids += [".1.3.6.1.2.1.31.1.1.1.%d.1" % i for i in range(1, 20) if not (v1 and 6 <= i <= 13)]
+    # ENTITY-MIB: the device's entPhysicalTable row (columns 2-16), entLastChangeTime
+    oids += [".1.3.6.1.2.1.47.1.1.1.1.%d.1" % i for i in range(2, 17)] + [".1.3.6.1.2.1.47.1.4.1.0"]
     oids += ["." + ENTERPRISE + ".%d.0" % i for i in ENTERPRISE_OBJECTS]
     oids += [LAST_OID]
     return oids
@@ -256,8 +264,8 @@ class SnmpAgentTest(unittest.TestCase):
                     if " = " in l and "No more" not in l]
         self.assertEqual(oids(walk), oids(bulk))
         self.assertEqual(len(all_oids(v1=False, neighbour=self.has_neighbour())), len(oids(bulk)))
-        # 117 or more objects at most 16 per GetBulk: at least 8 requests
-        self.assertGreaterEqual(self.dev.status()["getBulkRequests"] - before, 8)
+        # 168 or more objects at most 16 per GetBulk: at least 11 requests
+        self.assertGreaterEqual(self.dev.status()["getBulkRequests"] - before, 11)
 
     def test_bulkget_non_repeaters_and_repetitions(self):
         rc, out = self.snmp("snmpbulkget", "-Cn1", "-Cr3", "1.3.6.1.2.1.1.3.0", "1.3.6.1.2.1.1", version="2c")
