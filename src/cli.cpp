@@ -95,7 +95,7 @@ static void printMenu() {
  */
 static void printTemperature(const char* name, int32_t deciC) {
     uint32_t a = (uint32_t)(deciC < 0 ? -deciC : deciC);
-    Serial.printf("%s: %s%lu.%lu C\n", name, deciC < 0 ? "-" : "", (unsigned long)(a / 10),
+    Serial.printf("%s: %s%lu.%lu C\r\n", name, deciC < 0 ? "-" : "", (unsigned long)(a / 10),
                   (unsigned long)(a % 10));
 }
 
@@ -109,33 +109,33 @@ static void printStatus() {
     if (!mainsRead(mains)) {
         Serial.println("Mains power: unknown (monitor not running)");
     } else if (mains.changes == 0) {
-        Serial.printf("Mains power: %s (no changes since boot)\n", mains.present ? "present" : "LOST");
+        Serial.printf("Mains power: %s (no changes since boot)\r\n", mains.present ? "present" : "LOST");
     } else {
-        Serial.printf("Mains power: %s (%lu changes, last change %lu s ago)\n",
+        Serial.printf("Mains power: %s (%lu changes, last change %lu s ago)\r\n",
                       mains.present ? "present" : "LOST", (unsigned long)mains.changes,
                       (unsigned long)((millis() - mains.lastChangeMs) / 1000));
     }
-    Serial.printf("Mains alarm: %s\n", snmpMainsAlarm() ? "lost over 60 s" : "none");
+    Serial.printf("Mains alarm: %s\r\n", snmpMainsAlarm() ? "lost over 60 s" : "none");
 
     const SnmpStats& snmp = snmpStats();
     Serial.printf("SNMP: %lu packets, %lu responses (get %lu, getnext %lu, set %lu), "
-                  "bad community %lu, bad version %lu, malformed %lu\n",
+                  "bad community %lu, bad version %lu, malformed %lu\r\n",
                   (unsigned long)snmp.inPackets, (unsigned long)snmp.outResponses,
                   (unsigned long)snmp.inGetRequests, (unsigned long)snmp.inGetNextRequests,
                   (unsigned long)snmp.inSetRequests, (unsigned long)snmp.inBadCommunity,
                   (unsigned long)snmp.inBadVersions, (unsigned long)snmp.inParseErrors);
-    Serial.printf("SNMP v2c: %lu requests, %lu getbulk\n", (unsigned long)snmp.inV2cRequests,
+    Serial.printf("SNMP v2c: %lu requests, %lu getbulk\r\n", (unsigned long)snmp.inV2cRequests,
                   (unsigned long)snmp.inGetBulkRequests);
 
     printTemperature("CPU temperature", cpuTempDeciC());
     if (ambientTempValid()) {
         printTemperature("Ambient temperature", ambientTempDeciC());
     } else {
-        Serial.print("Ambient temperature: no sensor (TMP1075 at 0x48 on GP4/GP5)\n");
+        Serial.print("Ambient temperature: no sensor (TMP1075 at 0x48 on GP4/GP5)\r\n");
     }
     SnmpInterfaceState ifs;
     netStatsCapture(ifs);
-    Serial.printf("Ethernet: link %s, %lu Mbit/s, in %llu bytes / %llu packets, out %llu bytes / %llu packets\n",
+    Serial.printf("Ethernet: link %s, %lu Mbit/s, in %llu bytes / %llu packets, out %llu bytes / %llu packets\r\n",
                   ifs.linkUp ? "up" : "down", (unsigned long)(ifs.speedBps / 1000000),
                   (unsigned long long)ifs.counters.inOctets,
                   (unsigned long long)(ifs.counters.inUcastPkts + ifs.counters.inMulticastPkts +
@@ -143,21 +143,21 @@ static void printStatus() {
                   (unsigned long long)ifs.counters.outOctets,
                   (unsigned long long)(ifs.counters.outUcastPkts + ifs.counters.outMulticastPkts +
                                        ifs.counters.outBroadcastPkts));
-    Serial.printf("Ethernet drops: %lu discarded (no buffer), %lu errors, %lu unknown protocol, %lu send errors\n",
+    Serial.printf("Ethernet drops: %lu discarded (no buffer), %lu errors, %lu unknown protocol, %lu send errors\r\n",
                   (unsigned long)ifs.counters.inDiscards, (unsigned long)ifs.counters.inErrors,
                   (unsigned long)ifs.counters.inUnknownProtos, (unsigned long)ifs.counters.outErrors);
     const SnmpServiceStats& svc = snmpServiceStats();
-    Serial.printf("SNMP security: %lu rate limited, %lu access log events\n",
+    Serial.printf("SNMP security: %lu rate limited, %lu access log events\r\n",
                   (unsigned long)svc.rateLimited, (unsigned long)snmpAccessLog().total());
-    Serial.printf("SNMP community: \"%s\"\n", currentSettings.community);
-    Serial.printf("sysName: \"%s\"\n", currentSettings.sysName);
-    Serial.printf("sysContact: \"%s\"\n", currentSettings.sysContact);
-    Serial.printf("sysLocation: \"%s\"\n", currentSettings.sysLocation);
+    Serial.printf("SNMP community: \"%s\"\r\n", currentSettings.community);
+    Serial.printf("sysName: \"%s\"\r\n", currentSettings.sysName);
+    Serial.printf("sysContact: \"%s\"\r\n", currentSettings.sysContact);
+    Serial.printf("sysLocation: \"%s\"\r\n", currentSettings.sysLocation);
     // The destination in use first, then where it comes from
     TrapAddress trap;
     char trapText[IPV6_TEXT_MAX] = "";
     if (snmpTrapTarget(trap)) formatTrapAddress(trap, trapText);
-    Serial.printf("Trap destination: \"%s\" (%lu sent, %lu failed)\n", trapText, (unsigned long)svc.trapsSent,
+    Serial.printf("Trap destination: \"%s\" (%lu sent, %lu failed)\r\n", trapText, (unsigned long)svc.trapsSent,
                   (unsigned long)svc.trapsFailed);
     if (!currentSettings.trapFromDhcp) {
         Serial.println("Trap destination source: fixed (menu option 4)");
@@ -170,47 +170,47 @@ static void printStatus() {
         } else if (!d.seen) {
             Serial.println("no DHCP ACK yet)");
         } else if (!d.hasOption) {
-            Serial.printf("last ACK %lu s ago had no option %u)\n", (unsigned long)((millis() - d.ackMs) / 1000),
+            Serial.printf("last ACK %lu s ago had no option %u)\r\n", (unsigned long)((millis() - d.ackMs) / 1000),
                           DHCP_OPTION_TRAP_TARGET);
         } else {
-            Serial.printf("last ACK %lu s ago: %u.%u.%u.%u)\n", (unsigned long)((millis() - d.ackMs) / 1000),
+            Serial.printf("last ACK %lu s ago: %u.%u.%u.%u)\r\n", (unsigned long)((millis() - d.ackMs) / 1000),
                           d.target[0], d.target[1], d.target[2], d.target[3]);
         }
         if (d.ignored) {
-            Serial.printf("DHCP: %lu ACK-like frames ignored (not accepted by the DHCP client, possibly forged)\n",
+            Serial.printf("DHCP: %lu ACK-like frames ignored (not accepted by the DHCP client, possibly forged)\r\n",
                           (unsigned long)d.ignored);
         }
     }
-    Serial.printf("Trap version: %s\n", currentSettings.trapVersion == TRAP_VERSION_V1 ? "v1" : "v2c");
-    Serial.printf("Hostname: %s (DHCP, mDNS %s.local)\n", hostnameCurrent(), hostnameCurrent());
+    Serial.printf("Trap version: %s\r\n", currentSettings.trapVersion == TRAP_VERSION_V1 ? "v1" : "v2c");
+    Serial.printf("Hostname: %s (DHCP, mDNS %s.local)\r\n", hostnameCurrent(), hostnameCurrent());
     {
         static char sw[144], addr[46];  // static: core 0's stack is small
         lldpServiceSwitchText(sw, sizeof(sw));
         lldpServiceSwitchAddress(addr, sizeof(addr));
         if (addr[0]) {
-            Serial.printf("Switch: %s (%s)\n", sw, addr);
+            Serial.printf("Switch: %s (%s)\r\n", sw, addr);
         } else {
-            Serial.printf("Switch: %s\n", sw);
+            Serial.printf("Switch: %s\r\n", sw);
         }
     }
-    Serial.printf("Web interface: %s\n", !webEnabled()   ? "off (option 8 turns it on)"
+    Serial.printf("Web interface: %s\r\n", !webEnabled()   ? "off (option 8 turns it on)"
                                          : webListening() ? "on (TCP port 80)"
                                                           : "on, opening TCP port 80 (retrying)");
     if (webUsesDefaultPassword()) {
-        Serial.printf("Web login: user admin, default password \"%s\" (change with option 6)\n", webDefaultPassword());
+        Serial.printf("Web login: user admin, default password \"%s\" (change with option 6)\r\n", webDefaultPassword());
     } else {
         Serial.println("Web login: user admin, own password (option 6)");
     }
-    Serial.printf("Core 0 stack: %u bytes never used\n", (unsigned)stackWatchNeverUsed());
-    Serial.printf("Last restart: %s (%lu watchdog restarts since power-on)\n",
+    Serial.printf("Core 0 stack: %u bytes never used\r\n", (unsigned)stackWatchNeverUsed());
+    Serial.printf("Last restart: %s (%lu watchdog restarts since power-on)\r\n",
                   restartCauseName(watchdogRestartCause()), (unsigned long)watchdogRestarts());
     if (diagReport()) Serial.println(diagReport());
 
-    Serial.printf("Mode: %s\n", currentSettings.dhcpEnabled ? "DHCP" : "Static");
-    Serial.printf("Stored static IP: %s / %s, gateway %s\n",
+    Serial.printf("Mode: %s\r\n", currentSettings.dhcpEnabled ? "DHCP" : "Static");
+    Serial.printf("Stored static IP: %s / %s, gateway %s\r\n",
                   currentSettings.staticIP, currentSettings.subnetMask, currentSettings.gateway);
     if (currentSettings.ipv6Address[0]) {
-        Serial.printf("Stored static IPv6: %s/64, gateway %s\n", currentSettings.ipv6Address,
+        Serial.printf("Stored static IPv6: %s/64, gateway %s\r\n", currentSettings.ipv6Address,
                       currentSettings.ipv6Gateway[0] ? currentSettings.ipv6Gateway : "from router advertisements");
     } else {
         Serial.println("Stored static IPv6: none (option 9)");
@@ -228,9 +228,9 @@ static void printStatus() {
                 Serial.printf(", %s (valid %lu s)", d6.address, (unsigned long)d6.validLeftS);
             }
         }
-        Serial.printf(", %lu sent, %lu accepted, %lu ignored\n", (unsigned long)d6.sent, (unsigned long)d6.accepted,
+        Serial.printf(", %lu sent, %lu accepted, %lu ignored\r\n", (unsigned long)d6.sent, (unsigned long)d6.accepted,
                       (unsigned long)d6.ignored);
-        if (d6.problem[0]) Serial.printf("DHCPv6: address not in use (%s)\n", d6.problem);
+        if (d6.problem[0]) Serial.printf("DHCPv6: address not in use (%s)\r\n", d6.problem);
     }
     Serial.println("Live interface:");
     printNetworkInfo();
@@ -251,7 +251,7 @@ static bool takeAddress(const char* input, const char* current, char* dest) {
     const char* value = input[0] ? input : current;
     uint8_t octets[4];
     if (!parseIPv4(value, octets)) {
-        Serial.printf("'%s' is not a valid IPv4 address\n", value);
+        Serial.printf("'%s' is not a valid IPv4 address\r\n", value);
         return false;
     }
     strlcpy(dest, value, 16);
@@ -286,7 +286,7 @@ static bool takeText(const char* input, const char* current, char* dest, size_t 
         return false;
     }
     if (strlen(value) > maxLength) {
-        Serial.printf("Too long, at most %u characters\n", (unsigned)maxLength);
+        Serial.printf("Too long, at most %u characters\r\n", (unsigned)maxLength);
         return false;
     }
     if (!settingsTextIsValid(value, maxLength, allowEmpty)) {
@@ -306,7 +306,7 @@ static bool takeHostname(const char* input, const char* current, char* dest) {
         return true;
     }
     if (!hostnameIsValid(input)) {
-        Serial.printf("Not a valid hostname: 1-%u letters, digits and '-', not starting or ending with '-'\n",
+        Serial.printf("Not a valid hostname: 1-%u letters, digits and '-', not starting or ending with '-'\r\n",
                       (unsigned)HOSTNAME_MAX_LENGTH);
         return false;
     }
@@ -354,7 +354,7 @@ static bool takeTrapTarget(const char* input) {
     TrapAddress address;
     TrapTargetError err = parseTrapTarget(input, address);
     if (err != TrapTargetError::None) {
-        Serial.printf("'%s': %s\n", input, trapTargetErrorMessage(err));
+        Serial.printf("'%s': %s\r\n", input, trapTargetErrorMessage(err));
         return false;
     }
     formatTrapAddress(address, newTrapTarget);
@@ -368,12 +368,12 @@ static void printAccessLog() {
     const AccessLog& log = snmpAccessLog();
     uint32_t now = millis();
     Serial.println();
-    Serial.printf("Access log: %u entries, %lu events since boot\n", log.size(), (unsigned long)log.total());
+    Serial.printf("Access log: %u entries, %lu events since boot\r\n", log.size(), (unsigned long)log.total());
     for (uint8_t i = 0; i < log.size(); i++) {
         const AccessLog::Entry& e = log.newest(i);
         char ip[SOURCE_TEXT_MAX];
         formatSource(e.source, ip);
-        Serial.printf("  %-15s %-14s x%-6lu last %lu s ago\n", ip, accessEventName(e.event),
+        Serial.printf("  %-15s %-14s x%-6lu last %lu s ago\r\n", ip, accessEventName(e.event),
                       (unsigned long)e.count, (unsigned long)((now - e.lastMs) / 1000));
     }
     Serial.print("> ");
@@ -385,7 +385,7 @@ static void printAccessLog() {
 static void askSnmpConfirm() {
     Serial.println();
     Serial.printf("New SNMP settings: community \"%s\", sysName \"%s\", sysContact \"%s\", sysLocation \"%s\", "
-                  "trap destination \"%s\", trap version %s\n",
+                  "trap destination \"%s\", trap version %s\r\n",
                   newCommunity, newSysName, newSysContact, newSysLocation, newTrapFromDhcp ? "dhcp" : newTrapTarget,
                   newTrapVersion == TRAP_VERSION_V1 ? "v1" : "v2c");
     Serial.print("Save? (y/n): ");
@@ -400,7 +400,7 @@ static void askConfirm() {
     if (newDhcp) {
         Serial.println("New mode: DHCP");
     } else {
-        Serial.printf("New mode: Static %s / %s, gateway %s\n", newIP, newSubnet, newGateway);
+        Serial.printf("New mode: Static %s / %s, gateway %s\r\n", newIP, newSubnet, newGateway);
     }
     Serial.print("Save and reboot? (y/n): ");
     state = CLI_CONFIRM;
@@ -418,7 +418,7 @@ static bool takeIPv6(const char* input, const char* current, char* dest) {
     }
     uint8_t bytes[16];
     if (!parseIPv6(value, bytes)) {
-        Serial.printf("'%s' is not a valid IPv6 address (write it without /64, e.g. fd00::10)\n", value);
+        Serial.printf("'%s' is not a valid IPv6 address (write it without /64, e.g. fd00::10)\r\n", value);
         return false;
     }
     formatIPv6(bytes, dest);
@@ -438,7 +438,7 @@ static void promptIPv6Gateway() {
 static void askIPv6Confirm() {
     Serial.println();
     if (newIPv6[0]) {
-        Serial.printf("New static IPv6: %s/64, gateway %s\n", newIPv6,
+        Serial.printf("New static IPv6: %s/64, gateway %s\r\n", newIPv6,
                       newIPv6Gateway[0] ? newIPv6Gateway : "from router advertisements");
     } else {
         Serial.println("New static IPv6: none");
@@ -488,7 +488,7 @@ static void handleLine(const char* line) {
         } else if (strcmp(line, "5") == 0) {
             printAccessLog();
         } else if (strcmp(line, "6") == 0) {
-            Serial.printf("Web page login: user admin, %s.\n",
+            Serial.printf("Web page login: user admin, %s.\r\n",
                           webUsesDefaultPassword() ? "currently the device default password" : "own password set");
             promptWebPassword();
         } else if (strcmp(line, "7") == 0) {
@@ -510,7 +510,7 @@ static void handleLine(const char* line) {
         } else if (strcmp(line, "stall0") == 0 || strcmp(line, "stall1") == 0) {
             // Hidden test command (docs/TESTING.md): hang one core so the watchdog restarts the device
             uint8_t core = line[5] - '0';
-            Serial.printf("Stalling core %u, the watchdog restarts the device within %lu s\n", core,
+            Serial.printf("Stalling core %u, the watchdog restarts the device within %lu s\r\n", core,
                           (unsigned long)(WATCHDOG_TIMEOUT_MS + CoreHeartbeatCheck::DEFAULT_STALE_MS) / 1000 + 1);
             Serial.flush();
             delay(200);  // USB is serviced by interrupts, which a core 0 stall switches off
@@ -750,7 +750,7 @@ static void handleLine(const char* line) {
     case CLI_WEB_REGENERATE:
         if (line[0] == 'y' || line[0] == 'Y') {
             bool saved = webRegenerateDefaultPassword();
-            Serial.printf("New default web password: \"%s\"%s\n", webDefaultPassword(),
+            Serial.printf("New default web password: \"%s\"%s\r\n", webDefaultPassword(),
                           saved ? "" : " (NOT saved, a new one is generated at the next boot)");
             if (!webUsesDefaultPassword()) {
                 Serial.println("Your own password stays in use; option 6 with '-' switches to the new default");
@@ -801,7 +801,7 @@ void cliProcess() {
             if (lineOverflow) {
                 // Never act on a silently truncated value
                 lineOverflow = false;
-                Serial.printf("Input too long (max %u characters), ignored\n", (unsigned)(sizeof(lineBuf) - 1));
+                Serial.printf("Input too long (max %u characters), ignored\r\n", (unsigned)(sizeof(lineBuf) - 1));
                 if (state == CLI_MENU) {
                     Serial.print("> ");
                 } else if (state >= CLI_SNMP_COMMUNITY && state <= CLI_SNMP_TRAP_VER) {

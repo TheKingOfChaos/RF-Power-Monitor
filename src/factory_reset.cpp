@@ -55,10 +55,10 @@ void factoryResetPoll() {
 
     switch ((ResetButtonEvent)lastEvent) {
     case ResetButtonEvent::Pressed:
-        Serial.println("\nFactory reset button pressed, hold 10 s to reset");
+        Serial.println("\r\nFactory reset button pressed, hold 10 s to reset");
         return;
     case ResetButtonEvent::Released:
-        Serial.printf("\nFactory reset button released after %lu ms, no reset\n", (unsigned long)lastEventHeldMs);
+        Serial.printf("\r\nFactory reset button released after %lu ms, no reset\r\n", (unsigned long)lastEventHeldMs);
         return;
     case ResetButtonEvent::Triggered:
         break;
@@ -68,10 +68,10 @@ void factoryResetPoll() {
 
     if (!resetRequested) return;
     uint32_t start = millis();
-    Serial.printf("\nFactory reset after %lu ms hold\n", (unsigned long)lastEventHeldMs);
+    Serial.printf("\r\nFactory reset after %lu ms hold\r\n", (unsigned long)lastEventHeldMs);
     settingsDefaults(currentSettings);
     bool saved = saveSettings();
-    Serial.printf("Factory defaults %s in %lu ms, rebooting\n", saved ? "saved" : "NOT saved",
+    Serial.printf("Factory defaults %s in %lu ms, rebooting\r\n", saved ? "saved" : "NOT saved",
                   (unsigned long)(millis() - start));
     Serial.flush();
     // Core 1 keeps the LED blinking fast meanwhile

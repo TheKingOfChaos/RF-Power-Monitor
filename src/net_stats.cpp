@@ -152,7 +152,7 @@ void netStatsPoll(uint32_t uptimeTicks) {
     PhyStatus now = decodePhyCfgr(readPhyCfgr());
     if (now.linkUp != phy.linkUp) {
         lastChangeTicks = uptimeTicks;
-        Serial.printf("\nEthernet link %s", now.linkUp ? "up" : "down");
+        Serial.printf("\r\nEthernet link %s", now.linkUp ? "up" : "down");
         if (now.linkUp) Serial.printf(", %s Mbit/s %s duplex", now.speed100 ? "100" : "10",
                                       now.fullDuplex ? "full" : "half");
         Serial.println();

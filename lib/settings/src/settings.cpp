@@ -44,13 +44,13 @@ bool SettingsStore::readSlot(const char* path, Settings& out) {
     jsonBuf[len] = '\0';
 
     if (tooBig) {
-        Serial.printf("Settings %s: file too large, ignored\n", path);
+        Serial.printf("Settings %s: file too large, ignored\r\n", path);
         return false;
     }
 
     SettingsParseError err = settingsFromJson(jsonBuf, out);
     if (err != SettingsParseError::None) {
-        Serial.printf("Settings %s: %s, ignored\n", path, settingsParseErrorMessage(err));
+        Serial.printf("Settings %s: %s, ignored\r\n", path, settingsParseErrorMessage(err));
         return false;
     }
     return true;
@@ -86,19 +86,19 @@ bool SettingsStore::save(Settings& s) {
 
     File f = LittleFS.open(path, "w");
     if (!f) {
-        Serial.printf("Settings %s: cannot open for writing\n", path);
+        Serial.printf("Settings %s: cannot open for writing\r\n", path);
         return false;
     }
     size_t written = f.write((const uint8_t*)jsonBuf, len);
     f.close();
     if (written != len) {
-        Serial.printf("Settings %s: short write (%u of %u bytes)\n", path, (unsigned)written, (unsigned)len);
+        Serial.printf("Settings %s: short write (%u of %u bytes)\r\n", path, (unsigned)written, (unsigned)len);
         return false;
     }
 
     // Only switch to the new copy once it reads back identical
     if (!readSlot(path, verify) || !settingsEqual(verify, pending)) {
-        Serial.printf("Settings %s: verification failed, keeping previous copy\n", path);
+        Serial.printf("Settings %s: verification failed, keeping previous copy\r\n", path);
         return false;
     }
 
@@ -112,7 +112,7 @@ uint8_t removeLegacyFiles() {
     uint8_t removed = 0;
     for (const char* path : LEGACY_FILES) {
         if (LittleFS.exists(path) && LittleFS.remove(path)) {
-            Serial.printf("Settings: removed old file %s\n", path);
+            Serial.printf("Settings: removed old file %s\r\n", path);
             removed++;
         }
     }
@@ -129,7 +129,7 @@ bool loadSettings() {
         return settingsLoaded;
     }
 
-    Serial.printf("Settings: loaded slot %s (sequence %lu), %s\n", slotName(slot),
+    Serial.printf("Settings: loaded slot %s (sequence %lu), %s\r\n", slotName(slot),
                   (unsigned long)currentSettings.sequence,
                   currentSettings.dhcpEnabled ? "DHCP" : "static IP");
     settingsLoaded = true;
@@ -139,7 +139,7 @@ bool loadSettings() {
 bool saveSettings() {
     bool ok = defaultStore.save(currentSettings);
     if (ok) {
-        Serial.printf("Settings: saved slot %s (sequence %lu)\n", slotName(defaultStore.activeSlot()),
+        Serial.printf("Settings: saved slot %s (sequence %lu)\r\n", slotName(defaultStore.activeSlot()),
                       (unsigned long)currentSettings.sequence);
     }
     return ok;

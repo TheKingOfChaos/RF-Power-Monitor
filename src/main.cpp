@@ -54,7 +54,7 @@ void printNetworkInfo() {
 
     uint8_t mac[6];
     eth.macAddress(mac);
-    Serial.printf("MAC: %02X:%02X:%02X:%02X:%02X:%02X\n", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
+    Serial.printf("MAC: %02X:%02X:%02X:%02X:%02X:%02X\r\n", mac[0], mac[1], mac[2], mac[3], mac[4], mac[5]);
     Serial.print("IP: ");      Serial.println(eth.localIP());
     Serial.print("Subnet: ");  Serial.println(eth.subnetMask());
     Serial.print("Gateway: "); Serial.println(eth.gatewayIP());
@@ -66,7 +66,7 @@ void printNetworkInfo() {
         u8_t state = netif_ip6_addr_state(nif, i);
         if (ip6_addr_isinvalid(state)) continue;
         any = true;
-        Serial.printf("IPv6: %s%s%s\n", ip6addr_ntoa(netif_ip6_addr(nif, i)),
+        Serial.printf("IPv6: %s%s%s\r\n", ip6addr_ntoa(netif_ip6_addr(nif, i)),
                       ipv6StaticIsSlot(i) ? " (static)" : dhcp6IsSlot(i) ? " (dhcpv6)" : "",
                       ip6_addr_istentative(state)    ? " (tentative)"
                       : ip6_addr_isdeprecated(state) ? " (deprecated)"
@@ -75,10 +75,10 @@ void printNetworkInfo() {
     }
     if (!any) Serial.println("IPv6: none");
     if (ipv6StaticProblem()[0]) {
-        Serial.printf("IPv6: static %s not in use (%s)\n", currentSettings.ipv6Address, ipv6StaticProblem());
+        Serial.printf("IPv6: static %s not in use (%s)\r\n", currentSettings.ipv6Address, ipv6StaticProblem());
     }
     if (currentSettings.ipv6Address[0]) {
-        Serial.printf("IPv6 gateway: %s\n", currentSettings.ipv6Gateway[0] ? currentSettings.ipv6Gateway
+        Serial.printf("IPv6 gateway: %s\r\n", currentSettings.ipv6Gateway[0] ? currentSettings.ipv6Gateway
                                                                           : "from router advertisements");
     }
 #endif
@@ -129,7 +129,7 @@ bool startEthernet() {
 }
 
 void listFiles(const char * dirname, uint8_t levels) {
-    Serial.printf("\nListing directory: %s\n", dirname);
+    Serial.printf("\r\nListing directory: %s\r\n", dirname);
 
     File root = LittleFS.open(dirname, "r");
     if (!root) {
@@ -168,7 +168,7 @@ void setup() {
     // Wait briefly for a terminal, but don't block boot when none is attached
     uint32_t serialWait = millis();
     while (!Serial && millis() - serialWait < 3000) delay(10);
-    Serial.println("\nRF-Power-Monitor " FIRMWARE_VERSION " starting...");
+    Serial.println("\r\nRF-Power-Monitor " FIRMWARE_VERSION " starting...");
     watchdogBegin();  // restart cause, before diagBegin() arms its own early watchdog
     diagBegin();  // only with -DRFPOWER_DIAG
     cpuTempBegin();
@@ -199,11 +199,11 @@ void setup() {
     // Print filesystem info
     FSInfo fs_info;
     LittleFS.info(fs_info);
-    Serial.printf("\nFilesystem Info:\n");
-    Serial.printf("Total space: %u bytes\n", fs_info.totalBytes);
-    Serial.printf("Used space: %u bytes\n", fs_info.usedBytes);
-    Serial.printf("Block size: %u bytes\n", fs_info.blockSize);
-    Serial.printf("Page size: %u bytes\n", fs_info.pageSize);
+    Serial.printf("\r\nFilesystem Info:\r\n");
+    Serial.printf("Total space: %u bytes\r\n", fs_info.totalBytes);
+    Serial.printf("Used space: %u bytes\r\n", fs_info.usedBytes);
+    Serial.printf("Block size: %u bytes\r\n", fs_info.blockSize);
+    Serial.printf("Page size: %u bytes\r\n", fs_info.pageSize);
 
     // Load settings
     settingsLoaded = loadSettings();
@@ -237,12 +237,12 @@ void loop() {
     if (ip != lastIP) {
         lastIP = ip;
         if (ip) {
-            Serial.printf("\nNetwork up after %lu ms\n", (unsigned long)millis());
+            Serial.printf("\r\nNetwork up after %lu ms\r\n", (unsigned long)millis());
             printNetworkInfo();
             snmpNetworkUp(eth.localIP());
             hostnameNetworkUp();
         } else {
-            Serial.println("\nNetwork down, retrying");
+            Serial.println("\r\nNetwork down, retrying");
             snmpNetworkDown();
         }
     }
@@ -253,7 +253,7 @@ void loop() {
     MainsSnapshot mains;
     if (mainsRead(mains) && mains.changes != lastMainsChanges) {
         lastMainsChanges = mains.changes;
-        Serial.printf("\nMains power %s at %lu ms\n", mains.present ? "RESTORED" : "LOST",
+        Serial.printf("\r\nMains power %s at %lu ms\r\n", mains.present ? "RESTORED" : "LOST",
                       (unsigned long)mains.lastChangeMs);
         snmpNotifyMainsChange();
     }

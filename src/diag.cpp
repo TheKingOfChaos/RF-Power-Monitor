@@ -84,7 +84,7 @@ void diagBegin() {
     } else {
         snprintf(diagText, sizeof(diagText), "DIAG: normal start (watchdog armed)");
     }
-    Serial.printf("\n%s\n", diagText);
+    Serial.printf("\r\n%s\r\n", diagText);
 }
 
 void diagPoll() {

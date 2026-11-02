@@ -55,7 +55,7 @@ static void tryListening() {
     lastListenTryMs = millis();
     server.begin();
     listening = server.status() == LISTEN;
-    if (!listening) Serial.println("\nWeb: cannot open TCP port 80 yet, retrying");
+    if (!listening) Serial.println("\r\nWeb: cannot open TCP port 80 yet, retrying");
 }
 
 static void startListening() {
@@ -147,7 +147,7 @@ public:
         strlcpy(currentSettings.subnetMask, mask, sizeof(currentSettings.subnetMask));
         strlcpy(currentSettings.gateway, gateway, sizeof(currentSettings.gateway));
         if (saveSettings()) {
-            Serial.printf("\nWeb: network settings saved (%s), rebooting\n", dhcp ? "DHCP" : ip);
+            Serial.printf("\r\nWeb: network settings saved (%s), rebooting\r\n", dhcp ? "DHCP" : ip);
             return true;
         }
         currentSettings = settingsBackup;
@@ -159,7 +159,7 @@ public:
         strlcpy(currentSettings.ipv6Address, address, sizeof(currentSettings.ipv6Address));
         strlcpy(currentSettings.ipv6Gateway, gateway, sizeof(currentSettings.ipv6Gateway));
         if (saveSettings()) {
-            Serial.printf("\nWeb: static IPv6 saved (%s), rebooting\n", address[0] ? address : "none");
+            Serial.printf("\r\nWeb: static IPv6 saved (%s), rebooting\r\n", address[0] ? address : "none");
             return true;
         }
         currentSettings = settingsBackup;
@@ -171,7 +171,7 @@ public:
         strlcpy(currentSettings.community, community, sizeof(currentSettings.community));
         if (saveSettings()) {
             snmpCommunityChanged();
-            Serial.println("\nWeb: SNMP community changed");
+            Serial.println("\r\nWeb: SNMP community changed");
             return true;
         }
         currentSettings = settingsBackup;
@@ -196,7 +196,7 @@ public:
             currentSettings = settingsBackup;
             return false;
         }
-        Serial.println("\nWeb: interface turned off from the web page (serial menu option 8 turns it on)");
+        Serial.println("\r\nWeb: interface turned off from the web page (serial menu option 8 turns it on)");
         stopAfterResponse = true;  // the confirmation page still goes out
         hostnameAdvertiseWeb(false);
         return true;
@@ -219,7 +219,7 @@ public:
         } else {
             char text[SOURCE_TEXT_MAX];
             formatSource(source, text);
-            Serial.printf("\nWeb: admin logged in from %s\n", text);
+            Serial.printf("\r\nWeb: admin logged in from %s\r\n", text);
         }
     }
 };
@@ -253,7 +253,7 @@ static bool generateDefaultPassword() {
 static void loadDefaultPassword() {
     if (readDefaultPassword(defaultPassword)) return;
     bool ok = generateDefaultPassword();
-    Serial.printf("Web: new default password generated%s\n", ok ? "" : " (NOT saved, will change at reboot)");
+    Serial.printf("Web: new default password generated%s\r\n", ok ? "" : " (NOT saved, will change at reboot)");
 }
 
 bool webRegenerateDefaultPassword() {
@@ -326,7 +326,7 @@ void webPoll() {
     if (!started) return;
 
     if (rebootRequested && rebootAtMs != 0 && (int32_t)(millis() - rebootAtMs) >= 0) {
-        Serial.println("\nWeb: rebooting");
+        Serial.println("\r\nWeb: rebooting");
         Serial.flush();
         rp2040.reboot();
     }

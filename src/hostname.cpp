@@ -36,9 +36,9 @@ void hostnameNetworkUp() {
         if (mdns_resp_add_netif(nif, current) == ERR_OK) {
             syncWebService(nif);
             mdnsStarted = true;
-            Serial.printf("\nmDNS: %s.local\n", current);
+            Serial.printf("\r\nmDNS: %s.local\r\n", current);
         } else {
-            Serial.println("\nmDNS: could not start");
+            Serial.println("\r\nmDNS: could not start");
         }
     } else {
         mdns_resp_announce(nif);  // new address: tell the network
@@ -53,7 +53,7 @@ void hostnameApply() {
     DriverLock lock;
     eth.setHostname(current);  // also renews a DHCP lease, so the server learns the new name
     if (mdnsStarted) mdns_resp_rename_netif(eth.getNetIf(), current);
-    Serial.printf("\nHostname: %s (DHCP, mDNS %s.local)\n", current, current);
+    Serial.printf("\r\nHostname: %s (DHCP, mDNS %s.local)\r\n", current, current);
 }
 
 const char* hostnameCurrent() {

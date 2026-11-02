@@ -91,7 +91,7 @@ static void logAccess(const SourceKey& source, AccessEvent event) {
         char ip[SOURCE_TEXT_MAX];
         formatSource(source, ip);
         bool web = event == AccessEvent::WebLoginFailed || event == AccessEvent::WebLoginLocked;
-        Serial.printf("\n%s access: %s from %s\n", web ? "Web" : "SNMP", accessEventName(event), ip);
+        Serial.printf("\r\n%s access: %s from %s\r\n", web ? "Web" : "SNMP", accessEventName(event), ip);
     }
 }
 
@@ -170,11 +170,11 @@ static void sendTrap(size_t len, const char* what) {
     bool ok = udp.beginPacket(dest, SNMP_TRAP_PORT) == 1 && udp.write(outBuf, len) == len && udp.endPacket() == 1;
     if (ok) {
         serviceStats.trapsSent++;
-        Serial.printf("SNMP %s trap %s sent to %s\n", currentSettings.trapVersion == TRAP_VERSION_V1 ? "v1" : "v2c",
+        Serial.printf("SNMP %s trap %s sent to %s\r\n", currentSettings.trapVersion == TRAP_VERSION_V1 ? "v1" : "v2c",
                       what, targetText);
     } else {
         serviceStats.trapsFailed++;
-        Serial.printf("SNMP trap %s to %s failed\n", what, targetText);
+        Serial.printf("SNMP trap %s to %s failed\r\n", what, targetText);
     }
 }
 
@@ -182,7 +182,7 @@ bool snmpBegin() {
     limiter.configureTrusted(SNMP_TRUSTED_RATE_PER_SECOND, SNMP_TRUSTED_RATE_BURST, SNMP_MAX_TRUSTED_SOURCES,
                              SNMP_TRUST_TIMEOUT_MS);
     started = udp.begin(SNMP_PORT) == 1;
-    Serial.printf(started ? "SNMP agent listening on UDP %u\n" : "SNMP: cannot bind UDP %u\n", SNMP_PORT);
+    Serial.printf(started ? "SNMP agent listening on UDP %u\r\n" : "SNMP: cannot bind UDP %u\r\n", SNMP_PORT);
     return started;
 }
 
@@ -214,7 +214,7 @@ void snmpPollMainsAlarm() {
     if (!mainsRead(mains)) return;
     bool wasRaised = mainsAlarm.raised();
     mainsAlarm.update(mains.present, mains.changes, mains.lastChangeMs, millis());
-    if (mainsAlarm.raised() && !wasRaised) Serial.println("\nMains power lost for 60 s: alarm raised");
+    if (mainsAlarm.raised() && !wasRaised) Serial.println("\r\nMains power lost for 60 s: alarm raised");
     if (!mainsAlarm.trapPending()) return;
 
     // Held until a trap can actually leave (trapCanLeave). One attempt, as for every trap.

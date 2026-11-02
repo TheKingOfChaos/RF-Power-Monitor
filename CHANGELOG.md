@@ -14,6 +14,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - Carrier board: silkscreen and title blocks say RF-Power-Monitor, and the board, schematic, fab files, renders and 3D models are regenerated (the generator's RF-Power-Monitor change in 3.0.0 had not been applied to them yet). ERC and DRC clean; nothing else on the board changed.
 - The GitHub repository is now `TheKingOfChaos/RF-Power-Monitor` (GitHub redirects the old address); links in this changelog, the libraries' `library.json` and the MIB's CONTACT-INFO point to it.
 
+### Fixed
+- Serial output: every line ends with CR LF. Lines printed with a bare LF (most of the status screen, boot and event messages) staircased across the screen in PuTTY, which does not add the CR itself. HIL test `test_menu_and_status_end_lines_with_crlf`.
+
 ## [3.0.0] - 2026-11-01
 
 The project is renamed **RF-Power-Monitor** (was RF-UPS-Monitor): it monitors mains power, not a UPS. The OIDs, the enterprise number 63050 and the settings file are unchanged, so a device updated from 2.x keeps its settings and is still polled by number; the names around it change.

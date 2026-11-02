@@ -61,6 +61,12 @@ class SerialMenuTest(unittest.TestCase):
         self.assertNotEqual("0.0.0.0", st["ip"], "no DHCP lease")
         self.assertRegex(st["raw"], r"MAC: ([0-9A-F]{2}:){5}[0-9A-F]{2}")
 
+    def test_menu_and_status_end_lines_with_crlf(self):
+        # PuTTY does not add CR to a bare LF, so such lines staircase across the screen
+        for out in (self.dev.wait_for_menu(), self.dev.status()["raw"]):
+            bare = [m.start() for m in re.finditer(r"(?<!\r)\n", out)]
+            self.assertEqual([], bare, "LF without CR at %s in:\n%r" % (bare[:5], out))
+
     def test_status_reports_connected_state(self):
         self.assertEqual("connected", self.dev.status()["state"])
 

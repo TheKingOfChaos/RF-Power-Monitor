@@ -33,7 +33,7 @@ void watchdogBegin() {
     // Before diagBegin(): arming the watchdog there would make a later soft reboot read as a watchdog reset
     cause = readCause();
     restarts = restartRecordUpdate(restartRecord, cause);
-    Serial.printf("Last restart: %s (%lu watchdog restarts since power-on)\n", restartCauseName(cause),
+    Serial.printf("Last restart: %s (%lu watchdog restarts since power-on)\r\n", restartCauseName(cause),
                   (unsigned long)restarts);
 }
 
