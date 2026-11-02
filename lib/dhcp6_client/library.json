@@ -5,7 +5,7 @@
     "keywords": "dhcpv6, ipv6",
     "repository": {
         "type": "git",
-        "url": "https://github.com/TheKingOfChaos/RF-UPS-Monitor-v3.git"
+        "url": "https://github.com/TheKingOfChaos/RF-Power-Monitor.git"
     },
     "authors": [
         {

@@ -10,7 +10,7 @@ rfPowerMonitor MODULE-IDENTITY
     LAST-UPDATED "202611010100Z"
     ORGANIZATION "RF-Power-Monitor project"
     CONTACT-INFO
-        "https://github.com/TheKingOfChaos/RF-UPS-Monitor-v3
+        "https://github.com/TheKingOfChaos/RF-Power-Monitor
          kenneth@tkoc.dk"
     DESCRIPTION
         "Mains power monitor based on a Raspberry Pi Pico with a W5500

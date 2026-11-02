@@ -5,7 +5,7 @@
     "keywords": "snmp, asn1, ber, oid",
     "repository": {
         "type": "git",
-        "url": "https://github.com/TheKingOfChaos/RF-UPS-Monitor-v3.git"
+        "url": "https://github.com/TheKingOfChaos/RF-Power-Monitor.git"
     },
     "authors": [
         {

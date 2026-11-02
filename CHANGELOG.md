@@ -12,6 +12,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Changed
 - Carrier board: silkscreen and title blocks say RF-Power-Monitor, and the board, schematic, fab files, renders and 3D models are regenerated (the generator's RF-Power-Monitor change in 3.0.0 had not been applied to them yet). ERC and DRC clean; nothing else on the board changed.
+- The GitHub repository is now `TheKingOfChaos/RF-Power-Monitor` (GitHub redirects the old address); links in this changelog, the libraries' `library.json` and the MIB's CONTACT-INFO point to it.
 
 ## [3.0.0] - 2026-11-01
 
@@ -241,21 +242,21 @@ First release.
 - The network stack queues 5 UDP packets; larger bursts are dropped (SNMP managers retry).
 - Not yet tested with the real hardware: mains traps with real mains, the factory reset button, the "no link" and "no DHCP server" states. The LibreNMS definitions are validated against the schema but not yet tried in a running LibreNMS (done after 1.0.1).
 
-[Unreleased]: https://github.com/TheKingOfChaos/RF-UPS-Monitor-v3/compare/v3.0.0...HEAD
-[3.0.0]: https://github.com/TheKingOfChaos/RF-UPS-Monitor-v3/compare/v2.7.0...v3.0.0
-[2.7.0]: https://github.com/TheKingOfChaos/RF-UPS-Monitor-v3/compare/v2.6.0...v2.7.0
-[2.6.0]: https://github.com/TheKingOfChaos/RF-UPS-Monitor-v3/compare/v2.5.1...v2.6.0
-[2.5.1]: https://github.com/TheKingOfChaos/RF-UPS-Monitor-v3/compare/v2.5.0...v2.5.1
-[2.5.0]: https://github.com/TheKingOfChaos/RF-UPS-Monitor-v3/compare/v2.4.2...v2.5.0
-[2.4.2]: https://github.com/TheKingOfChaos/RF-UPS-Monitor-v3/compare/v2.4.1...v2.4.2
-[2.4.1]: https://github.com/TheKingOfChaos/RF-UPS-Monitor-v3/compare/v2.4.0...v2.4.1
-[2.4.0]: https://github.com/TheKingOfChaos/RF-UPS-Monitor-v3/compare/v2.3.0...v2.4.0
-[2.3.0]: https://github.com/TheKingOfChaos/RF-UPS-Monitor-v3/compare/v2.2.0...v2.3.0
-[2.2.0]: https://github.com/TheKingOfChaos/RF-UPS-Monitor-v3/compare/v2.1.1...v2.2.0
-[2.1.1]: https://github.com/TheKingOfChaos/RF-UPS-Monitor-v3/compare/v2.1.0...v2.1.1
-[2.1.0]: https://github.com/TheKingOfChaos/RF-UPS-Monitor-v3/compare/v2.0.1...v2.1.0
-[2.0.1]: https://github.com/TheKingOfChaos/RF-UPS-Monitor-v3/compare/v2.0.0...v2.0.1
-[2.0.0]: https://github.com/TheKingOfChaos/RF-UPS-Monitor-v3/compare/v1.0.2...v2.0.0
-[1.0.2]: https://github.com/TheKingOfChaos/RF-UPS-Monitor-v3/compare/v1.0.1...v1.0.2
-[1.0.1]: https://github.com/TheKingOfChaos/RF-UPS-Monitor-v3/compare/v1.0.0...v1.0.1
-[1.0.0]: https://github.com/TheKingOfChaos/RF-UPS-Monitor-v3/releases/tag/v1.0.0
+[Unreleased]: https://github.com/TheKingOfChaos/RF-Power-Monitor/compare/v3.0.0...HEAD
+[3.0.0]: https://github.com/TheKingOfChaos/RF-Power-Monitor/compare/v2.7.0...v3.0.0
+[2.7.0]: https://github.com/TheKingOfChaos/RF-Power-Monitor/compare/v2.6.0...v2.7.0
+[2.6.0]: https://github.com/TheKingOfChaos/RF-Power-Monitor/compare/v2.5.1...v2.6.0
+[2.5.1]: https://github.com/TheKingOfChaos/RF-Power-Monitor/compare/v2.5.0...v2.5.1
+[2.5.0]: https://github.com/TheKingOfChaos/RF-Power-Monitor/compare/v2.4.2...v2.5.0
+[2.4.2]: https://github.com/TheKingOfChaos/RF-Power-Monitor/compare/v2.4.1...v2.4.2
+[2.4.1]: https://github.com/TheKingOfChaos/RF-Power-Monitor/compare/v2.4.0...v2.4.1
+[2.4.0]: https://github.com/TheKingOfChaos/RF-Power-Monitor/compare/v2.3.0...v2.4.0
+[2.3.0]: https://github.com/TheKingOfChaos/RF-Power-Monitor/compare/v2.2.0...v2.3.0
+[2.2.0]: https://github.com/TheKingOfChaos/RF-Power-Monitor/compare/v2.1.1...v2.2.0
+[2.1.1]: https://github.com/TheKingOfChaos/RF-Power-Monitor/compare/v2.1.0...v2.1.1
+[2.1.0]: https://github.com/TheKingOfChaos/RF-Power-Monitor/compare/v2.0.1...v2.1.0
+[2.0.1]: https://github.com/TheKingOfChaos/RF-Power-Monitor/compare/v2.0.0...v2.0.1
+[2.0.0]: https://github.com/TheKingOfChaos/RF-Power-Monitor/compare/v1.0.2...v2.0.0
+[1.0.2]: https://github.com/TheKingOfChaos/RF-Power-Monitor/compare/v1.0.1...v1.0.2
+[1.0.1]: https://github.com/TheKingOfChaos/RF-Power-Monitor/compare/v1.0.0...v1.0.1
+[1.0.0]: https://github.com/TheKingOfChaos/RF-Power-Monitor/releases/tag/v1.0.0

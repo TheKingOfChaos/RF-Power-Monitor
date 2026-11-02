@@ -215,7 +215,8 @@ An item is only ticked when it is implemented **and** its tests exist and pass (
 
 ## 16. Name RF-Power-Monitor (3.0.0)
 - [x] Renamed from RF-UPS-Monitor: firmware texts, default hostname `rf-power-monitor`, `RF-POWER-MONITOR-MIB`, LibreNMS OS `rfpowermonitor`, `RFPOWER_*` test variables, board generator, docs and diagrams — native suites (names pinned: default and fallback hostname, page title, stored old name kept), net-snmp check, HIL suites on the renamed firmware, LibreNMS rediscovery
-- [ ] Rename the GitHub repository and the local folder (the user's call)
+- [x] Rename the GitHub repository: `TheKingOfChaos/RF-Power-Monitor` (2026-11-02; GitHub redirects the old URLs), links in CHANGELOG, `library.json` and the MIB updated
+- [ ] Rename the local folder (the user's call)
 
 ## Notes
 - SNMP must be v1 and v2c (no v3) and our own code; networking may use libraries
