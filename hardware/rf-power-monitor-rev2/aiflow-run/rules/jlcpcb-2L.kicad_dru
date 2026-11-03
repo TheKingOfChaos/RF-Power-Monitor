@@ -1,0 +1,47 @@
+# adom-aiflow rules: jlcpcb 2L (from adom/pcb-design-rules)
+(version 1)
+
+# JLCPCB 2-layer design rules (standard process)
+# 
+# Min trace width: 0.1 mm (4.0 mil) - 1 oz copper outer layer
+# Min spacing: 0.1 mm (4.0 mil) - 1 oz copper, different nets
+# Min drill: 0.15 mm (5.91 mil)
+# Min via: 0.15 mm hole / 0.25 mm pad
+# Annular ring: via 0.18 mm
+# Copper to board edge: 0.2 mm
+# Hole to hole: 0.2 mm
+# Board thickness options: 0.4 mm, 0.6 mm, 0.8 mm, 1.0 mm, 1.2 mm, 1.6 mm, 2.0 mm
+# Copper weight options: 1 oz, 2 oz, 2.5 oz, 3.5 oz, 4.5 oz
+# Surface finishes: HASL leaded, HASL lead-free, ENIG
+# Max board size: 670 x 600 mm
+# 
+# 2 oz: min trace/spacing 0.16/0.16 mm (6.5/6.5 mil). 2.5 oz: 0.2/0.2 mm (8/8 mil). 3.5 oz: 0.25/0.25 mm (10/10 mil). 4.5 oz: 0.3/0.3 mm (12/12 mil). Min drill 0.15 mm costs more. Via diameter should be 0.1 mm (0.15 mm preferred) larger than via hole, preferred min via hole 0.2 mm. PTH annular ring 2 oz: 0.254 mm or above. NPTH pad annular ring 0.45 mm recommended. Min NPTH 0.5 mm. Min plated slot width 0.5 mm. Pad to track clearance 0.1 mm. SMD pad to pad clearance different nets 0.15 mm. Via hole to track 0.2 mm, PTH to track 0.28 mm (0.35 recommended), NPTH to track 0.2 mm. Same-net track spacing 0.25 mm. Min silk text height 1.0 mm (40 mil). Soldermask opening to neighboring trace clearance 0.09 mm. Trace width tolerance plus/minus 20 percent.
+# 
+# Sources:
+# - https://jlcpcb.com/capabilities/pcb-capabilities (read 2026-09-03)
+
+(rule "min-track-width"
+  (constraint track_width (min 0.1mm))
+  (layer "*.Cu")
+  (condition "A.type == 'track'"))
+
+(rule "min-clearance"
+  (constraint clearance (min 0.1mm))
+  )
+
+(rule "min-hole"
+  (constraint hole (min 0.15mm))
+  (condition "A.type == 'pad' || A.type == 'via'"))
+
+(rule "min-via-diameter"
+  (constraint via_diameter (min 0.25mm))
+  (condition "A.type == 'via'"))
+
+(rule "min-edge-clearance"
+  (constraint edge_clearance (min 0.2mm))
+  (condition "A.type == 'track'"))
+
+(rule "min-silk-thickness"
+  (constraint text_thickness (min 0.15mm))
+  (layer "*.SilkS")
+  (condition "A.type == 'text' || A.type == 'graphic'"))

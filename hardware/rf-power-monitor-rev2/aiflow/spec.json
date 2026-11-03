@@ -1,0 +1,227 @@
+{
+ "board": "RF-Power-Monitor rev2: RP2040 + W5500 + WIZPoE-P1 PoE module, isolated 230 VAC mains detector, TMP1075; 100 x 64 mm, 2 layers, JLCPCB",
+ "title": "RF-Power-Monitor rev2",
+ "copperUm": 35,
+ "clearance": 0.1,
+ "edgeClearance": 0.3,
+ "fab": {
+  "rules": "jlcpcb"
+ },
+ "sourcing": {
+  "profile": "jlcpcb"
+ },
+ "requireEvidence": [
+  "calcs",
+  "simulation"
+ ],
+ "viaSignal": 0.6,
+ "drillSignal": 0.3,
+ "wideNets": {
+  "VSYS": [
+   0.6,
+   0.4,
+   0.25
+  ],
+  "VBUS": [
+   0.5,
+   0.3,
+   0.25
+  ],
+  "+3V3": [
+   0.5,
+   0.3,
+   0.2
+  ],
+  "/BUCK_SW": [
+   0.6,
+   0.4
+  ]
+ },
+ "midNets": {
+  "3V3A": [
+   0.4,
+   0.25
+  ],
+  "+1V1": [
+   0.4,
+   0.25
+  ],
+  "GND": [
+   0.4,
+   0.25
+  ]
+ },
+ "loads": {
+  "VSYS": {
+   "amps": 0.6
+  },
+  "VBUS": {
+   "amps": 0.5
+  },
+  "+3V3": {
+   "amps": 0.3
+  },
+  "/BUCK_SW": {
+   "amps": 0.6
+  }
+ },
+ "loadsNote": "VSYS 0.6 A covers USB-powered bench use with margin (calcs: 0.13 A typical); 3V3 design load 0.3 A",
+ "hot": {
+  "U3": {
+   "watts": 0.45,
+   "note": "W5500 at 100 Mbit/s transmitting: 132 mA x 3.3 V (datasheet 5.4); LQFP-48, no exposed pad",
+   "maxRiseC": 70
+  },
+  "U4": {
+   "watts": 0.1,
+   "tabNet": "GND",
+   "note": "RP2040 ~30 mA x 3.3 V; exposed pad is GND",
+   "maxRiseC": 45
+  },
+  "U1": {
+   "watts": 0.08,
+   "note": "TLV62569 loss at 0.18 A (calcs)",
+   "maxRiseC": 60
+  }
+ },
+ "voltages": {
+  "VSYS": 5.0,
+  "+3V3": 3.33,
+  "VBUS": 5.0
+ },
+ "sources": {
+  "+3V3": [
+   "L1"
+  ],
+  "/BUCK_SW": [
+   "U1"
+  ],
+  "VSYS": [
+   "U2",
+   "D1"
+  ]
+ },
+ "switching": {
+  "/BUCK_SW": {
+   "highV": 5.25,
+   "lowV": 0,
+   "freqHz": 1500000,
+   "riseNs": 8
+  }
+ },
+ "switchNodes": [
+  "/BUCK_SW"
+ ],
+ "chains": [
+  {
+   "refs": [
+    "R5",
+    "R6"
+   ],
+   "direction": "down"
+  }
+ ],
+ "pours": [
+  {
+   "net": "GND",
+   "outline": true,
+   "layers": [
+    "F.Cu",
+    "B.Cu"
+   ],
+   "priority": 0,
+   "connection": "thermal",
+   "thermalGap": 0.3,
+   "thermalBridge": 0.35,
+   "name": "GND pour, both layers (net-class rules keep it 6.5 mm off mains and 2 mm off the PoE side)"
+  }
+ ],
+ "notPoured": [
+  "/AC_L",
+  "/AC_N",
+  "/L_FUSED",
+  "/N_MID1",
+  "/N_MID2",
+  "/OPTO_A",
+  "/OPTO_K",
+  "CHASSIS",
+  "/POE_VC1A",
+  "/POE_VC1B",
+  "/POE_SP45",
+  "/POE_SP78"
+ ],
+ "notPouredNote": "mains and PoE (MDI) nets are isolated domains: tracks only, no pour",
+ "track": 0.2,
+ "stub": 0.15,
+ "minTrackWidth": 0.15,
+ "netClearance": {
+  "/AC_L": 0.8,
+  "/AC_N": 0.8,
+  "/L_FUSED": 0.8,
+  "/N_MID1": 0.8,
+  "/N_MID2": 0.8,
+  "/OPTO_A": 0.8,
+  "/OPTO_K": 0.8,
+  "/MDI_TX_P": 0.3,
+  "/MDI_TX_N": 0.3,
+  "/MDI_RX_P": 0.3,
+  "/MDI_RX_N": 0.3,
+  "/POE_VC1A": 0.3,
+  "/POE_VC1B": 0.3,
+  "/POE_SP45": 0.3,
+  "/POE_SP78": 0.3,
+  "/BS1": 0.3,
+  "/BS2": 0.3,
+  "/BS3": 0.3,
+  "/BS4": 0.3,
+  "/BS_COM": 0.3,
+  "CHASSIS": 0.3
+ },
+ "isolationDomains": [
+  {
+   "name": "mains",
+   "nets": [
+    "/AC_L",
+    "/AC_N",
+    "/L_FUSED",
+    "/N_MID1",
+    "/N_MID2",
+    "/OPTO_A",
+    "/OPTO_K"
+   ],
+   "clearance": 6.6
+  },
+  {
+   "name": "PoE / MDI",
+   "nets": [
+    "/MDI_TX_P",
+    "/MDI_TX_N",
+    "/MDI_RX_P",
+    "/MDI_RX_N",
+    "/POE_VC1A",
+    "/POE_VC1B",
+    "/POE_SP45",
+    "/POE_SP78",
+    "/BS1",
+    "/BS2",
+    "/BS3",
+    "/BS4",
+    "/BS_COM",
+    "CHASSIS"
+   ],
+   "clearance": 2.1
+  }
+ ],
+ "isolationDomainsNote": "KiCad rules: mains 6.5 mm clearance / 6.4 mm creepage, PoE 2.0 mm; +0.1 mm for the router's grid",
+ "hotNote": "Rise budgets from each part's ratings at up to 40 C enclosure ambient: W5500 Tj 125 C max (datasheet 5.1) -> 85 C rise, budget 70; TLV62569 Tj 125 C operating -> budget 60; RP2040 85 C ambient rating -> budget 45",
+ "placement": {
+  "edgeConnectors": {
+   "J2": {
+    "footprint": "PCM_rf-power-monitor-rev2:RJ45-TH_KH-RJ45-56-8P8C-D",
+    "edge": "minX",
+    "maxCourtyardOverhangMm": 3.35,
+    "reason": "Reviewed with the owner 2026-11-03: the RJ45 sticks out over the left edge to pass through the case wall, as rev1's module jack did (4.8 mm). This jack's 3.2 mm board-lock holes allow 3.37 mm (0.5 mm of board beside them): the jack front is 3.1 mm and its courtyard 3.30 mm past the straight edge x=100, every pad inside the board."
+   }
+  }
+ }
+}

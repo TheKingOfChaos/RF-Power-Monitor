@@ -1,0 +1,5 @@
+(fp_lib_table
+  (version 7)
+  (lib (name "RFPM_Rev2")(type "KiCad")(uri "${KIPRJMOD}/lib/RFPM_Rev2.pretty")(options "")(descr "RF-Power-Monitor rev2: project footprints (WIZPoE-P1, test pads)"))
+  (lib (name "PCM_rf-power-monitor-rev2")(type "KiCad")(uri "${KIPRJMOD}/lib/pcm/footprints/rf-power-monitor-rev2.pretty")(options "")(descr "Board parts library, copy of the wiki PCM package"))
+)

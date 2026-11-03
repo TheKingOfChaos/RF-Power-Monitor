@@ -1,0 +1,128 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><title>RF-Power-Monitor rev2 datasheet</title>
+<style>
+@page { size: A4; margin: 16mm 15mm 16mm 15mm; }
+body { font-family: "Segoe UI", Arial, sans-serif; font-size: 9.5pt; color: #111; line-height: 1.35; }
+h1 { font-size: 20pt; margin: 0 0 2pt 0; }
+h2 { font-size: 12pt; border-bottom: 1.5px solid #333; padding-bottom: 2pt; margin: 14pt 0 5pt 0; }
+.sub { color: #444; font-size: 10.5pt; margin-bottom: 8pt; }
+table { border-collapse: collapse; width: 100%; margin: 3pt 0 6pt 0; }
+th, td { border: 1px solid #bbb; padding: 2.5pt 5pt; text-align: left; vertical-align: top; }
+th { background: #eee; }
+td.n { text-align: right; white-space: nowrap; }
+.note { font-size: 8.5pt; color: #444; }
+.warn { border-left: 3px solid #c60; padding: 3pt 7pt; background: #fff6ec; margin: 5pt 0; }
+img { max-width: 100%; }
+.pb { page-break-before: always; }
+.cols { display: flex; gap: 10pt; } .cols > div { flex: 1; }
+</style></head><body>
+
+<h1>RF-Power-Monitor rev2</h1>
+<div class="sub">Mains-presence monitor with SNMP over Ethernet. RP2040 + W5500 + WIZPoE-P1 PoE module on one 100 × 64 mm two-layer board.<br>
+Board revision 2, design data 2026-11-03. Author: Kenneth Foli Jørgensen. Designed with Adom AI Flow in KiCad 10.</div>
+
+<div class="warn"><b>Status: design, not built.</b> Every value in this datasheet is a design limit, a calculation or a simulation. No board has been built or measured yet. A human review of the board, BOM and fabrication files is advised before ordering.</div>
+
+<img src="../../out/img/board-top.png" alt="Assembled board, 3D render from KiCad (WIZPoE-P1 module not modelled)">
+<div class="note">3D render from KiCad. The plug-in WIZPoE-P1 PoE module (U2) has no 3D model and appears as its two 1×4 header pad rows to the left of centre.</div>
+
+<h2>1. Description</h2>
+<p>The board detects whether 230 VAC mains is present and reports it over 10/100 Ethernet with SNMP v1/v2c (traps, IF-MIB counters, CPU and ambient temperature). Rev1 was a carrier for the WIZnet W5500-EVB-Pico-PoE module. Rev2 puts the whole module on the board except the PoE power stage, which stays the plug-in WIZnet WIZPoE-P1. The RP2040 core copies the Raspberry Pi Pico, so the existing firmware (Arduino-Pico board <code>pico</code>) runs with an unchanged pin map.</p>
+
+<h2>2. Operating envelope (design limits)</h2>
+<table>
+<tr><th>Parameter</th><th>Min</th><th>Typ</th><th>Max</th><th>Unit</th><th>Basis</th></tr>
+<tr><td>PoE input (IEEE 802.3af PD, mode A or B)</td><td class="n">37</td><td class="n">48</td><td class="n">57</td><td>V</td><td>WIZPoE-P1 module</td></tr>
+<tr><td>USB-C VBUS input</td><td class="n">4.5</td><td class="n">5.0</td><td class="n">5.5</td><td>V</td><td>USB 2.0 device</td></tr>
+<tr><td>VSYS (5 V rail into the buck)</td><td class="n">4.3</td><td class="n">5.0</td><td class="n">5.25</td><td>V</td><td>calc: USB through B5819W, or WIZPoE-P1 output</td></tr>
+<tr><td>+3V3 output</td><td class="n">3.21</td><td class="n">3.33</td><td class="n">3.45</td><td>V</td><td>calc: TLV62569 VFB tolerance, 1 % divider</td></tr>
+<tr><td>+3V3 design load</td><td></td><td class="n">0.18</td><td class="n">0.30</td><td>A</td><td>calc: W5500 0.132 A + RP2040 0.03 A + rest</td></tr>
+<tr><td>VSYS load</td><td></td><td class="n">0.134</td><td></td><td>A</td><td>calc</td></tr>
+<tr><td>Buck output ripple</td><td></td><td class="n">4.7</td><td></td><td>mV</td><td>simulation (ngspice, 0.3 A)</td></tr>
+<tr><td>Mains sense input (L–N)</td><td class="n">0</td><td class="n">230</td><td class="n">264</td><td>VAC</td><td>presence detection only, 1.2 mA peak</td></tr>
+<tr><td>Ambient temperature (design)</td><td class="n">0</td><td></td><td class="n">40</td><td>°C</td><td>indoor enclosure, assumed</td></tr>
+</table>
+
+<h2>3. Functional blocks</h2>
+<table>
+<tr><th>Block</th><th>Parts</th><th>Notes</th></tr>
+<tr><td>MCU</td><td>U4 RP2040, U5 W25Q16JVSSIQ 2 MB QSPI flash, Y2 12 MHz ABM8</td><td>Pico reference design: 1.1 V core regulator inside the RP2040, BOOTSEL (SW1), RUN reset (SW2)</td></tr>
+<tr><td>Ethernet</td><td>U3 W5500, Y1 25 MHz, T1 HR601680 1CT:1CT, J2 RJ45 (no magnetics, with LEDs)</td><td>10/100, auto-negotiation (PMODE 111), MDI only (the W5500 has no auto-MDIX)</td></tr>
+<tr><td>PoE</td><td>U2 WIZPoE-P1 isolated 802.3af PD module, 5 V 1.5 A</td><td>Fed from the transformer centre taps (mode A) and the spare pairs (mode B). Fitted by hand, soldered or on 2 × 1×4 2.54 mm sockets</td></tr>
+<tr><td>Power</td><td>U1 TLV62569 1.5 MHz buck, L1 2.2 µH, D1 B5819W</td><td>VSYS → +3V3. USB-C VBUS reaches VSYS through D1, as on the Pico</td></tr>
+<tr><td>Mains sense</td><td>F1 T1A, R33–R36 4 × 68 kΩ 1206, U6 LTV-814S, U7 74LVC1G14</td><td>Rev1 circuit, unchanged. MAINS_OK (GP27) high = mains present</td></tr>
+<tr><td>Temperature</td><td>U8 TMP1075 on I2C0, address 0x48</td><td>Placed away from U1, U3 and U4</td></tr>
+<tr><td>User</td><td>D2 blue status (GP25), D3 green mains ON, D4 red mains OFF, SW3 factory reset (GP22)</td><td>D3 and D4 are driven by hardware, not firmware</td></tr>
+</table>
+
+<h2 class="pb">4. Connectors and pin map</h2>
+<table>
+<tr><th>Ref</th><th>Connector</th><th>Position (mm from top-left)</th><th>Signals</th></tr>
+<tr><td>J2</td><td>RJ45 8P8C, shielded, LEDs (Kinghelm KH-RJ45-56-8P8C-D)</td><td>7.9, 11.5 (left edge; the jack front is 3.1 mm past it)</td><td>1/2 TX±, 3/6 RX±, 4/5 and 7/8 PoE spare pairs; link and activity LEDs</td></tr>
+<tr><td>J1</td><td>USB-C receptacle, USB 2.0 (HRO TYPE-C-31-M-12)</td><td>95.6, 21.0 (right edge)</td><td>VBUS, D+, D−, CC1/CC2 5.1 kΩ (UFP), GND</td></tr>
+<tr><td>J4</td><td>2-pole screw terminal, 5.08 mm, 250 VAC</td><td>93.5, 52.0 (right edge)</td><td>AC L, AC N (mains sense only)</td></tr>
+<tr><td>J3</td><td>SWD, 1×3 2.54 mm, not fitted</td><td>78.8, 10.0</td><td>1 SWCLK, 2 GND, 3 SWDIO (Pico order)</td></tr>
+<tr><td>U2</td><td>WIZPoE-P1 sockets, 2 × 1×4 2.54 mm</td><td>21.5, 33.5</td><td>VC1± (transformer centre taps), VC2± (spare pairs), 5 V out, GND</td></tr>
+</table>
+
+<table>
+<tr><th>RP2040 GPIO</th><th>Function</th><th>RP2040 GPIO</th><th>Function</th></tr>
+<tr><td>GP16</td><td>W5500 MISO (SPI0)</td><td>GP4 / GP5</td><td>I2C0 SDA / SCL (TMP1075)</td></tr>
+<tr><td>GP17</td><td>W5500 CS</td><td>GP22</td><td>Factory reset button, active low</td></tr>
+<tr><td>GP18</td><td>W5500 SCK</td><td>GP24</td><td>VBUS sense</td></tr>
+<tr><td>GP19</td><td>W5500 MOSI</td><td>GP25</td><td>Status LED (blue)</td></tr>
+<tr><td>GP20</td><td>W5500 RST</td><td>GP27</td><td>MAINS_OK, high = mains present</td></tr>
+<tr><td>GP21</td><td>W5500 INT</td><td>GP29 (ADC3)</td><td>VSYS / 3</td></tr>
+</table>
+
+<h2>5. Programming</h2>
+<p>Hold BOOTSEL (SW1) while plugging in USB-C, or let <code>pio run -t upload</code> reset the RP2040 into its ROM UF2 bootloader over USB. SWD is available on J3 (not fitted). The firmware and its pin map are the same as for the W5500-EVB-Pico-PoE.</p>
+
+<h2>6. Isolation and protection</h2>
+<table>
+<tr><th>Boundary</th><th>Clearance</th><th>Creepage</th><th>Basis</th></tr>
+<tr><td>230 VAC mains sense ↔ everything else</td><td class="n">6.5 mm</td><td class="n">6.4 mm</td><td>rev1 rules, held by the KiCad DRC rule file and the router's isolation domains; 5 kVrms optocoupler; routed slot under U6</td></tr>
+<tr><td>Ethernet line side and PoE ↔ logic</td><td class="n">2.0 mm</td><td></td><td>1500 Vrms (802.3 and the HR601680 hipot rating), Bob Smith termination to chassis</td></tr>
+</table>
+<p>The mains input is fused (F1, T1A 250 VAC). The mains area has no ground pour on either layer and has its own silkscreen frame with a hazardous-voltage warning. There is no TVS protection on the Ethernet, USB or mains connector pins (see section 9).</p>
+
+<h2>7. Mechanical</h2>
+<table>
+<tr><th>Item</th><th>Value</th></tr>
+<tr><td>Outline</td><td>100.0 × 64.0 mm, 1.0 mm corner radius</td></tr>
+<tr><td>Mounting holes</td><td>4 × M3 (3.2 mm) at (3.5, 60.5), (36.0, 60.5), (96.5, 3.5), (96.5, 38.0) mm from top-left</td></tr>
+<tr><td>RJ45 overhang</td><td>J2's front face projects 3.1 mm past the left edge (courtyard 3.3 mm) to pass through the case wall; its 3.2 mm board-lock holes keep 0.5 mm of board to the edge</td></tr>
+<tr><td>Tallest parts</td><td>J2 RJ45 and J4 terminal block. The WIZPoE-P1 module sits above U2's sockets; leave headroom for it</td></tr>
+<tr><td>Enclosure</td><td>New case to follow; rev1 case does not fit</td></tr>
+</table>
+
+<h2>8. Fabrication</h2>
+<table>
+<tr><th>Item</th><th>Value</th></tr>
+<tr><td>Stack</td><td>2 layers, 1.6 mm FR-4, 1 oz copper, ENIG finish, black solder mask, white silkscreen; ground pours on both layers (60 % front, 72 % back)</td></tr>
+<tr><td>Rules</td><td>JLCPCB 2-layer pack plus isolation rules; minimum track 0.15 mm, clearance 0.1–0.15 mm</td></tr>
+<tr><td>Assembly</td><td>JLCPCB PCBA, 109 placed parts, 55 BOM lines, all with LCSC numbers; U2 (WIZPoE-P1) and J3 are not in the assembly BOM</td></tr>
+<tr><td>Files</td><td>Gerbers, drill, BOM and CPL checked against the board by AI Flow export; JLCPCB-format BOM/CPL generated from the design BOM</td></tr>
+</table>
+
+<h2 class="pb">9. Verification and known limits</h2>
+<table>
+<tr><th>Check</th><th>Result</th><th>Kind</th></tr>
+<tr><td>Schematic ↔ board, ERC, DRC, connectivity, courtyards, part bodies</td><td>Pass: 0 errors, 0 unconnected</td><td>design check</td></tr>
+<tr><td>Track current (IPC-2221, every loaded net)</td><td>Pass within 10 °C</td><td>calculation</td></tr>
+<tr><td>Current density (Adom Fields)</td><td>Pass with one reviewed peak: 63 A/mm² at the VSYS track corner into U1 pin 1, calculated at a 0.6 A design load. About 23 A/mm² at the real 0.22 A</td><td>field solve</td></tr>
+<tr><td>Temperature rise, still air</td><td>Board peak +19 °C; U3 W5500, U4 RP2040 and U1 buck each within their rise budgets (70, 45 and 60 °C)</td><td>field solve</td></tr>
+<tr><td>Buck ripple and peak inductor current</td><td>4.7 mV, 0.64 A peak (L1 Isat 2.0 A)</td><td>simulation</td></tr>
+</table>
+<div class="warn"><b>Known limits and risks</b>
+<ul style="margin:3pt 0 0 0">
+<li>The WIZPoE-P1 specifies a 150 mA minimum load on 5 V; this board draws about 134 mA typical. Check the module's behaviour at light load, or add a bleed load if it cycles.</li>
+<li>HR601680 is a 10/100 transformer not rated for PoE. Its centre taps carry about 19 mA DC here (802.3af allows 350 mA per pair). Low risk at this current, but not a PoE-rated part.</li>
+<li>The RP2040 exposed pad has 3 of the 6 thermal vias AI Flow asks for; a +3V3 track runs underneath. The chip dissipates about 0.1 W and the thermal check passed.</li>
+<li>+3V3 IR drop is 46 mV (1.4 %) from U1 to the farthest load at the 0.3 A design load (field solve); the rail stays at about 3.28 V, well inside every part's range.</li>
+<li>No TVS diodes on external connectors; no EMC or safety testing has been done. The mains section has not been hipot tested.</li>
+<li>Silkscreen: 19 small passives carry their reference on the fabrication layer only; 7 test points are unlabelled; the USB-C input has no voltage label.</li>
+</ul></div>
+
+<p class="note">Sources: design/requirements.json, design/calcs.json, design/sim/results.json, aiflow-run/run.json (AI Flow finish and export records), in the project folder hardware/rf-power-monitor-rev2.</p>
+</body></html>

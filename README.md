@@ -53,7 +53,8 @@ See [TODO.md](TODO.md) for the detailed plan.
 | [docs/LIBRENMS.md](docs/LIBRENMS.md) | Monitoring the device with LibreNMS: install, sensors, alerts, traps, Docker test setup |
 | [docs/TESTING.md](docs/TESTING.md) | Test layers, how to run them, automated mains tests with a smart plug, what each suite covers |
 | [CHANGELOG.md](CHANGELOG.md) | What changed in each version |
-| [hardware/pico-poe-mains-carrier/](hardware/pico-poe-mains-carrier/README.md) | Carrier PCB (KiCad 10): circuit, isolation, mounting, fab files for JLCPCB, 3D models |
+| [hardware/pico-poe-mains-carrier/](hardware/pico-poe-mains-carrier/README.md) | Carrier PCB rev 1.1 (KiCad 10): circuit, isolation, mounting, fab files for JLCPCB, 3D models |
+| [hardware/rf-power-monitor-rev2/](hardware/rf-power-monitor-rev2/README.md) | Rev 2 board, RP2040 and W5500 on the board (designed, not built yet): differences from rev 1, pins, isolation, known limits, fab files |
 | [docs/diagrams/](docs/diagrams/README.md) | Excalidraw diagrams (editable) of the system, firmware, SNMP, mains flow, settings and tests |
 | [.clinerules](.clinerules) | Project and test rules |
 
@@ -80,6 +81,12 @@ How the carrier and the firmware fit together:
 | Temperature | TMP1075 on I2C0 (GP4 SDA, GP5 SCL, address 0x48) | `ambientTemperature` (63050.5), read every 2 s; absent without the carrier |
 | Factory reset button | SW1 from GP22 to GND, below the module (board v1.1) | Reads GPIO22 with the internal pull-up, hold 10 s: matches |
 | Mains loss timing | The RC holds the signal about 30-50 ms after mains is lost (bridges zero crossings) | The firmware sees the loss that much later, within the 80 ms `.clinerules` allows from mains to detection |
+
+### Rev 2 board (designed, not built yet)
+
+![RF-Power-Monitor rev2, 3D render](hardware/rf-power-monitor-rev2/out/img/board-iso-left.png)
+
+[hardware/rf-power-monitor-rev2/](hardware/rf-power-monitor-rev2/README.md) is a single 2-layer board (100 x 64 mm, KiCad 10, designed with Adom AI Flow) that takes over everything from the W5500-EVB-Pico-PoE except the PoE stage: RP2040 with 2 MB flash (Pico core), W5500 with magnetics and RJ45, a TLV62569 3.3 V buck and USB-C. PoE stays the plug-in WIZnet WIZPoE-P1 module. The mains detector, TMP1075 and factory reset button are the rev 1 circuits, and the pin map is the same, so the firmware runs unchanged. JLCPCB fab and assembly files are in `out/fab/`. No rev 2 board has been built yet; its README lists the open risks, such as the WIZPoE-P1's 150 mA minimum load.
 
 ### Pin configuration
 
@@ -483,7 +490,7 @@ src/net_stats.cpp           Counts frames at the lwIP driver, reads the W5500 PH
 src/cpu_temp.cpp            RP2040 die temperature, averaged
 src/ambient_temp.cpp        TMP1075 ambient temperature over I2C0
 mibs/                       RF-POWER-MONITOR-MIB
-hardware/                   Carrier PCB for the W5500-EVB-Pico-PoE (KiCad project, fab files, 3D, renders)
+hardware/                   Carrier PCB rev 1.1 for the W5500-EVB-Pico-PoE, rev 2 single board, case (KiCad projects, fab files, 3D, renders)
 logo/                       RF logo (SVG), used on the web page and for the LibreNMS icons
 librenms/                   LibreNMS OS detection and discovery definitions, RF logo icons, Docker test setup
 test/host/                  Host build of the agent for net-snmp checks

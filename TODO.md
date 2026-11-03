@@ -230,6 +230,16 @@ An item is only ticked when it is implemented **and** its tests exist and pass (
 - [x] Default hostname `RF-Power-<last 6 MAC hex digits>`; empty sysName or the old default `rf-power-monitor` count as not set; `-` in menu option 4 goes back to it — native `test_default_hostname_*`, `test_unset_hostname_*`, `test_chosen_hostname_is_kept`, settings default empty; HIL `test_default_hostname_is_rf_power_and_the_mac_tail`
 - [x] Hostname changes before a DHCP lease no longer call `dhcp_renew()` (it stopped DHCP from getting a lease) — HIL: device gets its lease with the MAC-based name
 
+## 19. Hardware: rev 2 board (`hardware/rf-power-monitor-rev2`)
+- [x] Design: RP2040 + W5500 on the board, WIZPoE-P1 plug-in PoE module, rev 1 mains detector, TMP1075 and factory reset; same pin map. KiCad 10, 2 layers, 100 x 64 mm; ERC 0, DRC 0 errors (2 silkscreen warnings); JLCPCB Gerbers, BOM and CPL (designed with Adom AI Flow, 2026-11-03)
+- [ ] Human review of schematic, board, BOM and fab files before ordering
+- [ ] Order and assemble; bring-up measurements from `design/tests.json` (rails, crystals, W5500, mains sense, LEDs)
+- [ ] Check that the WIZPoE-P1 does not cycle at the board's ~134 mA load (module minimum 150 mA); add a bleed load if it does
+- [ ] Firmware on rev 2: flash over USB-C, then the full native, embedded and HIL suites, incl. mains loss/restore and the factory reset button
+- [ ] `HARDWARE_REVISION` (entPhysicalHardwareRev) for rev 2 boards: the firmware cannot tell the boards apart, so decide on a build flag or a stored setting
+- [ ] Datasheet's pin table lists GP29 as VSYS/3, but GP29 is not connected on rev 2: fix it when the datasheet is regenerated
+- [ ] New case (the rev 1 case does not fit)
+
 ## Notes
 - SNMP must be v1 and v2c (no v3) and our own code; networking may use libraries
 - Memory limits: 70 % flash, 50 % RAM (3.1.0: 19.6 % flash / 47.3 % RAM, built with -Os). About 7 KB of RAM is left below the 50 % limit: check the build's RAM line before adding buffers (the web page body and response alone are 22 KB)

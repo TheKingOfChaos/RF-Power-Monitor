@@ -1,0 +1,14 @@
+{"$schema": "adom/led-states@1", "leds": [
+ {"ref": "D2", "mpn": "19-217/BHC-ZL1M2RY/6T", "colour": {"name": "blue", "dominant_nm": 470, "hex": "#3b6bff"},
+  "anode_net": "LED_STATUS_A", "cathode_net": "GND", "series": ["R32"], "current_mA": 1.06,
+  "on_when": {"kind": "gpio", "mcu": "U4", "pin": "37", "port": "GPIO25", "active": "high"},
+  "evidence": "design/calcs.json 'I status LED blue GP25': (3.3 - Vf 2.8) / 470 R; firmware status LED (LED_BUILTIN, as on the Pico)"},
+ {"ref": "D3", "mpn": "KT-0805G", "colour": {"name": "green", "dominant_nm": 570, "hex": "#5fd35f"},
+  "anode_net": "LED_G", "cathode_net": "GND", "series": ["R38"], "current_mA": 13,
+  "on_when": {"kind": "signal", "net": "MAINS_OK", "active": "high"},
+  "evidence": "rev1 mains circuit: U7 SN74LVC1G14 Schmitt inverter drives MAINS_OK high when mains is present; (3.3 - Vf 2.0) / 100 R, within the LVC1G14's 24 mA drive"},
+ {"ref": "D4", "mpn": "NCD0805R1", "colour": {"name": "red", "dominant_nm": 625, "hex": "#ff3b30"},
+  "anode_net": "LED_R", "cathode_net": "MAINS_OK", "series": ["R39"], "current_mA": 3.9,
+  "on_when": {"kind": "signal", "net": "MAINS_OK", "active": "low"},
+  "evidence": "rev1 mains circuit: R39 330 R from +3V3; lit when U7 pulls MAINS_OK low (mains absent); (3.3 - Vf 2.0) / 330 R"}
+]}

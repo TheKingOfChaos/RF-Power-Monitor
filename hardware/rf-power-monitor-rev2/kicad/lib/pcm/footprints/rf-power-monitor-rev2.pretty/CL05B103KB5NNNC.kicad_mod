@@ -1,0 +1,132 @@
+(footprint "CL05B103KB5NNNC"
+	(layer "F.Cu")
+	(descr "Capacitor SMD 0402 (1005 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 76, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf)"
+	)
+	(tags "capacitor")
+	(property "Reference" "REF**"
+		(at 0 -1.16)
+		(layer "F.SilkS")
+		(hide yes)
+		(uuid "677c1947-1975-4fcb-98a7-7d4d7fde73c3")
+		(effects
+			(font (size 1 1) (thickness 0.15))
+		)
+	)
+	(property "Value" "CL05B103KB5NNNC"
+		(at 0 1.16)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "14dc80d6-8d3d-482e-87e8-f6e6c77f2101")
+		(effects
+			(font (size 1 1) (thickness 0.15))
+		)
+	)
+	(property "Datasheet" "https://product.samsungsem.com/part/download.do?masterKey=CL05B103KB5NNN&type=specsheet"
+		(at 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "876c6ece-6f1b-4e6b-840a-b69cff0ba0eb")
+		(effects
+			(font (size 1.27 1.27))
+		)
+	)
+	(property "Description" "50V X7R ±10%"
+		(at 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "901fc140-617d-43b5-8aba-e3955249ff56")
+		(effects
+			(font (size 1.27 1.27))
+		)
+	)
+	(property "MFR" "FH (Guangdong Fenghua Advanced Tech)"
+		(at 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "21775632-6ff2-4eb7-a8dc-2df64ad086da")
+		(effects
+			(font (size 1 1) (thickness 0.15))
+		)
+	)
+	(property "PN" "0402B472K500NT"
+		(at 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "7ac36f51-8547-4aad-949e-779d57f25a83")
+		(effects
+			(font (size 1 1) (thickness 0.15))
+		)
+	)
+	(property "LCSC" "C1538"
+		(at 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "02bff8f5-4c88-4b8c-8b20-ad3cb5e0fd8d")
+		(effects
+			(font (size 1 1) (thickness 0.15))
+		)
+	)
+	(property ki_fp_filters "C_*")
+	(units
+		(unit (name "A") (pins "1" "2"))
+	)
+	(attr smd)
+	(duplicate_pad_numbers_are_jumpers no)
+	(fp_line
+		(start -0.107836 -0.36)
+		(end 0.107836 -0.36)
+		(stroke (width 0.12) (type solid))
+		(layer "F.SilkS")
+		(uuid "f258d771-bcc7-4c46-9ef7-34091697eb52")
+	)
+	(fp_line
+		(start -0.107836 0.36)
+		(end 0.107836 0.36)
+		(stroke (width 0.12) (type solid))
+		(layer "F.SilkS")
+		(uuid "ed7f9d59-197e-4b71-8e68-e603be46d42e")
+	)
+	(fp_poly
+		(pts (xy -0.91 -0.46) (xy 0.91 -0.46) (xy 0.91 0.46) (xy -0.91 0.46))
+		(stroke (width 0.05) (type solid))
+		(fill no)
+		(layer "F.CrtYd")
+		(uuid "0c270294-d248-4e8b-9ea0-313ab52f6933")
+	)
+	(fp_poly
+		(pts (xy -0.5 -0.25) (xy 0.5 -0.25) (xy 0.5 0.25) (xy -0.5 0.25))
+		(stroke (width 0.1) (type solid))
+		(fill no)
+		(layer "F.Fab")
+		(uuid "8f7efb2a-47d6-4185-8d95-1aa2b392fdfa")
+	)
+	(fp_text user "${REFERENCE}"
+		(at 0 0)
+		(layer "F.Fab")
+		(uuid "a3a9f670-8729-42db-9ca0-21c82277b92d")
+		(effects
+			(font (size 0.25 0.25) (thickness 0.04))
+		)
+	)
+	(pad "1" smd roundrect
+		(at -0.48 0)
+		(size 0.56 0.62)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(roundrect_rratio 0.25)
+	)
+	(pad "2" smd roundrect
+		(at 0.48 0)
+		(size 0.56 0.62)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(roundrect_rratio 0.25)
+	)
+	(embedded_fonts no)
+	(model "${KICAD10_3RD_PARTY}/3dmodels/inc_adom_wiki_thekingofchaos_rf-power-monitor-rev2/rf-power-monitor-rev2.3dshapes/cl05b103kb5nnnc.step"
+		(offset (xyz 0 0 0))
+		(scale (xyz 1 1 1))
+		(rotate (xyz 0 0 0))
+	)
+)

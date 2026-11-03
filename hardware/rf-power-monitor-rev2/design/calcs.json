@@ -1,0 +1,205 @@
+{
+ "items": [
+  {
+   "name": "I W5500 100M transmitting",
+   "value": 0.132,
+   "unit": "A",
+   "note": "W5500 ds 5.4 power dissipation",
+   "source": "W5500 ds v1.1.0",
+   "kind": "typ"
+  },
+  {
+   "name": "I RP2040 + flash, 125 MHz both cores",
+   "value": 0.03,
+   "unit": "A",
+   "note": "RP2040 ds ~25 mA typ + flash active",
+   "source": "RP2040 datasheet",
+   "kind": "typ"
+  },
+  {
+   "name": "I LEDs, TMP1075, pull-ups",
+   "value": 0.015,
+   "unit": "A",
+   "note": "3 LEDs ~3-4 mA each + small loads",
+   "kind": "typ"
+  },
+  {
+   "name": "I 3V3 design load",
+   "value": 0.3,
+   "unit": "A",
+   "note": "about 1.7x the typical sum, margin for firmware/LED changes"
+  },
+  {
+   "name": "VFB TLV62569",
+   "value": 0.6,
+   "unit": "V",
+   "source": "TLV62569 ds 6.5",
+   "kind": "typ"
+  },
+  {
+   "name": "VFB min",
+   "value": 0.588,
+   "unit": "V",
+   "source": "TLV62569 ds 6.5",
+   "kind": "min",
+   "worstCase": true
+  },
+  {
+   "name": "VFB max",
+   "value": 0.612,
+   "unit": "V",
+   "source": "TLV62569 ds 6.5",
+   "kind": "max",
+   "worstCase": true
+  },
+  {
+   "name": "VOUT nominal",
+   "value": 3.3273,
+   "unit": "V",
+   "note": "0.6 V x (1 + R5/R6), R5 100k, R6 22k (ds eq. 2; R2 <= 200k)"
+  },
+  {
+   "name": "VSYS min (USB)",
+   "value": 4.3,
+   "unit": "V",
+   "note": "USB 4.75 V min minus B5819W ~0.45 V at 0.2 A",
+   "kind": "min",
+   "worstCase": true,
+   "source": "B5819W ds Vf 0.45 V @ 0.2 A"
+  },
+  {
+   "name": "VSYS max (PoE)",
+   "value": 5.25,
+   "unit": "V",
+   "note": "WIZPoE-P1 max output",
+   "source": "WIZPoE-P1 ds",
+   "kind": "max",
+   "worstCase": true
+  },
+  {
+   "name": "Inductor ripple worst (L -30 %, VIN 5.25)",
+   "value": 0.528,
+   "unit": "A",
+   "note": "dI = VOUT (1-D) / (L f)"
+  },
+  {
+   "name": "Buck loss at typical load",
+   "value": 0.08,
+   "unit": "W",
+   "note": "~88 % at 0.18 A (ds fig. efficiency at 5 V in)"
+  },
+  {
+   "name": "LDO alternative loss",
+   "value": 0.34,
+   "unit": "W",
+   "note": "why a buck: 4x less heat next to the TMP1075"
+  },
+  {
+   "name": "VSYS load (5 V)",
+   "value": 0.134,
+   "unit": "A",
+   "note": "3V3 load through the buck"
+  },
+  {
+   "name": "WIZPoE-P1 minimum load",
+   "value": 0.15,
+   "unit": "A",
+   "note": "ds 'Minimum Load' 150 mA min: typical VSYS load is near it; WIZnet's own EVB runs at the same load. Bench-check regulation at idle.",
+   "source": "WIZPoE-P1 ds",
+   "kind": "min"
+  },
+  {
+   "name": "PoE input current at 44 V",
+   "value": 0.019,
+   "unit": "A",
+   "note": "module efficiency 80 % typ; this flows in the HR601680 line centre taps (Mode A)"
+  },
+  {
+   "name": "W5500 crystal caps",
+   "value": 18.0,
+   "unit": "pF",
+   "note": "X322525MOB4SI CL 12 pF: C = 2 (CL - Cstray 3 pF) = 18 pF"
+  },
+  {
+   "name": "RP2040 crystal caps",
+   "value": 15,
+   "unit": "pF",
+   "note": "ABM8-272-T3 CL 10 pF with 15 pF and 1k series, as on the Pico (RP2040 HW design guide)"
+  },
+  {
+   "name": "I RJ45 link/act LED",
+   "value": 3.94,
+   "unit": "mA",
+   "note": "(3.3 - Vf 2.0) / 330"
+  },
+  {
+   "name": "I status LED blue GP25",
+   "value": 1.06,
+   "unit": "mA",
+   "note": "(3.3 - Vf 2.8) / 470"
+  },
+  {
+   "name": "Mains loop peak current",
+   "value": 1.19,
+   "unit": "mA",
+   "note": "325 V peak / 272k; rev1, about 50 mW per 1206"
+  },
+  {
+   "name": "Mains isolation",
+   "value": 6.5,
+   "unit": "mm",
+   "note": "clearance and 6.4 mm creepage to all other copper (rev1 .kicad_dru)"
+  },
+  {
+   "name": "MDI (PoE side) isolation",
+   "value": 2.0,
+   "unit": "mm",
+   "note": "RJ45 contacts, line windings, VC nets, Bob Smith network to GND/SELV copper: 1500 Vrms (802.3 / HR601680 hipot)"
+  }
+ ],
+ "checks": [
+  {
+   "name": "3V3 min (VFB min, 1 % resistors)",
+   "value": 3.2078,
+   "limit": ">= 3.0 V (RP2040 IOVDD 1.62-3.63, W5500 2.97-3.63)",
+   "pass": true,
+   "note": ""
+  },
+  {
+   "name": "3V3 max",
+   "value": 3.45,
+   "limit": "<= 3.6 V (W5500 3.63 V max)",
+   "pass": true,
+   "note": ""
+  },
+  {
+   "name": "VSYS max within TLV62569 VIN 5.5 V",
+   "value": 5.25,
+   "limit": "<= 5.5 V",
+   "pass": true,
+   "note": ""
+  },
+  {
+   "name": "Inductor peak current vs SWPA3015S2R2MT Isat",
+   "value": 0.5638,
+   "limit": "< 2.0 A (Isat, Sunlord)",
+   "pass": true,
+   "note": ""
+  },
+  {
+   "name": "WIZPoE-P1 output current",
+   "value": 0.1338,
+   "limit": "<= 1.5 A",
+   "pass": true,
+   "note": ""
+  },
+  {
+   "name": "Transformer centre-tap DC",
+   "value": 0.019,
+   "limit": "<< 350 mA (802.3af per pair)",
+   "pass": true,
+   "note": "HR601680 is not PoE-rated; its 8 mA OCL bias test is far below, but the DC splits evenly across the two half windings so the core does not bias; 30 mA is far below any winding limit. Mode B (spare pairs) bypasses it."
+  }
+ ],
+ "pass": true
+}

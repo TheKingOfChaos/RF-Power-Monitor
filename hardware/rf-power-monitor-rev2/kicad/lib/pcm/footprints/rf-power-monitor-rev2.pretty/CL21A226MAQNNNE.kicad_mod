@@ -1,0 +1,327 @@
+(footprint "CL21A226MAQNNNE"
+	(layer "F.Cu")
+	(descr "Capacitor SMD 0805 (2012 Metric), square (rectangular) end terminal, IPC-7351 nominal, (Body size source: IPC-SM-782 page 76, https://www.pcb-3d.com/wordpress/wp-content/uploads/ipc-sm-782a_amendment_1_and_2.pdf, https://docs.google.com/spreadsheets/d/1BsfQQcO9C6DZCsRaXUlFlo91Tg2WpOkGARC1WS5S8t0/edit?usp=sharing)"
+	)
+	(tags "capacitor")
+	(property "Reference" "REF**"
+		(at 0 -1.679999)
+		(unlocked yes)
+		(layer "F.SilkS")
+		(hide yes)
+		(uuid "ba0730c5-3332-4208-8f32-894d55805d8b")
+		(effects
+			(font (size 0.5 0.5) (thickness 0.125))
+		)
+	)
+	(property "Value" "CL21A226MAQNNNE"
+		(at 0 1.679999)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "e06ac489-eed1-4954-9c06-2e03de0cd480")
+		(effects
+			(font (size 0.5 0.5) (thickness 0.125))
+		)
+	)
+	(property "Datasheet" "https://product.samsungsem.com/part/download.do?masterKey=CL21A226MAQNNN&type=specsheet"
+		(at 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "58a5090c-0a54-485e-b374-a46f9fae6283")
+		(effects
+			(font (size 0.5 0.5) (thickness 0.125))
+		)
+	)
+	(property "Description" ""
+		(at 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "3984b0af-78a5-4d55-9e16-45da19b0e33c")
+		(effects
+			(font (size 0.5 0.5) (thickness 0.125))
+		)
+	)
+	(property "KiLib_Generator" "SMD_2terminal_chip_molded"
+		(at 0 0)
+		(unlocked yes)
+		(layer "F.SilkS")
+		(hide yes)
+		(uuid "d308ba7d-ab08-4bf4-bb84-e93e4cf65edb")
+		(effects
+			(font (size 0.5 0.5) (thickness 0.125))
+		)
+	)
+	(property "LCSC" "C45783"
+		(at 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "015b81d2-4fdd-4ec3-9cad-ee40168be0a8")
+		(effects
+			(font (size 0.5 0.5) (thickness 0.125))
+		)
+	)
+	(property "PN" "CL21A226MAQNNNE"
+		(at 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "646488d7-49b6-4929-9c2f-a6fbc9a065ec")
+		(effects
+			(font (size 0.5 0.5) (thickness 0.125))
+		)
+	)
+	(property "MFR" "Samsung Electro-Mechanics"
+		(at 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "8a10c579-7f22-42cd-b53b-38c8215b8a31")
+		(effects
+			(font (size 0.5 0.5) (thickness 0.125))
+		)
+	)
+	(property "Arrow Part Number" ""
+		(at 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "91b8fd46-998b-4d4a-ba88-f64f334e96e1")
+		(effects
+			(font (size 0.5 0.5) (thickness 0.125))
+		)
+	)
+	(property "Arrow Price/Stock" ""
+		(at 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "a0135e08-27fa-4cf3-88f7-e7a2491c29c5")
+		(effects
+			(font (size 0.5 0.5) (thickness 0.125))
+		)
+	)
+	(property "Attrition Qty" ""
+		(at 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "6bdf73d0-d086-4740-83ea-e772fb077fd0")
+		(effects
+			(font (size 0.5 0.5) (thickness 0.125))
+		)
+	)
+	(property "Category" ""
+		(at 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "e3172ff6-71d8-4e18-8012-de9797430560")
+		(effects
+			(font (size 0.5 0.5) (thickness 0.125))
+		)
+	)
+	(property "Class" ""
+		(at 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "306ecae0-eb95-4ba0-b9a7-9b795c0e5763")
+		(effects
+			(font (size 0.5 0.5) (thickness 0.125))
+		)
+	)
+	(property "Height" ""
+		(at 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "a2b119af-e732-4909-a6e9-c3ac6d8718e4")
+		(effects
+			(font (size 0.5 0.5) (thickness 0.125))
+		)
+	)
+	(property "LCSC Part" ""
+		(at 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "d5275702-cd5b-4548-9467-b51b7c294ffd")
+		(effects
+			(font (size 0.5 0.5) (thickness 0.125))
+		)
+	)
+	(property "MAXIMUM_PACKAGE_HEIGHT" ""
+		(at 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "d87caa3c-4be1-4ea8-9733-09d95a1d6d57")
+		(effects
+			(font (size 0.5 0.5) (thickness 0.125))
+		)
+	)
+	(property "Manufacturer_Name" ""
+		(at 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "9a18b72f-bf35-488e-8631-67594ee98fc2")
+		(effects
+			(font (size 0.5 0.5) (thickness 0.125))
+		)
+	)
+	(property "Manufacturer_Part_Number" ""
+		(at 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "811edc81-33ef-4b93-831c-8f5586bbfec3")
+		(effects
+			(font (size 0.5 0.5) (thickness 0.125))
+		)
+	)
+	(property "Minimum Qty" ""
+		(at 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "52d90ccf-aaf4-427c-bd58-7408edc4a1ec")
+		(effects
+			(font (size 0.5 0.5) (thickness 0.125))
+		)
+	)
+	(property "Mouser Part Number" ""
+		(at 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "98d32197-044c-4b97-9325-f953cf4d4799")
+		(effects
+			(font (size 0.5 0.5) (thickness 0.125))
+		)
+	)
+	(property "Mouser Price/Stock" ""
+		(at 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "9e48057e-0511-4263-98b4-51ea571281a2")
+		(effects
+			(font (size 0.5 0.5) (thickness 0.125))
+		)
+	)
+	(property "Part" ""
+		(at 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "d42221e2-5fc6-4c71-8f55-c2790f4d6ab2")
+		(effects
+			(font (size 0.5 0.5) (thickness 0.125))
+		)
+	)
+	(property "Price" ""
+		(at 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "ccbba9a8-dbb2-4dda-8603-8efccc53516b")
+		(effects
+			(font (size 0.5 0.5) (thickness 0.125))
+		)
+	)
+	(property "Process" ""
+		(at 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "df52f981-78d4-46f4-9196-2ee33fd2c2ee")
+		(effects
+			(font (size 0.5 0.5) (thickness 0.125))
+		)
+	)
+	(property "STANDARD" ""
+		(at 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "e865d6b3-bf55-4f1f-ba0c-2138331dbb26")
+		(effects
+			(font (size 0.5 0.5) (thickness 0.125))
+		)
+	)
+	(property "Stock" ""
+		(at 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "089d098f-e759-4abb-a7d6-70947e3b5b19")
+		(effects
+			(font (size 0.5 0.5) (thickness 0.125))
+		)
+	)
+	(property ki_fp_filters "C_*")
+	(units
+		(unit (name "A") (pins "1" "2"))
+	)
+	(attr smd)
+	(duplicate_pad_numbers_are_jumpers no)
+	(fp_line
+		(start -0.261253 -0.735)
+		(end 0.261253 -0.735)
+		(stroke (width 0.12) (type solid))
+		(layer "F.SilkS")
+		(uuid "408a2723-4c96-45c8-8f65-c409d5beeda4")
+	)
+	(fp_line
+		(start -0.261253 0.735)
+		(end 0.261253 0.735)
+		(stroke (width 0.12) (type solid))
+		(layer "F.SilkS")
+		(uuid "5aeaa461-195b-407a-94b2-744461633bb5")
+	)
+	(fp_poly
+		(pts (xy -1.7 -0.98) (xy 1.7 -0.98) (xy 1.7 0.98) (xy -1.7 0.98))
+		(stroke (width 0.05) (type solid))
+		(fill no)
+		(layer "F.CrtYd")
+		(uuid "36d12e40-741f-4357-8e4c-3044ad40c92e")
+	)
+	(fp_poly
+		(pts (xy -1 -0.625) (xy 1 -0.625) (xy 1 0.625) (xy -1 0.625))
+		(stroke (width 0.1) (type solid))
+		(fill no)
+		(layer "F.Fab")
+		(uuid "8a8b83e5-c31c-44e2-aab0-2bd91595fd34")
+	)
+	(fp_text user "${REFERENCE}"
+		(at 0 0)
+		(unlocked yes)
+		(layer "F.Fab")
+		(uuid "a3306c48-997a-4c6a-9583-fc6e9f03bbc3")
+		(effects
+			(font (size 0.5 0.5) (thickness 0.125))
+		)
+	)
+	(pad "1" smd roundrect
+		(at -0.949999 0)
+		(size 1 1.45)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(roundrect_rratio 0.25)
+	)
+	(pad "2" smd roundrect
+		(at 0.949999 0)
+		(size 1 1.45)
+		(layers "F.Cu" "F.Mask" "F.Paste")
+		(roundrect_rratio 0.25)
+	)
+	(embedded_fonts no)
+	(model "${KICAD10_3RD_PARTY}/3dmodels/inc_adom_wiki_thekingofchaos_rf-power-monitor-rev2/rf-power-monitor-rev2.3dshapes/cl21a226maqnnne.step"
+		(offset (xyz 0 0 0))
+		(scale (xyz 1 1 1))
+		(rotate (xyz 0 0 0))
+	)
+)

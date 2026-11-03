@@ -6,7 +6,7 @@ This manual takes a new RF-Power-Monitor from the box to a working mains alarm i
 
 ## What you need
 
-- The RF-Power-Monitor: a WIZnet **W5500-EVB-Pico-PoE** on the **RF-Power-Monitor carrier board** (mains detector, temperature sensor, factory reset button).
+- The RF-Power-Monitor: a WIZnet **W5500-EVB-Pico-PoE** on the **RF-Power-Monitor carrier board** (rev 1.1: mains detector, temperature sensor, factory reset button). This manual is for that board. The [rev 2 board](../hardware/rf-power-monitor-rev2/README.md) is not built yet; it works the same way, but its part references differ (mains terminal J4, LEDs D3/D4, factory reset SW3).
 - A **PoE switch port** (802.3af), or a USB power supply if you have no PoE.
 - A **USB cable** (USB-C) and a PC with a terminal program such as PuTTY, for the first configuration.
 - The **mains supply to watch**, wired to the carrier's screw terminal by a qualified electrician (see Safety).

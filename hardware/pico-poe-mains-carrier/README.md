@@ -5,6 +5,8 @@
 A 2-layer carrier board for the WIZnet W5500-EVB-Pico-PoE. It is 80 x 51.5 mm: exactly as long as the module, so both short edges line up with the module. The board extends 1.5 mm above the module for the solder fillets. It has 5x M3 holes, with centres at (4, 25.5), (4, 46) and (76, 46) mm from the module's top-left corner, plus H4 (30, 10.5) and H5 (66.5, 10.5) under the module, between the header rows.
 All SMD parts are on the top side. The only through-hole parts are the module headers and the screw terminal.
 
+The successor, [rev 2](../rf-power-monitor-rev2/README.md), puts the RP2040 and W5500 on one board with these circuits (designed, not built yet).
+
 ## What it does
 
 | Function | Connection |

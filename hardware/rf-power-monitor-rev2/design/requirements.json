@@ -1,0 +1,35 @@
+{
+  "title": "RF-Power-Monitor rev2",
+  "prompt": {"utc": "2026-11-02T17:00:00Z", "approximate": true, "text": "can we build a rev2 of the board where all of wiznet module exept the poe module are on the carry board"},
+  "brief": {
+    "source": "design/brief.md", "kind": "message",
+    "quotes": ["can we build a rev2 of the board where all of wiznet module exept the poe module are on the carry board",
+               "2 if you can and you are allow to change the board design and size"],
+    "reproduce": {"of": "WIZnet W5500-EVB-Pico-PoE V1.1 + rev1 carrier (hardware/pico-poe-mains-carrier)",
+                  "rule": "same function on one board; the WIZPoE-P1 stays a plug-in module; mains, sensor and button circuits carried over from rev1"}
+  },
+  "inputs": [
+    {"name": "PoE", "nominal_V": 48, "range_V": [37, 57], "why": "IEEE 802.3af PD via WIZPoE-P1 (module input 41-61 V per WIZnet), 5 V / 8 W out"},
+    {"name": "VBUS", "nominal_V": 5, "range_V": [4.5, 5.5], "why": "USB-C, for the serial menu and flashing; powers the board without PoE (as on the Pico)"},
+    {"name": "AC_L/AC_N", "nominal_V": 230, "range_V": [0, 264], "why": "mains presence sense only, ~1.2 mA, rev1 circuit unchanged"}
+  ],
+  "outputs": [
+    {"name": "+3V3", "V": 3.3, "tol_pct": 3, "I_A": 0.3, "why": "RP2040 ~30 mA + W5500 ~132 mA max + flash, LEDs, TMP1075; 0.3 A design margin"}
+  ],
+  "interfaces": {
+    "firmware": "unchanged: Arduino-Pico 'pico' board; W5500 SPI0 GP16 MISO, GP17 CS, GP18 SCK, GP19 MOSI, GP20 RST, GP21 INT; GP27 MAINS_OK; GP22 factory reset; GP4/GP5 I2C0 TMP1075 0x48; GP25 status LED; GP24 VBUS sense, GP29 VSYS/3 as on the Pico",
+    "connectors": ["RJ45 10/100 with magnetics and PoE centre taps to WIZPoE-P1", "USB-C (USB 2.0 device)", "230 VAC 2-pole 5.08 mm screw terminal", "SWD 3-pin", "WIZPoE-P1 2x 1x4 2.54 mm sockets"],
+    "user": ["BOOTSEL button", "RUN/reset button", "factory reset button (GP22)", "mains ON/OFF LEDs (hardware)", "status LED GP25", "power LED"]
+  },
+  "isolation": {"mains_clearance_mm": 6.5, "mains_creepage_mm": 6.4, "why": "rev1 rules (.kicad_dru), reinforced-style spacing for 230 VAC to SELV"},
+  "formFactor": {"kind": "board", "outline": "free, new 3D-printed case later", "assumed": true, "why": "product board in an enclosure, not an Adom molecule"},
+  "fab": {"target": "jlcpcb", "layers": 2, "layers_fallback": 4, "thickness_mm": 1.6, "design_copper_oz": 1, "why": "user: 2 layers if feasible"},
+  "sourcing": {"profile": "jlcpcb"},
+  "deliverables": ["calcs", "schematic", "board", "3D models", "Gerbers/BOM/CPL for JLCPCB", "README in hardware/rf-power-monitor-rev2", "firmware unchanged (verify pin map)"],
+  "assumptions": [
+    {"what": "WIZPoE-P1 fitted by hand on 1x4 sockets, not in the JLCPCB BOM", "assumed": true},
+    {"what": "USB VBUS and PoE 5 V OR-ed with Schottky diodes into VSYS, as on the Pico", "assumed": true},
+    {"what": "Desktop for KiCad: PIT-HomePC-KFJ (this PC, where the project lives)", "assumed": true}
+  ],
+  "preBoard": []
+}

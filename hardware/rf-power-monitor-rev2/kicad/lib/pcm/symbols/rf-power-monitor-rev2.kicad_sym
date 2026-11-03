@@ -1,0 +1,4209 @@
+(kicad_symbol_lib (version 20251024) (generator adom_wiki_cloud_library)
+  (symbol "0402WGF5101TCE"
+			(pin_numbers
+				(hide yes)
+			)
+			(pin_names
+				(offset 0)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(property "Reference" "R"
+				(at 2.032 0 90)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Value" "0402WGF5101TCE"
+				(at 0 0 90)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+				)
+			)
+			(property "Footprint" "PCM_rf-power-monitor-rev2:R_0402_1005Metric"
+				(at -1.778 0 90)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Datasheet" "~"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Description" "Resistor"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "LCSC PN" "C25905"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_keywords" "R res resistor"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_fp_filters" "R_*"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "MPN" "0402WGF5101TCE"
+				(at -1.778 0 90)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Manufacturer" "UNI-ROYAL(Uniroyal Elec)"
+				(at -1.778 0 90)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(symbol "0402WGF5101TCE_0_1"
+				(rectangle
+					(start -1.016 2.54)
+					(end 1.016 -2.54)
+					(stroke
+						(width 0.254)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "0402WGF5101TCE_1_1"
+				(pin passive line
+					(at 0 3.81 270)
+					(length 1.27)
+					(name "~"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 0 -3.81 90)
+					(length 1.27)
+					(name "~"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
+  (symbol "RC0402FR-0710KL" (in_bom yes) (on_board yes)
+    (property "Reference" "R" (at 0 5.08 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "RC0402FR-0710KL" (at 0 -5.08 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "PCM_rf-power-monitor-rev2:R_0402_1005Metric_RC0402FR-0710KL" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (property "Datasheet" "" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (property "MPN" "RC0402FR-0710KL" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (property "Manufacturer" "Yageo" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (property "Mouser" "603-RC0402FR-0710KL" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (property "DigiKey" "311-10.0KLRTR-ND" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (symbol "RC0402FR-0710KL_0_1" (rectangle (start -2.54 2.54) (end 2.54 -2.54) (stroke (width 0.254) (type default)) (fill (type background))))
+    (symbol "RC0402FR-0710KL_1_1"
+      (pin passive line (at -5.08 0.00 0) (length 2.54) (name "~" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27)))))
+      (pin passive line (at 5.08 0.00 180) (length 2.54) (name "~" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27)))))
+    )
+  )
+  (symbol "CL21A226MAQNNNE"
+		(pin_numbers (hide yes))
+		(pin_names (offset 0.254))
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(duplicate_pin_numbers_are_jumpers no)
+		(property "Reference" "C"
+			(at 0.635 2.54 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font (size 1.27 1.27))
+				(justify left)
+			)
+		)
+		(property "Manufacturer" "Samsung Electro-Mechanics"
+			(at 0 0 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "DigiKey" "1276-2908-2-ND"
+			(at 0 0 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Mouser" "187-CL21A226MAQNNNE"
+			(at 0 0 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Value" "CL21A226MAQNNNE"
+			(at 0.635 -2.54 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font (size 1.27 1.27))
+				(justify left)
+			)
+		)
+		(property "Footprint" "PCM_rf-power-monitor-rev2:CL21A226MAQNNNE"
+			(at 0.9652 -3.81 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "Datasheet" "https://product.samsungsem.com/part/download.do?masterKey=CL21A226MAQNNN&type=specsheet"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "Description" "22uF 25V X5R ±20% 0805 Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "ki_keywords" "cap capacitor"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "ki_fp_filters" "C_*"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "MPN" "CL21A226MAQNNNE"
+			(at 0 0 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C45783"
+			(at 0 0 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(symbol "CL21A226MAQNNNE_0_1"
+			(polyline
+				(pts (xy -2.032 0.762) (xy 2.032 0.762))
+				(stroke (width 0.508) (type default))
+				(fill (type none))
+			)
+			(polyline
+				(pts (xy -2.032 -0.762) (xy 2.032 -0.762))
+				(stroke (width 0.508) (type default))
+				(fill (type none))
+			)
+		)
+		(symbol "CL21A226MAQNNNE_1_1"
+			(pin passive line
+				(at 0 3.81 270)
+				(length 2.794)
+				(name ""
+					(effects
+						(font (size 1.27 1.27))
+					)
+				)
+				(number "1"
+					(effects
+						(font (size 1.27 1.27))
+					)
+				)
+			)
+			(pin passive line
+				(at 0 -3.81 90)
+				(length 2.794)
+				(name ""
+					(effects
+						(font (size 1.27 1.27))
+					)
+				)
+				(number "2"
+					(effects
+						(font (size 1.27 1.27))
+					)
+				)
+			)
+		)
+		(embedded_fonts no)
+	)
+  (symbol "TLV62569DBVR" (in_bom yes) (on_board yes)
+    (property "Reference" "U" (at 0 7.62 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "TLV62569DBVR" (at 0 -7.62 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "PCM_rf-power-monitor-rev2:SOT-23-5" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (property "MPN" "TLV62569DBVR" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (property "Manufacturer" "Texas Instruments" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (property "LCSC" "C141836" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (property "DigiKey" "296-47360-2-ND" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (symbol "TLV62569DBVR_0_1"
+    (rectangle (start -12.70 5.08) (end 12.70 -5.08)
+      (stroke (width 0.254) (type default)) (fill (type background)))
+    )
+    (symbol "TLV62569DBVR_1_1"
+    (pin input line (at -17.78 2.54 0) (length 5.08)
+      (name "EN" (effects (font (size 1.27 1.27))))
+      (number "1" (effects (font (size 1.27 1.27))))
+    )
+    (pin power_in line (at -17.78 0.00 0) (length 5.08)
+      (name "GND" (effects (font (size 1.27 1.27))))
+      (number "2" (effects (font (size 1.27 1.27))))
+    )
+    (pin power_out line (at -17.78 -2.54 0) (length 5.08)
+      (name "SW" (effects (font (size 1.27 1.27))))
+      (number "3" (effects (font (size 1.27 1.27))))
+    )
+    (pin input line (at 17.78 0.00 180) (length 5.08)
+      (name "FB" (effects (font (size 1.27 1.27))))
+      (number "5" (effects (font (size 1.27 1.27))))
+    )
+    (pin power_in line (at 17.78 -2.54 180) (length 5.08)
+      (name "VIN" (effects (font (size 1.27 1.27))))
+      (number "4" (effects (font (size 1.27 1.27))))
+    )
+    )
+  )
+  (symbol "0402WGF1003TCE"
+    (property "LCSC" "C25741" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+		(pin_numbers
+			(hide yes)
+		)
+		(pin_names
+			(offset 0)
+		)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(property "Reference" "R"
+			(at 2.032 0 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "100kR"
+			(at 0 0 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "PCM_rf-power-monitor-rev2:R_0402_1005Metric_0402WGF1003TCE"
+			(at -1.778 0 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "https://www.lcsc.com/datasheet/lcsc_datasheet_2206010100_UNI-ROYAL-Uniroyal-Elec-0402WGF1003TCE_C25741.pdf"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "100kΩ ±1% 1/16W 0402 SMD chip resistor"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "ki_keywords" "R res resistor"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "ki_fp_filters" "R_*"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "MPN" "0402WGF1003TCE"
+			(at -1.778 0 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Manufacturer" "UNI-ROYAL"
+			(at -1.778 0 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(symbol "0402WGF1003TCE_0_1"
+			(rectangle
+				(start -1.016 -2.54)
+				(end 1.016 2.54)
+				(stroke
+					(width 0.254)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+		)
+		(symbol "0402WGF1003TCE_1_1"
+			(pin passive line
+				(at 0 3.81 270)
+				(length 1.27)
+				(name "~"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "1"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at 0 -3.81 90)
+				(length 1.27)
+				(name "~"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "2"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+		)
+		(embedded_fonts no)
+	)
+  (symbol "0402wgf2202tce" (pin_numbers (hide yes)) (pin_names (offset 0.254) (hide yes)) (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes) (duplicate_pin_numbers_are_jumpers no) (property "Reference" "R" (at 0 0 90) (show_name no) (do_not_autoplace no) (effects (font (size 1.016 1.016)))) (property "Value" "R_Small" (at 1.778 0 90) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)))) (property "Footprint" "PCM_rf-power-monitor-rev2:0402wgf2202tce" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "Datasheet" "" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "Description" "Resistor, small symbol" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "ki_keywords" "R resistor" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "ki_fp_filters" "R_*" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (symbol "0402wgf2202tce_0_1" (rectangle (start -0.762 1.778) (end 0.762 -1.778) (stroke (width 0.2032) (type default)) (fill (type none)))) (symbol "0402wgf2202tce_1_1" (pin passive line (at 0 2.54 270) (length 0.762) (name "" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27))))) (pin passive line (at 0 -2.54 90) (length 0.762) (name "" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27)))))) (embedded_fonts no))
+  (symbol "W5500" (in_bom yes) (on_board yes)
+    (property "Reference" "U" (at 0 33.02 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "W5500" (at 0 -35.56 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "PCM_rf-power-monitor-rev2:LQFP-48_7x7mm_P0.5mm" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (property "MPN" "W5500" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (property "Manufacturer" "WIZNET" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (property "LCSC" "C32843" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (symbol "W5500_0_1"
+    (rectangle (start -12.70 30.48) (end 12.70 -33.02)
+      (stroke (width 0.254) (type default)) (fill (type background)))
+    )
+    (symbol "W5500_1_1"
+    (pin output line (at -17.78 27.94 0) (length 5.08)
+      (name "TXN" (effects (font (size 1.27 1.27))))
+      (number "1" (effects (font (size 1.27 1.27))))
+    )
+    (pin output line (at -17.78 25.40 0) (length 5.08)
+      (name "TXP" (effects (font (size 1.27 1.27))))
+      (number "2" (effects (font (size 1.27 1.27))))
+    )
+    (pin power_in line (at -17.78 22.86 0) (length 5.08)
+      (name "AGND" (effects (font (size 1.27 1.27))))
+      (number "3" (effects (font (size 1.27 1.27))))
+    )
+    (pin power_in line (at -17.78 20.32 0) (length 5.08)
+      (name "AVDD" (effects (font (size 1.27 1.27))))
+      (number "4" (effects (font (size 1.27 1.27))))
+    )
+    (pin input line (at -17.78 17.78 0) (length 5.08)
+      (name "RXN" (effects (font (size 1.27 1.27))))
+      (number "5" (effects (font (size 1.27 1.27))))
+    )
+    (pin input line (at -17.78 15.24 0) (length 5.08)
+      (name "RXP" (effects (font (size 1.27 1.27))))
+      (number "6" (effects (font (size 1.27 1.27))))
+    )
+    (pin no_connect line (at -17.78 12.70 0) (length 5.08)
+      (name "DNC" (effects (font (size 1.27 1.27))))
+      (number "7" (effects (font (size 1.27 1.27))))
+    )
+    (pin power_in line (at -17.78 10.16 0) (length 5.08)
+      (name "AVDD" (effects (font (size 1.27 1.27))))
+      (number "8" (effects (font (size 1.27 1.27))))
+    )
+    (pin power_in line (at -17.78 7.62 0) (length 5.08)
+      (name "AGND" (effects (font (size 1.27 1.27))))
+      (number "9" (effects (font (size 1.27 1.27))))
+    )
+    (pin passive line (at -17.78 5.08 0) (length 5.08)
+      (name "EXRES1" (effects (font (size 1.27 1.27))))
+      (number "10" (effects (font (size 1.27 1.27))))
+    )
+    (pin power_in line (at -17.78 2.54 0) (length 5.08)
+      (name "AVDD" (effects (font (size 1.27 1.27))))
+      (number "11" (effects (font (size 1.27 1.27))))
+    )
+    (pin no_connect line (at -17.78 0.00 0) (length 5.08)
+      (name "NC" (effects (font (size 1.27 1.27))))
+      (number "12" (effects (font (size 1.27 1.27))))
+    )
+    (pin no_connect line (at -17.78 -2.54 0) (length 5.08)
+      (name "NC" (effects (font (size 1.27 1.27))))
+      (number "13" (effects (font (size 1.27 1.27))))
+    )
+    (pin power_in line (at -17.78 -5.08 0) (length 5.08)
+      (name "AGND" (effects (font (size 1.27 1.27))))
+      (number "14" (effects (font (size 1.27 1.27))))
+    )
+    (pin power_in line (at -17.78 -7.62 0) (length 5.08)
+      (name "AVDD" (effects (font (size 1.27 1.27))))
+      (number "15" (effects (font (size 1.27 1.27))))
+    )
+    (pin power_in line (at -17.78 -10.16 0) (length 5.08)
+      (name "AGND" (effects (font (size 1.27 1.27))))
+      (number "16" (effects (font (size 1.27 1.27))))
+    )
+    (pin power_in line (at -17.78 -12.70 0) (length 5.08)
+      (name "AVDD" (effects (font (size 1.27 1.27))))
+      (number "17" (effects (font (size 1.27 1.27))))
+    )
+    (pin output line (at -17.78 -15.24 0) (length 5.08)
+      (name "VBG" (effects (font (size 1.27 1.27))))
+      (number "18" (effects (font (size 1.27 1.27))))
+    )
+    (pin power_in line (at -17.78 -17.78 0) (length 5.08)
+      (name "AGND" (effects (font (size 1.27 1.27))))
+      (number "19" (effects (font (size 1.27 1.27))))
+    )
+    (pin passive line (at -17.78 -20.32 0) (length 5.08)
+      (name "TOCAP" (effects (font (size 1.27 1.27))))
+      (number "20" (effects (font (size 1.27 1.27))))
+    )
+    (pin power_in line (at -17.78 -22.86 0) (length 5.08)
+      (name "AVDD" (effects (font (size 1.27 1.27))))
+      (number "21" (effects (font (size 1.27 1.27))))
+    )
+    (pin power_out line (at -17.78 -25.40 0) (length 5.08)
+      (name "1V2O" (effects (font (size 1.27 1.27))))
+      (number "22" (effects (font (size 1.27 1.27))))
+    )
+    (pin input line (at -17.78 -27.94 0) (length 5.08)
+      (name "RSVD" (effects (font (size 1.27 1.27))))
+      (number "23" (effects (font (size 1.27 1.27))))
+    )
+    (pin output line (at -17.78 -30.48 0) (length 5.08)
+      (name "SPDLED" (effects (font (size 1.27 1.27))))
+      (number "24" (effects (font (size 1.27 1.27))))
+    )
+    (pin power_in line (at 17.78 27.94 180) (length 5.08)
+      (name "AGND" (effects (font (size 1.27 1.27))))
+      (number "48" (effects (font (size 1.27 1.27))))
+    )
+    (pin no_connect line (at 17.78 25.40 180) (length 5.08)
+      (name "NC" (effects (font (size 1.27 1.27))))
+      (number "47" (effects (font (size 1.27 1.27))))
+    )
+    (pin no_connect line (at 17.78 22.86 180) (length 5.08)
+      (name "NC" (effects (font (size 1.27 1.27))))
+      (number "46" (effects (font (size 1.27 1.27))))
+    )
+    (pin input line (at 17.78 20.32 180) (length 5.08)
+      (name "PMODE0" (effects (font (size 1.27 1.27))))
+      (number "45" (effects (font (size 1.27 1.27))))
+    )
+    (pin input line (at 17.78 17.78 180) (length 5.08)
+      (name "PMODE1" (effects (font (size 1.27 1.27))))
+      (number "44" (effects (font (size 1.27 1.27))))
+    )
+    (pin input line (at 17.78 15.24 180) (length 5.08)
+      (name "PMODE2" (effects (font (size 1.27 1.27))))
+      (number "43" (effects (font (size 1.27 1.27))))
+    )
+    (pin input line (at 17.78 12.70 180) (length 5.08)
+      (name "RSVD" (effects (font (size 1.27 1.27))))
+      (number "42" (effects (font (size 1.27 1.27))))
+    )
+    (pin input line (at 17.78 10.16 180) (length 5.08)
+      (name "RSVD" (effects (font (size 1.27 1.27))))
+      (number "41" (effects (font (size 1.27 1.27))))
+    )
+    (pin input line (at 17.78 7.62 180) (length 5.08)
+      (name "RSVD" (effects (font (size 1.27 1.27))))
+      (number "40" (effects (font (size 1.27 1.27))))
+    )
+    (pin input line (at 17.78 5.08 180) (length 5.08)
+      (name "RSVD" (effects (font (size 1.27 1.27))))
+      (number "39" (effects (font (size 1.27 1.27))))
+    )
+    (pin input line (at 17.78 2.54 180) (length 5.08)
+      (name "RSVD" (effects (font (size 1.27 1.27))))
+      (number "38" (effects (font (size 1.27 1.27))))
+    )
+    (pin input line (at 17.78 0.00 180) (length 5.08)
+      (name "RSTn" (effects (font (size 1.27 1.27))))
+      (number "37" (effects (font (size 1.27 1.27))))
+    )
+    (pin output line (at 17.78 -2.54 180) (length 5.08)
+      (name "INTn" (effects (font (size 1.27 1.27))))
+      (number "36" (effects (font (size 1.27 1.27))))
+    )
+    (pin input line (at 17.78 -5.08 180) (length 5.08)
+      (name "MOSI" (effects (font (size 1.27 1.27))))
+      (number "35" (effects (font (size 1.27 1.27))))
+    )
+    (pin tri_state line (at 17.78 -7.62 180) (length 5.08)
+      (name "MISO" (effects (font (size 1.27 1.27))))
+      (number "34" (effects (font (size 1.27 1.27))))
+    )
+    (pin input line (at 17.78 -10.16 180) (length 5.08)
+      (name "SCLK" (effects (font (size 1.27 1.27))))
+      (number "33" (effects (font (size 1.27 1.27))))
+    )
+    (pin input line (at 17.78 -12.70 180) (length 5.08)
+      (name "SCSn" (effects (font (size 1.27 1.27))))
+      (number "32" (effects (font (size 1.27 1.27))))
+    )
+    (pin output line (at 17.78 -15.24 180) (length 5.08)
+      (name "XO" (effects (font (size 1.27 1.27))))
+      (number "31" (effects (font (size 1.27 1.27))))
+    )
+    (pin input line (at 17.78 -17.78 180) (length 5.08)
+      (name "XI/CLKIN" (effects (font (size 1.27 1.27))))
+      (number "30" (effects (font (size 1.27 1.27))))
+    )
+    (pin power_in line (at 17.78 -20.32 180) (length 5.08)
+      (name "GND" (effects (font (size 1.27 1.27))))
+      (number "29" (effects (font (size 1.27 1.27))))
+    )
+    (pin power_in line (at 17.78 -22.86 180) (length 5.08)
+      (name "VDD" (effects (font (size 1.27 1.27))))
+      (number "28" (effects (font (size 1.27 1.27))))
+    )
+    (pin output line (at 17.78 -25.40 180) (length 5.08)
+      (name "ACTLED" (effects (font (size 1.27 1.27))))
+      (number "27" (effects (font (size 1.27 1.27))))
+    )
+    (pin output line (at 17.78 -27.94 180) (length 5.08)
+      (name "DUPLED" (effects (font (size 1.27 1.27))))
+      (number "26" (effects (font (size 1.27 1.27))))
+    )
+    (pin output line (at 17.78 -30.48 180) (length 5.08)
+      (name "LINKLED" (effects (font (size 1.27 1.27))))
+      (number "25" (effects (font (size 1.27 1.27))))
+    )
+    )
+  )
+  (symbol "GZ1608D121TF"
+		(pin_numbers
+			(hide yes)
+		)
+		(pin_names
+			(offset 0)
+		)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(duplicate_pin_numbers_are_jumpers no)
+		(property "Reference" "FB"
+			(at -3.81 0.635 90)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "GZ1608D121TF"
+			(at 3.81 0 90)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "PCM_rf-power-monitor-rev2:L_0603_1608Metric"
+			(at -1.778 0 90)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://jlcpcb.com/api/file/downloadByFileSystemAccessId/8586171977040072704"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Ferrite bead"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_keywords" "L ferrite bead inductor filter"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_fp_filters" "Inductor_* L_* *Ferrite*"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MPN" "GZ1608D121TF" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+		(property "LCSC" "C12391" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+		(property "Manufacturer" "Sunlord" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+		(symbol "GZ1608D121TF_0_1"
+			(polyline
+				(pts
+					(xy -2.7686 0.4064) (xy -1.7018 2.2606) (xy 2.7686 -0.3048) (xy 1.6764 -2.159) (xy -2.7686 0.4064)
+				)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(polyline
+				(pts
+					(xy 0 1.27) (xy 0 1.2954)
+				)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(polyline
+				(pts
+					(xy 0 -1.27) (xy 0 -1.2192)
+				)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+		)
+		(symbol "GZ1608D121TF_1_1"
+			(pin passive line
+				(at 0 3.81 270)
+				(length 2.54)
+				(name ""
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "1"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at 0 -3.81 90)
+				(length 2.54)
+				(name ""
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "2"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+		)
+		(embedded_fonts no)
+	)
+  (symbol "CL10A475KO8NNNC"
+		(pin_numbers (hide yes))
+		(pin_names (offset 0.254))
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(duplicate_pin_numbers_are_jumpers no)
+		(property "Reference" "C"
+			(at 0.635 2.54 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font (size 1.27 1.27))
+				(justify left)
+			)
+		)
+		(property "Manufacturer" "Samsung Electro-Mechanics"
+			(at 0 0 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "DigiKey" "1276-1784-2-ND"
+			(at 0 0 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Mouser" "187-CL10A475KO8NNNC"
+			(at 0 0 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Value" "CL10A475KO8NNNC"
+			(at 0.635 -2.54 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font (size 1.27 1.27))
+				(justify left)
+			)
+		)
+		(property "Footprint" "PCM_rf-power-monitor-rev2:CL10A475KO8NNNC"
+			(at 0.9652 -3.81 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "Datasheet" "https://product.samsungsem.com/part/download.do?masterKey=CL10A475KO8NNN&type=specsheet"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "Description" "16V 4.7uF X5R ±10% 0603 Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "ki_keywords" "cap capacitor"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "ki_fp_filters" "C_*"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "MPN" "CL10A475KO8NNNC"
+			(at 0 0 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C19666"
+			(at 0 0 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(symbol "CL10A475KO8NNNC_0_1"
+			(polyline
+				(pts (xy -2.032 0.762) (xy 2.032 0.762))
+				(stroke (width 0.508) (type default))
+				(fill (type none))
+			)
+			(polyline
+				(pts (xy -2.032 -0.762) (xy 2.032 -0.762))
+				(stroke (width 0.508) (type default))
+				(fill (type none))
+			)
+		)
+		(symbol "CL10A475KO8NNNC_1_1"
+			(pin passive line
+				(at 0 3.81 270)
+				(length 2.794)
+				(name ""
+					(effects
+						(font (size 1.27 1.27))
+					)
+				)
+				(number "1"
+					(effects
+						(font (size 1.27 1.27))
+					)
+				)
+			)
+			(pin passive line
+				(at 0 -3.81 90)
+				(length 2.794)
+				(name ""
+					(effects
+						(font (size 1.27 1.27))
+					)
+				)
+				(number "2"
+					(effects
+						(font (size 1.27 1.27))
+					)
+				)
+			)
+		)
+		(embedded_fonts no)
+	)
+  (symbol "CL05B104KO5NNNC"
+			(pin_numbers
+				(hide yes)
+			)
+			(pin_names
+				(offset 0.254)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(property "Reference" "C"
+				(at 0.635 2.54 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify left)
+				)
+			)
+			(property "Value" "CL05B104KO5NNNC"
+				(at 0.635 -2.54 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify left)
+				)
+			)
+			(property "Footprint" "PCM_rf-power-monitor-rev2:C_0402_1005Metric"
+				(at 0.9652 -3.81 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Datasheet" "~"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Description" "100nF 16V X7R 0402"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "LCSC PN" "C1525"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_keywords" "cap capacitor"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_fp_filters" "C_*"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "MPN" "CL05B104KO5NNNC"
+				(at 0.9652 -3.81 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Manufacturer" "Samsung Electro-Mechanics"
+				(at 0.9652 -3.81 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(symbol "CL05B104KO5NNNC_0_1"
+				(polyline
+					(pts
+						(xy -2.032 0.762) (xy 2.032 0.762)
+					)
+					(stroke
+						(width 0.508)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy -2.032 -0.762) (xy 2.032 -0.762)
+					)
+					(stroke
+						(width 0.508)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "CL05B104KO5NNNC_1_1"
+				(pin passive line
+					(at 0 3.81 270)
+					(length 2.794)
+					(name "~"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 0 -3.81 90)
+					(length 2.794)
+					(name "~"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
+  (symbol "CL05B103KB5NNNC"
+		(pin_numbers (hide yes))
+		(pin_names (offset 0.254) (hide yes))
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(duplicate_pin_numbers_are_jumpers no)
+		(property "Reference" "C"
+			(at 0.254 1.778 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font (size 1.27 1.27))
+				(justify left)
+			)
+		)
+		(property "Manufacturer" "Samsung Electro-Mechanics"
+			(at 0 0 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "DigiKey" "1276-1028-2-ND"
+			(at 0 0 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Mouser" "187-CL05B103KB5NNNC"
+			(at 0 0 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Value" "CL05B103KB5NNNC"
+			(at 0.254 -2.032 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font (size 1.27 1.27))
+				(justify left)
+			)
+		)
+		(property "Footprint" "PCM_rf-power-monitor-rev2:CL05B103KB5NNNC"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "Datasheet" "https://product.samsungsem.com/part/download.do?masterKey=CL05B103KB5NNN&type=specsheet"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "Description" "10nF 50V X7R ±10% 0402 Multilayer Ceramic Capacitors MLCC - SMD/SMT ROHS"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "ki_keywords" "capacitor cap"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "ki_fp_filters" "C_*"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "MPN" "CL05B103KB5NNNC"
+			(at 0 0 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C15195"
+			(at 0 0 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(symbol "CL05B103KB5NNNC_0_1"
+			(polyline
+				(pts (xy -1.524 0.508) (xy 1.524 0.508))
+				(stroke (width 0.3048) (type default))
+				(fill (type none))
+			)
+			(polyline
+				(pts (xy -1.524 -0.508) (xy 1.524 -0.508))
+				(stroke (width 0.3302) (type default))
+				(fill (type none))
+			)
+		)
+		(symbol "CL05B103KB5NNNC_1_1"
+			(pin passive line
+				(at 0 2.54 270)
+				(length 2.032)
+				(name ""
+					(effects
+						(font (size 1.27 1.27))
+					)
+				)
+				(number "1"
+					(effects
+						(font (size 1.27 1.27))
+					)
+				)
+			)
+			(pin passive line
+				(at 0 -2.54 90)
+				(length 2.032)
+				(name ""
+					(effects
+						(font (size 1.27 1.27))
+					)
+				)
+				(number "2"
+					(effects
+						(font (size 1.27 1.27))
+					)
+				)
+			)
+		)
+		(embedded_fonts no)
+	)
+  (symbol "X322525MOB4SI" (in_bom yes) (on_board yes)
+    (property "Reference" "U" (at 0 5.08 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "X322525MOB4SI" (at 0 -7.62 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "PCM_rf-power-monitor-rev2:Crystal_SMD_3225-4Pin_3.2x2.5mm" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (property "MPN" "X322525MOB4SI" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (property "Manufacturer" "YXC Crystal Oscillators" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (property "LCSC" "C9006" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (symbol "X322525MOB4SI_0_1"
+    (rectangle (start -12.70 2.54) (end 12.70 -5.08)
+      (stroke (width 0.254) (type default)) (fill (type background)))
+    )
+    (symbol "X322525MOB4SI_1_1"
+    (pin passive line (at -17.78 0.00 0) (length 5.08)
+      (name "XTAL1" (effects (font (size 1.27 1.27))))
+      (number "1" (effects (font (size 1.27 1.27))))
+    )
+    (pin power_in line (at -17.78 -2.54 0) (length 5.08)
+      (name "GND" (effects (font (size 1.27 1.27))))
+      (number "2" (effects (font (size 1.27 1.27))))
+    )
+    (pin power_in line (at 17.78 0.00 180) (length 5.08)
+      (name "GND" (effects (font (size 1.27 1.27))))
+      (number "4" (effects (font (size 1.27 1.27))))
+    )
+    (pin passive line (at 17.78 -2.54 180) (length 5.08)
+      (name "XTAL2" (effects (font (size 1.27 1.27))))
+      (number "3" (effects (font (size 1.27 1.27))))
+    )
+    )
+  )
+  (symbol "0402WGF0000TCE"
+    (property "LCSC" "C17168" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+		(pin_numbers
+			(hide yes)
+		)
+		(pin_names
+			(offset 0)
+		)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(property "Reference" "R"
+			(at 2.032 0 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "0R"
+			(at 0 0 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "PCM_rf-power-monitor-rev2:R_0402_1005Metric_0402WGF1003TCE"
+			(at -1.778 0 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "https://www.lcsc.com/datasheet/lcsc_datasheet_2206010216_UNI-ROYAL-Uniroyal-Elec-0402WGF0000TCE_C17168.pdf"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "0Ω ±1% 1/16W 0402 SMD chip resistor"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "ki_keywords" "R res resistor"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "ki_fp_filters" "R_*"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "MPN" "0402WGF0000TCE"
+			(at -1.778 0 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Manufacturer" "UNI-ROYAL"
+			(at -1.778 0 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(symbol "0402WGF0000TCE_0_1"
+			(rectangle
+				(start -1.016 -2.54)
+				(end 1.016 2.54)
+				(stroke
+					(width 0.254)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+		)
+		(symbol "0402WGF0000TCE_1_1"
+			(pin passive line
+				(at 0 3.81 270)
+				(length 1.27)
+				(name "~"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "1"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at 0 -3.81 90)
+				(length 1.27)
+				(name "~"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "2"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+		)
+		(embedded_fonts no)
+	)
+  (symbol "0402CG180J500NT"
+			(pin_numbers
+				(hide yes)
+			)
+			(pin_names
+				(offset 0.254)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(property "Reference" "C"
+				(at 0.635 2.54 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify left)
+				)
+			)
+			(property "Value" "0402CG180J500NT"
+				(at 0.635 -2.54 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify left)
+				)
+			)
+			(property "Footprint" "PCM_rf-power-monitor-rev2:C_0402_1005Metric_0402CG180J500NT"
+				(at 0.9652 -3.81 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Datasheet" "~"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Description" "18pF 50V C0G 0402 Crystal Load Capacitor"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "LCSC PN" "C1549"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_keywords" "cap capacitor"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_fp_filters" "C_*"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "MPN" "0402CG180J500NT"
+				(at 0.9652 -3.81 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Manufacturer" "FH (Guangdong Fenghua Advanced Tech)"
+				(at 0.9652 -3.81 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(symbol "0402CG180J500NT_0_1"
+				(polyline
+					(pts
+						(xy -2.032 0.762) (xy 2.032 0.762)
+					)
+					(stroke
+						(width 0.508)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy -2.032 -0.762) (xy 2.032 -0.762)
+					)
+					(stroke
+						(width 0.508)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "0402CG180J500NT_1_1"
+				(pin passive line
+					(at 0 3.81 270)
+					(length 2.794)
+					(name "~"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 0 -3.81 90)
+					(length 2.794)
+					(name "~"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
+  (symbol "0402WGF4701TCE" (in_bom yes) (on_board yes)
+    (property "Reference" "U" (at 0 5.08 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "0402WGF4701TCE" (at 0 -5.08 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "PCM_rf-power-monitor-rev2:R_0402_1005Metric_0402WGF1003TCE" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (property "MPN" "0402WGF4701TCE" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (property "Manufacturer" "UNI ROYAL Uniroyal Elec" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (property "LCSC" "C25900" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (property "Mouser" "303-0402WGF4701TCE" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (symbol "0402WGF4701TCE_0_1"
+    (rectangle (start -12.70 2.54) (end 12.70 -2.54)
+      (stroke (width 0.254) (type default)) (fill (type background)))
+    )
+    (symbol "0402WGF4701TCE_1_1"
+    (pin passive line (at -17.78 0.00 0) (length 5.08)
+      (name "1" (effects (font (size 1.27 1.27))))
+      (number "1" (effects (font (size 1.27 1.27))))
+    )
+    (pin passive line (at 17.78 0.00 180) (length 5.08)
+      (name "2" (effects (font (size 1.27 1.27))))
+      (number "2" (effects (font (size 1.27 1.27))))
+    )
+    )
+  )
+  (symbol "0402WGF3300TCE"
+		(pin_numbers (hide yes))
+		(pin_names (offset 0.254) (hide yes))
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(duplicate_pin_numbers_are_jumpers no)
+		(property "Reference" "R"
+			(at 0 0 90)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font (size 1.016 1.016))
+			)
+		)
+		(property "Manufacturer" "UNI-ROYAL (Uniroyal Elec)"
+			(at 0 0 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Mouser" "303-0402WGF3300TCE"
+			(at 0 0 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "Value" "0402WGF3300TCE"
+			(at 1.778 0 90)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "Footprint" "PCM_rf-power-monitor-rev2:0402WGF3300TCE"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "Datasheet" "https://www.uni-royal.cn/en/images/userfile/file/1787191973c56505e6d9ab55c7.pdf"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "Description" "-55℃~+155℃ 330Ω 50V 62.5mW Thick Film Resistor ±1% ±100ppm/℃ 0402 Chip Resistor - Surface Mount ROHS"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "ki_keywords" "R resistor"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "ki_fp_filters" "R_*"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font (size 1.27 1.27))
+			)
+		)
+		(property "MPN" "0402WGF3300TCE"
+			(at 0 0 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(property "LCSC" "C25104"
+			(at 0 0 0)
+			(effects
+				(font (size 1.27 1.27))
+				(hide yes)
+			)
+		)
+		(symbol "0402WGF3300TCE_0_1"
+			(rectangle
+				(start -0.762 1.778)
+				(end 0.762 -1.778)
+				(stroke (width 0.2032) (type default))
+				(fill (type none))
+			)
+		)
+		(symbol "0402WGF3300TCE_1_1"
+			(pin passive line
+				(at 0 2.54 270)
+				(length 0.762)
+				(name ""
+					(effects
+						(font (size 1.27 1.27))
+					)
+				)
+				(number "1"
+					(effects
+						(font (size 1.27 1.27))
+					)
+				)
+			)
+			(pin passive line
+				(at 0 -2.54 90)
+				(length 0.762)
+				(name ""
+					(effects
+						(font (size 1.27 1.27))
+					)
+				)
+				(number "2"
+					(effects
+						(font (size 1.27 1.27))
+					)
+				)
+			)
+		)
+		(embedded_fonts no)
+	)
+  (symbol "RP2040"
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(duplicate_pin_numbers_are_jumpers no)
+		(property "Reference" "U"
+			(at 17.526 47.244 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "RP2040"
+			(at 17.526 44.704 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "PCM_rf-power-monitor-rev2:QFN-56-1EP_7x7mm_P0.4mm_EP3.2x3.2mm"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" "https://datasheets.raspberrypi.com/rp2040/rp2040-datasheet.pdf"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "A microcontroller by Raspberry Pi, Dual ARM Cortex-M0+, 133MHz, no flash, 264KB SRAM, 8 PIO state machines, VQFN-56"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property private "KLC_S4.2_DVDD" "Not a standalone power converter; internal on-chip voltage regulator for digital core supply; DVDD is the digital core power supply, should be placed next to voltage regulator output."
+			(at 0 -2.54 0)
+			(show_name yes)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property private "KLC_S4.2_VREG_VOUT" "Should be placed next to DVDD."
+			(at 0 -2.54 0)
+			(show_name yes)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_keywords" "RPi Pico USB QSPI I2C UART SC0914"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_fp_filters" "*QFN*7x7mm?P0.4mm?EP3.2x3.2mm*"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MPN" "RP2040" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+		(property "Manufacturer" "Raspberry Pi" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+		(symbol "RP2040_0_1"
+			(rectangle
+				(start -21.59 41.91)
+				(end 21.59 -41.91)
+				(stroke
+					(width 0.254)
+					(type default)
+				)
+				(fill
+					(type background)
+				)
+			)
+		)
+		(symbol "RP2040_1_1"
+			(pin power_in line
+				(at -2.54 45.72 270)
+				(length 3.81)
+				(name "IOVDD"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "1"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin bidirectional line
+				(at 25.4 38.1 180)
+				(length 3.81)
+				(name "GPIO0"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "2"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin bidirectional line
+				(at 25.4 35.56 180)
+				(length 3.81)
+				(name "GPIO1"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "3"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin bidirectional line
+				(at 25.4 33.02 180)
+				(length 3.81)
+				(name "GPIO2"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "4"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin bidirectional line
+				(at 25.4 30.48 180)
+				(length 3.81)
+				(name "GPIO3"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "5"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin bidirectional line
+				(at 25.4 27.94 180)
+				(length 3.81)
+				(name "GPIO4"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "6"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin bidirectional line
+				(at 25.4 25.4 180)
+				(length 3.81)
+				(name "GPIO5"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "7"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin bidirectional line
+				(at 25.4 22.86 180)
+				(length 3.81)
+				(name "GPIO6"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "8"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin bidirectional line
+				(at 25.4 20.32 180)
+				(length 3.81)
+				(name "GPIO7"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "9"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at -2.54 45.72 270)
+				(length 3.81)
+				(hide yes)
+				(name "IOVDD"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "10"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin bidirectional line
+				(at 25.4 17.78 180)
+				(length 3.81)
+				(name "GPIO8"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "11"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin bidirectional line
+				(at 25.4 15.24 180)
+				(length 3.81)
+				(name "GPIO9"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "12"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin bidirectional line
+				(at 25.4 12.7 180)
+				(length 3.81)
+				(name "GPIO10"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "13"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin bidirectional line
+				(at 25.4 10.16 180)
+				(length 3.81)
+				(name "GPIO11"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "14"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin bidirectional line
+				(at 25.4 7.62 180)
+				(length 3.81)
+				(name "GPIO12"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "15"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin bidirectional line
+				(at 25.4 5.08 180)
+				(length 3.81)
+				(name "GPIO13"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "16"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin bidirectional line
+				(at 25.4 2.54 180)
+				(length 3.81)
+				(name "GPIO14"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "17"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin bidirectional line
+				(at 25.4 0 180)
+				(length 3.81)
+				(name "GPIO15"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "18"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin input line
+				(at -25.4 30.48 0)
+				(length 3.81)
+				(name "TESTEN"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "19"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin input line
+				(at -25.4 -15.24 0)
+				(length 3.81)
+				(name "XIN"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "20"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin output line
+				(at -25.4 -25.4 0)
+				(length 3.81)
+				(name "XOUT"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "21"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at -2.54 45.72 270)
+				(length 3.81)
+				(hide yes)
+				(name "IOVDD"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "22"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin power_in line
+				(at 12.7 45.72 270)
+				(length 3.81)
+				(name "DVDD"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "23"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin input line
+				(at -25.4 -33.02 0)
+				(length 3.81)
+				(name "SWCLK"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "24"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin bidirectional line
+				(at -25.4 -35.56 0)
+				(length 3.81)
+				(name "SWDIO"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "25"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin input line
+				(at -25.4 22.86 0)
+				(length 3.81)
+				(name "RUN"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "26"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin bidirectional line
+				(at 25.4 -2.54 180)
+				(length 3.81)
+				(name "GPIO16"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "27"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin bidirectional line
+				(at 25.4 -5.08 180)
+				(length 3.81)
+				(name "GPIO17"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "28"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin bidirectional line
+				(at 25.4 -7.62 180)
+				(length 3.81)
+				(name "GPIO18"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "29"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin bidirectional line
+				(at 25.4 -10.16 180)
+				(length 3.81)
+				(name "GPIO19"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "30"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin bidirectional line
+				(at 25.4 -12.7 180)
+				(length 3.81)
+				(name "GPIO20"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "31"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin bidirectional line
+				(at 25.4 -15.24 180)
+				(length 3.81)
+				(name "GPIO21"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "32"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at -2.54 45.72 270)
+				(length 3.81)
+				(hide yes)
+				(name "IOVDD"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "33"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin bidirectional line
+				(at 25.4 -17.78 180)
+				(length 3.81)
+				(name "GPIO22"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "34"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin bidirectional line
+				(at 25.4 -20.32 180)
+				(length 3.81)
+				(name "GPIO23"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "35"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin bidirectional line
+				(at 25.4 -22.86 180)
+				(length 3.81)
+				(name "GPIO24"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "36"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin bidirectional line
+				(at 25.4 -25.4 180)
+				(length 3.81)
+				(name "GPIO25"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "37"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin bidirectional line
+				(at 25.4 -30.48 180)
+				(length 3.81)
+				(name "GPIO26/ADC0"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "38"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin bidirectional line
+				(at 25.4 -33.02 180)
+				(length 3.81)
+				(name "GPIO27/ADC1"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "39"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin bidirectional line
+				(at 25.4 -35.56 180)
+				(length 3.81)
+				(name "GPIO28/ADC2"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "40"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin bidirectional line
+				(at 25.4 -38.1 180)
+				(length 3.81)
+				(name "GPIO29/ADC3"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "41"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at -2.54 45.72 270)
+				(length 3.81)
+				(hide yes)
+				(name "IOVDD"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "42"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin power_in line
+				(at -10.16 45.72 270)
+				(length 3.81)
+				(name "ADC_AVDD"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "43"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin power_in line
+				(at 2.54 45.72 270)
+				(length 3.81)
+				(name "VREG_VIN"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "44"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin power_out line
+				(at 7.62 45.72 270)
+				(length 3.81)
+				(name "VREG_VOUT"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "45"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin bidirectional line
+				(at -25.4 15.24 0)
+				(length 3.81)
+				(name "USB_DM"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "46"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin bidirectional line
+				(at -25.4 12.7 0)
+				(length 3.81)
+				(name "USB_DP"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "47"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin power_in line
+				(at -12.7 45.72 270)
+				(length 3.81)
+				(name "USB_VDD"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "48"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at -2.54 45.72 270)
+				(length 3.81)
+				(hide yes)
+				(name "IOVDD"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "49"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at 12.7 45.72 270)
+				(length 3.81)
+				(hide yes)
+				(name "DVDD"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "50"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin bidirectional line
+				(at -25.4 -7.62 0)
+				(length 3.81)
+				(name "QSPI_SD3"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "51"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin output line
+				(at -25.4 2.54 0)
+				(length 3.81)
+				(name "QSPI_SCLK"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "52"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin bidirectional line
+				(at -25.4 0 0)
+				(length 3.81)
+				(name "QSPI_SD0"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "53"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin bidirectional line
+				(at -25.4 -5.08 0)
+				(length 3.81)
+				(name "QSPI_SD2"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "54"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin bidirectional line
+				(at -25.4 -2.54 0)
+				(length 3.81)
+				(name "QSPI_SD1"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "55"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin output line
+				(at -25.4 5.08 0)
+				(length 3.81)
+				(name "~{QSPI_SS}"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "56"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin power_in line
+				(at 0 -45.72 90)
+				(length 3.81)
+				(name "GND"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "57"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+		)
+		(embedded_fonts no)
+	)
+  (symbol "CL05A105KA5NQNC"
+			(pin_numbers
+				(hide yes)
+			)
+			(pin_names
+				(offset 0.254)
+			)
+			(exclude_from_sim no)
+			(in_bom yes)
+			(on_board yes)
+			(property "Reference" "C"
+				(at 0.635 2.54 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify left)
+				)
+			)
+			(property "Value" "CL05A105KA5NQNC"
+				(at 0.635 -2.54 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(justify left)
+				)
+			)
+			(property "Footprint" "PCM_rf-power-monitor-rev2:C_0402_1005Metric_CL05A105KA5NQNC"
+				(at 0.9652 -3.81 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Datasheet" "~"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Description" "1uF 25V X5R 0402"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "LCSC PN" "C52923"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_keywords" "cap capacitor"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "ki_fp_filters" "C_*"
+				(at 0 0 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "MPN" "CL05A105KA5NQNC"
+				(at 0.9652 -3.81 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(property "Manufacturer" "Samsung Electro-Mechanics"
+				(at 0.9652 -3.81 0)
+				(effects
+					(font
+						(size 1.27 1.27)
+					)
+					(hide yes)
+				)
+			)
+			(symbol "CL05A105KA5NQNC_0_1"
+				(polyline
+					(pts
+						(xy -2.032 0.762) (xy 2.032 0.762)
+					)
+					(stroke
+						(width 0.508)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+				(polyline
+					(pts
+						(xy -2.032 -0.762) (xy 2.032 -0.762)
+					)
+					(stroke
+						(width 0.508)
+						(type default)
+					)
+					(fill
+						(type none)
+					)
+				)
+			)
+			(symbol "CL05A105KA5NQNC_1_1"
+				(pin passive line
+					(at 0 3.81 270)
+					(length 2.794)
+					(name "~"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "1"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+				(pin passive line
+					(at 0 -3.81 90)
+					(length 2.794)
+					(name "~"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+					(number "2"
+						(effects
+							(font
+								(size 1.27 1.27)
+							)
+						)
+					)
+				)
+			)
+			(embedded_fonts no)
+		)
+  (symbol "ABM8-272-T3"
+		(pin_names
+			(offset 1.016)
+			(hide yes)
+		)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(property "Reference" "Y"
+			(at 3.175 5.08 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "ABM8-272-T3"
+			(at 3.175 3.175 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "PCM_rf-power-monitor-rev2:Crystal_SMD_Abracon_ABM8AIG-4Pin_3.2x2.5mm"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "~"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "12.000 MHz Crystal, 10pF, 3.2x2.5mm, 4-pin, GND on pins 2 and 4"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "LCSC PN" "C20625731"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "ki_keywords" "quartz ceramic resonator oscillator"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "ki_fp_filters" "Crystal*"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "MPN" "ABM8-272-T3"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Manufacturer" "Abracon"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(symbol "ABM8-272-T3_0_1"
+			(polyline
+				(pts
+					(xy -2.54 2.286) (xy -2.54 3.556) (xy 2.54 3.556) (xy 2.54 2.286)
+				)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(polyline
+				(pts
+					(xy -2.54 0) (xy -2.032 0)
+				)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(polyline
+				(pts
+					(xy -2.54 -2.286) (xy -2.54 -3.556) (xy 2.54 -3.556) (xy 2.54 -2.286)
+				)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(polyline
+				(pts
+					(xy -2.032 -1.27) (xy -2.032 1.27)
+				)
+				(stroke
+					(width 0.508)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(rectangle
+				(start -1.143 2.54)
+				(end 1.143 -2.54)
+				(stroke
+					(width 0.3048)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(polyline
+				(pts
+					(xy 0 3.556) (xy 0 3.81)
+				)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(polyline
+				(pts
+					(xy 0 -3.81) (xy 0 -3.556)
+				)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(polyline
+				(pts
+					(xy 2.032 0) (xy 2.54 0)
+				)
+				(stroke
+					(width 0)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(polyline
+				(pts
+					(xy 2.032 -1.27) (xy 2.032 1.27)
+				)
+				(stroke
+					(width 0.508)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+		)
+		(symbol "ABM8-272-T3_1_1"
+			(pin passive line
+				(at -3.81 0 0)
+				(length 1.27)
+				(name "1"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "1"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at 0 5.08 270)
+				(length 1.27)
+				(name "2"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "2"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at 0 -5.08 90)
+				(length 1.27)
+				(name "4"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "4"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at 3.81 0 180)
+				(length 1.27)
+				(name "3"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "3"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+		)
+		(embedded_fonts no)
+	)
+  (symbol "0402WGF1001TCE"
+    (property "LCSC" "C11702" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+		(pin_numbers
+			(hide yes)
+		)
+		(pin_names
+			(offset 0)
+		)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(property "Reference" "R"
+			(at 2.032 0 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "1kR"
+			(at 0 0 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "PCM_rf-power-monitor-rev2:R_0402_1005Metric_0402WGF1003TCE"
+			(at -1.778 0 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Datasheet" "https://www.lcsc.com/datasheet/lcsc_datasheet_2206010216_UNI-ROYAL-Uniroyal-Elec-0402WGF1001TCE_C11702.pdf"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Description" "1kΩ ±1% 1/16W 0402 SMD chip resistor"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "ki_keywords" "R res resistor"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "ki_fp_filters" "R_*"
+			(at 0 0 0)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "MPN" "0402WGF1001TCE"
+			(at -1.778 0 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(property "Manufacturer" "UNI-ROYAL"
+			(at -1.778 0 90)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(hide yes)
+			)
+		)
+		(symbol "0402WGF1001TCE_0_1"
+			(rectangle
+				(start -1.016 -2.54)
+				(end 1.016 2.54)
+				(stroke
+					(width 0.254)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+		)
+		(symbol "0402WGF1001TCE_1_1"
+			(pin passive line
+				(at 0 3.81 270)
+				(length 1.27)
+				(name "~"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "1"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at 0 -3.81 90)
+				(length 1.27)
+				(name "~"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "2"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+		)
+		(embedded_fonts no)
+	)
+  (symbol "0402CG150J500NT"
+		(pin_numbers
+			(hide yes)
+		)
+		(pin_names
+			(offset 0.254)
+		)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(duplicate_pin_numbers_are_jumpers no)
+		(property "Reference" "C"
+			(at 0.635 2.54 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Value" "0402CG150J500NT"
+			(at 0.635 -2.54 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+				(justify left)
+			)
+		)
+		(property "Footprint" "PCM_rf-power-monitor-rev2:C_0402_1005Metric_0402CG150J500NT"
+			(at 0.9652 -3.81 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "15pF 50V C0G ceramic capacitor, 0402"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "LCSC PN" "C1548"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_keywords" "cap capacitor"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_fp_filters" "C_*"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MPN" "0402CG150J500NT" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+		(property "Manufacturer" "Samsung" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+		(symbol "0402CG150J500NT_0_1"
+			(polyline
+				(pts
+					(xy -2.032 0.762) (xy 2.032 0.762)
+				)
+				(stroke
+					(width 0.508)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+			(polyline
+				(pts
+					(xy -2.032 -0.762) (xy 2.032 -0.762)
+				)
+				(stroke
+					(width 0.508)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+		)
+		(symbol "0402CG150J500NT_1_1"
+			(pin passive line
+				(at 0 3.81 270)
+				(length 2.794)
+				(name ""
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "1"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at 0 -3.81 90)
+				(length 2.794)
+				(name ""
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "2"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+		)
+		(embedded_fonts no)
+	)
+  (symbol "W25Q16JVSSIQ" (in_bom yes) (on_board yes)
+    (property "Reference" "U" (at 0 7.62 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "W25Q16JVSSIQ" (at 0 -10.16 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "PCM_rf-power-monitor-rev2:SOIC-8_3.9x4.9mm_P1.27mm" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (property "MPN" "W25Q16JVSSIQ" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (property "Manufacturer" "Winbond Elec" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (property "LCSC" "C131025" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (symbol "W25Q16JVSSIQ_0_1"
+    (rectangle (start -12.70 5.08) (end 12.70 -7.62)
+      (stroke (width 0.254) (type default)) (fill (type background)))
+    )
+    (symbol "W25Q16JVSSIQ_1_1"
+    (pin input line (at -17.78 2.54 0) (length 5.08)
+      (name "/CS" (effects (font (size 1.27 1.27))))
+      (number "1" (effects (font (size 1.27 1.27))))
+    )
+    (pin bidirectional line (at -17.78 0.00 0) (length 5.08)
+      (name "DO (IO1)" (effects (font (size 1.27 1.27))))
+      (number "2" (effects (font (size 1.27 1.27))))
+    )
+    (pin bidirectional line (at -17.78 -2.54 0) (length 5.08)
+      (name "/WP (IO2)" (effects (font (size 1.27 1.27))))
+      (number "3" (effects (font (size 1.27 1.27))))
+    )
+    (pin power_in line (at -17.78 -5.08 0) (length 5.08)
+      (name "GND" (effects (font (size 1.27 1.27))))
+      (number "4" (effects (font (size 1.27 1.27))))
+    )
+    (pin power_in line (at 17.78 2.54 180) (length 5.08)
+      (name "VCC" (effects (font (size 1.27 1.27))))
+      (number "8" (effects (font (size 1.27 1.27))))
+    )
+    (pin bidirectional line (at 17.78 0.00 180) (length 5.08)
+      (name "/HOLD or /RESET (IO3)" (effects (font (size 1.27 1.27))))
+      (number "7" (effects (font (size 1.27 1.27))))
+    )
+    (pin input line (at 17.78 -2.54 180) (length 5.08)
+      (name "CLK" (effects (font (size 1.27 1.27))))
+      (number "6" (effects (font (size 1.27 1.27))))
+    )
+    (pin bidirectional line (at 17.78 -5.08 180) (length 5.08)
+      (name "DI (IO0)" (effects (font (size 1.27 1.27))))
+      (number "5" (effects (font (size 1.27 1.27))))
+    )
+    )
+  )
+  (symbol "cl10a105kb8nnnc" (pin_numbers (hide yes)) (pin_names (offset 0.254) (hide yes)) (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes) (duplicate_pin_numbers_are_jumpers no) (property "Reference" "C" (at 0.254 1.778 0) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)) (justify left))) (property "Value" "CL10A105KB8NNNC" (at 0.254 -2.032 0) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)) (justify left))) (property "Footprint" "PCM_rf-power-monitor-rev2:cl10a105kb8nnnc" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "Datasheet" "" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "Description" "Unpolarized capacitor, small symbol" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "ki_keywords" "capacitor cap" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "ki_fp_filters" "C_*" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (symbol "cl10a105kb8nnnc_0_1" (polyline (pts (xy -1.524 0.508) (xy 1.524 0.508)) (stroke (width 0.3048) (type default)) (fill (type none))) (polyline (pts (xy -1.524 -0.508) (xy 1.524 -0.508)) (stroke (width 0.3302) (type default)) (fill (type none)))) (symbol "cl10a105kb8nnnc_1_1" (pin passive line (at 0 2.54 270) (length 2.032) (name "" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27))))) (pin passive line (at 0 -2.54 90) (length 2.032) (name "" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27)))))) (embedded_fonts no))
+  (symbol "0603WAF4702T5E"
+		(pin_numbers
+			(hide yes)
+		)
+		(pin_names
+			(offset 0)
+		)
+		(exclude_from_sim no)
+		(in_bom yes)
+		(on_board yes)
+		(in_pos_files yes)
+		(duplicate_pin_numbers_are_jumpers no)
+		(property "Reference" "R"
+			(at 2.032 0 90)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Value" "R"
+			(at 0 0 90)
+			(show_name no)
+			(do_not_autoplace no)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Footprint" "PCM_rf-power-monitor-rev2:R_0603_1608Metric"
+			(at -1.778 0 90)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Datasheet" ""
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "Description" "Resistor"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_keywords" "R res resistor"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "ki_fp_filters" "R_*"
+			(at 0 0 0)
+			(show_name no)
+			(do_not_autoplace no)
+			(hide yes)
+			(effects
+				(font
+					(size 1.27 1.27)
+				)
+			)
+		)
+		(property "MPN" "0603WAF4702T5E" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+		(property "Manufacturer" "UNI-ROYAL" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+		(symbol "0603WAF4702T5E_0_1"
+			(rectangle
+				(start -1.016 -2.54)
+				(end 1.016 2.54)
+				(stroke
+					(width 0.254)
+					(type default)
+				)
+				(fill
+					(type none)
+				)
+			)
+		)
+		(symbol "0603WAF4702T5E_1_1"
+			(pin passive line
+				(at 0 3.81 270)
+				(length 1.27)
+				(name ""
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "1"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+			(pin passive line
+				(at 0 -3.81 90)
+				(length 1.27)
+				(name ""
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+				(number "2"
+					(effects
+						(font
+							(size 1.27 1.27)
+						)
+					)
+				)
+			)
+		)
+		(embedded_fonts no)
+	)
+  (symbol "SN74LVC1G14DBVR" (in_bom yes) (on_board yes)
+    (property "Reference" "U" (at 0 7.62 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "SN74LVC1G14DBVR" (at 0 -7.62 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "PCM_rf-power-monitor-rev2:SOT-23-5" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (property "MPN" "SN74LVC1G14DBVR" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (property "Manufacturer" "UMW" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (property "LCSC" "C434069" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (property "DigiKey" "4518-SN74LVC1G14DBVRTR-ND" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (symbol "SN74LVC1G14DBVR_0_1"
+    (rectangle (start -12.70 5.08) (end 12.70 -5.08)
+      (stroke (width 0.254) (type default)) (fill (type background)))
+    )
+    (symbol "SN74LVC1G14DBVR_1_1"
+    (pin no_connect line (at -17.78 2.54 0) (length 5.08)
+      (name "NC" (effects (font (size 1.27 1.27))))
+      (number "1" (effects (font (size 1.27 1.27))))
+    )
+    (pin input line (at -17.78 0.00 0) (length 5.08)
+      (name "A" (effects (font (size 1.27 1.27))))
+      (number "2" (effects (font (size 1.27 1.27))))
+    )
+    (pin power_in line (at -17.78 -2.54 0) (length 5.08)
+      (name "GND" (effects (font (size 1.27 1.27))))
+      (number "3" (effects (font (size 1.27 1.27))))
+    )
+    (pin power_in line (at 17.78 0.00 180) (length 5.08)
+      (name "VCC" (effects (font (size 1.27 1.27))))
+      (number "5" (effects (font (size 1.27 1.27))))
+    )
+    (pin output line (at 17.78 -2.54 180) (length 5.08)
+      (name "Y" (effects (font (size 1.27 1.27))))
+      (number "4" (effects (font (size 1.27 1.27))))
+    )
+    )
+  )
+  (symbol "0603WAF1000T5E" (in_bom yes) (on_board yes)
+    (property "Reference" "U" (at 0 5.08 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "0603WAF1000T5E" (at 0 -5.08 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "PCM_rf-power-monitor-rev2:R_0603_1608Metric" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (property "MPN" "0603WAF1000T5E" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (property "Manufacturer" "UNI-ROYAL(Uniroyal Elec)" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (property "LCSC" "C22775" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (property "Mouser" "303-0603WAF1000T5E" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (symbol "0603WAF1000T5E_0_1"
+    (rectangle (start -12.70 2.54) (end 12.70 -2.54)
+      (stroke (width 0.254) (type default)) (fill (type background)))
+    )
+    (symbol "0603WAF1000T5E_1_1"
+    (pin passive line (at -17.78 0.00 0) (length 5.08)
+      (name "1" (effects (font (size 1.27 1.27))))
+      (number "1" (effects (font (size 1.27 1.27))))
+    )
+    (pin passive line (at 17.78 0.00 180) (length 5.08)
+      (name "2" (effects (font (size 1.27 1.27))))
+      (number "2" (effects (font (size 1.27 1.27))))
+    )
+    )
+  )
+  (symbol "KT-0805G" (in_bom yes) (on_board yes)
+    (property "Reference" "U" (at 0 5.08 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "KT-0805G" (at 0 -5.08 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "PCM_rf-power-monitor-rev2:LED_0805_2012Metric" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (property "MPN" "KT-0805G" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (property "Manufacturer" "Hubei KENTO Elec" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (property "LCSC" "C2297" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (symbol "KT-0805G_0_1"
+    (rectangle (start -12.70 2.54) (end 12.70 -2.54)
+      (stroke (width 0.254) (type default)) (fill (type background)))
+    )
+    (symbol "KT-0805G_1_1"
+    (pin passive line (at -17.78 0.00 0) (length 5.08)
+      (name "K" (effects (font (size 1.27 1.27))))
+      (number "1" (effects (font (size 1.27 1.27))))
+    )
+    (pin passive line (at 17.78 0.00 180) (length 5.08)
+      (name "A" (effects (font (size 1.27 1.27))))
+      (number "2" (effects (font (size 1.27 1.27))))
+    )
+    )
+  )
+  (symbol "NCD0805R1" (in_bom yes) (on_board yes)
+    (property "Reference" "U" (at 0 5.08 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "NCD0805R1" (at 0 -5.08 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "PCM_rf-power-monitor-rev2:LED_0805_2012Metric" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (property "MPN" "NCD0805R1" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (property "Manufacturer" "Foshan NationStar Optoelectronics" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (property "LCSC" "C84256" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (symbol "NCD0805R1_0_1"
+    (rectangle (start -12.70 2.54) (end 12.70 -2.54)
+      (stroke (width 0.254) (type default)) (fill (type background)))
+    )
+    (symbol "NCD0805R1_1_1"
+    (pin passive line (at -17.78 0.00 0) (length 5.08)
+      (name "Cathode" (effects (font (size 1.27 1.27))))
+      (number "1" (effects (font (size 1.27 1.27))))
+    )
+    (pin passive line (at 17.78 0.00 180) (length 5.08)
+      (name "A" (effects (font (size 1.27 1.27))))
+      (number "2" (effects (font (size 1.27 1.27))))
+    )
+    )
+  )
+  (symbol "0603WAF3300T5E"
+    (pin_numbers (hide yes))
+    (pin_names (offset 0) (hide yes))
+    (exclude_from_sim no)
+    (in_bom yes)
+    (on_board yes)
+    (property "Reference" "R"
+      (at 2.032 0 90)
+      (effects
+      (font
+       (size 1.27 1.27)
+      )
+     )
+    )
+    (property "Value" "0603WAF3300T5E"
+      (at 0 0 90)
+      (effects
+      (font
+       (size 1.27 1.27)
+      )
+     )
+    )
+    (property "Footprint" "PCM_rf-power-monitor-rev2:0603WAF3300T5E"
+      (at 0 0 0)
+      (effects (font (size 1.27 1.27)) (hide yes))
+    )
+    (property "Datasheet" "~"
+      (at 0 0 0)
+      (effects (font (size 1.27 1.27)) (hide yes))
+    )
+    (property "Description" "Resistor"
+      (at 0 0 0)
+      (effects (font (size 1.27 1.27)) (hide yes))
+    )
+    (property "MPN" "0603WAF3300T5E"
+      (at 0 0 0)
+      (effects (font (size 1.27 1.27)) (hide yes))
+    )
+    (property "Manufacturer" "Royalohm"
+      (at 0 0 0)
+      (effects (font (size 1.27 1.27)) (hide yes))
+    )
+    (symbol "0603WAF3300T5E_0_1"
+     (rectangle
+      (start -1.016 -2.54)
+      (end 1.016 2.54)
+      (stroke
+       (width 0.254)
+       (type default)
+      )
+      (fill
+       (type none)
+      )
+     )
+    )
+    (symbol "0603WAF3300T5E_1_1"
+     (pin passive line
+      (at 0 3.81 270)
+      (length 1.27)
+      (name "~"
+       (effects
+        (font
+         (size 1.27 1.27)
+        )
+       )
+      )
+      (number "1"
+       (effects
+        (font
+         (size 1.27 1.27)
+        )
+       )
+      )
+     )
+     (pin passive line
+      (at 0 -3.81 90)
+      (length 1.27)
+      (name "~"
+       (effects
+        (font
+         (size 1.27 1.27)
+        )
+       )
+      )
+      (number "2"
+       (effects
+        (font
+         (size 1.27 1.27)
+        )
+       )
+      )
+     )
+    )
+  )
+  (symbol "TMP1075DR" (in_bom yes) (on_board yes)
+    (property "Reference" "U" (at 0 7.62 0) (effects (font (size 1.27 1.27))))
+    (property "Value" "TMP1075DR" (at 0 -10.16 0) (effects (font (size 1.27 1.27))))
+    (property "Footprint" "PCM_rf-power-monitor-rev2:SOIC-8_3.9x4.9mm_P1.27mm" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (property "MPN" "TMP1075DR" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (property "Manufacturer" "Texas Instruments" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (property "LCSC" "C2878381" (at 0 0 0) (effects (font (size 1.27 1.27)) hide))
+    (symbol "TMP1075DR_0_1"
+    (rectangle (start -12.70 5.08) (end 12.70 -7.62)
+      (stroke (width 0.254) (type default)) (fill (type background)))
+    )
+    (symbol "TMP1075DR_1_1"
+    (pin bidirectional line (at -17.78 2.54 0) (length 5.08)
+      (name "SDA" (effects (font (size 1.27 1.27))))
+      (number "1" (effects (font (size 1.27 1.27))))
+    )
+    (pin input line (at -17.78 0.00 0) (length 5.08)
+      (name "SCL" (effects (font (size 1.27 1.27))))
+      (number "2" (effects (font (size 1.27 1.27))))
+    )
+    (pin tri_state line (at -17.78 -2.54 0) (length 5.08)
+      (name "ALERT" (effects (font (size 1.27 1.27))))
+      (number "3" (effects (font (size 1.27 1.27))))
+    )
+    (pin power_in line (at -17.78 -5.08 0) (length 5.08)
+      (name "GND" (effects (font (size 1.27 1.27))))
+      (number "4" (effects (font (size 1.27 1.27))))
+    )
+    (pin power_in line (at 17.78 2.54 180) (length 5.08)
+      (name "V+" (effects (font (size 1.27 1.27))))
+      (number "8" (effects (font (size 1.27 1.27))))
+    )
+    (pin input line (at 17.78 0.00 180) (length 5.08)
+      (name "A0" (effects (font (size 1.27 1.27))))
+      (number "7" (effects (font (size 1.27 1.27))))
+    )
+    (pin input line (at 17.78 -2.54 180) (length 5.08)
+      (name "A1" (effects (font (size 1.27 1.27))))
+      (number "6" (effects (font (size 1.27 1.27))))
+    )
+    (pin input line (at 17.78 -5.08 180) (length 5.08)
+      (name "A2" (effects (font (size 1.27 1.27))))
+      (number "5" (effects (font (size 1.27 1.27))))
+    )
+    )
+  )
+  (symbol "TYPE-C-31-M-12" (pin_names (offset 1.016)) (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes) (duplicate_pin_numbers_are_jumpers no) (property "Reference" "J" (at 0 22.225 0) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)))) (property "Value" "TYPE-C-31-M-12" (at 0 19.685 0) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)))) (property "Footprint" "PCM_rf-power-monitor-rev2:USB_C_Receptacle_HRO_TYPE-C-31-M-12" (at 3.81 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "Datasheet" "https://www.usb.org/sites/default/files/documents/usb_type-c.zip" (at 3.81 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "Description" "Korean Hroparts TYPE-C-31-M-12, LCSC C165948; STEP from LCSC/EasyEDA" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "ki_keywords" "usb universal serial bus type-C USB2.0" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "ki_fp_filters" "USB*C*Receptacle*" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (symbol "TYPE-C-31-M-12_0_0" (rectangle (start -0.254 -17.78) (end 0.254 -16.764) (stroke (width 0) (type default)) (fill (type none))) (rectangle (start 10.16 15.494) (end 9.144 14.986) (stroke (width 0) (type default)) (fill (type none))) (rectangle (start 10.16 10.414) (end 9.144 9.906) (stroke (width 0) (type default)) (fill (type none))) (rectangle (start 10.16 7.874) (end 9.144 7.366) (stroke (width 0) (type default)) (fill (type none))) (rectangle (start 10.16 2.794) (end 9.144 2.286) (stroke (width 0) (type default)) (fill (type none))) (rectangle (start 10.16 0.254) (end 9.144 -0.254) (stroke (width 0) (type default)) (fill (type none))) (rectangle (start 10.16 -2.286) (end 9.144 -2.794) (stroke (width 0) (type default)) (fill (type none))) (rectangle (start 10.16 -4.826) (end 9.144 -5.334) (stroke (width 0) (type default)) (fill (type none))) (rectangle (start 10.16 -12.446) (end 9.144 -12.954) (stroke (width 0) (type default)) (fill (type none))) (rectangle (start 10.16 -14.986) (end 9.144 -15.494) (stroke (width 0) (type default)) (fill (type none)))) (symbol "TYPE-C-31-M-12_0_1" (rectangle (start -10.16 17.78) (end 10.16 -17.78) (stroke (width 0.254) (type default)) (fill (type background))) (polyline (pts (xy -8.89 -3.81) (xy -8.89 3.81)) (stroke (width 0.508) (type default)) (fill (type none))) (rectangle (start -7.62 -3.81) (end -6.35 3.81) (stroke (width 0.254) (type default)) (fill (type outline))) (arc (start -7.62 3.81) (mid -6.985 4.4423) (end -6.35 3.81) (stroke (width 0.254) (type default)) (fill (type none))) (arc (start -7.62 3.81) (mid -6.985 4.4423) (end -6.35 3.81) (stroke (width 0.254) (type default)) (fill (type outline))) (arc (start -8.89 3.81) (mid -6.985 5.7067) (end -5.08 3.81) (stroke (width 0.508) (type default)) (fill (type none))) (arc (start -5.08 -3.81) (mid -6.985 -5.7067) (end -8.89 -3.81) (stroke (width 0.508) (type default)) (fill (type none))) (arc (start -6.35 -3.81) (mid -6.985 -4.4423) (end -7.62 -3.81) (stroke (width 0.254) (type default)) (fill (type none))) (arc (start -6.35 -3.81) (mid -6.985 -4.4423) (end -7.62 -3.81) (stroke (width 0.254) (type default)) (fill (type outline))) (polyline (pts (xy -5.08 3.81) (xy -5.08 -3.81)) (stroke (width 0.508) (type default)) (fill (type none))) (circle (center -2.54 1.143) (radius 0.635) (stroke (width 0.254) (type default)) (fill (type outline))) (polyline (pts (xy -1.27 4.318) (xy 0 6.858) (xy 1.27 4.318) (xy -1.27 4.318)) (stroke (width 0.254) (type default)) (fill (type outline))) (polyline (pts (xy 0 -2.032) (xy 2.54 0.508) (xy 2.54 1.778)) (stroke (width 0.508) (type default)) (fill (type none))) (polyline (pts (xy 0 -3.302) (xy -2.54 -0.762) (xy -2.54 0.508)) (stroke (width 0.508) (type default)) (fill (type none))) (polyline (pts (xy 0 -5.842) (xy 0 4.318)) (stroke (width 0.508) (type default)) (fill (type none))) (circle (center 0 -5.842) (radius 1.27) (stroke (width 0) (type default)) (fill (type outline))) (rectangle (start 1.905 1.778) (end 3.175 3.048) (stroke (width 0.254) (type default)) (fill (type outline)))) (symbol "TYPE-C-31-M-12_1_1" (pin passive line (at 0 -22.86 90) (length 5.08) (name "GND" (effects (font (size 1.27 1.27)))) (number "A1" (effects (font (size 1.27 1.27))))) (pin passive line (at 15.24 15.24 180) (length 5.08) (name "VBUS" (effects (font (size 1.27 1.27)))) (number "A4" (effects (font (size 1.27 1.27))))) (pin bidirectional line (at 15.24 10.16 180) (length 5.08) (name "CC1" (effects (font (size 1.27 1.27)))) (number "A5" (effects (font (size 1.27 1.27))))) (pin bidirectional line (at 15.24 -2.54 180) (length 5.08) (name "D+" (effects (font (size 1.27 1.27)))) (number "A6" (effects (font (size 1.27 1.27))))) (pin bidirectional line (at 15.24 2.54 180) (length 5.08) (name "D-" (effects (font (size 1.27 1.27)))) (number "A7" (effects (font (size 1.27 1.27))))) (pin bidirectional line (at 15.24 -12.7 180) (length 5.08) (name "SBU1" (effects (font (size 1.27 1.27)))) (number "A8" (effects (font (size 1.27 1.27))))) (pin passive line (at 15.24 15.24 180) (length 5.08) (hide yes) (name "VBUS" (effects (font (size 1.27 1.27)))) (number "A9" (effects (font (size 1.27 1.27))))) (pin passive line (at 0 -22.86 90) (length 5.08) (hide yes) (name "GND" (effects (font (size 1.27 1.27)))) (number "A12" (effects (font (size 1.27 1.27))))) (pin passive line (at 0 -22.86 90) (length 5.08) (hide yes) (name "GND" (effects (font (size 1.27 1.27)))) (number "B1" (effects (font (size 1.27 1.27))))) (pin passive line (at 15.24 15.24 180) (length 5.08) (hide yes) (name "VBUS" (effects (font (size 1.27 1.27)))) (number "B4" (effects (font (size 1.27 1.27))))) (pin bidirectional line (at 15.24 7.62 180) (length 5.08) (name "CC2" (effects (font (size 1.27 1.27)))) (number "B5" (effects (font (size 1.27 1.27))))) (pin bidirectional line (at 15.24 -5.08 180) (length 5.08) (name "D+" (effects (font (size 1.27 1.27)))) (number "B6" (effects (font (size 1.27 1.27))))) (pin bidirectional line (at 15.24 0 180) (length 5.08) (name "D-" (effects (font (size 1.27 1.27)))) (number "B7" (effects (font (size 1.27 1.27))))) (pin bidirectional line (at 15.24 -15.24 180) (length 5.08) (name "SBU2" (effects (font (size 1.27 1.27)))) (number "B8" (effects (font (size 1.27 1.27))))) (pin passive line (at 15.24 15.24 180) (length 5.08) (hide yes) (name "VBUS" (effects (font (size 1.27 1.27)))) (number "B9" (effects (font (size 1.27 1.27))))) (pin passive line (at 0 -22.86 90) (length 5.08) (hide yes) (name "GND" (effects (font (size 1.27 1.27)))) (number "B12" (effects (font (size 1.27 1.27))))) (pin passive line (at -7.62 -22.86 90) (length 5.08) (name "SHIELD" (effects (font (size 1.27 1.27)))) (number "SH" (effects (font (size 1.27 1.27)))))) (embedded_fonts no))
+  (symbol "B5819W_SL" (pin_numbers (hide yes)) (pin_names (offset 1.016) (hide yes)) (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes) (duplicate_pin_numbers_are_jumpers no) (property "Reference" "D" (at 0 2.54 0) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)))) (property "Value" "B5819W SL" (at 0 -2.54 0) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)))) (property "Footprint" "PCM_rf-power-monitor-rev2:D_SOD-123" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "Datasheet" "" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "Description" "Slkor B5819W SL 40 V 1 A SOD-123, LCSC C8598" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "ki_keywords" "diode Schottky" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "ki_fp_filters" "TO-???* *_Diode_* *SingleDiode* D_*" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (symbol "B5819W_SL_0_1" (polyline (pts (xy -1.905 0.635) (xy -1.905 1.27) (xy -1.27 1.27) (xy -1.27 -1.27) (xy -0.635 -1.27) (xy -0.635 -0.635)) (stroke (width 0.254) (type default)) (fill (type none))) (polyline (pts (xy 1.27 1.27) (xy 1.27 -1.27) (xy -1.27 0) (xy 1.27 1.27)) (stroke (width 0.254) (type default)) (fill (type none))) (polyline (pts (xy 1.27 0) (xy -1.27 0)) (stroke (width 0) (type default)) (fill (type none)))) (symbol "B5819W_SL_1_1" (pin passive line (at -3.81 0 0) (length 2.54) (name "K" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27))))) (pin passive line (at 3.81 0 180) (length 2.54) (name "A" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27)))))) (embedded_fonts no))
+  (symbol "0402WGF5601TCE" (pin_numbers (hide yes)) (pin_names (offset 0)) (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes) (duplicate_pin_numbers_are_jumpers no) (property "Reference" "R" (at 2.032 0 90) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)))) (property "Value" "0402WGF5601TCE" (at 0 0 90) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)))) (property "Footprint" "PCM_rf-power-monitor-rev2:R_0402_1005Metric" (at -1.778 0 90) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "Datasheet" "" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "Description" "UNI-ROYAL 0402WGF5601TCE, LCSC C25908" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "ki_keywords" "R res resistor" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "ki_fp_filters" "R_*" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (symbol "0402WGF5601TCE_0_1" (rectangle (start -1.016 -2.54) (end 1.016 2.54) (stroke (width 0.254) (type default)) (fill (type none)))) (symbol "0402WGF5601TCE_1_1" (pin passive line (at 0 3.81 270) (length 1.27) (name "" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27))))) (pin passive line (at 0 -3.81 90) (length 1.27) (name "" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27)))))) (embedded_fonts no))
+  (symbol "CL21A106KAYNNNE" (pin_numbers (hide yes)) (pin_names (offset 0.254)) (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes) (duplicate_pin_numbers_are_jumpers no) (property "Reference" "C" (at 0.635 2.54 0) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)) (justify left))) (property "Value" "CL21A106KAYNNNE" (at 0.635 -2.54 0) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)) (justify left))) (property "Footprint" "PCM_rf-power-monitor-rev2:C_0805_2012Metric" (at 0.9652 -3.81 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "Datasheet" "" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "Description" "Samsung CL21A106KAYNNNE 10 uF 25 V, LCSC C15850" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "ki_keywords" "cap capacitor" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "ki_fp_filters" "C_*" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (symbol "CL21A106KAYNNNE_0_1" (polyline (pts (xy -2.032 0.762) (xy 2.032 0.762)) (stroke (width 0.508) (type default)) (fill (type none))) (polyline (pts (xy -2.032 -0.762) (xy 2.032 -0.762)) (stroke (width 0.508) (type default)) (fill (type none)))) (symbol "CL21A106KAYNNNE_1_1" (pin passive line (at 0 3.81 270) (length 2.794) (name "" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27))))) (pin passive line (at 0 -3.81 90) (length 2.794) (name "" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27)))))) (embedded_fonts no))
+  (symbol "SWPA3015S2R2MT" (pin_numbers (hide yes)) (pin_names (offset 1.016) (hide yes)) (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes) (duplicate_pin_numbers_are_jumpers no) (property "Reference" "L" (at -1.27 0 90) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)))) (property "Value" "SWPA3015S2R2MT" (at 1.905 0 90) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)))) (property "Footprint" "PCM_rf-power-monitor-rev2:IND-SMD_L3.0-W3.0" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "Datasheet" "" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "Description" "Sunlord SWPA3015S2R2MT 2.2 uH, LCSC C43389; footprint and STEP from LCSC/EasyEDA (easyeda2kicad 1.0.1)" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "ki_keywords" "inductor choke coil reactor magnetic" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "ki_fp_filters" "Choke_* *Coil* Inductor_* L_*" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (symbol "SWPA3015S2R2MT_0_1" (arc (start 0 2.54) (mid 0.6323 1.905) (end 0 1.27) (stroke (width 0) (type default)) (fill (type none))) (arc (start 0 1.27) (mid 0.6323 0.635) (end 0 0) (stroke (width 0) (type default)) (fill (type none))) (arc (start 0 0) (mid 0.6323 -0.635) (end 0 -1.27) (stroke (width 0) (type default)) (fill (type none))) (arc (start 0 -1.27) (mid 0.6323 -1.905) (end 0 -2.54) (stroke (width 0) (type default)) (fill (type none)))) (symbol "SWPA3015S2R2MT_1_1" (pin passive line (at 0 3.81 270) (length 1.27) (name "1" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27))))) (pin passive line (at 0 -3.81 90) (length 1.27) (name "2" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27)))))) (embedded_fonts no))
+  (symbol "RC0402FR-0722KL" (pin_numbers (hide yes)) (pin_names (offset 0)) (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes) (duplicate_pin_numbers_are_jumpers no) (property "Reference" "R" (at 2.032 0 90) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)))) (property "Value" "RC0402FR-0722KL" (at 0 0 90) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)))) (property "Footprint" "PCM_rf-power-monitor-rev2:R_0402_1005Metric" (at -1.778 0 90) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "Datasheet" "" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "Description" "Yageo RC0402FR-0722KL, LCSC C82868" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "ki_keywords" "R res resistor" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "ki_fp_filters" "R_*" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (symbol "RC0402FR-0722KL_0_1" (rectangle (start -1.016 -2.54) (end 1.016 2.54) (stroke (width 0.254) (type default)) (fill (type none)))) (symbol "RC0402FR-0722KL_1_1" (pin passive line (at 0 3.81 270) (length 1.27) (name "" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27))))) (pin passive line (at 0 -3.81 90) (length 1.27) (name "" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27)))))) (embedded_fonts no))
+  (symbol "KH-RJ45-56-8P8C-D" (pin_names (offset 1.016)) (exclude_from_sim no) (in_bom yes) (on_board yes) (property "Reference" "J" (at 0 12.7 0) (effects (font (size 1.27 1.27)))) (property "Value" "KH-RJ45-56-8P8C-D" (at 0 -12.7 0) (effects (font (size 1.27 1.27)))) (property "Footprint" "PCM_rf-power-monitor-rev2:RJ45-TH_KH-RJ45-56-8P8C-D" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27)))) (property "Datasheet" "https://www.lcsc.com/product-detail/C2828082.html" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27)))) (property "Description" "Kinghelm KH-RJ45-56-8P8C-D, LCSC C2828082; footprint and STEP from LCSC/EasyEDA (easyeda2kicad 1.0.1)" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27)))) (symbol "KH-RJ45-56-8P8C-D_0_1" (rectangle (start -7.62 11.43) (end 7.62 -11.43) (stroke (width 0.254) (type default)) (fill (type background)))) (symbol "KH-RJ45-56-8P8C-D_1_1" (pin passive line (at -10.16 8.89 0) (length 2.54) (name "1 TX+" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27))))) (pin passive line (at -10.16 6.35 0) (length 2.54) (name "2 TX-" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27))))) (pin passive line (at -10.16 3.81 0) (length 2.54) (name "3 RX+" (effects (font (size 1.27 1.27)))) (number "3" (effects (font (size 1.27 1.27))))) (pin passive line (at -10.16 1.27 0) (length 2.54) (name "6 RX-" (effects (font (size 1.27 1.27)))) (number "6" (effects (font (size 1.27 1.27))))) (pin passive line (at -10.16 -1.27 0) (length 2.54) (name "4" (effects (font (size 1.27 1.27)))) (number "4" (effects (font (size 1.27 1.27))))) (pin passive line (at -10.16 -3.81 0) (length 2.54) (name "5" (effects (font (size 1.27 1.27)))) (number "5" (effects (font (size 1.27 1.27))))) (pin passive line (at -10.16 -6.35 0) (length 2.54) (name "7" (effects (font (size 1.27 1.27)))) (number "7" (effects (font (size 1.27 1.27))))) (pin passive line (at -10.16 -8.89 0) (length 2.54) (name "8" (effects (font (size 1.27 1.27)))) (number "8" (effects (font (size 1.27 1.27))))) (pin passive line (at 10.16 8.89 180) (length 2.54) (name "LED L+" (effects (font (size 1.27 1.27)))) (number "12" (effects (font (size 1.27 1.27))))) (pin passive line (at 10.16 6.35 180) (length 2.54) (name "LED L-" (effects (font (size 1.27 1.27)))) (number "11" (effects (font (size 1.27 1.27))))) (pin passive line (at 10.16 3.81 180) (length 2.54) (name "LED R+" (effects (font (size 1.27 1.27)))) (number "10" (effects (font (size 1.27 1.27))))) (pin passive line (at 10.16 1.27 180) (length 2.54) (name "LED R-" (effects (font (size 1.27 1.27)))) (number "9" (effects (font (size 1.27 1.27))))) (pin passive line (at -1.27 -13.969999999999999 90) (length 2.54) (name "SHIELD" (effects (font (size 1.27 1.27)))) (number "13" (effects (font (size 1.27 1.27))))) (pin passive line (at 1.27 -13.969999999999999 90) (length 2.54) (name "SHIELD" (effects (font (size 1.27 1.27)))) (number "14" (effects (font (size 1.27 1.27)))))))
+  (symbol "HR601680" (pin_names (offset 1.016)) (exclude_from_sim no) (in_bom yes) (on_board yes) (property "Reference" "T" (at 0 12.7 0) (effects (font (size 1.27 1.27)))) (property "Value" "HR601680" (at 0 -12.7 0) (effects (font (size 1.27 1.27)))) (property "Footprint" "PCM_rf-power-monitor-rev2:SMD-16_L12.7-W7.2-P1.27-LS9.5-BL" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27)))) (property "Datasheet" "https://www.lcsc.com/product-detail/C242560.html" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27)))) (property "Description" "HanRun HR601680, LCSC C242560; footprint and STEP from LCSC/EasyEDA (easyeda2kicad 1.0.1), pads checked against the HanRun drawing (0.420 in rows, 0.050 in pitch)" (at 0 0 0) (hide yes) (effects (font (size 1.27 1.27)))) (symbol "HR601680_0_1" (rectangle (start -7.62 11.43) (end 7.62 -11.43) (stroke (width 0.254) (type default)) (fill (type background)))) (symbol "HR601680_1_1" (pin passive line (at -10.16 8.89 0) (length 2.54) (name "TD+" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27))))) (pin passive line (at -10.16 6.35 0) (length 2.54) (name "TCT" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27))))) (pin passive line (at -10.16 3.81 0) (length 2.54) (name "TD-" (effects (font (size 1.27 1.27)))) (number "3" (effects (font (size 1.27 1.27))))) (pin no_connect line (at -10.16 1.27 0) (length 2.54) (name "NC" (effects (font (size 1.27 1.27)))) (number "4" (effects (font (size 1.27 1.27))))) (pin no_connect line (at -10.16 -1.27 0) (length 2.54) (name "NC" (effects (font (size 1.27 1.27)))) (number "5" (effects (font (size 1.27 1.27))))) (pin passive line (at -10.16 -3.81 0) (length 2.54) (name "RD+" (effects (font (size 1.27 1.27)))) (number "6" (effects (font (size 1.27 1.27))))) (pin passive line (at -10.16 -6.35 0) (length 2.54) (name "RCT" (effects (font (size 1.27 1.27)))) (number "7" (effects (font (size 1.27 1.27))))) (pin passive line (at -10.16 -8.89 0) (length 2.54) (name "RD-" (effects (font (size 1.27 1.27)))) (number "8" (effects (font (size 1.27 1.27))))) (pin passive line (at 10.16 8.89 180) (length 2.54) (name "TX+" (effects (font (size 1.27 1.27)))) (number "16" (effects (font (size 1.27 1.27))))) (pin passive line (at 10.16 6.35 180) (length 2.54) (name "TXCT" (effects (font (size 1.27 1.27)))) (number "15" (effects (font (size 1.27 1.27))))) (pin passive line (at 10.16 3.81 180) (length 2.54) (name "TX-" (effects (font (size 1.27 1.27)))) (number "14" (effects (font (size 1.27 1.27))))) (pin no_connect line (at 10.16 1.27 180) (length 2.54) (name "NC" (effects (font (size 1.27 1.27)))) (number "13" (effects (font (size 1.27 1.27))))) (pin no_connect line (at 10.16 -1.27 180) (length 2.54) (name "NC" (effects (font (size 1.27 1.27)))) (number "12" (effects (font (size 1.27 1.27))))) (pin passive line (at 10.16 -3.81 180) (length 2.54) (name "RX+" (effects (font (size 1.27 1.27)))) (number "11" (effects (font (size 1.27 1.27))))) (pin passive line (at 10.16 -6.35 180) (length 2.54) (name "RXCT" (effects (font (size 1.27 1.27)))) (number "10" (effects (font (size 1.27 1.27))))) (pin passive line (at 10.16 -8.89 180) (length 2.54) (name "RX-" (effects (font (size 1.27 1.27)))) (number "9" (effects (font (size 1.27 1.27)))))))
+  (symbol "RC0402FR-0775RL" (pin_numbers (hide yes)) (pin_names (offset 0)) (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes) (duplicate_pin_numbers_are_jumpers no) (property "Reference" "R" (at 2.032 0 90) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)))) (property "Value" "RC0402FR-0775RL" (at 0 0 90) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)))) (property "Footprint" "PCM_rf-power-monitor-rev2:R_0402_1005Metric" (at -1.778 0 90) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "Datasheet" "" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "Description" "Yageo RC0402FR-0775RL, LCSC C114757" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "ki_keywords" "R res resistor" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "ki_fp_filters" "R_*" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (symbol "RC0402FR-0775RL_0_1" (rectangle (start -1.016 -2.54) (end 1.016 2.54) (stroke (width 0.254) (type default)) (fill (type none)))) (symbol "RC0402FR-0775RL_1_1" (pin passive line (at 0 3.81 270) (length 1.27) (name "" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27))))) (pin passive line (at 0 -3.81 90) (length 1.27) (name "" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27)))))) (embedded_fonts no))
+  (symbol "CC0603KRX7R0BB103" (pin_numbers (hide yes)) (pin_names (offset 0.254)) (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes) (duplicate_pin_numbers_are_jumpers no) (property "Reference" "C" (at 0.635 2.54 0) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)) (justify left))) (property "Value" "CC0603KRX7R0BB103" (at 0.635 -2.54 0) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)) (justify left))) (property "Footprint" "PCM_rf-power-monitor-rev2:C_0603_1608Metric" (at 0.9652 -3.81 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "Datasheet" "" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "Description" "Yageo CC0603KRX7R0BB103 10 nF 100 V, LCSC C107059" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "ki_keywords" "cap capacitor" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "ki_fp_filters" "C_*" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (symbol "CC0603KRX7R0BB103_0_1" (polyline (pts (xy -2.032 0.762) (xy 2.032 0.762)) (stroke (width 0.508) (type default)) (fill (type none))) (polyline (pts (xy -2.032 -0.762) (xy 2.032 -0.762)) (stroke (width 0.508) (type default)) (fill (type none)))) (symbol "CC0603KRX7R0BB103_1_1" (pin passive line (at 0 3.81 270) (length 2.794) (name "" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27))))) (pin passive line (at 0 -3.81 90) (length 2.794) (name "" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27)))))) (embedded_fonts no))
+  (symbol "1808B102K202NT" (pin_numbers (hide yes)) (pin_names (offset 0.254)) (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes) (duplicate_pin_numbers_are_jumpers no) (property "Reference" "C" (at 0.635 2.54 0) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)) (justify left))) (property "Value" "1808B102K202NT" (at 0.635 -2.54 0) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)) (justify left))) (property "Footprint" "PCM_rf-power-monitor-rev2:C_1808_4520Metric" (at 0.9652 -3.81 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "Datasheet" "" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "Description" "FH 1808B102K202NT 1 nF 2 kV X7R, LCSC C81332" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "ki_keywords" "cap capacitor" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "ki_fp_filters" "C_*" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (symbol "1808B102K202NT_0_1" (polyline (pts (xy -2.032 0.762) (xy 2.032 0.762)) (stroke (width 0.508) (type default)) (fill (type none))) (polyline (pts (xy -2.032 -0.762) (xy 2.032 -0.762)) (stroke (width 0.508) (type default)) (fill (type none)))) (symbol "1808B102K202NT_1_1" (pin passive line (at 0 3.81 270) (length 2.794) (name "" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27))))) (pin passive line (at 0 -3.81 90) (length 2.794) (name "" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27)))))) (embedded_fonts no))
+  (symbol "0402WGF1242TCE" (pin_numbers (hide yes)) (pin_names (offset 0)) (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes) (duplicate_pin_numbers_are_jumpers no) (property "Reference" "R" (at 2.032 0 90) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)))) (property "Value" "0402WGF1242TCE" (at 0 0 90) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)))) (property "Footprint" "PCM_rf-power-monitor-rev2:R_0402_1005Metric" (at -1.778 0 90) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "Datasheet" "" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "Description" "UNI-ROYAL 0402WGF1242TCE, LCSC C11692" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "ki_keywords" "R res resistor" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "ki_fp_filters" "R_*" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (symbol "0402WGF1242TCE_0_1" (rectangle (start -1.016 -2.54) (end 1.016 2.54) (stroke (width 0.254) (type default)) (fill (type none)))) (symbol "0402WGF1242TCE_1_1" (pin passive line (at 0 3.81 270) (length 1.27) (name "" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27))))) (pin passive line (at 0 -3.81 90) (length 1.27) (name "" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27)))))) (embedded_fonts no))
+  (symbol "0402WGF1004TCE" (pin_numbers (hide yes)) (pin_names (offset 0)) (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes) (duplicate_pin_numbers_are_jumpers no) (property "Reference" "R" (at 2.032 0 90) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)))) (property "Value" "0402WGF1004TCE" (at 0 0 90) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)))) (property "Footprint" "PCM_rf-power-monitor-rev2:R_0402_1005Metric" (at -1.778 0 90) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "Datasheet" "" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "Description" "UNI-ROYAL 0402WGF1004TCE, LCSC C26083" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "ki_keywords" "R res resistor" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "ki_fp_filters" "R_*" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (symbol "0402WGF1004TCE_0_1" (rectangle (start -1.016 -2.54) (end 1.016 2.54) (stroke (width 0.254) (type default)) (fill (type none)))) (symbol "0402WGF1004TCE_1_1" (pin passive line (at 0 3.81 270) (length 1.27) (name "" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27))))) (pin passive line (at 0 -3.81 90) (length 1.27) (name "" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27)))))) (embedded_fonts no))
+  (symbol "RC0402FR-073R3L" (pin_numbers (hide yes)) (pin_names (offset 0)) (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes) (duplicate_pin_numbers_are_jumpers no) (property "Reference" "R" (at 2.032 0 90) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)))) (property "Value" "RC0402FR-073R3L" (at 0 0 90) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)))) (property "Footprint" "PCM_rf-power-monitor-rev2:R_0402_1005Metric" (at -1.778 0 90) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "Datasheet" "" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "Description" "Yageo RC0402FR-073R3L, LCSC C137986" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "ki_keywords" "R res resistor" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "ki_fp_filters" "R_*" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (symbol "RC0402FR-073R3L_0_1" (rectangle (start -1.016 -2.54) (end 1.016 2.54) (stroke (width 0.254) (type default)) (fill (type none)))) (symbol "RC0402FR-073R3L_1_1" (pin passive line (at 0 3.81 270) (length 1.27) (name "" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27))))) (pin passive line (at 0 -3.81 90) (length 1.27) (name "" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27)))))) (embedded_fonts no))
+  (symbol "0402WGF499JTCE" (pin_numbers (hide yes)) (pin_names (offset 0)) (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes) (duplicate_pin_numbers_are_jumpers no) (property "Reference" "R" (at 2.032 0 90) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)))) (property "Value" "0402WGF499JTCE" (at 0 0 90) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)))) (property "Footprint" "PCM_rf-power-monitor-rev2:R_0402_1005Metric" (at -1.778 0 90) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "Datasheet" "" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "Description" "UNI-ROYAL 0402WGF499JTCE, LCSC C25120" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "ki_keywords" "R res resistor" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "ki_fp_filters" "R_*" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (symbol "0402WGF499JTCE_0_1" (rectangle (start -1.016 -2.54) (end 1.016 2.54) (stroke (width 0.254) (type default)) (fill (type none)))) (symbol "0402WGF499JTCE_1_1" (pin passive line (at 0 3.81 270) (length 1.27) (name "" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27))))) (pin passive line (at 0 -3.81 90) (length 1.27) (name "" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27)))))) (embedded_fonts no))
+  (symbol "0402B682K500NT" (pin_numbers (hide yes)) (pin_names (offset 0.254)) (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes) (duplicate_pin_numbers_are_jumpers no) (property "Reference" "C" (at 0.635 2.54 0) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)) (justify left))) (property "Value" "0402B682K500NT" (at 0.635 -2.54 0) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)) (justify left))) (property "Footprint" "PCM_rf-power-monitor-rev2:C_0402_1005Metric" (at 0.9652 -3.81 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "Datasheet" "" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "Description" "FH (Fenghua) 0402B682K500NT, LCSC C1542" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "ki_keywords" "cap capacitor" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "ki_fp_filters" "C_*" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (symbol "0402B682K500NT_0_1" (polyline (pts (xy -2.032 0.762) (xy 2.032 0.762)) (stroke (width 0.508) (type default)) (fill (type none))) (polyline (pts (xy -2.032 -0.762) (xy 2.032 -0.762)) (stroke (width 0.508) (type default)) (fill (type none)))) (symbol "0402B682K500NT_1_1" (pin passive line (at 0 3.81 270) (length 2.794) (name "" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27))))) (pin passive line (at 0 -3.81 90) (length 2.794) (name "" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27)))))) (embedded_fonts no))
+  (symbol "RC0402FR-0727RL" (pin_numbers (hide yes)) (pin_names (offset 0)) (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes) (duplicate_pin_numbers_are_jumpers no) (property "Reference" "R" (at 2.032 0 90) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)))) (property "Value" "RC0402FR-0727RL" (at 0 0 90) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)))) (property "Footprint" "PCM_rf-power-monitor-rev2:R_0402_1005Metric" (at -1.778 0 90) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "Datasheet" "" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "Description" "Yageo RC0402FR-0727RL, LCSC C138021" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "ki_keywords" "R res resistor" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "ki_fp_filters" "R_*" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (symbol "RC0402FR-0727RL_0_1" (rectangle (start -1.016 -2.54) (end 1.016 2.54) (stroke (width 0.254) (type default)) (fill (type none)))) (symbol "RC0402FR-0727RL_1_1" (pin passive line (at 0 3.81 270) (length 1.27) (name "" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27))))) (pin passive line (at 0 -3.81 90) (length 1.27) (name "" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27)))))) (embedded_fonts no))
+  (symbol "TS-1187A-B-A-B" (pin_numbers (hide yes)) (pin_names (offset 1.016) (hide yes)) (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes) (duplicate_pin_numbers_are_jumpers no) (property "Reference" "SW" (at 1.27 2.54 0) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)) (justify left))) (property "Value" "TS-1187A-B-A-B" (at 0 -1.524 0) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)))) (property "Footprint" "PCM_rf-power-monitor-rev2:SW_Push_1P1T_XKB_TS-1187A" (at 0 5.08 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "Datasheet" "" (at 0 5.08 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "Description" "XKB TS-1187A-B-A-B, LCSC C318884; STEP from LCSC/EasyEDA" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "ki_keywords" "switch normally-open pushbutton push-button" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (symbol "TS-1187A-B-A-B_0_1" (circle (center -2.032 0) (radius 0.508) (stroke (width 0) (type default)) (fill (type none))) (polyline (pts (xy 0 1.27) (xy 0 3.048)) (stroke (width 0) (type default)) (fill (type none))) (circle (center 2.032 0) (radius 0.508) (stroke (width 0) (type default)) (fill (type none))) (polyline (pts (xy 2.54 1.27) (xy -2.54 1.27)) (stroke (width 0) (type default)) (fill (type none))) (pin passive line (at -5.08 0 0) (length 2.54) (name "1" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27))))) (pin passive line (at 5.08 0 180) (length 2.54) (name "2" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27)))))) (embedded_fonts no))
+  (symbol "RC0402FR-07470RL" (pin_numbers (hide yes)) (pin_names (offset 0)) (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes) (duplicate_pin_numbers_are_jumpers no) (property "Reference" "R" (at 2.032 0 90) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)))) (property "Value" "RC0402FR-07470RL" (at 0 0 90) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)))) (property "Footprint" "PCM_rf-power-monitor-rev2:R_0402_1005Metric" (at -1.778 0 90) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "Datasheet" "" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "Description" "Yageo RC0402FR-07470RL, LCSC C114877" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "ki_keywords" "R res resistor" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "ki_fp_filters" "R_*" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (symbol "RC0402FR-07470RL_0_1" (rectangle (start -1.016 -2.54) (end 1.016 2.54) (stroke (width 0.254) (type default)) (fill (type none)))) (symbol "RC0402FR-07470RL_1_1" (pin passive line (at 0 3.81 270) (length 1.27) (name "" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27))))) (pin passive line (at 0 -3.81 90) (length 1.27) (name "" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27)))))) (embedded_fonts no))
+  (symbol "19-217_BHC-ZL1M2RY_6T" (pin_numbers (hide yes)) (pin_names (offset 1.016) (hide yes)) (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes) (duplicate_pin_numbers_are_jumpers no) (property "Reference" "D" (at 0 2.54 0) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)))) (property "Value" "19-217/BHC-ZL1M2RY/6T" (at 0 -2.54 0) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)))) (property "Footprint" "PCM_rf-power-monitor-rev2:LED_0603_1608Metric" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "Datasheet" "" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "Description" "Everlight 19-217/BHC-ZL1M2RY/6T blue 0603, LCSC C2986058" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "Sim.Pins" "1=K 2=A" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "ki_keywords" "LED diode" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "ki_fp_filters" "LED* LED_SMD:* LED_THT:*" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (symbol "19-217_BHC-ZL1M2RY_6T_0_1" (polyline (pts (xy -3.048 -0.762) (xy -4.572 -2.286) (xy -3.81 -2.286) (xy -4.572 -2.286) (xy -4.572 -1.524)) (stroke (width 0) (type default)) (fill (type none))) (polyline (pts (xy -1.778 -0.762) (xy -3.302 -2.286) (xy -2.54 -2.286) (xy -3.302 -2.286) (xy -3.302 -1.524)) (stroke (width 0) (type default)) (fill (type none))) (polyline (pts (xy -1.27 0) (xy 1.27 0)) (stroke (width 0) (type default)) (fill (type none))) (polyline (pts (xy -1.27 -1.27) (xy -1.27 1.27)) (stroke (width 0.254) (type default)) (fill (type none))) (polyline (pts (xy 1.27 -1.27) (xy 1.27 1.27) (xy -1.27 0) (xy 1.27 -1.27)) (stroke (width 0.254) (type default)) (fill (type none)))) (symbol "19-217_BHC-ZL1M2RY_6T_1_1" (pin passive line (at -3.81 0 0) (length 2.54) (name "K" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27))))) (pin passive line (at 3.81 0 180) (length 2.54) (name "A" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27)))))) (embedded_fonts no))
+  (symbol "WJ500V-5.08-2P" (pin_names (offset 1.016) (hide yes)) (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes) (duplicate_pin_numbers_are_jumpers no) (property "Reference" "J" (at 0 2.54 0) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)))) (property "Value" "WJ500V-5.08-2P" (at 0 -5.08 0) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)))) (property "Footprint" "PCM_rf-power-monitor-rev2:TerminalBlock_Phoenix_MKDS-1,5-2-5.08_1x02_P5.08mm_Horizontal" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "Datasheet" "" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "Description" "Kangnex WJ500V-5.08-2P 5.08 mm 2-pole (Phoenix MKDS 1,5/2-5,08 land pattern), LCSC C8465" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "ki_keywords" "screw terminal" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "ki_fp_filters" "TerminalBlock*:*" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (symbol "WJ500V-5.08-2P_1_1" (rectangle (start -1.27 1.27) (end 1.27 -3.81) (stroke (width 0.254) (type default)) (fill (type background))) (polyline (pts (xy -0.5334 0.3302) (xy 0.3302 -0.508)) (stroke (width 0.1524) (type default)) (fill (type none))) (polyline (pts (xy -0.5334 -2.2098) (xy 0.3302 -3.048)) (stroke (width 0.1524) (type default)) (fill (type none))) (polyline (pts (xy -0.3556 0.508) (xy 0.508 -0.3302)) (stroke (width 0.1524) (type default)) (fill (type none))) (polyline (pts (xy -0.3556 -2.032) (xy 0.508 -2.8702)) (stroke (width 0.1524) (type default)) (fill (type none))) (circle (center 0 0) (radius 0.635) (stroke (width 0.1524) (type default)) (fill (type none))) (circle (center 0 -2.54) (radius 0.635) (stroke (width 0.1524) (type default)) (fill (type none))) (pin passive line (at -5.08 0 0) (length 3.81) (name "Pin_1" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27))))) (pin passive line (at -5.08 -2.54 0) (length 3.81) (name "Pin_2" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27)))))) (embedded_fonts no))
+  (symbol "SCT1032T1A250V" (pin_numbers (hide yes)) (pin_names (offset 0)) (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes) (duplicate_pin_numbers_are_jumpers no) (property "Reference" "F" (at 2.032 0 90) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)))) (property "Value" "SCT1032T1A250V" (at -1.905 0 90) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)))) (property "Footprint" "PCM_rf-power-monitor-rev2:Fuse_Schurter_UMT250" (at -1.778 0 90) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "Datasheet" "" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "Description" "SETfuse SCT1032T1A250V, LCSC C19712559 (10.3 x 3.3 mm on the Schurter UMT 250 land pattern, as rev1); STEP from LCSC/EasyEDA" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "ki_keywords" "fuse" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "ki_fp_filters" "*Fuse*" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (symbol "SCT1032T1A250V_0_1" (rectangle (start -0.762 -2.54) (end 0.762 2.54) (stroke (width 0.254) (type default)) (fill (type none))) (polyline (pts (xy 0 2.54) (xy 0 -2.54)) (stroke (width 0) (type default)) (fill (type none)))) (symbol "SCT1032T1A250V_1_1" (pin passive line (at 0 3.81 270) (length 1.27) (name "" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27))))) (pin passive line (at 0 -3.81 90) (length 1.27) (name "" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27)))))) (embedded_fonts no))
+  (symbol "1206W4F6802T5E" (pin_numbers (hide yes)) (pin_names (offset 0)) (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes) (duplicate_pin_numbers_are_jumpers no) (property "Reference" "R" (at 2.032 0 90) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)))) (property "Value" "1206W4F6802T5E" (at 0 0 90) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)))) (property "Footprint" "PCM_rf-power-monitor-rev2:R_1206_3216Metric" (at -1.778 0 90) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "Datasheet" "" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "Description" "UNI-ROYAL 1206W4F6802T5E 200 V, LCSC C25834" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "ki_keywords" "R res resistor" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "ki_fp_filters" "R_*" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (symbol "1206W4F6802T5E_0_1" (rectangle (start -1.016 -2.54) (end 1.016 2.54) (stroke (width 0.254) (type default)) (fill (type none)))) (symbol "1206W4F6802T5E_1_1" (pin passive line (at 0 3.81 270) (length 1.27) (name "" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27))))) (pin passive line (at 0 -3.81 90) (length 1.27) (name "" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27)))))) (embedded_fonts no))
+  (symbol "LTV-814S-TA1" (pin_names (offset 1.016)) (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes) (duplicate_pin_numbers_are_jumpers no) (property "Reference" "U" (at -5.08 5.08 0) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)) (justify left))) (property "Value" "LTV-814S-TA1" (at 0 5.08 0) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)) (justify left))) (property "Footprint" "PCM_rf-power-monitor-rev2:SMDIP-4_W9.53mm" (at -5.08 -5.08 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27) (italic yes)) (justify left))) (property "Datasheet" "https://optoelectronics.liteon.com/upload/download/DS-70-96-0013/LTV-8X4%20series%20201509.pdf" (at 1.905 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)) (justify left))) (property "Description" "Lite-On LTV-814S-TA1, LCSC C125118" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "ki_keywords" "NPN AC DC Optocoupler" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "ki_fp_filters" "DIP*W7.62mm*" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (symbol "LTV-814S-TA1_0_1" (rectangle (start -5.08 3.81) (end 5.08 -3.81) (stroke (width 0.254) (type default)) (fill (type background))) (polyline (pts (xy -5.08 2.54) (xy -1.27 2.54) (xy -1.27 -0.762)) (stroke (width 0) (type default)) (fill (type none))) (circle (center -3.175 2.54) (radius 0.127) (stroke (width 0) (type default)) (fill (type none))) (polyline (pts (xy -3.175 2.54) (xy -3.175 -2.54)) (stroke (width 0) (type default)) (fill (type none))) (circle (center -3.175 -2.54) (radius 0.127) (stroke (width 0) (type default)) (fill (type none))) (polyline (pts (xy -1.905 -0.635) (xy -0.635 -0.635)) (stroke (width 0.254) (type default)) (fill (type none))) (polyline (pts (xy -1.27 -0.635) (xy -1.27 -2.54) (xy -5.08 -2.54)) (stroke (width 0) (type default)) (fill (type none))) (polyline (pts (xy -1.27 -0.635) (xy -1.905 0.635) (xy -0.635 0.635) (xy -1.27 -0.635)) (stroke (width 0.254) (type default)) (fill (type none))) (polyline (pts (xy 0.127 0.508) (xy 1.397 0.508) (xy 1.016 0.381) (xy 1.016 0.635) (xy 1.397 0.508)) (stroke (width 0) (type default)) (fill (type none))) (polyline (pts (xy 0.127 -0.508) (xy 1.397 -0.508) (xy 1.016 -0.635) (xy 1.016 -0.381) (xy 1.397 -0.508)) (stroke (width 0) (type default)) (fill (type none))) (polyline (pts (xy 2.54 1.905) (xy 2.54 -1.905)) (stroke (width 0.508) (type default)) (fill (type none))) (polyline (pts (xy 2.54 0.635) (xy 4.445 2.54)) (stroke (width 0) (type default)) (fill (type none))) (polyline (pts (xy 3.048 -1.651) (xy 3.556 -1.143) (xy 4.064 -2.159) (xy 3.048 -1.651)) (stroke (width 0) (type default)) (fill (type outline))) (polyline (pts (xy 4.445 2.54) (xy 5.08 2.54)) (stroke (width 0) (type default)) (fill (type none))) (polyline (pts (xy 4.445 -2.54) (xy 2.54 -0.635)) (stroke (width 0) (type default)) (fill (type outline))) (polyline (pts (xy 4.445 -2.54) (xy 5.08 -2.54)) (stroke (width 0) (type default)) (fill (type none)))) (symbol "LTV-814S-TA1_1_1" (polyline (pts (xy -3.81 0.635) (xy -2.54 0.635)) (stroke (width 0.254) (type default)) (fill (type none))) (polyline (pts (xy -3.175 0.635) (xy -3.81 -0.635) (xy -2.54 -0.635) (xy -3.175 0.635)) (stroke (width 0.254) (type default)) (fill (type none))) (pin passive line (at -7.62 2.54 0) (length 2.54) (name "" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27))))) (pin passive line (at -7.62 -2.54 0) (length 2.54) (name "" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27))))) (pin passive line (at 7.62 -2.54 180) (length 2.54) (name "" (effects (font (size 1.27 1.27)))) (number "3" (effects (font (size 1.27 1.27))))) (pin passive line (at 7.62 2.54 180) (length 2.54) (name "" (effects (font (size 1.27 1.27)))) (number "4" (effects (font (size 1.27 1.27)))))) (embedded_fonts no))
+  (symbol "CL10B105KB8NQNC" (pin_numbers (hide yes)) (pin_names (offset 0.254)) (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes) (duplicate_pin_numbers_are_jumpers no) (property "Reference" "C" (at 0.635 2.54 0) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)) (justify left))) (property "Value" "CL10B105KB8NQNC" (at 0.635 -2.54 0) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)) (justify left))) (property "Footprint" "PCM_rf-power-monitor-rev2:C_0603_1608Metric" (at 0.9652 -3.81 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "Datasheet" "" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "Description" "Samsung CL10B105KB8NQNC 1 uF 50 V X7R, LCSC C5199872" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "ki_keywords" "cap capacitor" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "ki_fp_filters" "C_*" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (symbol "CL10B105KB8NQNC_0_1" (polyline (pts (xy -2.032 0.762) (xy 2.032 0.762)) (stroke (width 0.508) (type default)) (fill (type none))) (polyline (pts (xy -2.032 -0.762) (xy 2.032 -0.762)) (stroke (width 0.508) (type default)) (fill (type none)))) (symbol "CL10B105KB8NQNC_1_1" (pin passive line (at 0 3.81 270) (length 2.794) (name "" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27))))) (pin passive line (at 0 -3.81 90) (length 2.794) (name "" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27)))))) (embedded_fonts no))
+  (symbol "RC0603FR-07330RL" (pin_numbers (hide yes)) (pin_names (offset 0)) (exclude_from_sim no) (in_bom yes) (on_board yes) (in_pos_files yes) (duplicate_pin_numbers_are_jumpers no) (property "Reference" "R" (at 2.032 0 90) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)))) (property "Value" "RC0603FR-07330RL" (at 0 0 90) (show_name no) (do_not_autoplace no) (effects (font (size 1.27 1.27)))) (property "Footprint" "PCM_rf-power-monitor-rev2:R_0603_1608Metric" (at -1.778 0 90) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "Datasheet" "" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "Description" "Yageo RC0603FR-07330RL, LCSC C105881" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "ki_keywords" "R res resistor" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (property "ki_fp_filters" "R_*" (at 0 0 0) (show_name no) (do_not_autoplace no) (hide yes) (effects (font (size 1.27 1.27)))) (symbol "RC0603FR-07330RL_0_1" (rectangle (start -1.016 -2.54) (end 1.016 2.54) (stroke (width 0.254) (type default)) (fill (type none)))) (symbol "RC0603FR-07330RL_1_1" (pin passive line (at 0 3.81 270) (length 1.27) (name "" (effects (font (size 1.27 1.27)))) (number "1" (effects (font (size 1.27 1.27))))) (pin passive line (at 0 -3.81 90) (length 1.27) (name "" (effects (font (size 1.27 1.27)))) (number "2" (effects (font (size 1.27 1.27)))))) (embedded_fonts no))
+)

@@ -1,0 +1,110 @@
+ref,value,function,mpn,manufacturer,package,source,lcsc,stock_checked_2026-11-02,mpn_url,note
+J1,USB-C,power,TYPE-C-31-M-12,Korean Hroparts,USB_C_Receptacle_HRO_TYPE-C-31-M-12,LCSC,C165948,159060,https://www.lcsc.com/product-detail/C165948.html,"USB 2.0 device: serial menu, flashing, bench power"
+R1,5.1k,power,0402WGF5101TCE,,R_0402_1005Metric,LCSC,C25905,1948800,https://www.lcsc.com/product-detail/C25905.html,UFP Rd
+R2,5.1k,power,0402WGF5101TCE,,R_0402_1005Metric,LCSC,C25905,1948800,https://www.lcsc.com/product-detail/C25905.html,UFP Rd
+D1,B5819W,power,B5819W SL,Slkor,D_SOD-123,LCSC,C8598,506320,https://www.lcsc.com/product-detail/C8598.html,VBUS to VSYS OR-ing: PoE 5 V never back-feeds USB
+R3,5.6k,power,0402WGF5601TCE,,R_0402_1005Metric,LCSC,C25908,343200,https://www.lcsc.com/product-detail/C25908.html,VBUS sense to GP24 (as on the Pico)
+R4,10k,power,RC0402FR-0710KL,,R_0402_1005Metric,LCSC,C60490,1426200,https://www.lcsc.com/product-detail/C60490.html,
+C1,22uF,power,CL21A226MAQNNNE,,C_0805_2012Metric,LCSC,C45783,1837220,https://www.lcsc.com/product-detail/C45783.html,VSYS bulk
+C2,22uF,power,CL21A226MAQNNNE,,C_0805_2012Metric,LCSC,C45783,1837220,https://www.lcsc.com/product-detail/C45783.html,VSYS bulk
+U1,TLV62569DBVR,power,TLV62569DBVR,Texas Instruments,SOT-23-5,LCSC,C141836,273775,https://www.lcsc.com/product-detail/C141836.html,"2 A sync buck, 1.5 MHz: VSYS 4.4-5.25 V to 3V3"
+C3,10uF,power,CL21A106KAYNNNE,,C_0805_2012Metric,LCSC,C15850,1186280,https://www.lcsc.com/product-detail/C15850.html,"buck input, at U1 pin 4"
+L1,2.2uH,power,SWPA3015S2R2MT,Sunlord,IND-SMD_L3.0-W3.0,LCSC,C43389,43089,https://www.lcsc.com/product-detail/C43389.html,2.2 uH 2 A (TI table 4 standard LC)
+C4,22uF,power,CL21A226MAQNNNE,,C_0805_2012Metric,LCSC,C45783,1837220,https://www.lcsc.com/product-detail/C45783.html,buck output (TI table 4: 10-47 uF)
+R5,100k,power,0402WGF1003TCE,,R_0402_1005Metric,LCSC,C25741,1185400,https://www.lcsc.com/product-detail/C25741.html,FB top: 0.6 V x (1 + 100k/22k) = 3.327 V
+R6,22k,power,RC0402FR-0722KL,,R_0402_1005Metric,LCSC,C82868,4250937,https://www.lcsc.com/product-detail/C82868.html,FB bottom
+J2,RJ45,poe,KH-RJ45-56-8P8C-D,Kinghelm,RJ45-TH_KH-RJ45-56-8P8C-D,LCSC,C2828082,5700,https://www.lcsc.com/product-detail/C2828082.html,"shielded, LEDs, no magnetics; MDI (W5500 has no auto-MDIX)"
+T1,HR601680,poe,HR601680,HanRun,SMD-16_L12.7-W7.2-P1.27-LS9.5-BL,LCSC,C242560,15162,https://www.lcsc.com/product-detail/C242560.html,"10/100 1CT:1CT 350 uH, 1500 Vrms; line CTs carry PoE (about 30 mA here)"
+R7,75R,poe,RC0402FR-0775RL,,R_0402_1005Metric,LCSC,C114757,209600,https://www.lcsc.com/product-detail/C114757.html,
+R8,75R,poe,RC0402FR-0775RL,,R_0402_1005Metric,LCSC,C114757,209600,https://www.lcsc.com/product-detail/C114757.html,
+R9,75R,poe,RC0402FR-0775RL,,R_0402_1005Metric,LCSC,C114757,209600,https://www.lcsc.com/product-detail/C114757.html,
+R10,75R,poe,RC0402FR-0775RL,,R_0402_1005Metric,LCSC,C114757,209600,https://www.lcsc.com/product-detail/C114757.html,
+C5,10nF 100V,poe,CC0603KRX7R0BB103,,C_0603_1608Metric,LCSC,C107059,755900,https://www.lcsc.com/product-detail/C107059.html,
+C6,10nF 100V,poe,CC0603KRX7R0BB103,,C_0603_1608Metric,LCSC,C107059,755900,https://www.lcsc.com/product-detail/C107059.html,
+C7,10nF 100V,poe,CC0603KRX7R0BB103,,C_0603_1608Metric,LCSC,C107059,755900,https://www.lcsc.com/product-detail/C107059.html,
+C8,10nF 100V,poe,CC0603KRX7R0BB103,,C_0603_1608Metric,LCSC,C107059,755900,https://www.lcsc.com/product-detail/C107059.html,
+C9,1nF 2kV,poe,1808B102K202NT,,C_1808_4520Metric,LCSC,C81332,20170,https://www.lcsc.com/product-detail/C81332.html,Bob Smith to chassis
+C10,1nF 2kV,poe,1808B102K202NT,,C_1808_4520Metric,LCSC,C81332,20170,https://www.lcsc.com/product-detail/C81332.html,chassis to logic GND (as WIZnet C3)
+U3,W5500,eth,W5500,WIZnet,LQFP-48_7x7mm_P0.5mm,LCSC,C32843,18523,https://www.lcsc.com/product-detail/C32843.html,"PMODE 111: all capable, auto-negotiation"
+FB1,120R@100MHz,eth,GZ1608D121TF,Sunlord,L_0603_1608Metric,LCSC,C12391,149712,https://www.lcsc.com/product-detail/C12391.html,3V3 to W5500 analog supply
+C11,4.7uF,eth,CL10A475KO8NNNC,,C_0603_1608Metric,LCSC,C19666,1134420,https://www.lcsc.com/product-detail/C19666.html,AVDD bulk
+C12,100nF,eth,CL05B104KO5NNNC,,C_0402_1005Metric,LCSC,C1525,20188300,https://www.lcsc.com/product-detail/C1525.html,"AVDD, one per pin 4/8/11/15/17/21"
+C13,100nF,eth,CL05B104KO5NNNC,,C_0402_1005Metric,LCSC,C1525,20188300,https://www.lcsc.com/product-detail/C1525.html,"AVDD, one per pin 4/8/11/15/17/21"
+C14,100nF,eth,CL05B104KO5NNNC,,C_0402_1005Metric,LCSC,C1525,20188300,https://www.lcsc.com/product-detail/C1525.html,"AVDD, one per pin 4/8/11/15/17/21"
+C15,100nF,eth,CL05B104KO5NNNC,,C_0402_1005Metric,LCSC,C1525,20188300,https://www.lcsc.com/product-detail/C1525.html,"AVDD, one per pin 4/8/11/15/17/21"
+C16,100nF,eth,CL05B104KO5NNNC,,C_0402_1005Metric,LCSC,C1525,20188300,https://www.lcsc.com/product-detail/C1525.html,"AVDD, one per pin 4/8/11/15/17/21"
+C17,100nF,eth,CL05B104KO5NNNC,,C_0402_1005Metric,LCSC,C1525,20188300,https://www.lcsc.com/product-detail/C1525.html,"AVDD, one per pin 4/8/11/15/17/21"
+C18,100nF,eth,CL05B104KO5NNNC,,C_0402_1005Metric,LCSC,C1525,20188300,https://www.lcsc.com/product-detail/C1525.html,VDD pin 28
+C19,4.7uF,eth,CL10A475KO8NNNC,,C_0603_1608Metric,LCSC,C19666,1134420,https://www.lcsc.com/product-detail/C19666.html,"TOCAP: datasheet 4.7 uF, short trace"
+C20,10nF,eth,CL05B103KB5NNNC,,C_0402_1005Metric,LCSC,C15195,1800000,https://www.lcsc.com/product-detail/C15195.html,1V2O: datasheet 10 nF
+R11,12.4k 1%,eth,0402WGF1242TCE,,R_0402_1005Metric,LCSC,C11692,346100,https://www.lcsc.com/product-detail/C11692.html,"EXRES1 to AGND, datasheet"
+Y1,25MHz,eth,X322525MOB4SI,YXC,Crystal_SMD_3225-4Pin_3.2x2.5mm,LCSC,C9006,226845,https://www.lcsc.com/product-detail/C9006.html,"CL 12 pF, +-10 ppm: 2 x 18 pF + ~3 pF stray"
+R12,1M,eth,0402WGF1004TCE,,R_0402_1005Metric,LCSC,C26083,1018000,https://www.lcsc.com/product-detail/C26083.html,crystal bias (WIZnet R24)
+R13,0R,eth,0402WGF0000TCE,,R_0402_1005Metric,LCSC,C17168,2363600,https://www.lcsc.com/product-detail/C17168.html,drive-level option (WIZnet R23)
+C21,18pF,eth,0402CG180J500NT,,C_0402_1005Metric,LCSC,C1549,796300,https://www.lcsc.com/product-detail/C1549.html,
+C22,18pF,eth,0402CG180J500NT,,C_0402_1005Metric,LCSC,C1549,796300,https://www.lcsc.com/product-detail/C1549.html,
+R14,4.7k,eth,0402WGF4701TCE,,R_0402_1005Metric,LCSC,C25900,7063400,https://www.lcsc.com/product-detail/C25900.html,SCSn idle high while RP2040 boots
+R15,4.7k,eth,0402WGF4701TCE,,R_0402_1005Metric,LCSC,C25900,7063400,https://www.lcsc.com/product-detail/C25900.html,
+R16,4.7k,eth,0402WGF4701TCE,,R_0402_1005Metric,LCSC,C25900,7063400,https://www.lcsc.com/product-detail/C25900.html,
+R17,3.3R,eth,RC0402FR-073R3L,,R_0402_1005Metric,LCSC,C137986,3410,https://www.lcsc.com/product-detail/C137986.html,
+R18,3.3R,eth,RC0402FR-073R3L,,R_0402_1005Metric,LCSC,C137986,3410,https://www.lcsc.com/product-detail/C137986.html,
+R19,49.9R,eth,0402WGF499JTCE,,R_0402_1005Metric,LCSC,C25120,338300,https://www.lcsc.com/product-detail/C25120.html,
+R20,49.9R,eth,0402WGF499JTCE,,R_0402_1005Metric,LCSC,C25120,338300,https://www.lcsc.com/product-detail/C25120.html,
+C23,6.8nF,eth,0402B682K500NT,,C_0402_1005Metric,LCSC,C1542,64600,https://www.lcsc.com/product-detail/C1542.html,
+C24,6.8nF,eth,0402B682K500NT,,C_0402_1005Metric,LCSC,C1542,64600,https://www.lcsc.com/product-detail/C1542.html,
+R21,3.3R,eth,RC0402FR-073R3L,,R_0402_1005Metric,LCSC,C137986,3410,https://www.lcsc.com/product-detail/C137986.html,
+R22,3.3R,eth,RC0402FR-073R3L,,R_0402_1005Metric,LCSC,C137986,3410,https://www.lcsc.com/product-detail/C137986.html,
+R23,49.9R,eth,0402WGF499JTCE,,R_0402_1005Metric,LCSC,C25120,338300,https://www.lcsc.com/product-detail/C25120.html,
+R24,49.9R,eth,0402WGF499JTCE,,R_0402_1005Metric,LCSC,C25120,338300,https://www.lcsc.com/product-detail/C25120.html,
+C25,100nF,eth,CL05B104KO5NNNC,,C_0402_1005Metric,LCSC,C1525,20188300,https://www.lcsc.com/product-detail/C1525.html,
+C26,100nF,eth,CL05B104KO5NNNC,,C_0402_1005Metric,LCSC,C1525,20188300,https://www.lcsc.com/product-detail/C1525.html,transformer centre taps
+R25,330R,eth,0402WGF3300TCE,,R_0402_1005Metric,LCSC,C25104,1103600,https://www.lcsc.com/product-detail/C25104.html,link LED (RJ45 left)
+R26,330R,eth,0402WGF3300TCE,,R_0402_1005Metric,LCSC,C25104,1103600,https://www.lcsc.com/product-detail/C25104.html,activity LED (RJ45 right)
+U4,RP2040,mcu,RP2040,Raspberry Pi,QFN-56-1EP_7x7mm_P0.4mm_EP3.2x3.2mm,LCSC,C2040,54846,https://www.lcsc.com/product-detail/C2040.html,firmware board = pico
+C27,100nF,mcu,CL05B104KO5NNNC,,C_0402_1005Metric,LCSC,C1525,20188300,https://www.lcsc.com/product-detail/C1525.html,IOVDD
+C28,100nF,mcu,CL05B104KO5NNNC,,C_0402_1005Metric,LCSC,C1525,20188300,https://www.lcsc.com/product-detail/C1525.html,
+C29,100nF,mcu,CL05B104KO5NNNC,,C_0402_1005Metric,LCSC,C1525,20188300,https://www.lcsc.com/product-detail/C1525.html,
+C30,100nF,mcu,CL05B104KO5NNNC,,C_0402_1005Metric,LCSC,C1525,20188300,https://www.lcsc.com/product-detail/C1525.html,
+C31,100nF,mcu,CL05B104KO5NNNC,,C_0402_1005Metric,LCSC,C1525,20188300,https://www.lcsc.com/product-detail/C1525.html,
+C32,100nF,mcu,CL05B104KO5NNNC,,C_0402_1005Metric,LCSC,C1525,20188300,https://www.lcsc.com/product-detail/C1525.html,
+C33,100nF,mcu,CL05B104KO5NNNC,,C_0402_1005Metric,LCSC,C1525,20188300,https://www.lcsc.com/product-detail/C1525.html,ADC_AVDD
+C34,100nF,mcu,CL05B104KO5NNNC,,C_0402_1005Metric,LCSC,C1525,20188300,https://www.lcsc.com/product-detail/C1525.html,USB_VDD
+C35,1uF,mcu,CL05A105KA5NQNC,,C_0402_1005Metric,LCSC,C52923,6459900,https://www.lcsc.com/product-detail/C52923.html,VREG_VIN
+C36,1uF,mcu,CL05A105KA5NQNC,,C_0402_1005Metric,LCSC,C52923,6459900,https://www.lcsc.com/product-detail/C52923.html,VREG_VOUT
+C37,100nF,mcu,CL05B104KO5NNNC,,C_0402_1005Metric,LCSC,C1525,20188300,https://www.lcsc.com/product-detail/C1525.html,DVDD pin 23
+C38,100nF,mcu,CL05B104KO5NNNC,,C_0402_1005Metric,LCSC,C1525,20188300,https://www.lcsc.com/product-detail/C1525.html,DVDD pin 50
+C39,10uF,mcu,CL21A106KAYNNNE,,C_0805_2012Metric,LCSC,C15850,1186280,https://www.lcsc.com/product-detail/C15850.html,3V3 bulk near RP2040
+R27,27R,mcu,RC0402FR-0727RL,,R_0402_1005Metric,LCSC,C138021,48055,https://www.lcsc.com/product-detail/C138021.html,USB series (Pico)
+R28,27R,mcu,RC0402FR-0727RL,,R_0402_1005Metric,LCSC,C138021,48055,https://www.lcsc.com/product-detail/C138021.html,USB series (Pico)
+Y2,12MHz,mcu,ABM8-272-T3,Abracon,Crystal_SMD_3225-4Pin_3.2x2.5mm,LCSC,C20625731,9165,https://www.lcsc.com/product-detail/C20625731.html,"as on the Pico (CL 10 pF, 2 x 15 pF, 1k series)"
+R29,1k,mcu,0402WGF1001TCE,,R_0402_1005Metric,LCSC,C11702,8993000,https://www.lcsc.com/product-detail/C11702.html,"XOUT series, Pico"
+C40,15pF,mcu,0402CG150J500NT,,C_0402_1005Metric,LCSC,C1548,580400,https://www.lcsc.com/product-detail/C1548.html,
+C41,15pF,mcu,0402CG150J500NT,,C_0402_1005Metric,LCSC,C1548,580400,https://www.lcsc.com/product-detail/C1548.html,
+U5,W25Q16JVSSIQ,mcu,W25Q16JVSSIQ,Winbond,SOIC-8_5.3x5.3mm_P1.27mm,LCSC,C131025,5559,https://www.lcsc.com/product-detail/C131025.html,"2 MB, matches board = pico"
+C42,100nF,mcu,CL05B104KO5NNNC,,C_0402_1005Metric,LCSC,C1525,20188300,https://www.lcsc.com/product-detail/C1525.html,flash
+R30,1k,mcu,0402WGF1001TCE,,R_0402_1005Metric,LCSC,C11702,8993000,https://www.lcsc.com/product-detail/C11702.html,BOOTSEL: hold at reset for USB boot (Pico)
+SW1,BOOTSEL,mcu,TS-1187A-B-A-B,XKB,SW_Push_1P1T_XKB_TS-1187A,LCSC,C318884,801420,https://www.lcsc.com/product-detail/C318884.html,
+R31,1k,mcu,0402WGF1001TCE,,R_0402_1005Metric,LCSC,C11702,8993000,https://www.lcsc.com/product-detail/C11702.html,RUN: internal pull-up in RP2040
+SW2,RESET,mcu,TS-1187A-B-A-B,XKB,SW_Push_1P1T_XKB_TS-1187A,LCSC,C318884,801420,https://www.lcsc.com/product-detail/C318884.html,
+R32,470R,mcu,RC0402FR-07470RL,,R_0402_1005Metric,LCSC,C114877,421000,https://www.lcsc.com/product-detail/C114877.html,GP25 status (LED_BUILTIN)
+D2,Blue,mcu,19-217/BHC-ZL1M2RY/6T,Everlight,LED_0603_1608Metric,LCSC,C2986058,1714950,https://www.lcsc.com/product-detail/C2986058.html,"status, GP25"
+J4,230VAC L/N,mains,WJ500V-5.08-2P,Kangnex,"TerminalBlock_Phoenix_MKDS-1,5-2-5.08_1x02_P5.08mm_Horizontal",LCSC,C8465,287435,https://www.lcsc.com/product-detail/C8465.html,
+F1,T1A 250VAC,mains,SCT1032T1A250V,SETfuse,Fuse_Schurter_UMT250,LCSC,C19712559,1530,https://www.lcsc.com/product-detail/C19712559.html,
+R33,68k 1206 200V,mains,1206W4F6802T5E,,R_1206_3216Metric,LCSC,C25834,29500,https://www.lcsc.com/product-detail/C25834.html,"four in series: 1.2 mA peak, 50 mW each"
+R34,68k 1206 200V,mains,1206W4F6802T5E,,R_1206_3216Metric,LCSC,C25834,29500,https://www.lcsc.com/product-detail/C25834.html,"four in series: 1.2 mA peak, 50 mW each"
+R35,68k 1206 200V,mains,1206W4F6802T5E,,R_1206_3216Metric,LCSC,C25834,29500,https://www.lcsc.com/product-detail/C25834.html,"four in series: 1.2 mA peak, 50 mW each"
+R36,68k 1206 200V,mains,1206W4F6802T5E,,R_1206_3216Metric,LCSC,C25834,29500,https://www.lcsc.com/product-detail/C25834.html,"four in series: 1.2 mA peak, 50 mW each"
+U6,LTV-814S,mains,LTV-814S-TA1,Lite-On,SMDIP-4_W9.53mm,LCSC,C125118,35335,https://www.lcsc.com/product-detail/C125118.html,"AC input optocoupler, 5 kVrms"
+C43,1uF,mains,CL10B105KB8NQNC,,C_0603_1608Metric,LCSC,C5199872,2604823,https://www.lcsc.com/product-detail/C5199872.html,bridges zero crossings with R37
+R37,47k,mains,0603WAF4702T5E,,R_0603_1608Metric,LCSC,C25819,345400,https://www.lcsc.com/product-detail/C25819.html,
+U7,SN74LVC1G14DBVR,mains,SN74LVC1G14DBVR,Texas Instruments,SOT-23-5,LCSC,C7835,300880,https://www.lcsc.com/product-detail/C7835.html,Schmitt inverter: HIGH = mains present
+C44,100nF,mains,CL05B104KO5NNNC,,C_0402_1005Metric,LCSC,C1525,20188300,https://www.lcsc.com/product-detail/C1525.html,U7
+R38,100R,mains,0603WAF1000T5E,,R_0603_1608Metric,LCSC,C22775,693500,https://www.lcsc.com/product-detail/C22775.html,
+D3,Green,mains,KT-0805G,,LED_0805_2012Metric,LCSC,C2297,1277750,https://www.lcsc.com/product-detail/C2297.html,mains ON
+D4,Red,mains,NCD0805R1,,LED_0805_2012Metric,LCSC,C84256,1071150,https://www.lcsc.com/product-detail/C84256.html,mains OFF
+R39,330R,mains,RC0603FR-07330RL,,R_0603_1608Metric,LCSC,C105881,5726982,https://www.lcsc.com/product-detail/C105881.html,
+U8,TMP1075DR,sensor,TMP1075DR,Texas Instruments,SOIC-8_3.9x4.9mm_P1.27mm,LCSC,C2878381,78,https://www.lcsc.com/product-detail/C2878381.html,"I2C0 0x48, away from U1/U3/U4 heat"
+C45,100nF,sensor,CL05B104KO5NNNC,,C_0402_1005Metric,LCSC,C1525,20188300,https://www.lcsc.com/product-detail/C1525.html,U8
+R40,4.7k,sensor,0402WGF4701TCE,,R_0402_1005Metric,LCSC,C25900,7063400,https://www.lcsc.com/product-detail/C25900.html,
+R41,4.7k,sensor,0402WGF4701TCE,,R_0402_1005Metric,LCSC,C25900,7063400,https://www.lcsc.com/product-detail/C25900.html,
+SW3,FACTORY RESET,sensor,TS-1187A-B-A-B,XKB,SW_Push_1P1T_XKB_TS-1187A,LCSC,C318884,801420,https://www.lcsc.com/product-detail/C318884.html,"GP22 to GND, hold 10 s (internal pull-up)"

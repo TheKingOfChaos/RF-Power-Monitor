@@ -1,0 +1,20 @@
+[
+ {"id": "vbus", "what": "USB 5 V arriving", "net": "VBUS", "why": "USB power path", "kind": "dc", "expect": "4.75 to 5.25 V with USB"},
+ {"id": "vsys", "what": "VSYS from PoE or USB", "net": "VSYS", "why": "WIZPoE-P1 output / OR-ing diode", "kind": "dc", "expect": "4.75-5.25 V PoE, ~4.6 V USB only"},
+ {"id": "v3v3", "what": "3V3 rail and ripple", "net": "+3V3", "why": "buck regulation (calcs 3.21-3.45 V)", "kind": "ripple", "expect": "3.33 V, under 30 mV p-p"},
+ {"id": "sw", "what": "buck switch node", "net": "BUCK_SW", "why": "1.5 MHz, ringing", "kind": "waveform", "expect": "0 to VSYS square, 1.5 MHz (PFM at light load)"},
+ {"id": "fb", "what": "buck feedback", "net": "BUCK_FB", "why": "0.6 V reference", "kind": "dc", "expect": "0.588-0.612 V"},
+ {"id": "v1v1", "what": "RP2040 core 1.1 V", "net": "+1V1", "why": "internal regulator up", "kind": "dc", "expect": "1.1 V"},
+ {"id": "v3v3a", "what": "W5500 analog supply", "net": "3V3A", "why": "ferrite drop, noise", "kind": "ripple", "expect": "3.3 V, under 30 mV p-p"},
+ {"id": "xin", "what": "RP2040 12 MHz crystal", "net": "XIN", "why": "oscillator starts", "kind": "waveform", "expect": "12 MHz sine"},
+ {"id": "wxi", "what": "W5500 25 MHz crystal", "net": "W_XI", "why": "oscillator starts", "kind": "waveform", "expect": "25 MHz"},
+ {"id": "wrst", "what": "W5500 reset released", "net": "W_RST", "why": "GP20 drives it high after boot", "kind": "dc", "expect": "3.3 V when running"},
+ {"id": "spisck", "what": "W5500 SPI clock", "net": "SPI_SCK", "why": "firmware talks to the W5500", "kind": "waveform", "expect": "bursts, 0-3.3 V"},
+ {"id": "sense", "what": "optocoupler output", "net": "SENSE", "why": "low with mains, high 30-50 ms after loss", "kind": "dc", "expect": "< 0.8 V mains on, 3.3 V off"},
+ {"id": "mainsok", "what": "MAINS_OK to GP27", "net": "MAINS_OK", "why": "HIGH = mains present", "kind": "dc", "expect": "3.3 V mains on, 0 V off"},
+ {"id": "sda", "what": "I2C SDA to TMP1075", "net": "I2C_SDA", "why": "sensor answers at 0x48", "kind": "waveform", "expect": "0-3.3 V, 2 s period reads"},
+ {"id": "ledg", "what": "mains ON LED", "net": "LED_G", "why": "hardware indication", "kind": "camera", "expect": "green with mains"},
+ {"id": "ledr", "what": "mains OFF LED", "net": "LED_R", "why": "hardware indication", "kind": "camera", "expect": "red without mains"},
+ {"id": "ledstat", "what": "status LED GP25", "net": "LED_STATUS_A", "why": "firmware alive", "kind": "camera", "expect": "blue per firmware"},
+ {"id": "ledlink", "what": "RJ45 link LED", "net": "LED_LINK_A", "why": "PHY link up", "kind": "camera", "expect": "on with a link"}
+]

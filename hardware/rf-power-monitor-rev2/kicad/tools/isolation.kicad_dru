@@ -1,0 +1,16 @@
+# Reinforced isolation between 230VAC and the SELV side (IEC 62368-1, 250 Vrms, PD2), as rev1:
+# >= 6.5 mm clearance and >= 6.4 mm creepage from any mains copper to anything else.
+(rule "Mains to SELV clearance"
+	(condition "A.NetClass == 'Mains' && B.NetClass != 'Mains'")
+	(constraint clearance (min 6.5mm)))
+(rule "Mains to SELV creepage"
+	(condition "A.NetClass == 'Mains' && B.NetClass != 'Mains'")
+	(constraint creepage (min 6.4mm)))
+(rule "Mains internal"
+	(condition "A.NetClass == 'Mains' && B.NetClass == 'Mains'")
+	(constraint clearance (min 0.7mm)))
+# PoE / MDI side (RJ45 contacts, transformer line side, VC nets, Bob Smith network, chassis) to the
+# logic side: 1500 Vrms hipot (IEEE 802.3, HR601680), 2 mm.
+(rule "PoE to logic clearance"
+	(condition "A.NetClass == 'PoE' && B.NetClass != 'PoE' && B.NetClass != 'Mains' && B.NetName != ''")
+	(constraint clearance (min 2.0mm)))

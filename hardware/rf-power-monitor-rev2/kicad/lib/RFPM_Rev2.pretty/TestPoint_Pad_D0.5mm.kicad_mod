@@ -1,0 +1,84 @@
+(footprint "TestPoint_Pad_D0.5mm"
+	(version 20260206)
+	(generator "pcbnew")
+	(generator_version "10.0")
+	(layer "F.Cu")
+	(descr "Test point: 0.5 mm round SMD copper, no paste (Adom probing workcell default)")
+	(tags "test point probe")
+	(property "Reference" "TP"
+		(at 0 -1.2 0)
+		(layer "F.SilkS")
+		(hide yes)
+		(uuid "1edcdbac-848a-4756-8c83-9b4a176a00dc")
+		(effects
+			(font
+				(size 0.6 0.6)
+				(thickness 0.1)
+			)
+		)
+	)
+	(property "Value" "TP_0.5mm"
+		(at 0 1.2 0)
+		(layer "F.Fab")
+		(uuid "a25b1e22-ca8a-4f5d-a95d-4e58b1875905")
+		(effects
+			(font
+				(size 0.6 0.6)
+				(thickness 0.1)
+			)
+		)
+	)
+	(property "Datasheet" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "236bf205-db28-4d28-8438-cb319a226c04")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(property "Description" ""
+		(at 0 0 0)
+		(layer "F.Fab")
+		(hide yes)
+		(uuid "aa436537-2285-40d0-b222-9b60d616e92d")
+		(effects
+			(font
+				(size 1.27 1.27)
+			)
+		)
+	)
+	(attr smd exclude_from_pos_files exclude_from_bom)
+	(duplicate_pad_numbers_are_jumpers no)
+	(fp_circle
+		(center 0 0)
+		(end 0.55 0)
+		(stroke
+			(width 0.05)
+			(type default)
+		)
+		(fill no)
+		(layer "F.CrtYd")
+		(uuid "46831105-50ea-4429-be08-cd47d483a917")
+	)
+	(fp_circle
+		(center 0 0)
+		(end 0.25 0)
+		(stroke
+			(width 0.1)
+			(type default)
+		)
+		(fill no)
+		(layer "F.Fab")
+		(uuid "38f561ed-3f11-463e-887c-0058a4a47a2a")
+	)
+	(pad "1" smd circle
+		(at 0 0)
+		(size 0.5 0.5)
+		(layers "F.Cu" "F.Mask")
+		(uuid "c93919a7-dbda-49c3-ad64-8689b26eb63a")
+	)
+	(embedded_fonts no)
+)

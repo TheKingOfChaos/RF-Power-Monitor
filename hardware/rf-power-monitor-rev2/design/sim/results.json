@@ -1,0 +1,31 @@
+{
+ "tool": "ngspice",
+ "model": "ideal switch-node square wave into the output LC; fitted: none",
+ "values": {
+  "rip_light": 0.004741579214703862,
+  "rip_full": 0.004737965200096728,
+  "ilpk": 0.6376907,
+  "vavg": 3.337635
+ },
+ "checks": [
+  {
+   "name": "3V3 ripple at 0.30 A, VIN 5.25 V (open-loop LC, 1.5 MHz)",
+   "value": 0.004737965200096728,
+   "limit": "< 0.030 V",
+   "pass": true
+  },
+  {
+   "name": "3V3 ripple at 0.05 A",
+   "value": 0.004741579214703862,
+   "limit": "< 0.030 V",
+   "pass": true
+  },
+  {
+   "name": "inductor peak current at 0.30 A",
+   "value": 0.6376907,
+   "limit": "< 1.6 A (Isat 2 A x 0.8)",
+   "pass": true
+  }
+ ],
+ "pass": true
+}

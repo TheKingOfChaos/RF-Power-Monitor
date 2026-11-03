@@ -1,0 +1,21 @@
+* buck LC
+Vsw sw 0 PULSE(0 5.25 0 2n 2n 4.2248e-07 6.6667e-07)
+L1 sw out 1.54e-06
+Rl out mid 0.005
+C4 mid 0 10u IC=3.327
+Rload out 0 66.53999999999999
+Sstep out sl ctl 0 swmod
+Rstep sl 0 13.308
+Vctl ctl 0 PWL(0 0 300u 0 300.1u 1)
+.model swmod sw(vt=0.5 ron=0.01 roff=1e9)
+.ic v(out)=3.327
+.tran 5n 500u 0 5n uic
+.control
+run
+meas tran rip_light pp v(out) from=250u to=290u
+meas tran rip_full pp v(out) from=450u to=490u
+meas tran ilpk max i(L1) from=450u to=490u
+meas tran vavg avg v(out) from=450u to=490u
+wrdata /mnt/c/Users/kenneth/Sourcecode/platform.io/RF-UPS-Monitor-v3/hardware/rf-power-monitor-rev2/design/sim/buck_lc.dat v(out)
+.endc
+.end

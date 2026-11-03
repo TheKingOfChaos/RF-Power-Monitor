@@ -1,0 +1,5 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "RFPM_Rev2")(type "KiCad")(uri "${KIPRJMOD}/lib/RFPM_Rev2.kicad_sym")(options "")(descr "RF-Power-Monitor rev2: project symbols (power, WIZPoE-P1, test pads)"))
+  (lib (name "PCM_rf-power-monitor-rev2")(type "KiCad")(uri "${KIPRJMOD}/lib/pcm/symbols/rf-power-monitor-rev2.kicad_sym")(options "")(descr "Board parts library, copy of the wiki PCM package inc.adom.wiki.thekingofchaos.rf-power-monitor-rev2"))
+)

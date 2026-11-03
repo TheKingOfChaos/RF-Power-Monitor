@@ -1,0 +1,29 @@
+# AI Flow working files (board iterations, field solves, logs, project-page staging); only the
+# JLCPCB rule pack that kicad/tools/gen_pcb.py reads is kept
+aiflow-run/*
+!aiflow-run/rules/
+aiflow-run/rules/*
+!aiflow-run/rules/jlcpcb-2L.kicad_dru
+
+# KiCad lock files, backups, per-user view settings and routing intermediates
+*.lck
+*.kicad_prl
+fp-info-cache
+*-backups/
+*.bak-before-*
+kicad/routing/
+# Earlier part libraries; the board uses lib/pcm (copy of the wiki PCM package) and lib/RFPM_Rev2
+kicad/lib/3d/
+kicad/projlib/
+
+# Vendor datasheets (links are in design/bom.csv), stock queries, simulation raw data
+design/datasheets/
+design/sourcing/
+design/sim/*.dat
+
+# Large or duplicate exports: the STEP is kept zipped (out/3d/rf-power-monitor-rev2-step.zip),
+# the GLB once; out/fab/gerber/ is the unzipped copy of the Gerber zip
+out/3d/*.step
+out/3d/*-raw*.glb
+out/fab/*.step
+out/fab/gerber/
