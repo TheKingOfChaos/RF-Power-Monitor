@@ -10,6 +10,9 @@ Listed twice in platformio.ini, as `pre:` and `post:`:
         program (scripts/build_boot.py), the erased boot record and the slot A
         blob, and makes `upload` (also used by `pio test`) send that file.
 
+The slot blob is signed (tools/fwtool.py, tools/fwsign): with keys/dev/fw_signing_key,
+or secret/fw_signing_key when the environment variable RFPOWER_FW_KEY=field is set.
+
 Flash layout (offsets from 0x10000000):
   0x000000  boot2 + boot program (.pio/boot/boot.bin), ends before 0xE000
   0x00E000  boot record, 2 x 4 KB
@@ -25,7 +28,10 @@ import os
 import re
 import sys
 
-Import("env")  # noqa: F821  (provided by PlatformIO/SCons)
+try:
+    Import("env")  # noqa: F821  (provided by PlatformIO/SCons)
+except NameError:  # imported by the unit tests (test/tools), not run by SCons
+    env = None
 
 FLASH_BASE = 0x10000000
 SLOT_OFFSETS = {0: 0x10000, 1: 0xE7000}
@@ -34,12 +40,17 @@ HEADER_SIZE = 0x100
 BOOT_RECORD_OFFSET = 0xE000
 BOOT_RECORD_SIZE = 0x2000
 FULL_UF2 = os.path.join("$BUILD_DIR", "firmware_full.uf2")
-SCRIPTS_DIR = os.path.join(env.subst("$PROJECT_DIR"), "scripts")  # noqa: F821
-BOOT_DIR = os.path.join(env.subst("$PROJECT_DIR"), "boot")  # noqa: F821
+PROJECT_DIR = (env.subst("$PROJECT_DIR") if env is not None
+               else os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+SCRIPTS_DIR = os.path.join(PROJECT_DIR, "scripts")
+BOOT_DIR = os.path.join(PROJECT_DIR, "boot")
+TOOLS_DIR = os.path.join(PROJECT_DIR, "tools")
 
-if SCRIPTS_DIR not in sys.path:
-    sys.path.insert(0, SCRIPTS_DIR)
+for _dir in (SCRIPTS_DIR, TOOLS_DIR):
+    if _dir not in sys.path:
+        sys.path.insert(0, _dir)
 import build_boot  # noqa: E402
+import fwtool  # noqa: E402
 import uf2  # noqa: E402
 
 
@@ -75,7 +86,10 @@ def slot_linker_script(text, slot, subs):
         if count != 1:
             raise ValueError("memmap_default.ld: %r matched %d times, expected once" % (pattern, count))
     # Nothing may still place the core's boot2 or OTA loader in the image
-    text = text.replace("SECTIONS\n{\n", "SECTIONS\n{\n    /DISCARD/ : { *(.boot2) *(.OTA) }\n\n", 1)
+    marker = "SECTIONS\n{\n"
+    if text.count(marker) != 1:
+        raise ValueError("memmap_default.ld: %r found %d times, expected once" % (marker, text.count(marker)))
+    text = text.replace(marker, marker + "    /DISCARD/ : { *(.boot2) *(.OTA) }\n\n")
     for name, value in subs.items():
         text = text.replace(name, value)
     left = re.search(r"__(FLASH_LENGTH|EEPROM_START|FS_START|FS_END|RAM_LENGTH|PSRAM_LENGTH)__", text)
@@ -108,15 +122,21 @@ def generate_linker_script(target, source, env):
     return None
 
 
-def slot_blob(env):
-    """The bytes that go at the start of the slot: header + firmware.bin.
+def field_key():
+    """True when RFPOWER_FW_KEY=field: sign with secret/fw_signing_key, not the development key."""
+    return os.environ.get("RFPOWER_FW_KEY", "") == "field"
 
-    The header is 256 bytes of 0xFF for now (task 3 makes it a signed
-    header). Raises ValueError when the blob does not fit the slot.
+
+def slot_blob(env):
+    """The bytes that go at the start of the slot: signed header + firmware.bin.
+
+    Signed with the development key (keys/dev), or the field key under
+    RFPOWER_FW_KEY=field. Raises ValueError when the blob does not fit the
+    slot, RuntimeError when signing fails (or the field key is missing).
     """
-    with open(env.subst(os.path.join("$BUILD_DIR", "${PROGNAME}.bin")), "rb") as f:
-        image = f.read()
-    blob = b"\xff" * HEADER_SIZE + image
+    image_path = env.subst(os.path.join("$BUILD_DIR", "${PROGNAME}.bin"))
+    seed = fwtool.signing_seed(field_key())
+    blob = fwtool.sign_slot(seed, fw_slot(env), fwtool.firmware_version(), image_path)
     if len(blob) > SLOT_LENGTH:
         raise ValueError("firmware is %d bytes, the slot holds %d" % (len(blob), SLOT_LENGTH))
     return blob
@@ -138,7 +158,7 @@ def build_full_uf2(target, source, env):
         with open(boot_program(env), "rb") as f:
             boot = f.read()
         blob = slot_blob(env)
-    except (RuntimeError, ValueError) as e:
+    except (RuntimeError, ValueError, OSError) as e:
         sys.stderr.write("slot_build: %s\n" % e)
         return 1
     uf2.write_uf2(target[0].get_abspath(), [
@@ -163,6 +183,8 @@ def configure_pre(env):
     """Before the core's builder: slot define and the slot's linker script."""
     slot = fw_slot(env)
     env.Append(CPPDEFINES=[("FW_SLOT", slot)])
+    if field_key():
+        env.Append(CPPDEFINES=["RFPOWER_FW_FIELD_KEY"])  # include/fw_key.h trusts the field key
     ldscript = os.path.join(env.subst("$BUILD_DIR"), "memmap_slot.ld")
     # The core only generates its own script when build.ldscript is empty;
     # PlatformIO read board_build.ldscript before this script ran
@@ -182,6 +204,11 @@ def configure_post(env):
     # PROGNAME ("firmware") is only set by the platform's builder
     env.Depends(os.path.join("$BUILD_DIR", "${PROGNAME}.elf"),
                 os.path.join("$BUILD_DIR", "memmap_slot.ld"))
+    try:
+        key_seed = fwtool.signing_seed(field_key())
+    except RuntimeError as e:
+        sys.stderr.write("slot_build: %s\n" % e)
+        env.Exit(1)
     if fw_slot(env) != 0:
         env.AddPreAction("upload", refuse_upload(
             "the boot program starts slot A only; upload the pico environment "
@@ -197,7 +224,10 @@ def configure_post(env):
     full = env.Command(
         FULL_UF2,
         [os.path.join("$BUILD_DIR", "${PROGNAME}.bin"),
-         env.Value(env.BoardConfig().get("build.arduino.earlephilhower.boot2_source", ""))]
+         env.Value(env.BoardConfig().get("build.arduino.earlephilhower.boot2_source", "")),
+         env.Value("field key" if field_key() else "development key"),
+         key_seed,  # the key file itself: a new key re-signs
+         os.path.join(TOOLS_DIR, "fwtool.py")]
         + boot_inputs,
         env.VerboseAction(build_full_uf2, "Building $TARGET"))
     env.Alias("buildprog", full)
@@ -206,8 +236,10 @@ def configure_post(env):
     env.Replace(UPLOADCMD='"$UPLOADER" load $UPLOADERFLAGS "%s"' % env.subst(FULL_UF2))
 
 
-if "SLOT_BUILD_PRE_DONE" not in env:  # noqa: F821
-    env["SLOT_BUILD_PRE_DONE"] = True  # noqa: F821
-    configure_pre(env)  # noqa: F821
+if env is None:
+    pass  # imported for its pure functions
+elif "SLOT_BUILD_PRE_DONE" not in env:
+    env["SLOT_BUILD_PRE_DONE"] = True
+    configure_pre(env)
 else:
-    configure_post(env)  # noqa: F821
+    configure_post(env)

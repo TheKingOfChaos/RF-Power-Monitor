@@ -1,0 +1,81 @@
+"""Tests for the linker script generation in scripts/slot_build.py. No hardware.
+
+slot_build.py is a PlatformIO (SCons) script; its pure functions are
+imported here without SCons. Uses a copy of the Arduino-Pico core's
+memmap_default.ld (skipped when the core is not installed).
+"""
+
+import importlib.util
+import os
+import re
+import sys
+import unittest
+
+ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+CORE_LD = os.path.join(os.path.expanduser("~"), ".platformio", "packages", "framework-arduinopico",
+                       "lib", "rp2040", "memmap_default.ld")
+
+spec = importlib.util.spec_from_file_location("slot_build", os.path.join(ROOT, "scripts", "slot_build.py"))
+slot_build = importlib.util.module_from_spec(spec)
+spec.loader.exec_module(slot_build)
+
+SUBS = {
+    "__EEPROM_START__": "270528512",
+    "__FS_START__": "270024704",
+    "__FS_END__": "270524416",
+    "__RAM_LENGTH__": "256k",
+    "__PSRAM_LENGTH__": "0",
+}
+
+
+@unittest.skipUnless(os.path.exists(CORE_LD), "Arduino-Pico core not installed")
+class LinkerScriptTests(unittest.TestCase):
+    @classmethod
+    def setUpClass(cls):
+        with open(CORE_LD, encoding="utf-8") as f:
+            cls.core = f.read()
+
+    def test_slot_a_flash_origin_and_length(self):
+        text = slot_build.slot_linker_script(self.core, 0, SUBS)
+        self.assertIn("FLASH(rx) : ORIGIN = 0x10010100, LENGTH = 0xD6F00", text)
+
+    def test_slot_b_flash_origin_and_length(self):
+        text = slot_build.slot_linker_script(self.core, 1, SUBS)
+        self.assertIn("FLASH(rx) : ORIGIN = 0x100E7100, LENGTH = 0xD6F00", text)
+
+    def test_boot2_ota_and_partition_are_removed(self):
+        text = slot_build.slot_linker_script(self.core, 0, SUBS)
+        self.assertNotRegex(text, r"\.boot2 : \{")
+        self.assertNotRegex(text, r"\.ota : \{")
+        self.assertNotRegex(text, r"\.partition : \{")
+        self.assertNotIn("__boot2_end__", text)
+        self.assertEqual(text.count("/DISCARD/"), 1)
+
+    def test_no_placeholder_is_left(self):
+        text = slot_build.slot_linker_script(self.core, 1, SUBS)
+        self.assertIsNone(re.search(r"__[A-Z_]+_(LENGTH|START|END)__", text))
+
+    def test_each_edit_must_match_once(self):
+        # A core script where an edit matches twice or not at all is refused
+        doubled = self.core + "\n" + self.core
+        with self.assertRaises(ValueError):
+            slot_build.slot_linker_script(doubled, 0, SUBS)
+        missing = self.core.replace("ORIGIN = 0x10000000, LENGTH = __FLASH_LENGTH__", "ORIGIN = 0, LENGTH = 1")
+        with self.assertRaises(ValueError):
+            slot_build.slot_linker_script(missing, 0, SUBS)
+
+    def test_discard_insertion_must_match_once(self):
+        two_sections = self.core.replace("SECTIONS\n{\n", "SECTIONS\n{\n", 1) + "\nSECTIONS\n{\n"
+        with self.assertRaises(ValueError):
+            slot_build.slot_linker_script(two_sections, 0, SUBS)
+        none = self.core.replace("SECTIONS\n{\n", "SECTIONS {\n")
+        with self.assertRaises(ValueError):
+            slot_build.slot_linker_script(none, 0, SUBS)
+
+    def test_unknown_placeholder_left_over_is_refused(self):
+        with self.assertRaises(ValueError):
+            slot_build.slot_linker_script(self.core, 0, {k: v for k, v in SUBS.items() if k != "__FS_END__"})
+
+
+if __name__ == "__main__":
+    unittest.main()

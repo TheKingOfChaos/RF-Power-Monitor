@@ -59,6 +59,14 @@ $pio = "$env:USERPROFILE\.platformio\penv\Scripts\pio.exe"
 & $pio test -e pico   -f embedded/test_settings_store
 ```
 
+### Tool tests (`test/tools`)
+
+Pure Python, no hardware: the firmware signing tools (`tools/fw_keygen.py`, `fwsign`, the `.upd` layout), `scripts/uf2.py` and the linker script generation in `scripts/slot_build.py`. They need a host `g++`/`gcc` (fwsign is built into `.pio/fwsign` on first use) and, for the linker script tests, the Arduino-Pico core (skipped when absent). Key generation is only tested with `--out` into a temp dir, never with the real field key.
+
+```powershell
+& "$env:USERPROFILE\.platformio\penv\Scripts\python.exe" -m unittest discover -s test/tools -v
+```
+
 ### Sanitizers (memory safety)
 
 Code that parses data from the network must be free of out-of-bounds reads and undefined behaviour. MinGW has no sanitizers, so the native suites are also built with gcc in WSL using AddressSanitizer and UndefinedBehaviorSanitizer:

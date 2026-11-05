@@ -10,3 +10,4 @@ librenms/test/compose.override.yml
 secret/
 # superpowers plan workspaces (ledgers, briefs)
 .superpowers/
+release/
