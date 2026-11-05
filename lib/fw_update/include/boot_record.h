@@ -11,7 +11,7 @@
 //   [10]     last result (FwResult)
 //   [11]     trap pending (0 or 1)
 //   [12,28)  lastVersion, 16 bytes NUL padded printable ASCII
-//   [28,60)  reserved, zero
+//   [28,60)  reserved: written as zero, ignored on read
 //   [60,64)  CRC-32 of bytes [0,60)
 #pragma once
 #include <stddef.h>

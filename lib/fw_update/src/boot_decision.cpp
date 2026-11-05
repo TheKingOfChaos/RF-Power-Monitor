@@ -29,11 +29,12 @@ BootDecision decideBoot(bool haveRecord, const BootRecord& rec, const bool slotO
     BootDecision d = {FW_NO_SLOT, BootReason::Normal, 0};
     uint8_t target = 0;
     BootReason reason = BootReason::NoRecord;
+    // A record with an out-of-range slot cannot be trusted: treat it as no record
+    if (haveRecord && (rec.active > 1 || (rec.trial > 1 && rec.trial != FW_NO_SLOT))) haveRecord = false;
     if (haveRecord) {
         target = rec.trial != FW_NO_SLOT ? rec.trial : rec.active;
         reason = rec.trial != FW_NO_SLOT ? BootReason::Trial : BootReason::Normal;
     }
-    if (target > 1) return d;  // not a valid record
     uint8_t other = (uint8_t)(1 - target);
 
     uint8_t slot = target;

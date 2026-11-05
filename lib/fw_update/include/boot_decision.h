@@ -27,6 +27,11 @@ struct BootDecision {
 // Crash on the same slot adds one, a crash on another slot restarts at one,
 // any other reset clears. At FW_CRASH_LIMIT the other slot is booted when it
 // verifies (reason Fallback, count 0). The slot returned is always slotOk.
+// A record whose active/trial is out of range is treated as no record.
+// The record is not changed by the boot program: after a Fallback the firmware
+// must rewrite it promptly. Until then a crash or planned reboot of the
+// fallback slot boots the original target again (count 1 after a crash, 0
+// after a planned reboot).
 BootDecision decideBoot(bool haveRecord, const BootRecord& rec, const bool slotOk[2], ResetKind reset,
                         uint32_t crashScratch);
 

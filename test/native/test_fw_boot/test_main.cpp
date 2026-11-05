@@ -305,6 +305,47 @@ void test_decide_count_for_other_slot_restarts_at_one() {
     TEST_ASSERT_EQUAL_HEX32(crashSlot(0, 1), d.crashScratch);
 }
 
+void test_decide_out_of_range_record_treated_as_no_record() {
+    BootRecord bad = makeRecord(1, 7, FW_NO_SLOT);
+    BootDecision d = step(bad, ResetKind::PowerOn, 0);
+    TEST_ASSERT_EQUAL_UINT8(0, d.slot);
+    TEST_ASSERT_EQUAL_UINT8((uint8_t)BootReason::NoRecord, (uint8_t)d.reason);
+    bad = makeRecord(1, 0, 9);
+    d = step(bad, ResetKind::PowerOn, 0);
+    TEST_ASSERT_EQUAL_UINT8(0, d.slot);
+    TEST_ASSERT_EQUAL_UINT8((uint8_t)BootReason::NoRecord, (uint8_t)d.reason);
+    const bool ok[2] = {false, true};
+    d = step(makeRecord(1, 7, FW_NO_SLOT), ResetKind::PowerOn, 0, ok);
+    TEST_ASSERT_EQUAL_UINT8(1, d.slot);
+    TEST_ASSERT_EQUAL_UINT8((uint8_t)BootReason::Fallback, (uint8_t)d.reason);
+}
+
+void test_decide_failed_trial_then_fallback_slot_crashes_stays_on_it() {
+    BootRecord r = makeRecord(1, 0, 1);
+    const bool ok[2] = {true, false};  // trial slot 1 does not verify
+    BootDecision d = step(r, ResetKind::PowerOn, 0, ok);
+    for (int i = 0; i < 5; i++) {
+        d = step(r, ResetKind::Crash, d.crashScratch, ok);
+        TEST_ASSERT_EQUAL_UINT8(0, d.slot);
+        TEST_ASSERT_EQUAL_UINT8((uint8_t)BootReason::Fallback, (uint8_t)d.reason);
+        TEST_ASSERT_EQUAL_HEX32(crashSlot(0, (uint8_t)(i + 1)), d.crashScratch);
+    }
+}
+
+void test_decide_unchanged_record_after_fallback_returns_to_target() {
+    BootRecord r = makeRecord(1, 0, 1);  // firmware has not rewritten the record
+    BootDecision d = step(r, ResetKind::Crash, 0);
+    d = step(r, ResetKind::Crash, d.crashScratch);
+    d = step(r, ResetKind::Crash, d.crashScratch);
+    TEST_ASSERT_EQUAL_UINT8(0, d.slot);  // fell back
+    BootDecision c = step(r, ResetKind::Crash, d.crashScratch);
+    TEST_ASSERT_EQUAL_UINT8(1, c.slot);
+    TEST_ASSERT_EQUAL_HEX32(crashSlot(1, 1), c.crashScratch);
+    BootDecision p = step(r, ResetKind::Planned, d.crashScratch);
+    TEST_ASSERT_EQUAL_UINT8(1, p.slot);
+    TEST_ASSERT_EQUAL_HEX32(crashSlot(1, 0), p.crashScratch);
+}
+
 void test_boot_info_roundtrip() {
     uint32_t v = bootInfoEncode(1, BootReason::Fallback, ResetKind::Crash, 0);
     TEST_ASSERT_EQUAL_HEX8(0xB1, v >> 24);
@@ -364,6 +405,9 @@ int main() {
     RUN_TEST(test_decide_never_picks_invalid_slot);
     RUN_TEST(test_decide_nothing_bootable_returns_no_slot);
     RUN_TEST(test_decide_count_for_other_slot_restarts_at_one);
+    RUN_TEST(test_decide_out_of_range_record_treated_as_no_record);
+    RUN_TEST(test_decide_failed_trial_then_fallback_slot_crashes_stays_on_it);
+    RUN_TEST(test_decide_unchanged_record_after_fallback_returns_to_target);
     RUN_TEST(test_boot_info_roundtrip);
     RUN_TEST(test_boot_info_rejects_garbage);
     return UNITY_END();
