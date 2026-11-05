@@ -222,9 +222,11 @@ part("Y2", "12MHz", "Device:Crystal_GND24", "Crystal:Crystal_SMD_3225-4Pin_3.2x2
 R("R29", "1k", "XOUT", "XOSC_C", "mcu", "XOUT series, Pico")
 C("C40", "15pF", "XIN", "GND", "mcu")
 C("C41", "15pF", "XOSC_C", "GND", "mcu")
-part("U5", "W25Q16JVSSIQ", "Memory_Flash:W25Q16JVSS", "Package_SO:SOIC-8_5.3x5.3mm_P1.27mm",
+part("U5", "W25Q16JVSNIQ", "Memory_Flash:W25Q16JVSS", "Package_SO:SOIC-8_3.9x4.9mm_P1.27mm",
      {1: "QSPI_SS", 2: "QSPI_SD1", 3: "QSPI_SD2", 4: "GND", 5: "QSPI_SD0", 6: "QSPI_SCLK", 7: "QSPI_SD3", 8: "+3V3"},
-     "C131025", "W25Q16JVSSIQ", "Winbond", block="mcu", note="2 MB, matches board = pico")
+     "C2456211", "W25Q16JVSNIQ", "Winbond", block="mcu",
+     note="2 MB, matches board = pico; SN = 150 mil SOIC-8 (the board's pads). Was W25Q16JVSSIQ (SS = 208 mil), "
+          "refused by JLCPCB assembly 2026-11-05")
 C("C42", "100nF", "+3V3", "GND", "mcu", "flash")
 TS1187 = "Button_Switch_SMD:SW_Push_1P1T_XKB_TS-1187A"
 R("R30", "1k", "QSPI_SS", "BOOTSEL_SW", "mcu", "BOOTSEL: hold at reset for USB boot (Pico)")

@@ -80,7 +80,7 @@ Y2,12MHz,mcu,ABM8-272-T3,Abracon,Crystal_SMD_3225-4Pin_3.2x2.5mm,LCSC,C20625731,
 R29,1k,mcu,0402WGF1001TCE,,R_0402_1005Metric,LCSC,C11702,8993000,https://www.lcsc.com/product-detail/C11702.html,"XOUT series, Pico"
 C40,15pF,mcu,0402CG150J500NT,,C_0402_1005Metric,LCSC,C1548,580400,https://www.lcsc.com/product-detail/C1548.html,
 C41,15pF,mcu,0402CG150J500NT,,C_0402_1005Metric,LCSC,C1548,580400,https://www.lcsc.com/product-detail/C1548.html,
-U5,W25Q16JVSSIQ,mcu,W25Q16JVSSIQ,Winbond,SOIC-8_5.3x5.3mm_P1.27mm,LCSC,C131025,5559,https://www.lcsc.com/product-detail/C131025.html,"2 MB, matches board = pico"
+U5,W25Q16JVSNIQ,mcu,W25Q16JVSNIQ,Winbond,SOIC-8_3.9x4.9mm_P1.27mm,LCSC,C2456211,,https://www.lcsc.com/product-detail/C2456211.html,"2 MB, matches board = pico; SN = 150 mil SOIC-8 (the board's pads). Was W25Q16JVSSIQ (SS = 208 mil), refused by JLCPCB assembly 2026-11-05"
 C42,100nF,mcu,CL05B104KO5NNNC,,C_0402_1005Metric,LCSC,C1525,20188300,https://www.lcsc.com/product-detail/C1525.html,flash
 R30,1k,mcu,0402WGF1001TCE,,R_0402_1005Metric,LCSC,C11702,8993000,https://www.lcsc.com/product-detail/C11702.html,BOOTSEL: hold at reset for USB boot (Pico)
 SW1,BOOTSEL,mcu,TS-1187A-B-A-B,XKB,SW_Push_1P1T_XKB_TS-1187A,LCSC,C318884,801420,https://www.lcsc.com/product-detail/C318884.html,

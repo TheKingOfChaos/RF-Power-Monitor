@@ -46,7 +46,7 @@ Board revision 2, design data 2026-11-03. Author: Kenneth Foli Jørgensen. Desig
 <h2>3. Functional blocks</h2>
 <table>
 <tr><th>Block</th><th>Parts</th><th>Notes</th></tr>
-<tr><td>MCU</td><td>U4 RP2040, U5 W25Q16JVSSIQ 2 MB QSPI flash, Y2 12 MHz ABM8</td><td>Pico reference design: 1.1 V core regulator inside the RP2040, BOOTSEL (SW1), RUN reset (SW2)</td></tr>
+<tr><td>MCU</td><td>U4 RP2040, U5 W25Q16JVSNIQ 2 MB QSPI flash (150 mil SOIC-8), Y2 12 MHz ABM8</td><td>Pico reference design: 1.1 V core regulator inside the RP2040, BOOTSEL (SW1), RUN reset (SW2)</td></tr>
 <tr><td>Ethernet</td><td>U3 W5500, Y1 25 MHz, T1 HR601680 1CT:1CT, J2 RJ45 (no magnetics, with LEDs)</td><td>10/100, auto-negotiation (PMODE 111), MDI only (the W5500 has no auto-MDIX)</td></tr>
 <tr><td>PoE</td><td>U2 WIZPoE-P1 isolated 802.3af PD module, 5 V 1.5 A</td><td>Fed from the transformer centre taps (mode A) and the spare pairs (mode B). Fitted by hand, soldered or on 2 × 1×4 2.54 mm sockets</td></tr>
 <tr><td>Power</td><td>U1 TLV62569 1.5 MHz buck, L1 2.2 µH, D1 B5819W</td><td>VSYS → +3V3. USB-C VBUS reaches VSYS through D1, as on the Pico</td></tr>
