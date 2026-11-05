@@ -41,20 +41,30 @@ declare -A SUITES=(
     [test_dhcp6_message]="dhcp6_client"
     [test_dhcp6_frame]="dhcp6_client"
     [test_dhcp6_client]="dhcp6_client"
+    [test_fw_image]="fw_image monocypher"
 )
 
 failed=0
 for suite in "${!SUITES[@]}"; do
     inc="-I $DEPS/Unity/src -I $DEPS/ArduinoJson/src"
     src=""
+    cobj=""
     for lib in ${SUITES[$suite]}; do
-        inc="$inc -I lib/$lib/include"
-        src="$src $(ls lib/$lib/src/*.cpp)"
+        inc="$inc -I lib/$lib/include -I lib/$lib/src"
+        src="$src $(ls lib/$lib/src/*.cpp 2>/dev/null || true)"
+        # C sources (Monocypher) are built as C99 with the same sanitizers
+        for c in lib/$lib/src/*.c; do
+            [ -e "$c" ] || continue
+            o="$OUT/$suite.$(basename "$c").o"
+            gcc -std=c99 -g -O1 -Wall -Wextra -Werror -fsanitize=address,undefined \
+                -fno-sanitize-recover=all -c "$c" -o "$o"
+            cobj="$cobj $o"
+        done
     done
     # shellcheck disable=SC2086
     if g++ -std=gnu++17 -g -O1 -Wall -Wextra -Werror \
            -fsanitize=address,undefined -fno-sanitize-recover=all \
-           $inc "test/native/$suite/test_main.cpp" $src "$DEPS/Unity/src/unity.c" \
+           $inc "test/native/$suite/test_main.cpp" $src $cobj "$DEPS/Unity/src/unity.c" \
            -o "$OUT/$suite" && "$OUT/$suite" > "$OUT/$suite.log" 2>&1; then
         echo "PASS  $suite  ($(grep -E '^[0-9]+ Tests' "$OUT/$suite.log"))"
     else
