@@ -10,9 +10,11 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 sys.path.insert(0, os.path.join(ROOT, "tools"))
+import fw_keygen  # noqa: E402
 import fw_release  # noqa: E402
 import fwtool  # noqa: E402
 
@@ -143,6 +145,61 @@ class SignVerifyTests(unittest.TestCase):
         data = self.sign_to_file(self.key_a, 0)
         key_id = data[96:104]
         self.assertEqual(key_id.hex(), fwtool.key_fingerprint(fwtool.public_key(self.key_a)))
+
+
+class KeyGuardTests(unittest.TestCase):
+    def setUp(self):
+        self._tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self._tmp.cleanup)
+        self.dir = self._tmp.name
+
+    def test_keygen_does_not_clobber_a_key_created_after_the_exists_check(self):
+        keygen(self.dir)
+        key = os.path.join(self.dir, "fw_signing_key")
+        with open(key, "rb") as f:
+            before = f.read()
+        # Simulate the race: exists() says no, but the key is already there
+        with mock.patch.object(fw_keygen.os.path, "exists", return_value=False):
+            rc = fw_keygen.main(["--out", self.dir])
+        self.assertNotEqual(rc, 0)
+        with open(key, "rb") as f:
+            self.assertEqual(f.read(), before)
+
+    def test_keygen_leaves_no_key_when_fwsign_cannot_be_built(self):
+        with mock.patch.object(fwtool, "fwsign_path", side_effect=RuntimeError("g++ failed")):
+            with self.assertRaises(RuntimeError):
+                fw_keygen.main(["--out", self.dir])
+        self.assertEqual(os.listdir(self.dir), [])
+
+    def test_key_header_match_passes_and_mismatch_fails(self):
+        for d in ("a", "b"):
+            self.assertEqual(keygen(os.path.join(self.dir, d)).returncode, 0)
+        key_a = os.path.join(self.dir, "a", "fw_signing_key")
+        header_a = os.path.join(self.dir, "a", "fw_public_key.h")
+        header_b = os.path.join(self.dir, "b", "fw_public_key.h")
+        fwtool.check_key_matches_header(key_a, header_a)  # no exception
+        with self.assertRaises(RuntimeError) as cm:
+            fwtool.check_key_matches_header(key_a, header_b)
+        msg = str(cm.exception)
+        self.assertIn(fwtool.key_fingerprint(fwtool.public_key(key_a)), msg)
+        with open(os.path.join(self.dir, "a", "fw_signing_key"), "rb") as f:
+            self.assertNotIn(f.read().hex(), msg.lower())
+
+    def test_key_header_check_fails_when_header_is_missing(self):
+        keygen(os.path.join(self.dir, "a"))
+        with self.assertRaises(RuntimeError) as cm:
+            fwtool.check_key_matches_header(os.path.join(self.dir, "a", "fw_signing_key"),
+                                            os.path.join(self.dir, "nope.h"))
+        self.assertIn("fw_keygen.py", str(cm.exception))
+
+    def test_signing_seed_for_field_key_says_to_run_keygen_when_missing(self):
+        with mock.patch.object(fwtool, "FIELD_KEY", os.path.join(self.dir, "missing")):
+            with self.assertRaises(RuntimeError) as cm:
+                fwtool.signing_seed(True)
+        self.assertIn("Run tools/fw_keygen.py", str(cm.exception))
+
+    def test_signing_seed_for_dev_key_needs_no_field_key(self):
+        self.assertEqual(fwtool.signing_seed(False), fwtool.DEV_KEY)
 
 
 class UpdLayoutTests(unittest.TestCase):

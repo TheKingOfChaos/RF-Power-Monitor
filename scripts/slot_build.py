@@ -205,7 +205,7 @@ def configure_post(env):
     env.Depends(os.path.join("$BUILD_DIR", "${PROGNAME}.elf"),
                 os.path.join("$BUILD_DIR", "memmap_slot.ld"))
     try:
-        key_seed = fwtool.signing_seed(field_key())
+        key_id = fwtool.key_fingerprint(fwtool.public_key(fwtool.signing_seed(field_key())))
     except RuntimeError as e:
         sys.stderr.write("slot_build: %s\n" % e)
         env.Exit(1)
@@ -226,7 +226,7 @@ def configure_post(env):
         [os.path.join("$BUILD_DIR", "${PROGNAME}.bin"),
          env.Value(env.BoardConfig().get("build.arduino.earlephilhower.boot2_source", "")),
          env.Value("field key" if field_key() else "development key"),
-         key_seed,  # the key file itself: a new key re-signs
+         env.Value(key_id),  # a new key re-signs (the key file itself stays out of SCons)
          os.path.join(TOOLS_DIR, "fwtool.py")]
         + boot_inputs,
         env.VerboseAction(build_full_uf2, "Building $TARGET"))

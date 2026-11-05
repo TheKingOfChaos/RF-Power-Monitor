@@ -27,6 +27,7 @@ INCLUDE_DIRS = [MONOCYPHER, os.path.join(FW_IMAGE, "include")]
 
 DEV_KEY = os.path.join(ROOT, "keys", "dev", "fw_signing_key")
 FIELD_KEY = os.path.join(ROOT, "secret", "fw_signing_key")
+FIELD_HEADER = os.path.join(ROOT, "include", "fw_public_key.h")
 
 
 def _run(cmd):
@@ -92,13 +93,43 @@ def firmware_version() -> str:
     return m.group(1)
 
 
+def header_public_key(header_path) -> bytes:
+    """The 32 bytes of FW_PUBLIC_KEY in a key header written by fw_keygen.py."""
+    try:
+        with open(header_path, encoding="utf-8") as f:
+            text = f.read()
+    except OSError:
+        raise RuntimeError("%s is missing. Run tools/fw_keygen.py" % header_path)
+    body = text.split("FW_PUBLIC_KEY[32]", 1)[-1]
+    values = re.findall(r"0x([0-9a-fA-F]{2})", body)
+    if len(values) != 32:
+        raise RuntimeError("%s does not hold a 32 byte FW_PUBLIC_KEY" % header_path)
+    return bytes(int(v, 16) for v in values)
+
+
+def check_key_matches_header(seed_path, header_path) -> None:
+    """Raise RuntimeError unless the seed's public key is the one in the header.
+
+    Devices built with the header's key reject firmware signed with any
+    other key. The message names both key ids and never the seed.
+    """
+    mine = key_fingerprint(public_key(seed_path))
+    theirs = key_fingerprint(header_public_key(header_path))
+    if mine != theirs:
+        raise RuntimeError("%s has key id %s but %s has key id %s: devices would reject the "
+                           "firmware" % (os.path.basename(str(seed_path)), mine,
+                                         os.path.basename(str(header_path)), theirs))
+
+
 def signing_seed(field: bool) -> str:
     """Seed file for the development key, or the field key (secret/) when `field`.
 
-    Raises RuntimeError("... Run tools/fw_keygen.py") when the field key is missing.
+    The field key must match include/fw_public_key.h. Raises RuntimeError
+    ("... Run tools/fw_keygen.py") when it is missing or does not match.
     """
     if not field:
         return DEV_KEY
     if not os.path.exists(FIELD_KEY):
         raise RuntimeError("secret/fw_signing_key is missing. Run tools/fw_keygen.py")
+    check_key_matches_header(FIELD_KEY, FIELD_HEADER)
     return FIELD_KEY
