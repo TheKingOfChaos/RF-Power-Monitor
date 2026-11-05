@@ -1,0 +1,8 @@
+{
+    "name": "fw_update",
+    "version": "1.0.0",
+    "description": "Boot record and boot decision for A/B firmware updates (pure, freestanding-safe)",
+    "license": "MIT",
+    "frameworks": "*",
+    "platforms": "*"
+}

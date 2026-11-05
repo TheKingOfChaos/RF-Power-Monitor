@@ -42,6 +42,7 @@ declare -A SUITES=(
     [test_dhcp6_frame]="dhcp6_client"
     [test_dhcp6_client]="dhcp6_client"
     [test_fw_image]="fw_image monocypher"
+    [test_fw_boot]="fw_update"
 )
 
 failed=0
