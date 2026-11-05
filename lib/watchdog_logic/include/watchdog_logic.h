@@ -11,6 +11,7 @@
  */
 
 #include <stdint.h>
+#include <boot_decision.h>
 
 /**
  * @brief Core 1 liveness, judged by core 0 from a counter core 1 increments
@@ -71,3 +72,14 @@ uint32_t restartRecordUpdate(RestartRecord& record, RestartCause cause);
  * @brief Short name for the status screen and boot log, e.g. "watchdog"
  */
 const char* restartCauseName(RestartCause cause);
+
+/**
+ * @brief The restart cause the boot program recorded (watchdog scratch 0, bootInfoEncode)
+ *
+ * Its reset kinds map PowerOn -> PowerOn, ResetPin -> ResetPin, Planned ->
+ * Reboot and Crash -> Watchdog. The boot program arms the watchdog for every
+ * start, so the SDK's own reset reason reads every reboot as a watchdog reset.
+ *
+ * @return false (out unchanged) when scratch0 holds no valid boot info
+ */
+bool restartCauseFromBootInfo(uint32_t scratch0, RestartCause& out);

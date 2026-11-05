@@ -2,6 +2,8 @@
 
 #include <Arduino.h>
 
+#include "boot_info.h"
+
 // Survives watchdog and soft resets (the startup code does not clear this section); random after power-on
 static RestartRecord restartRecord __attribute__((section(".uninitialized_data.restart")));
 
@@ -15,9 +17,15 @@ static uint32_t core1Beat = 0;
 static volatile bool stallCore1 = false;
 
 /**
- * @brief Map the core's reset reason to our causes
+ * @brief Why this start happened: from the boot program's boot info, else the core's reset reason
+ *
+ * The boot program arms the watchdog for every start, so the core's reset
+ * reason (watchdog armed + watchdog reset) would call every reboot a watchdog
+ * restart; it is only used when the firmware was started without the boot program.
  */
 static RestartCause readCause() {
+    RestartCause fromBoot;
+    if (restartCauseFromBootInfo(bootInfoRaw(), fromBoot)) return fromBoot;
     switch (rp2040.getResetReason()) {
     case RP2040::PWRON_RESET:
     case RP2040::BROWNOUT_RESET:
@@ -30,16 +38,23 @@ static RestartCause readCause() {
 }
 
 void watchdogBegin() {
-    // Before diagBegin(): arming the watchdog there would make a later soft reboot read as a watchdog reset
+    // Before arming: without boot info, an armed watchdog makes the core's reset reason say "watchdog"
     cause = readCause();
     restarts = restartRecordUpdate(restartRecord, cause);
+    // Take over the watchdog the boot program armed (~8.3 s), so watchdogFeed() can feed it
+    rp2040.wdt_begin(WATCHDOG_TIMEOUT_MS);
+}
+
+void watchdogPrintCause() {
     Serial.printf("Last restart: %s (%lu watchdog restarts since power-on)\r\n", restartCauseName(cause),
                   (unsigned long)restarts);
 }
 
+void watchdogFeed() { rp2040.wdt_reset(); }
+
 void watchdogArm() {
     core1Check.begin(__atomic_load_n(&core1Beat, __ATOMIC_RELAXED), millis());
-    rp2040.wdt_begin(WATCHDOG_TIMEOUT_MS);
+    rp2040.wdt_begin(WATCHDOG_TIMEOUT_MS);  // again: diagBegin() may have shortened it
     armed = true;
 }
 

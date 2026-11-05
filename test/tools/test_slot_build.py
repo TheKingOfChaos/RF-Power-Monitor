@@ -77,5 +77,22 @@ class LinkerScriptTests(unittest.TestCase):
             slot_build.slot_linker_script(self.core, 0, {k: v for k, v in SUBS.items() if k != "__FS_END__"})
 
 
+class BootKeyCheckTests(unittest.TestCase):
+    KEY = bytes(range(32))
+
+    def test_boot_holding_the_key_passes(self):
+        slot_build.check_boot_trusts_key(bytes([0xFF]) * 300 + self.KEY + bytes(40), self.KEY)
+
+    def test_boot_without_the_key_is_refused(self):
+        other = bytes(range(1, 33))
+        with self.assertRaises(ValueError) as cm:
+            slot_build.check_boot_trusts_key(bytes([0xFF]) * 300 + other, self.KEY)
+        self.assertIn(slot_build.fwtool.key_fingerprint(self.KEY), str(cm.exception))
+
+    def test_short_key_is_refused(self):
+        with self.assertRaises(ValueError):
+            slot_build.check_boot_trusts_key(self.KEY, self.KEY[:31])
+
+
 if __name__ == "__main__":
     unittest.main()

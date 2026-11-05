@@ -4,6 +4,7 @@
 #include <unity.h>
 #include <string.h>
 #include <watchdog_logic.h>
+#include <boot_decision.h>
 
 void setUp() {}
 void tearDown() {}
@@ -108,6 +109,25 @@ static void test_every_restart_cause_has_a_name() {
     TEST_ASSERT_EQUAL_STRING("watchdog", restartCauseName(RestartCause::Watchdog));
 }
 
+static void test_boot_info_maps_each_reset_kind_to_a_restart_cause() {
+    const ResetKind kinds[] = {ResetKind::PowerOn, ResetKind::ResetPin, ResetKind::Planned, ResetKind::Crash};
+    const RestartCause want[] = {RestartCause::PowerOn, RestartCause::ResetPin, RestartCause::Reboot,
+                                 RestartCause::Watchdog};
+    for (int i = 0; i < 4; i++) {
+        RestartCause c = RestartCause::Unknown;
+        TEST_ASSERT_TRUE(restartCauseFromBootInfo(bootInfoEncode(0, BootReason::Normal, kinds[i], FW_NO_SLOT), c));
+        TEST_ASSERT_EQUAL_UINT8((uint8_t)want[i], (uint8_t)c);
+    }
+}
+
+static void test_boot_info_without_magic_gives_no_cause() {
+    RestartCause c = RestartCause::PowerOn;
+    TEST_ASSERT_FALSE(restartCauseFromBootInfo(0, c));
+    TEST_ASSERT_FALSE(restartCauseFromBootInfo(0xFFFFFFFFu, c));
+    TEST_ASSERT_FALSE(restartCauseFromBootInfo(0xB1000000u | (9u << 12), c));  // reset kind 9
+    TEST_ASSERT_EQUAL_UINT8((uint8_t)RestartCause::PowerOn, (uint8_t)c);       // left alone
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_heartbeat_alive_right_after_begin);
@@ -122,5 +142,7 @@ int main() {
     RUN_TEST(test_record_with_a_corrupted_count_is_not_trusted);
     RUN_TEST(test_record_count_saturates);
     RUN_TEST(test_every_restart_cause_has_a_name);
+    RUN_TEST(test_boot_info_maps_each_reset_kind_to_a_restart_cause);
+    RUN_TEST(test_boot_info_without_magic_gives_no_cause);
     return UNITY_END();
 }

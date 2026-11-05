@@ -8,14 +8,17 @@
               before it
      0x10000  slot A, 0xE7000 slot B (firmware image at slot + 0x100)
 
-   The boot program runs from flash and uses RAM freely: the firmware it
-   starts sets up its own RAM. Its stack is at the top of SCRATCH_Y, where the
-   firmware's core 0 stack also lives. */
+   The boot program runs from flash. Its RAM (.data, .bss and the stack) is
+   only SCRATCH_X and SCRATCH_Y (0x20040000-0x20042000), where the firmware
+   keeps its stacks: main RAM holds the firmware's .uninitialized_data (restart
+   counter, diagnostics), which must survive a reset through the boot program.
+   The stack starts at the top of SCRATCH_Y and the signature check uses most
+   of it: check .pio/boot/*.su and boot.map when the code changes. */
 
 MEMORY
 {
     FLASH(rx) : ORIGIN = 0x10000000, LENGTH = 0xE000
-    RAM(rwx)  : ORIGIN = 0x20000000, LENGTH = 0x42000
+    RAM(rwx)  : ORIGIN = 0x20040000, LENGTH = 0x2000
 }
 
 ENTRY(boot_reset)

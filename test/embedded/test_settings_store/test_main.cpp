@@ -3,6 +3,7 @@
 // Run: pio test -e pico -f embedded/test_settings_store
 
 #include <Arduino.h>
+#include <hardware/watchdog.h>
 #include <LittleFS.h>
 #include <unity.h>
 #include <settings.h>
@@ -265,6 +266,9 @@ static void test_save_and_load_use_little_stack() {
 }
 
 void setup() {
+    // The boot program starts every image with the watchdog armed (~8.3 s);
+    // these tests run longer than that in setup() and do not feed it
+    watchdog_disable();
     Serial.begin(115200);
     uint32_t start = millis();
     while (!Serial && millis() - start < 10000) delay(10);

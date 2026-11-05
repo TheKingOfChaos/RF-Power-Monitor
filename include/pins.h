@@ -5,9 +5,16 @@
  * @brief GPIO assignments (see README "Pin Configuration" and .clinerules)
  */
 
+#include <stdint.h>
+// The boot program (boot/, scripts/build_boot.py) is built without the Arduino core
+#ifndef RFPOWER_BOOT_PROGRAM
 #include <Arduino.h>
+#endif
 
-const uint8_t LED_PIN = LED_BUILTIN;      ///< Onboard LED, status indication
+const uint8_t LED_PIN = 25;               ///< Onboard LED (LED_BUILTIN), status indication
+#ifdef LED_BUILTIN
+static_assert(LED_PIN == LED_BUILTIN, "LED_PIN must be the board's LED_BUILTIN");
+#endif
 const uint8_t POWER_PIN = 27;             ///< Mains power detection, HIGH = present
 const uint8_t FACTORY_RESET_PIN = 22;     ///< Factory reset button to GND, hold 10 s
 

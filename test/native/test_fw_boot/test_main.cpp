@@ -373,6 +373,128 @@ void test_boot_info_rejects_garbage() {
     TEST_ASSERT_FALSE(bootInfoDecode(0xB1000000u | 5u, slot, reason, reset, failed));          // slot 5
 }
 
+// ---- target and lazy selection (what the boot program runs) ----
+
+// Fake slot verification for bootSelect: which slots are good, which were checked
+struct FakeSlots {
+    bool good[2];
+    int calls[2];
+    int order[4];
+    int n;
+};
+
+bool fakeVerify(uint8_t slot, void* ctx) {
+    FakeSlots* f = static_cast<FakeSlots*>(ctx);
+    f->calls[slot]++;
+    if (f->n < 4) f->order[f->n++] = slot;
+    return f->good[slot];
+}
+
+FakeSlots slots(bool a, bool b) {
+    FakeSlots f;
+    memset(&f, 0, sizeof(f));
+    f.good[0] = a;
+    f.good[1] = b;
+    return f;
+}
+
+void test_target_is_trial_then_active_then_slot_a() {
+    TEST_ASSERT_EQUAL_UINT8(1, bootTarget(true, makeRecord(1, 0, 1)));
+    TEST_ASSERT_EQUAL_UINT8(1, bootTarget(true, makeRecord(1, 1, FW_NO_SLOT)));
+    TEST_ASSERT_EQUAL_UINT8(0, bootTarget(false, makeRecord(1, 1, FW_NO_SLOT)));
+    TEST_ASSERT_EQUAL_UINT8(0, bootTarget(true, makeRecord(1, 7, FW_NO_SLOT)));  // out of range: no record
+    TEST_ASSERT_EQUAL_UINT8(0, bootTarget(true, makeRecord(1, 1, 4)));
+}
+
+void test_select_verifies_only_the_target_when_it_is_good() {
+    FakeSlots f = slots(true, true);
+    BootSelection s = bootSelect(true, makeRecord(1, 1, FW_NO_SLOT), ResetKind::PowerOn, 0, fakeVerify, &f);
+    TEST_ASSERT_EQUAL_UINT8(1, s.decision.slot);
+    TEST_ASSERT_EQUAL_INT(1, f.calls[1]);
+    TEST_ASSERT_EQUAL_INT(0, f.calls[0]);
+    TEST_ASSERT_EQUAL_UINT8(FW_NO_SLOT, s.failedSlot);
+}
+
+void test_select_verifies_the_other_slot_when_the_target_fails() {
+    FakeSlots f = slots(true, false);
+    BootSelection s = bootSelect(true, makeRecord(1, 0, 1), ResetKind::PowerOn, 0, fakeVerify, &f);
+    TEST_ASSERT_EQUAL_UINT8(0, s.decision.slot);
+    TEST_ASSERT_EQUAL_UINT8((uint8_t)BootReason::Fallback, (uint8_t)s.decision.reason);
+    TEST_ASSERT_EQUAL_INT(2, f.n);
+    TEST_ASSERT_EQUAL_INT(1, f.order[0]);  // target first
+    TEST_ASSERT_EQUAL_INT(0, f.order[1]);
+    TEST_ASSERT_EQUAL_UINT8(1, s.failedSlot);
+}
+
+void test_select_nothing_bootable_has_no_slot_and_no_failed_slot() {
+    FakeSlots f = slots(false, false);
+    BootSelection s = bootSelect(false, makeRecord(0, 0, FW_NO_SLOT), ResetKind::PowerOn, 0, fakeVerify, &f);
+    TEST_ASSERT_EQUAL_UINT8(FW_NO_SLOT, s.decision.slot);
+    TEST_ASSERT_EQUAL_UINT8(FW_NO_SLOT, s.failedSlot);
+    TEST_ASSERT_EQUAL_INT(1, f.calls[0]);
+    TEST_ASSERT_EQUAL_INT(1, f.calls[1]);
+}
+
+void test_select_crash_limit_verifies_the_other_slot_and_falls_back() {
+    FakeSlots f = slots(true, true);
+    BootSelection s = bootSelect(true, makeRecord(1, 0, 1), ResetKind::Crash, crashSlot(1, 2), fakeVerify, &f);
+    TEST_ASSERT_EQUAL_UINT8(0, s.decision.slot);
+    TEST_ASSERT_EQUAL_INT(1, f.calls[0]);
+    TEST_ASSERT_EQUAL_UINT8(1, s.failedSlot);
+    // How the firmware tells the crash limit from a failed verification: reset Crash, count 0
+    TEST_ASSERT_EQUAL_HEX32(crashSlot(0, 0), s.decision.crashScratch);
+}
+
+void test_select_crash_limit_with_bad_other_slot_stays_and_reports_nothing_failed() {
+    FakeSlots f = slots(true, false);
+    BootSelection s = bootSelect(false, makeRecord(0, 0, FW_NO_SLOT), ResetKind::Crash, crashSlot(0, 2), fakeVerify, &f);
+    TEST_ASSERT_EQUAL_UINT8(0, s.decision.slot);
+    TEST_ASSERT_EQUAL_UINT8(FW_NO_SLOT, s.failedSlot);
+    TEST_ASSERT_EQUAL_HEX32(crashSlot(0, 3), s.decision.crashScratch);
+}
+
+void test_select_failed_verification_after_a_crash_counts_at_least_one() {
+    FakeSlots f = slots(true, false);
+    BootSelection s = bootSelect(true, makeRecord(1, 0, 1), ResetKind::Crash, 0, fakeVerify, &f);
+    TEST_ASSERT_EQUAL_UINT8(0, s.decision.slot);
+    TEST_ASSERT_EQUAL_UINT8(1, s.failedSlot);
+    TEST_ASSERT_EQUAL_HEX32(crashSlot(0, 1), s.decision.crashScratch);  // not 0: not the crash limit
+}
+
+void test_select_matches_decide_for_every_case() {
+    const ResetKind kinds[] = {ResetKind::PowerOn, ResetKind::ResetPin, ResetKind::Planned, ResetKind::Crash};
+    const uint8_t trials[] = {0, 1, FW_NO_SLOT};
+    for (int mask = 0; mask < 4; mask++) {
+        bool ok[2] = {(mask & 1) != 0, (mask & 2) != 0};
+        for (int have = 0; have < 2; have++)
+            for (uint8_t active = 0; active < 2; active++)
+                for (uint8_t trial : trials) {
+                    if (trial == active) continue;
+                    for (ResetKind k : kinds)
+                        for (uint8_t cs = 0; cs < 2; cs++)
+                            for (uint8_t n = 0; n < 4; n++) {
+                                BootRecord r = makeRecord(1, active, trial);
+                                uint32_t scratch = crashSlot(cs, n);
+                                FakeSlots f = slots(ok[0], ok[1]);
+                                BootSelection s = bootSelect(have != 0, r, k, scratch, fakeVerify, &f);
+                                BootDecision d = decideBoot(have != 0, r, ok, k, scratch);
+                                TEST_ASSERT_EQUAL_UINT8(d.slot, s.decision.slot);
+                                TEST_ASSERT_EQUAL_UINT8((uint8_t)d.reason, (uint8_t)s.decision.reason);
+                                TEST_ASSERT_EQUAL_HEX32(d.crashScratch, s.decision.crashScratch);
+                                TEST_ASSERT_TRUE(f.calls[0] <= 1 && f.calls[1] <= 1);
+                            }
+                }
+    }
+}
+
+void test_boot_reason_names() {
+    TEST_ASSERT_EQUAL_STRING("normal", bootReasonName(BootReason::Normal));
+    TEST_ASSERT_EQUAL_STRING("trial", bootReasonName(BootReason::Trial));
+    TEST_ASSERT_EQUAL_STRING("fallback", bootReasonName(BootReason::Fallback));
+    TEST_ASSERT_EQUAL_STRING("no record", bootReasonName(BootReason::NoRecord));
+    TEST_ASSERT_EQUAL_STRING("?", bootReasonName((BootReason)9));
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_crc32_check_value);
@@ -410,5 +532,14 @@ int main() {
     RUN_TEST(test_decide_unchanged_record_after_fallback_returns_to_target);
     RUN_TEST(test_boot_info_roundtrip);
     RUN_TEST(test_boot_info_rejects_garbage);
+    RUN_TEST(test_target_is_trial_then_active_then_slot_a);
+    RUN_TEST(test_select_verifies_only_the_target_when_it_is_good);
+    RUN_TEST(test_select_verifies_the_other_slot_when_the_target_fails);
+    RUN_TEST(test_select_nothing_bootable_has_no_slot_and_no_failed_slot);
+    RUN_TEST(test_select_crash_limit_verifies_the_other_slot_and_falls_back);
+    RUN_TEST(test_select_crash_limit_with_bad_other_slot_stays_and_reports_nothing_failed);
+    RUN_TEST(test_select_failed_verification_after_a_crash_counts_at_least_one);
+    RUN_TEST(test_select_matches_decide_for_every_case);
+    RUN_TEST(test_boot_reason_names);
     return UNITY_END();
 }

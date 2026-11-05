@@ -2,7 +2,8 @@
 
    boot2 sets VTOR to 0x10000100, loads the stack pointer from word 0 and
    branches to word 1 (boot_reset). boot_reset copies .data, clears .bss and
-   calls boot_main(), which never returns. */
+   calls boot_main(), which never returns. NMI and HardFault go to
+   boot_fault() (boot_main.cpp): LED pattern, watchdog off. */
 
 .syntax unified
 .cpu cortex-m0plus
@@ -14,8 +15,8 @@
 __boot_vectors:
     .word __StackTop
     .word boot_reset
-    .word boot_fault        /* NMI */
-    .word boot_fault        /* HardFault */
+    .word boot_fault        /* NMI, boot_main.cpp */
+    .word boot_fault        /* HardFault, boot_main.cpp */
 
 .section .text.boot_reset, "ax"
 .align 1
@@ -41,9 +42,3 @@ boot_reset:
     b 3b
 4:  bl boot_main
     /* boot_main does not return */
-
-/* NMI and HardFault: stop here (later tasks may reset instead). */
-.thumb_func
-.global boot_fault
-boot_fault:
-    b boot_fault

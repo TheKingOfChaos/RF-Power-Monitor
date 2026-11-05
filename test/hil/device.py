@@ -42,9 +42,15 @@ class Device:
         deadline = time.time() + 10
         while True:
             try:
-                # DTR must be set, the firmware waits for it before printing
-                self.ser = serial.Serial(self.port, BAUD, timeout=0.1, dsrdtr=False)
-                self.ser.dtr = True
+                # DTR must be set, the firmware waits for it before printing. Set it only
+                # after opening: pyserial clears the receive buffer while it opens the
+                # port, which lost the first boot lines when DTR was already set
+                ser = serial.Serial(None, BAUD, timeout=0.1, dsrdtr=False)
+                ser.port = self.port
+                ser.dtr = False
+                ser.open()
+                ser.dtr = True
+                self.ser = ser
                 return
             except serial.SerialException as e:
                 if time.time() > deadline:

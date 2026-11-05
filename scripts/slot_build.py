@@ -143,13 +143,29 @@ def slot_blob(env):
 
 
 def boot_program(env):
-    """Build (if needed) and return the boot program, boot2 included."""
+    """Build (if needed) and return the boot program, boot2 included.
+
+    Built for the same key as the firmware (RFPOWER_FW_KEY, field_key()).
+    """
     platform = env.PioPlatform()
     return build_boot.build(
         toolchain_dir=platform.get_package_dir("toolchain-rp2040-earlephilhower"),
         framework_dir=platform.get_package_dir("framework-arduinopico"),
         boot2=env.BoardConfig().get("build.arduino.earlephilhower.boot2_source",
-                                    build_boot.DEFAULT_BOOT2))
+                                    build_boot.DEFAULT_BOOT2),
+        field_key=field_key())
+
+
+def check_boot_trusts_key(boot, public_key):
+    """Raise ValueError unless the boot program (bytes) holds `public_key`.
+
+    The boot program verifies slots with the FW_PUBLIC_KEY it was compiled
+    with; a slot signed with any other key would never start.
+    """
+    if len(public_key) != 32 or public_key not in boot:
+        raise ValueError("the boot program does not trust the key slot A is signed with "
+                         "(key id %s); rebuild with the same RFPOWER_FW_KEY"
+                         % fwtool.key_fingerprint(public_key))
 
 
 def build_full_uf2(target, source, env):
@@ -158,6 +174,7 @@ def build_full_uf2(target, source, env):
         with open(boot_program(env), "rb") as f:
             boot = f.read()
         blob = slot_blob(env)
+        check_boot_trusts_key(boot, fwtool.public_key(fwtool.signing_seed(field_key())))
     except (RuntimeError, ValueError, OSError) as e:
         sys.stderr.write("slot_build: %s\n" % e)
         return 1
@@ -219,8 +236,10 @@ def configure_post(env):
         env.AddPreAction("upload", refuse_upload(
             "upload_protocol %s would write the bare image; only picotool "
             "(which loads firmware_full.uf2) is supported" % protocol))
-    boot_inputs = ([os.path.join(BOOT_DIR, n) for n in sorted(os.listdir(BOOT_DIR))]
-                   + [os.path.join(SCRIPTS_DIR, n) for n in ("build_boot.py", "uf2.py", "slot_build.py")])
+    # Sources, headers (the key headers included) and linker script of the boot
+    # program; boot2 is covered by the boot2_source value below
+    boot_inputs = (build_boot.project_inputs()
+                   + [os.path.join(SCRIPTS_DIR, n) for n in ("uf2.py", "slot_build.py")])
     full = env.Command(
         FULL_UF2,
         [os.path.join("$BUILD_DIR", "${PROGNAME}.bin"),

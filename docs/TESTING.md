@@ -445,14 +445,14 @@ Uses `test/settings_a.json` and `test/settings_b.json`, never the real settings.
 1. Decide the layer. If the code can run without the Pico, move it into a pure library under `lib/` and test it in `test/native/`. Use `test/embedded/` only for flash, SPI, GPIO or timing, and `test/hil/` for end-to-end behaviour.
 2. Add the test to the matching suite, or create a new suite folder named `test_<area>` with a `test_main.cpp`:
    - native: `int main()` with `UNITY_BEGIN()`, `RUN_TEST(...)`, `return UNITY_END();`
-   - embedded: the same inside `setup()`, after waiting up to 10 s for `Serial`, and an empty `loop()`
+   - embedded: the same inside `setup()`, after `watchdog_disable()` (the boot program starts every image with the watchdog armed) and waiting up to 10 s for `Serial`, and an empty `loop()`
 3. Name it `test_<what>_<expected behaviour>` and assert on the code under test.
 4. Check it can fail: break the code briefly (or write the test before the fix) and watch it go red.
 5. Run all native and embedded tests before committing.
 
 ## Diagnosing a hang or crash on the device
 
-Every build has a hardware watchdog (8 s, `src/watchdog.cpp`, armed at the end of `setup()`): a hang in `loop()` or on core 1 restarts the device, and the status screen shows `Last restart: watchdog`. It does not say where it hung, and a hang during `setup()` still freezes the device with USB serial (then: hold BOOTSEL while plugging in). The diagnosis build tells you where:
+Every build has a hardware watchdog (8 s, `src/watchdog.cpp`): the boot program (`boot/`) arms it before it starts the firmware, `setup()` feeds it, and from the end of `setup()` a hang in `loop()` or on core 1 restarts the device. The status screen then shows `Last restart: watchdog`; the restart cause comes from the boot program (watchdog scratch 0, `src/boot_info.cpp`). It does not say where it hung. The diagnosis build tells you where:
 
 ```powershell
 $env:PLATFORMIO_BUILD_FLAGS = '-DRFPOWER_DIAG -Wl,--wrap=panic'
@@ -460,7 +460,7 @@ $env:PLATFORMIO_BUILD_FLAGS = '-DRFPOWER_DIAG -Wl,--wrap=panic'
 Remove-Item Env:PLATFORMIO_BUILD_FLAGS
 ```
 
-It arms the watchdog early in `setup()` (4 s, the normal 8 s from the end of `setup()`), writes the step of `loop()` and of the frame hooks into watchdog scratch registers, records the program counter of a hard fault and the message of a `panic()` (lwIP asserts end there), and prints all of it after the watchdog restart: `DIAG: previous run PANICKED (called from 0x10025129): lwip`. Look the address up with `arm-none-eabi-addr2line -f -e .pio\build\pico\firmware.elf <address>`. This found the IPv6 timer-pool panic in `sys_timeout_abs` and the hard fault in `pbuf_free` caused by the core's UDP helper buffer.
+It shortens the watchdog early in `setup()` (4 s, the normal 8 s from the end of `setup()`), writes the step of `loop()` and of the frame hooks into RAM that survives the restart (not the watchdog scratch registers: the boot program uses scratch 0-2), records the program counter of a hard fault and the message of a `panic()` (lwIP asserts end there), and prints all of it after the watchdog restart: `DIAG: previous run PANICKED (called from 0x10025129): lwip`. Look the address up with `arm-none-eabi-addr2line -f -e .pio\build\pico\firmware.elf <address>`. This found the IPv6 timer-pool panic in `sys_timeout_abs` and the hard fault in `pbuf_free` caused by the core's UDP helper buffer.
 
 ## Troubleshooting
 

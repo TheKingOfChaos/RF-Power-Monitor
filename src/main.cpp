@@ -3,6 +3,7 @@
 #include <LittleFS.h>
 #include <W5500lwIP.h>
 #include <mains_input.h>
+#include "boot_info.h"
 #include "cli.h"
 #include "diag.h"
 #include "watchdog.h"
@@ -163,14 +164,22 @@ void listFiles(const char * dirname, uint8_t levels) {
 void setup() {
     // First, so the high-water mark covers everything after it
     stackWatchBegin();
+    // What the boot program left in the watchdog scratch registers, then the
+    // restart cause from it and the watchdog it armed: fed through setup()
+    bootInfoBegin();
+    watchdogBegin();
 
     // Initialize serial for debugging
     Serial.begin(115200);
     // Wait briefly for a terminal, but don't block boot when none is attached
     uint32_t serialWait = millis();
-    while (!Serial && millis() - serialWait < 3000) delay(10);
+    while (!Serial && millis() - serialWait < 3000) {
+        watchdogFeed();
+        delay(10);
+    }
     Serial.println("\r\nRF-Power-Monitor " FIRMWARE_VERSION " starting...");
-    watchdogBegin();  // restart cause, before diagBegin() arms its own early watchdog
+    bootInfoPrint();
+    watchdogPrintCause();
     diagBegin();  // only with -DRFPOWER_DIAG
     cpuTempBegin();
     ambientTempBegin();
@@ -184,7 +193,8 @@ void setup() {
     // Initialize filesystem
     if (!LittleFS.begin()) {
         Serial.println("LittleFS Mount Failed");
-        // Flash error pattern on LED
+        // Flash error pattern on LED. The watchdog is not fed: it restarts the
+        // device as a crash after ~8 s (the boot program counts it)
         while (1) {
             digitalWrite(LED_PIN, HIGH);
             delay(200);
@@ -193,7 +203,8 @@ void setup() {
         }
     }
     Serial.println("LittleFS Mounted Successfully");
-    
+    watchdogFeed();  // mounting can take long (e.g. formatting a new filesystem)
+
     // Show filesystem contents
     listFiles("/", 1);
     
@@ -211,9 +222,11 @@ void setup() {
     // Load settings
     settingsLoaded = loadSettings();
     hostnameBegin();  // before Ethernet, so the first DHCP request carries the name
+    watchdogFeed();
 
-    // Bring up Ethernet and the SNMP agent
+    // Bring up Ethernet and the SNMP agent (DHCP runs in the background)
     if (startEthernet()) {
+        watchdogFeed();
         uint8_t mac[6];
         eth.macAddress(mac);  // the driver makes it from the board ID in begin()
         hostnameSetMac(mac);  // the default name RF-Power-<MAC tail> needs it
@@ -226,10 +239,12 @@ void setup() {
         webBegin();
     }
 
+    watchdogFeed();
+
     // Serial configuration menu
     cliBegin();
 
-    // From here on a hang on either core restarts the device
+    // From here on a hang on either core restarts the device (until now: a hang in setup())
     watchdogArm();
 }
 

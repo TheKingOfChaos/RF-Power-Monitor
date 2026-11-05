@@ -4,6 +4,7 @@
 // Run: pio test -e pico -f embedded/test_mains_input
 
 #include <Arduino.h>
+#include <hardware/watchdog.h>
 #include <unity.h>
 #include <mains_input.h>
 #include "pins.h"
@@ -89,6 +90,9 @@ static void test_report_raw_signal_quality() {
 }
 
 void setup() {
+    // The boot program starts every image with the watchdog armed (~8.3 s);
+    // these tests run longer than that in setup() and do not feed it
+    watchdog_disable();
     Serial.begin(115200);
     uint32_t start = millis();
     while (!Serial && millis() - start < 10000) delay(10);

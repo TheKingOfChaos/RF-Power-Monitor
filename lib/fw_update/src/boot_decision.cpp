@@ -16,6 +16,11 @@ uint8_t crashCountFor(uint32_t scratch, uint8_t slot) {
     return (uint8_t)(scratch & 0xFFu);
 }
 
+// A record with an out-of-range slot cannot be trusted: treat it as no record
+bool recordUsable(bool haveRecord, const BootRecord& rec) {
+    return haveRecord && rec.active <= 1 && (rec.trial <= 1 || rec.trial == FW_NO_SLOT);
+}
+
 }  // namespace
 
 ResetKind classifyReset(uint32_t watchdogReason, uint32_t scratch4, uint32_t chipReset) {
@@ -24,17 +29,22 @@ ResetKind classifyReset(uint32_t watchdogReason, uint32_t scratch4, uint32_t chi
     return ResetKind::PowerOn;
 }
 
+const char* bootReasonName(BootReason r) {
+    switch (r) {
+    case BootReason::Normal: return "normal";
+    case BootReason::Trial: return "trial";
+    case BootReason::Fallback: return "fallback";
+    case BootReason::NoRecord: return "no record";
+    }
+    return "?";
+}
+
 BootDecision decideBoot(bool haveRecord, const BootRecord& rec, const bool slotOk[2], ResetKind reset,
                         uint32_t crashScratch) {
     BootDecision d = {FW_NO_SLOT, BootReason::Normal, 0};
-    uint8_t target = 0;
+    uint8_t target = bootTarget(haveRecord, rec);
     BootReason reason = BootReason::NoRecord;
-    // A record with an out-of-range slot cannot be trusted: treat it as no record
-    if (haveRecord && (rec.active > 1 || (rec.trial > 1 && rec.trial != FW_NO_SLOT))) haveRecord = false;
-    if (haveRecord) {
-        target = rec.trial != FW_NO_SLOT ? rec.trial : rec.active;
-        reason = rec.trial != FW_NO_SLOT ? BootReason::Trial : BootReason::Normal;
-    }
+    if (recordUsable(haveRecord, rec)) reason = rec.trial != FW_NO_SLOT ? BootReason::Trial : BootReason::Normal;
     uint8_t other = (uint8_t)(1 - target);
 
     uint8_t slot = target;
@@ -59,6 +69,29 @@ BootDecision decideBoot(bool haveRecord, const BootRecord& rec, const bool slotO
     d.reason = reason;
     d.crashScratch = crashEncode(slot, count);
     return d;
+}
+
+uint8_t bootTarget(bool haveRecord, const BootRecord& rec) {
+    if (!recordUsable(haveRecord, rec)) return 0;
+    return rec.trial != FW_NO_SLOT ? rec.trial : rec.active;
+}
+
+BootSelection bootSelect(bool haveRecord, const BootRecord& rec, ResetKind reset, uint32_t crashScratch,
+                         BootSlotCheck check, void* ctx) {
+    uint8_t target = bootTarget(haveRecord, rec);
+    uint8_t other = (uint8_t)(1 - target);
+    bool ok[2];
+    ok[target] = check(target, ctx);
+    // Assume the other slot is good: when the decision still boots the target,
+    // it does not depend on the other slot, so that one is never read
+    ok[other] = true;
+    BootDecision d = decideBoot(haveRecord, rec, ok, reset, crashScratch);
+    if (d.slot != target) {
+        ok[other] = check(other, ctx);
+        d = decideBoot(haveRecord, rec, ok, reset, crashScratch);
+    }
+    BootSelection s = {d, (d.slot != FW_NO_SLOT && d.slot != target) ? target : FW_NO_SLOT};
+    return s;
 }
 
 uint32_t bootInfoEncode(uint8_t slot, BootReason reason, ResetKind reset, uint8_t failedSlot) {

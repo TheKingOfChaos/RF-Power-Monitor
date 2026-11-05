@@ -41,3 +41,17 @@ const char* restartCauseName(RestartCause cause) {
     }
     return "?";
 }
+
+bool restartCauseFromBootInfo(uint32_t scratch0, RestartCause& out) {
+    uint8_t slot, failedSlot;
+    BootReason reason;
+    ResetKind reset;
+    if (!bootInfoDecode(scratch0, slot, reason, reset, failedSlot)) return false;
+    switch (reset) {
+    case ResetKind::PowerOn:  out = RestartCause::PowerOn; break;
+    case ResetKind::ResetPin: out = RestartCause::ResetPin; break;
+    case ResetKind::Planned:  out = RestartCause::Reboot; break;
+    case ResetKind::Crash:    out = RestartCause::Watchdog; break;
+    }
+    return true;
+}
