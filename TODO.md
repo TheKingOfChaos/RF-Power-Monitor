@@ -240,6 +240,9 @@ An item is only ticked when it is implemented **and** its tests exist and pass (
 - [ ] Datasheet's pin table lists GP29 as VSYS/3, but GP29 is not connected on rev 2: fix it when the datasheet is regenerated
 - [ ] New case (the rev 1 case does not fit)
 
+## 20. Firmware update (A/B slots, signed)
+- [ ] Boot verification time: ~2.6 us per byte (943 ms for 359 KB, mostly SHA-512 on the M0+), so the 1.5 s budget runs out near 570 KB of firmware; `scripts/slot_build.py` warns above 550 KB. Speed up SHA-512 (or the verification) before the image gets there
+
 ## Notes
 - SNMP must be v1 and v2c (no v3) and our own code; networking may use libraries
 - Memory limits: 70 % flash, 50 % RAM (3.1.0: 19.6 % flash / 47.3 % RAM, built with -Os). About 7 KB of RAM is left below the 50 % limit: check the build's RAM line before adding buffers (the web page body and response alone are 22 KB)

@@ -53,12 +53,15 @@ class BootProgramTest(unittest.TestCase):
         self.assertIsNotNone(m, "no boot program line in the boot log:\n%s" % self.boot_log[:600])
         return m
 
-    def test_boot_program_starts_slot_a_after_usb_flash(self):
+    def test_boot_program_starts_slot_a_after_menu_reboot(self):
         m = self.boot_line()
         self.assertEqual("A", m.group(1))
         # USB flashing writes an erased boot record; the firmware does not write one yet
         self.assertIn(m.group(3), ("no record", "normal"))
-        # A menu reboot is a planned restart, not a watchdog (crash) restart
+
+    def test_menu_reboot_reads_as_planned_restart(self):
+        # The boot program arms the watchdog for every start; a menu reboot must
+        # still read as a planned restart, not a watchdog (crash) restart
         self.assertRegex(self.boot_log, r"Last restart: reboot \(")
 
     def test_boot_verification_takes_under_1500_ms(self):

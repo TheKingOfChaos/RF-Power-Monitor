@@ -127,6 +127,22 @@ def field_key():
     return os.environ.get("RFPOWER_FW_KEY", "") == "field"
 
 
+# The boot program verifies a slot at ~2.6 us per byte (measured 2026-11-06:
+# 943 ms for 359 KB, mostly SHA-512), so its 1.5 s boot budget runs out near
+# 570 KB of firmware: warn from 550 KB (TODO.md)
+VERIFY_WARN_BYTES = 550 * 1024
+VERIFY_US_PER_BYTE = 2.6
+
+
+def verify_time_warning(blob_len):
+    """A warning when the boot program's check of a `blob_len` byte slot nears 1.5 s, else None."""
+    if blob_len <= VERIFY_WARN_BYTES:
+        return None
+    return ("warning: slot A is %d KB; the boot program needs about %.1f s to verify it "
+            "(budget 1.5 s, warning from %d KB)"
+            % (blob_len // 1024, blob_len * VERIFY_US_PER_BYTE / 1e6, VERIFY_WARN_BYTES // 1024))
+
+
 def slot_blob(env):
     """The bytes that go at the start of the slot: signed header + firmware.bin.
 
@@ -185,6 +201,9 @@ def build_full_uf2(target, source, env):
     ])
     print("firmware_full.uf2: boot program %d bytes, slot A %d of %d bytes"
           % (len(boot), len(blob), SLOT_LENGTH))
+    warning = verify_time_warning(len(blob))
+    if warning:
+        sys.stderr.write("slot_build: %s\n" % warning)
     return None
 
 

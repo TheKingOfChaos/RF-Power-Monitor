@@ -94,5 +94,21 @@ class BootKeyCheckTests(unittest.TestCase):
             slot_build.check_boot_trusts_key(self.KEY, self.KEY[:31])
 
 
+class VerifyTimeWarningTests(unittest.TestCase):
+    def test_today_size_gives_no_warning(self):
+        self.assertIsNone(slot_build.verify_time_warning(359108))
+
+    def test_550_kb_exactly_gives_no_warning(self):
+        self.assertIsNone(slot_build.verify_time_warning(550 * 1024))
+
+    def test_one_byte_over_550_kb_warns(self):
+        w = slot_build.verify_time_warning(550 * 1024 + 1)
+        self.assertIsNotNone(w)
+        self.assertIn("550 KB", w)
+
+    def test_full_slot_warns_with_its_verify_time(self):
+        self.assertIn("2.3 s", slot_build.verify_time_warning(880640))
+
+
 if __name__ == "__main__":
     unittest.main()

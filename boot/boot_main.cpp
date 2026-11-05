@@ -13,7 +13,8 @@
 //      before it feeds the watchdog restarts as a crash;
 //   6. start the slot (VTOR, MSP, reset vector).
 // With nothing bootable the LED blinks 3 short, 1 long forever and the
-// watchdog stays off (boot_led.cpp). The boot record is only read here; the
+// watchdog stays off (boot_led.cpp). A fault in the boot program shows the same
+// pattern, but the watchdog restarts the chip after ~3 s (boot_fault). The boot record is only read here; the
 // firmware writes it.
 
 #include <stdint.h>
@@ -40,6 +41,10 @@ const uint32_t WATCHDOG_NON_REBOOT_MAGIC = 0x6ab73121u;
 /// Largest watchdog load: 0xFFFFFF ticks of 1 us, counted down twice per tick
 /// (RP2040-E1), so ~8.4 s
 const uint32_t WATCHDOG_MAX_LOAD = WATCHDOG_LOAD_BITS;
+/// Watchdog load after a fault in the boot program: ~3 s of the LED pattern
+/// with the 1 MHz tick (~6 s on the ring oscillator, before bootClocksInit);
+/// counted down twice per tick (RP2040-E1)
+const uint32_t WATCHDOG_FAULT_LOAD = 3000000u * 2u;
 
 /// The slot's first byte in the XIP (memory mapped) flash.
 const uint8_t* slotBytes(uint8_t slot) {
@@ -76,15 +81,16 @@ void timerStart() {
 
 void watchdogDisable() { hw_clear_bits(&watchdog_hw->ctrl, WATCHDOG_CTRL_ENABLE_BITS); }
 
-/// Arm the watchdog as the SDK's watchdog_enable(max, pause_on_debug) does:
-/// reset everything but the oscillators, pause while a debugger halts the CPU.
-void watchdogArmMax() {
+/// Arm the watchdog with `load` as the SDK's watchdog_enable(delay, pause_on_debug)
+/// does: reset everything but the oscillators, pause while a debugger halts the
+/// CPU, scratch4 marks it as a watchdog that was armed (a reset from it is a crash).
+void watchdogArm(uint32_t load) {
     watchdogDisable();
     watchdog_hw->scratch[4] = WATCHDOG_NON_REBOOT_MAGIC;
     hw_set_bits(&psm_hw->wdsel, PSM_WDSEL_BITS & ~(PSM_WDSEL_ROSC_BITS | PSM_WDSEL_XOSC_BITS));
     hw_set_bits(&watchdog_hw->ctrl,
                 WATCHDOG_CTRL_PAUSE_DBG0_BITS | WATCHDOG_CTRL_PAUSE_DBG1_BITS | WATCHDOG_CTRL_PAUSE_JTAG_BITS);
-    watchdog_hw->load = WATCHDOG_MAX_LOAD;
+    watchdog_hw->load = load;
     hw_set_bits(&watchdog_hw->ctrl, WATCHDOG_CTRL_ENABLE_BITS);
 }
 
@@ -114,6 +120,9 @@ extern "C" [[noreturn]] void boot_main() {
     const ResetKind reset = classifyReset(watchdog_hw->reason, watchdog_hw->scratch[4],
                                           vreg_and_chip_reset_hw->chip_reset);
     const uint32_t crashScratch = watchdog_hw->scratch[FW_SCRATCH_CRASH];
+    // A soft reset can leave the firmware's watchdog running: stop it, so it
+    // cannot fire during the slot verification (armed again before the jump)
+    watchdogDisable();
 
     // 2. Clocks, then the timer that measures the verification
     bootClocksInit();
@@ -137,13 +146,19 @@ extern "C" [[noreturn]] void boot_main() {
         bootInfoEncode(sel.decision.slot, sel.decision.reason, reset, sel.failedSlot);
     watchdog_hw->scratch[FW_SCRATCH_CRASH] = sel.decision.crashScratch;
     watchdog_hw->scratch[FW_SCRATCH_VERIFY_US] = micros;
-    watchdogArmMax();
+    watchdogArm(WATCHDOG_MAX_LOAD);
     startSlot(sel.decision.slot);
 }
 
-/// NMI and HardFault in the boot program (boot/startup.S): report it like
-/// "nothing bootable" (LED pattern, watchdog off) rather than hang silently.
+/// NMI and HardFault in the boot program (boot/startup.S): show the LED
+/// pattern for a few seconds, then let the watchdog restart the chip, so a
+/// device nobody can reach (PoE) does not stay dead until a power cycle. A
+/// fault that happens on every start then restarts over and over, which is no
+/// worse. The restart reads as a crash (scratch4); the crash counter is not
+/// updated. Only "nothing bootable" keeps the watchdog off (boot_main).
 extern "C" [[noreturn]] void boot_fault() {
-    watchdogDisable();
-    bootLedNothingBootable();
+    // The watchdog counts on the tick: start it when the fault came before bootClocksInit
+    if (!(watchdog_hw->tick & WATCHDOG_TICK_ENABLE_BITS)) watchdog_hw->tick = 12 | WATCHDOG_TICK_ENABLE_BITS;
+    watchdogArm(WATCHDOG_FAULT_LOAD);
+    bootLedNothingBootable();  // leaves the watchdog as it is
 }
