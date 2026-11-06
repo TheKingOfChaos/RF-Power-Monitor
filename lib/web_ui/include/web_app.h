@@ -91,7 +91,7 @@ struct WebFirmware {
 };
 
 /// Events the backend may log
-enum class WebEvent : uint8_t { LoginFailed, LoginLocked, LoggedIn };
+enum class WebEvent : uint8_t { LoginFailed, LoginLocked, LoggedIn, UploadRefused };
 
 /**
  * @brief What the page needs from the device; the firmware implements it
@@ -152,7 +152,7 @@ public:
 
     /**
      * @brief The full text/plain response to an upload
-     * @param code 200 (or 0) for success, else the HTTP status of the failure
+     * @param code 200 for success, else the HTTP status of the failure (400-599; anything else is sent as 500)
      * @param text The new version on success (body "ok <version>"), else the error name
      * @return The response, valid until the next call
      */
@@ -197,6 +197,7 @@ private:
     WebStatus _status;  // ~340 bytes: a member, not on core 0's stack
     WebFirmware _fw;    // ~150 bytes, same
     bool _scripts = false;  ///< the page being built is the Firmware page: its policy allows its script
+    char _scriptHash[45];   ///< base64 SHA-256 of that script, for the policy
     LoginThrottle _throttle;
     char _cookies[WEB_COOKIE_HEADER_MAX];
     char _body[WEB_BODY_MAX];

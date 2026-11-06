@@ -132,6 +132,7 @@ const char* accessEventName(AccessEvent event) {
     case AccessEvent::SetRejected:  return "set rejected";
     case AccessEvent::WebLoginFailed: return "web login failed";
     case AccessEvent::WebLoginLocked: return "web locked out";
+    case AccessEvent::WebUploadRefused: return "web upload refused";
     }
     return "unknown";
 }

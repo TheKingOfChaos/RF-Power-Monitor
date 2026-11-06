@@ -176,7 +176,8 @@ enum class AccessEvent : uint8_t {
     RateLimited,   ///< Dropped by the rate limiter
     SetRejected,   ///< SetRequest with the right community (all objects are read-only)
     WebLoginFailed,  ///< Wrong user name or password on the web page
-    WebLoginLocked   ///< Web login refused during the lockout after repeated failures
+    WebLoginLocked,  ///< Web login refused during the lockout after repeated failures
+    WebUploadRefused ///< Firmware upload without a valid session or CSRF token
 };
 
 /**

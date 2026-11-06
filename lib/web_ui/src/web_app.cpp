@@ -5,6 +5,7 @@
 #include <settings_codec.h>
 #include "bootstrap_css.h"
 #include "logo_svg.h"
+#include "sha256.h"
 
 // Headers on every page. The pages have no scripts at all, except the Firmware page (its upload script);
 // the policy keeps it that way.
@@ -18,10 +19,12 @@ static const char COMMON_HEADERS[] =
 static const char CSP_PAGE[] =
     "Content-Security-Policy: default-src 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; "
     "form-action 'self'; frame-ancestors 'none'\r\n";
-/// The Firmware page: its inline script, which may only talk to this device
-static const char CSP_FIRMWARE_PAGE[] =
+/// The Firmware page: only its own inline script (by hash), which may only talk to this device
+static const char CSP_FIRMWARE_PAGE_A[] =
     "Content-Security-Policy: default-src 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; "
-    "script-src 'unsafe-inline'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'\r\n";
+    "script-src 'sha256-";
+static const char CSP_FIRMWARE_PAGE_B[] =
+    "'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'\r\n";
 
 static void pageStart(TextBuffer& b, const char* title) {
     b.add("<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\">"
@@ -125,7 +128,13 @@ const char* WebApp::respond(int code, const char* reason, const char* extraHeade
     out.add(reason);
     out.add("\r\n");
     out.add(COMMON_HEADERS);
-    out.add(_scripts ? CSP_FIRMWARE_PAGE : CSP_PAGE);
+    if (_scripts) {
+        out.add(CSP_FIRMWARE_PAGE_A);
+        out.add(_scriptHash);
+        out.add(CSP_FIRMWARE_PAGE_B);
+    } else {
+        out.add(CSP_PAGE);
+    }
     out.add("Connection: close\r\n");
     if (extraHeaders) out.add(extraHeaders);
     out.add("Content-Length: ");
@@ -579,6 +588,23 @@ static const char UPLOAD_SCRIPT[] =
 
 static char slotLetter(uint8_t slot) { return slot == 0 ? 'A' : 'B'; }
 
+/// Base64 of a SHA-256 digest (44 characters and a NUL), the form of a CSP hash source
+static void cspHash(const char* text, char out[45]) {
+    static const char T[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    uint8_t d[SHA256_DIGEST_LEN];
+    sha256(text, strlen(text), d);
+    size_t o = 0;
+    for (size_t i = 0; i < sizeof(d); i += 3) {
+        uint32_t v = (uint32_t)d[i] << 16 | (i + 1 < sizeof(d) ? (uint32_t)d[i + 1] << 8 : 0) |
+                     (i + 2 < sizeof(d) ? d[i + 2] : 0);
+        out[o++] = T[v >> 18 & 63];
+        out[o++] = T[v >> 12 & 63];
+        out[o++] = i + 1 < sizeof(d) ? T[v >> 6 & 63] : '=';
+        out[o++] = i + 2 < sizeof(d) ? T[v & 63] : '=';
+    }
+    out[o] = '\0';
+}
+
 const char* WebApp::firmwarePage(int code, const char* reason, size_t slot, WebBackend& backend, const char* text,
                                  bool error, size_t& len) {
     WebFirmware& fw = _fw;
@@ -588,7 +614,8 @@ const char* WebApp::firmwarePage(int code, const char* reason, size_t slot, WebB
     bool otherOk = fw.otherVersion[0] != '\0';
     char runLetter = slotLetter(fw.runningSlot), otherLetter = slotLetter(fw.runningSlot ? 0 : 1);
 
-    _scripts = true;  // this page's policy allows its script (respond() reads it)
+    _scripts = true;  // this page's policy allows its script, by hash (respond() reads both)
+    cspHash(UPLOAD_SCRIPT, _scriptHash);
     TextBuffer b(_body, sizeof(_body));
     pageStart(b, "RF-Power-Monitor firmware");
     b.add("<div class=\"d-flex align-items-center gap-3\"><a class=\"btn btn-outline-light btn-sm\" href=\"/\">"
@@ -711,8 +738,7 @@ const char* WebApp::firmwareStatus(WebBackend& backend, size_t& len) {
     backend.firmware(fw);
     const char* slotA = fw.runningSlot == 0 ? fw.runningVersion : fw.otherVersion;
     const char* slotB = fw.runningSlot == 0 ? fw.otherVersion : fw.runningVersion;
-    char text[384];
-    TextBuffer t(text, sizeof(text));
+    TextBuffer t(_body, sizeof(_body));  // the page buffer: nothing big on the stack
     char letter = slotLetter(fw.runningSlot);
     t.add("running_slot=");
     t.add(&letter, 1);
@@ -728,19 +754,23 @@ const char* WebApp::firmwareStatus(WebBackend& backend, size_t& len) {
     t.add("\nkey=");
     addFlat(t, fw.keyFingerprint);
     t.add("\n");
-    return plainResponse(200, text, len);
+    return plainResponse(200, _body, len);
 }
 
-int WebApp::authorizeUpload(const HttpRequest& req, const SourceKey&, uint32_t nowMs, WebBackend& backend) {
+int WebApp::authorizeUpload(const HttpRequest& req, const SourceKey& source, uint32_t nowMs, WebBackend& backend) {
     int slot = -1;
     char token[WEB_TOKEN_HEX + 2];
     if (req.header("Cookie", _cookies, sizeof(_cookies)) && cookieValue(_cookies, "sid", token, sizeof(token))) {
         slot = _sessions.find(token, nowMs);
     }
-    if (slot < 0) return 401;
+    if (slot < 0) {
+        backend.log(source, WebEvent::UploadRefused);
+        return 401;
+    }
     char csrf[WEB_TOKEN_HEX + 2];
     if (!req.header("X-CSRF-Token", csrf, sizeof(csrf)) ||
         !webConstantTimeEquals(csrf, _sessions.csrf((size_t)slot))) {
+        backend.log(source, WebEvent::UploadRefused);
         return 403;
     }
     WebFirmware& fw = _fw;
@@ -752,12 +782,12 @@ int WebApp::authorizeUpload(const HttpRequest& req, const SourceKey&, uint32_t n
 const char* WebApp::uploadResult(int code, const char* text, size_t& len) {
     char body[80];
     TextBuffer b(body, sizeof(body));
-    bool ok = code == 0 || code == 200;
+    bool ok = code == 200;
     if (ok) b.add("ok ");
     size_t room = sizeof(body) - 1 - b.length();
     size_t n = text ? strlen(text) : 0;
     b.add(text ? text : "", n < room ? n : room);  // a long text is cut
-    return plainResponse(ok ? 200 : code, body, len);
+    return plainResponse(ok ? 200 : (code >= 400 && code <= 599 ? code : 500), body, len);
 }
 
 const char* WebApp::favicon(size_t& len) {

@@ -30,19 +30,30 @@ HttpParse HttpRequest::feed(const uint8_t* data, size_t len) {
         _state = HttpParse::TooLarge;
         return _state;
     }
+    const size_t before = _len;
     memcpy(_buf + _len, data, len);
     _len += len;
     _buf[_len] = '\0';
 
     if (_headEnd == 0) {
-        // A NUL byte would cut the strings parsed below
-        if (memchr(_buf, '\0', _len) != nullptr) {
+        // Find the end of the head with a length-bounded search: body bytes that arrived in the
+        // same read may contain anything, NUL included
+        size_t headLen = _len;
+        bool found = false;
+        for (size_t i = before > 3 ? before - 3 : 0; i + 4 <= _len; i++) {
+            if (memcmp(_buf + i, "\r\n\r\n", 4) == 0) {
+                headLen = i + 4;
+                found = true;
+                break;
+            }
+        }
+        // A NUL byte in the head would cut the strings parsed below
+        if (memchr(_buf, '\0', headLen) != nullptr) {
             _state = HttpParse::Bad;
             return _state;
         }
-        const char* end = strstr(_buf, "\r\n\r\n");
-        if (end == nullptr) return _state;
-        _headEnd = (size_t)(end - _buf) + 4;
+        if (!found) return _state;
+        _headEnd = headLen;
         _state = parseHead();
         if (_state == HttpParse::Streaming && _len - _bodyStart > _contentLength) _state = HttpParse::Bad;
         if (_state != HttpParse::Incomplete) return _state;
@@ -50,6 +61,8 @@ HttpParse HttpRequest::feed(const uint8_t* data, size_t len) {
     if (_len - _bodyStart >= _contentLength) {
         if (_len - _bodyStart > _contentLength) {
             _state = HttpParse::Bad;  // more bytes than announced: no pipelining here
+        } else if (memchr(_buf + _bodyStart, '\0', _contentLength) != nullptr) {
+            _state = HttpParse::Bad;  // the form parsers work on strings: no NUL in a buffered body
         } else {
             _state = HttpParse::Complete;
         }

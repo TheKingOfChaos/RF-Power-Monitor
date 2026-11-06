@@ -35,7 +35,8 @@ public:
 
     /**
      * @brief Advance the monitor
-     * @param netReady true while the network is up (link and address)
+     * @param netReady true while the network is up (link and address); the time since the last poll
+     *        counts as network time only if it was up at that poll too
      * @return Confirmed on the first poll after a valid request (and from then on),
      *         Unreachable when the network time or the hard limit ran out, else Pending
      */
@@ -44,7 +45,8 @@ public:
 private:
     uint32_t _startMs = 0;
     uint32_t _lastMs = 0;
-    uint32_t _netMs = 0;  ///< time with the network up, counted between polls
+    uint32_t _netMs = 0;  ///< time with the network up at both ends of an interval between polls
+    bool _lastNet = false;  ///< netReady at the previous poll
     bool _requested = false;
     bool _confirmed = false;
 };

@@ -226,6 +226,8 @@ public:
             accessLogRecord(source, AccessEvent::WebLoginFailed);
         } else if (event == WebEvent::LoginLocked) {
             accessLogRecord(source, AccessEvent::WebLoginLocked);
+        } else if (event == WebEvent::UploadRefused) {
+            accessLogRecord(source, AccessEvent::WebUploadRefused);
         } else {
             char text[SOURCE_TEXT_MAX];
             formatSource(source, text);

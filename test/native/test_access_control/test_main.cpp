@@ -403,6 +403,7 @@ static void test_event_names_and_ip_format() {
     TEST_ASSERT_EQUAL_STRING("set rejected", accessEventName(AccessEvent::SetRejected));
     TEST_ASSERT_EQUAL_STRING("web login failed", accessEventName(AccessEvent::WebLoginFailed));
     TEST_ASSERT_EQUAL_STRING("web locked out", accessEventName(AccessEvent::WebLoginLocked));
+    TEST_ASSERT_EQUAL_STRING("web upload refused", accessEventName(AccessEvent::WebUploadRefused));
     char buf[16];
     formatIPv4(PC, buf);
     TEST_ASSERT_EQUAL_STRING("10.10.6.65", buf);

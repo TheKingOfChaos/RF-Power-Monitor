@@ -102,7 +102,8 @@ static void logAccess(const SourceKey& source, AccessEvent event) {
     if (accessLog.record(source, event, millis())) {
         char ip[SOURCE_TEXT_MAX];
         formatSource(source, ip);
-        bool web = event == AccessEvent::WebLoginFailed || event == AccessEvent::WebLoginLocked;
+        bool web = event == AccessEvent::WebLoginFailed || event == AccessEvent::WebLoginLocked ||
+                   event == AccessEvent::WebUploadRefused;
         Serial.printf("\r\n%s access: %s from %s\r\n", web ? "Web" : "SNMP", accessEventName(event), ip);
     }
 }

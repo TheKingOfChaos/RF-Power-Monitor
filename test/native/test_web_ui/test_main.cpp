@@ -521,7 +521,8 @@ public:
     bool savedDhcp = false;
     std::string savedIP, savedMask, savedGateway, savedCommunity, savedHostname, savedIPv6, savedIPv6Gateway;
     std::string savedContact, savedLocation;
-    int failed = 0, locked = 0, loggedIn = 0;
+    int failed = 0, locked = 0, loggedIn = 0, uploadRefused = 0;
+    SourceKey lastRefusedSource;
     uint8_t seed = 1;
     WebStatus st;
     WebFirmware fw;
@@ -612,10 +613,14 @@ public:
         for (size_t i = 0; i < len; i++) out[i] = (uint8_t)(seed * 31 + i);
         seed++;
     }
-    void log(const SourceKey&, WebEvent e) override {
+    void log(const SourceKey& s, WebEvent e) override {
         if (e == WebEvent::LoginFailed) failed++;
         if (e == WebEvent::LoginLocked) locked++;
         if (e == WebEvent::LoggedIn) loggedIn++;
+        if (e == WebEvent::UploadRefused) {
+            uploadRefused++;
+            lastRefusedSource = s;
+        }
     }
 };
 
@@ -1424,6 +1429,64 @@ static void test_stream_path_returns_streaming_with_prefix() {
     TEST_ASSERT_TRUE(r.header("Host", v, sizeof(v)));
 }
 
+static void test_stream_prefix_with_nul_bytes_still_streams() {
+    // The device reads small chunks: body bytes (binary, with NULs) arrive with the end of the head
+    HttpRequest r;
+    const std::string head = "POST /firmware/upload HTTP/1.1\r\nHost: d\r\nContent-Length: 900000\r\n\r\n";
+    std::string raw = head;
+    raw += std::string("\x00\x01\x00\xff", 4);
+    TEST_ASSERT_EQUAL(HttpParse::Streaming, streamFeed(r, raw));
+    size_t n = 0;
+    const uint8_t* p = r.bodyPrefix(n);
+    TEST_ASSERT_EQUAL(4, n);
+    const uint8_t expect[4] = {0x00, 0x01, 0x00, 0xff};
+    TEST_ASSERT_EQUAL_MEMORY(expect, p, 4);
+    char v[16];
+    TEST_ASSERT_TRUE(r.header("Host", v, sizeof(v)));
+    TEST_ASSERT_EQUAL(900000, r.contentLength());
+}
+
+static void test_stream_head_split_before_binary_prefix_still_streams() {
+    // Every split point of the head, with the NUL prefix in the last chunk
+    const std::string head = "POST /firmware/upload HTTP/1.1\r\nHost: d\r\nContent-Length: 900000\r\n\r\n";
+    const std::string prefix("\x00\x00\x07", 3);
+    for (size_t cut = 1; cut < head.size(); cut++) {
+        HttpRequest r;
+        r.streamPath("/firmware/upload");
+        std::string a = head.substr(0, cut), b = head.substr(cut) + prefix;
+        HttpParse p = r.feed((const uint8_t*)a.data(), a.size());
+        TEST_ASSERT_EQUAL_MESSAGE(HttpParse::Incomplete, p, std::to_string(cut).c_str());
+        p = r.feed((const uint8_t*)b.data(), b.size());
+        TEST_ASSERT_EQUAL_MESSAGE(HttpParse::Streaming, p, std::to_string(cut).c_str());
+        size_t n = 0;
+        const uint8_t* got = r.bodyPrefix(n);
+        TEST_ASSERT_EQUAL_MESSAGE(3, n, std::to_string(cut).c_str());
+        TEST_ASSERT_EQUAL_MEMORY(prefix.data(), got, 3);
+    }
+}
+
+static void test_nul_inside_the_head_is_still_bad() {
+    HttpRequest r;
+    TEST_ASSERT_EQUAL(HttpParse::Bad, streamFeed(r, std::string("POST /firmware/upload HTTP/1.1\r\nHo\x00st: d\r\n"
+                                                                "Content-Length: 5\r\n\r\n", 63)));
+    TEST_ASSERT_EQUAL(HttpParse::Bad, streamFeed(r, std::string("POST /firmware/upl\x00" "ad HTTP/1.1\r\n", 32)));
+    // A NUL in a head that is still incomplete is refused at once
+    HttpRequest q;
+    const std::string part("GET /x HTTP/1.1\r\nHo\x00", 21);
+    TEST_ASSERT_EQUAL(HttpParse::Bad, q.feed((const uint8_t*)part.data(), part.size()));
+}
+
+static void test_buffered_body_with_nul_is_bad_however_it_arrives() {
+    const std::string head = "POST /login HTTP/1.1\r\nContent-Length: 6\r\n\r\n";
+    const std::string body("ab\x00" "cde", 6);
+    HttpRequest together;
+    std::string all = head + body;
+    TEST_ASSERT_EQUAL(HttpParse::Bad, together.feed((const uint8_t*)all.data(), all.size()));
+    HttpRequest apart;
+    TEST_ASSERT_EQUAL(HttpParse::Incomplete, apart.feed((const uint8_t*)head.data(), head.size()));
+    TEST_ASSERT_EQUAL(HttpParse::Bad, apart.feed((const uint8_t*)body.data(), body.size()));
+}
+
 static void test_stream_path_head_alone_streams_with_empty_prefix() {
     HttpRequest r;
     TEST_ASSERT_EQUAL(HttpParse::Streaming,
@@ -1555,6 +1618,12 @@ static void test_upload_result_texts() {
     TEST_ASSERT_EQUAL_STRING("ok 3.3.0", responseBody(r).c_str());
     TEST_ASSERT_EQUAL(responseBody(r).size(), atoi(between(r, "Content-Length: ", "\r\n").c_str()));
 
+    // Only 200 is success; 0 is no HTTP status and is answered as an error
+    r = uploadResponse(0, "3.3.0");
+    TEST_ASSERT_EQUAL(500, statusCode(r));
+    TEST_ASSERT_EQUAL_STRING("3.3.0", responseBody(r).c_str());
+    r = uploadResponse(204, "x");
+    TEST_ASSERT_EQUAL(500, statusCode(r));
     r = uploadResponse(409, "busy");
     TEST_ASSERT_EQUAL(409, statusCode(r));
     TEST_ASSERT_EQUAL_STRING("busy", responseBody(r).c_str());
@@ -1643,7 +1712,8 @@ static void test_firmware_page_script_policy_is_limited_to_that_page() {
     std::string token = logIn(csrf);
     std::string fw = get("/firmware", token);
     std::string csp = between(fw, "Content-Security-Policy: ", "\r\n");
-    TEST_ASSERT_TRUE(csp.find("script-src 'unsafe-inline'") != std::string::npos);
+    TEST_ASSERT_TRUE(csp.find("script-src 'sha256-") != std::string::npos);
+    TEST_ASSERT_TRUE(csp.find("script-src 'unsafe-inline'") == std::string::npos);
     TEST_ASSERT_TRUE(csp.find("connect-src 'self'") != std::string::npos);
     TEST_ASSERT_EQUAL(0, csp.find("default-src 'none'"));
     TEST_ASSERT_TRUE(fw.find("<script>") != std::string::npos);
@@ -1655,6 +1725,52 @@ static void test_firmware_page_script_policy_is_limited_to_that_page() {
         TEST_ASSERT_TRUE(between(r, "Content-Security-Policy: ", "\r\n").find("connect-src") == std::string::npos);
         TEST_ASSERT_TRUE(r.find("<script") == std::string::npos);
     }
+}
+
+static std::string base64(const uint8_t* d, size_t n) {
+    static const char T[] = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+    std::string s;
+    for (size_t i = 0; i < n; i += 3) {
+        uint32_t v = (uint32_t)d[i] << 16 | (i + 1 < n ? (uint32_t)d[i + 1] << 8 : 0) | (i + 2 < n ? d[i + 2] : 0);
+        s += T[v >> 18 & 63];
+        s += T[v >> 12 & 63];
+        s += i + 1 < n ? T[v >> 6 & 63] : '=';
+        s += i + 2 < n ? T[v & 63] : '=';
+    }
+    return s;
+}
+
+static void test_firmware_page_csp_carries_the_hash_of_its_script() {
+    webSetUp();
+    std::string csrf;
+    std::string page = get("/firmware", logIn(csrf));
+    std::string script = between(page, "<script>", "</script>");
+    TEST_ASSERT_TRUE(script.size() > 200);
+    uint8_t digest[SHA256_DIGEST_LEN];
+    sha256(script.data(), script.size(), digest);
+    std::string csp = between(page, "Content-Security-Policy: ", "\r\n");
+    TEST_ASSERT_TRUE_MESSAGE(csp.find("script-src 'sha256-" + base64(digest, sizeof(digest)) + "'") != std::string::npos,
+                             csp.c_str());
+    // The same page again carries the same hash (it is computed from the script, not stale state)
+    std::string again = get("/firmware", logIn(csrf));
+    TEST_ASSERT_EQUAL_STRING(csp.c_str(), between(again, "Content-Security-Policy: ", "\r\n").c_str());
+}
+
+static void test_refused_uploads_are_logged_with_the_source() {
+    webSetUp();
+    std::string csrf;
+    std::string token = logIn(csrf);
+    TEST_ASSERT_EQUAL(401, uploadStatus("", csrf));
+    TEST_ASSERT_EQUAL(1, fb->uploadRefused);
+    TEST_ASSERT_EQUAL_UINT32(0x0A0A0641, fb->lastRefusedSource.ipv4());
+    TEST_ASSERT_EQUAL(403, uploadStatus(token, ""));
+    TEST_ASSERT_EQUAL(2, fb->uploadRefused);
+    // A busy or on-trial refusal is by a logged-in admin: not an access attempt to log
+    fb->fw.uploading = true;
+    TEST_ASSERT_EQUAL(409, uploadStatus(token, csrf));
+    fb->fw.uploading = false;
+    TEST_ASSERT_EQUAL(0, uploadStatus(token, csrf));
+    TEST_ASSERT_EQUAL(2, fb->uploadRefused);
 }
 
 static void test_main_page_links_to_firmware_page() {
@@ -1995,6 +2111,12 @@ int main() {
     RUN_TEST(test_firmware_page_shows_trial_and_unusable_other_slot);
     RUN_TEST(test_firmware_page_escapes_versions);
     RUN_TEST(test_firmware_page_script_policy_is_limited_to_that_page);
+    RUN_TEST(test_firmware_page_csp_carries_the_hash_of_its_script);
+    RUN_TEST(test_refused_uploads_are_logged_with_the_source);
+    RUN_TEST(test_stream_prefix_with_nul_bytes_still_streams);
+    RUN_TEST(test_stream_head_split_before_binary_prefix_still_streams);
+    RUN_TEST(test_nul_inside_the_head_is_still_bad);
+    RUN_TEST(test_buffered_body_with_nul_is_bad_however_it_arrives);
     RUN_TEST(test_main_page_links_to_firmware_page);
     RUN_TEST(test_switch_needs_confirm_and_csrf);
     RUN_TEST(test_switch_switches_and_reboots);

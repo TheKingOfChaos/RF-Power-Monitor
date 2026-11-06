@@ -20,9 +20,30 @@ static void test_trial_confirms_after_valid_request() {
 static void test_trial_unreachable_after_10_min_with_network() {
     TrialMonitor m;
     m.begin(0);
+    TEST_ASSERT_EQUAL(TrialVerdict::Pending, m.poll(0, true));  // the network is up from the start
     TEST_ASSERT_EQUAL(TrialVerdict::Pending, m.poll(1, true));
     TEST_ASSERT_EQUAL(TrialVerdict::Pending, m.poll(FW_TRIAL_REACH_MS - 1, true));
     TEST_ASSERT_EQUAL(TrialVerdict::Unreachable, m.poll(FW_TRIAL_REACH_MS, true));
+}
+
+static void test_trial_interval_before_network_came_up_does_not_count() {
+    // Down at t=0, up at the next poll: the interval between them is not network time
+    TrialMonitor m;
+    m.begin(0);
+    TEST_ASSERT_EQUAL(TrialVerdict::Pending, m.poll(0, false));
+    TEST_ASSERT_EQUAL(TrialVerdict::Pending, m.poll(FW_TRIAL_REACH_MS, true));
+    // From here on it counts
+    TEST_ASSERT_EQUAL(TrialVerdict::Pending, m.poll(FW_TRIAL_REACH_MS + FW_TRIAL_REACH_MS - 1, true));
+    TEST_ASSERT_EQUAL(TrialVerdict::Unreachable, m.poll(FW_TRIAL_REACH_MS + FW_TRIAL_REACH_MS, true));
+}
+
+static void test_trial_interval_after_network_went_down_does_not_count() {
+    TrialMonitor m;
+    m.begin(0);
+    TEST_ASSERT_EQUAL(TrialVerdict::Pending, m.poll(0, true));
+    TEST_ASSERT_EQUAL(TrialVerdict::Pending, m.poll(1000, true));
+    TEST_ASSERT_EQUAL(TrialVerdict::Pending, m.poll(1001, false));  // down: counts the 1 ms before it
+    TEST_ASSERT_EQUAL(TrialVerdict::Pending, m.poll(1001 + FW_TRIAL_REACH_MS, false));
 }
 
 static void test_trial_time_without_network_does_not_count() {
@@ -50,6 +71,7 @@ static void test_trial_survives_millis_wraparound() {
     TrialMonitor m;
     uint32_t start = 0xFFFFFFFFu - 100000u;  // 100 s before the wrap
     m.begin(start);
+    TEST_ASSERT_EQUAL(TrialVerdict::Pending, m.poll(start, true));
     TEST_ASSERT_EQUAL(TrialVerdict::Pending, m.poll(start + 50000u, true));
     TEST_ASSERT_EQUAL(TrialVerdict::Pending, m.poll(start + FW_TRIAL_REACH_MS - 1, true));  // wrapped past 0
     TEST_ASSERT_EQUAL(TrialVerdict::Unreachable, m.poll(start + FW_TRIAL_REACH_MS, true));
@@ -72,6 +94,8 @@ int main() {
     UNITY_BEGIN();
     RUN_TEST(test_trial_confirms_after_valid_request);
     RUN_TEST(test_trial_unreachable_after_10_min_with_network);
+    RUN_TEST(test_trial_interval_before_network_came_up_does_not_count);
+    RUN_TEST(test_trial_interval_after_network_went_down_does_not_count);
     RUN_TEST(test_trial_time_without_network_does_not_count);
     RUN_TEST(test_trial_hard_limit_60_min_without_network);
     RUN_TEST(test_trial_survives_millis_wraparound);
