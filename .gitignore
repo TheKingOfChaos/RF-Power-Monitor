@@ -11,3 +11,6 @@ secret/
 # superpowers plan workspaces (ledgers, briefs)
 .superpowers/
 release/
+
+# Bench tool output: labels and devices.csv (holds the default web passwords)
+bench/
