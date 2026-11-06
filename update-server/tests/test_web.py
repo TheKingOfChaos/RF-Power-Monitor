@@ -17,7 +17,7 @@ HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.dirname(HERE))
 from helpers import KEY, SERIAL, FakeDevice, fake_blob, fake_upd, reply_lines  # noqa: E402
-from rfupdate import upd  # noqa: E402
+from rfupdate import logo, upd  # noqa: E402
 from rfupdate.store import Store  # noqa: E402
 from rfupdate.web import make_server  # noqa: E402
 
@@ -247,6 +247,29 @@ class WebTest(unittest.TestCase):
         finally:
             quick.shutdown()
             quick.server_close()
+
+    def test_header_shows_the_logo(self):
+        for path in ("/", "/login"):
+            _, _, page = self.request("GET", path)
+            self.assertIn(b"<svg", page, path)
+            self.assertIn(logo.PATH[:30].encode(), page, path)
+            self.assertIn(b'<link rel="icon" type="image/svg+xml" href="/favicon.svg">', page, path)
+
+    def test_favicon_is_served_without_login(self):
+        status, headers, data = self.request("GET", "/favicon.svg")
+        self.assertEqual(200, status)
+        self.assertEqual("image/svg+xml", headers["content-type"])
+        self.assertIn(logo.PATH.encode(), data)
+        self.assertIn(b"img-src 'self'", self.request("GET", "/")[1]["content-security-policy"].encode())
+
+    def test_logo_is_the_device_logo(self):
+        # The site's copy must stay the firmware's logo (lib/web_ui/include/logo_svg.h)
+        header = open(os.path.join(os.path.dirname(os.path.dirname(HERE)), "lib", "web_ui", "include",
+                                   "logo_svg.h"), encoding="utf-8").read()
+        path_block = re.search(r"#define LOGO_PATH(.*?)\n\n", header.replace("\r\n", "\n"), re.S).group(1)
+        self.assertEqual("".join(re.findall(r'"([^"]*)"', path_block)), logo.PATH)
+        self.assertEqual(re.search(r'#define LOGO_COLOR "([^"]+)"', header).group(1), logo.COLOR)
+        self.assertEqual(re.search(r'#define LOGO_VIEWBOX "([^"]+)"', header).group(1), logo.VIEWBOX)
 
     def test_delete_release(self):
         self.store.add_release(fake_upd("3.4.1"), now=0)

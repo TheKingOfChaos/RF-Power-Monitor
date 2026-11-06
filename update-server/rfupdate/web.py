@@ -27,7 +27,7 @@ from email.policy import HTTP
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, unquote
 
-from . import api, protocol, upd
+from . import api, logo, protocol, upd
 
 SESSION_S = 12 * 3600
 LOGIN_FAILURES_MAX = 5
@@ -38,6 +38,7 @@ UPLOAD_MAX = upd.MAX_UPLOAD + 64 * 1024  # the file plus the multipart framing
 STYLE = """
 body{font-family:system-ui,sans-serif;margin:0;background:#f5f6f8;color:#1d2330}
 header{background:#1d2330;color:#fff;padding:12px 20px;display:flex;gap:16px;align-items:center}
+.brand{display:flex;gap:10px;align-items:center}.login-logo{text-align:center;margin:8px 0 4px}
 header a,header button{color:#fff;margin-left:auto;background:none;border:1px solid #fff6;border-radius:4px;
 padding:4px 10px;text-decoration:none;font-size:14px;cursor:pointer}
 main{padding:20px;max-width:1200px;margin:auto}
@@ -138,7 +139,7 @@ class Handler(BaseHTTPRequestHandler):
         self.send_header("Cache-Control", "no-store")
         if ctype.startswith("text/html"):
             self.send_header("Content-Security-Policy", "default-src 'none'; style-src 'unsafe-inline'; "
-                                                        "form-action 'self'; frame-ancestors 'none'")
+                                                        "img-src 'self'; form-action 'self'; frame-ancestors 'none'")
             self.send_header("X-Content-Type-Options", "nosniff")
         for k, v in (headers or {}).items():
             self.send_header(k, v)
@@ -178,9 +179,11 @@ class Handler(BaseHTTPRequestHandler):
         else:
             nav = '<a href="/admin">Admin</a>'
         body = ('<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" '
-                'content="width=device-width,initial-scale=1"><title>%s</title><style>%s</style></head><body>'
-                '<header><strong>RF-Power-Monitor updates</strong>%s</header><main>%s</main></body></html>'
-                % (esc(title), STYLE, nav, content))
+                'content="width=device-width,initial-scale=1"><title>%s</title>'
+                '<link rel="icon" type="image/svg+xml" href="/favicon.svg"><style>%s</style></head><body>'
+                '<header><span class="brand">%s<strong>RF-Power-Monitor updates</strong></span>%s</header>'
+                '<main>%s</main></body></html>'
+                % (esc(title), STYLE, logo.svg(44, 28), nav, content))
         self.send(status, body)
 
     # --- routes ---
@@ -193,6 +196,8 @@ class Handler(BaseHTTPRequestHandler):
             return self.login_page()
         if path == "/admin":
             return self.admin_page()
+        if path == "/favicon.svg":
+            return self.send(200, logo.favicon(), "image/svg+xml")
         if path.startswith("/releases/") and path.endswith(".upd"):
             return self.release_file(unquote(path[len("/releases/"):-4]))
         if path in ("/api/checkin", "/logout") or path.startswith("/admin/"):
@@ -252,7 +257,8 @@ class Handler(BaseHTTPRequestHandler):
                        '</form></div>')
         if message:
             content = '<div class="msg err">%s</div>' % esc(message) + content
-        self.page("Log in", "<h2>Log in</h2>" + content, status)
+        self.page("Log in", '<div class="login-logo">%s</div><h2>Log in</h2>' % logo.svg(160, 101, "RF logo")
+                  + content, status)
 
     def login(self):
         body = self.read_body(FORM_MAX)
