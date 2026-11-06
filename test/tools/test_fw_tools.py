@@ -233,5 +233,17 @@ class UpdLayoutTests(unittest.TestCase):
             fw_release.parse_upd_header(b"RFUP")
 
 
+class GoldenUpdTests(unittest.TestCase):
+    def test_golden_upd_header_matches_the_real_tool(self):
+        # test/native/test_fw_receiver feeds this vector to the C++ receiver. Ed25519 is
+        # deterministic, so regenerating must give the committed bytes
+        # (regenerate with: python test/tools/golden_upd.py)
+        sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+        import golden_upd
+        with open(golden_upd.HEADER_PATH, encoding="utf-8") as f:
+            committed = f.read()
+        self.assertEqual(committed, golden_upd.header_text())
+
+
 if __name__ == "__main__":
     unittest.main()

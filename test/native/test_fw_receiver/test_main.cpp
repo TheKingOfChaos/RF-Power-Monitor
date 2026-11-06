@@ -12,6 +12,8 @@
 #include <monocypher-ed25519.h>
 #include <update_receiver.h>
 
+#include "golden_upd.h"
+
 void setUp() {}
 void tearDown() {}
 
@@ -173,6 +175,7 @@ static void test_receiver_writes_first_sector_last() {
         TEST_ASSERT_EQUAL_UINT32(0, (uint32_t)w.erases.size());  // begin does no I/O
         TEST_ASSERT_EQUAL_UINT8((uint8_t)UpdateStatus::InProgress, (uint8_t)feedAll(upd, chunk));
         // all data in, nothing written to sector 0 yet, and the slot still reads Empty
+        TEST_ASSERT_TRUE(w.erases.size() >= 1);
         TEST_ASSERT_EQUAL_UINT32(0, w.erases[0]);
         for (uint32_t off : w.writes) TEST_ASSERT_NOT_EQUAL_UINT32(0, off);
         TEST_ASSERT_TRUE(slotEmpty(w));
@@ -297,6 +300,7 @@ static void test_receiver_truncated_body_fails() {
         TEST_ASSERT_EQUAL_UINT8((uint8_t)UpdateStatus::InProgress, (uint8_t)feedAll(upd, chunk));
         TEST_ASSERT_EQUAL_UINT8((uint8_t)UpdateStatus::Failed, (uint8_t)rx.finish());
         TEST_ASSERT_EQUAL_UINT8((uint8_t)UpdateError::Truncated, (uint8_t)rx.error());
+        TEST_ASSERT_TRUE(w.erases.size() >= 1);
         TEST_ASSERT_EQUAL_UINT32(0, w.erases[0]);  // sector 0 erased ...
         for (uint32_t off : w.writes) TEST_ASSERT_NOT_EQUAL_UINT32(0, off);  // ... never written
         TEST_ASSERT_TRUE(slotEmpty(w));
@@ -418,6 +422,112 @@ static void test_receiver_error_names() {
     TEST_ASSERT_EQUAL_STRING("none", updateErrorName(UpdateError::None));
 }
 
+namespace {
+
+/// A .upd with blobs placed at chosen offsets (gaps filled with 0xEE), `total` bytes long.
+Bytes buildUpdAt(const Bytes& a, uint32_t offA, const Bytes& b, uint32_t offB, uint32_t total) {
+    Bytes f(total, 0xEE);
+    memset(&f[0], 0xFF, 64);
+    putLe32(&f[0], 0x50554652u);
+    putLe32(&f[4], 1);
+    memset(&f[8], 0, 16);
+    memcpy(&f[8], "3.4.0", 5);
+    putLe32(&f[24], offA);
+    putLe32(&f[28], offB);
+    putLe32(&f[32], (uint32_t)a.size());
+    putLe32(&f[36], (uint32_t)b.size());
+    memcpy(&f[offA], a.data(), a.size());
+    memcpy(&f[offB], b.data(), b.size());
+    return f;
+}
+
+}  // namespace
+
+static void test_receiver_accepts_target_blob_placed_first() {
+    Bytes a = buildBlob(1, 0, 5000, 1), b = buildBlob(1, 1, 9000, 2);
+    // slot B blob first in the file, slot A blob after it
+    Bytes upd = buildUpdAt(a, 64 + (uint32_t)b.size(), b, 64, 64 + (uint32_t)(a.size() + b.size()));
+    for (size_t chunk : CHUNKS) {
+        FakeSlot w;
+        TEST_ASSERT_EQUAL_UINT8((uint8_t)UpdateStatus::Done, (uint8_t)receive(w, upd, 1, chunk));
+        TEST_ASSERT_EQUAL_MEMORY(b.data(), w.flash.data(), b.size());
+        for (size_t i = b.size(); i < w.flash.size(); i++) {
+            if (w.flash[i] != 0xFF) TEST_FAIL_MESSAGE("byte past the blob was written");
+        }
+        FakeSlot wa;
+        TEST_ASSERT_EQUAL_UINT8((uint8_t)UpdateStatus::Done, (uint8_t)receive(wa, upd, 0, chunk));
+        TEST_ASSERT_EQUAL_MEMORY(a.data(), wa.flash.data(), a.size());
+    }
+}
+
+static void test_receiver_skips_gaps_and_trailing_bytes_outside_blobs() {
+    Bytes a = buildBlob(1, 0, 5000, 1), b = buildBlob(1, 1, 9000, 2);
+    uint32_t offA = 64 + 100;                                   // gap after the file header
+    uint32_t offB = offA + (uint32_t)a.size() + 33;             // gap between the blobs
+    uint32_t total = offB + (uint32_t)b.size() + 77;            // trailing bytes
+    Bytes upd = buildUpdAt(a, offA, b, offB, total);
+    for (size_t chunk : CHUNKS) {
+        FakeSlot w;
+        TEST_ASSERT_EQUAL_UINT8((uint8_t)UpdateStatus::Done, (uint8_t)receive(w, upd, 1, chunk));
+        TEST_ASSERT_EQUAL_MEMORY(b.data(), w.flash.data(), b.size());
+        for (size_t i = b.size(); i < w.flash.size(); i++) {
+            if (w.flash[i] != 0xFF) TEST_FAIL_MESSAGE("filler byte reached the slot");
+        }
+    }
+}
+
+static void test_receiver_rejects_oversize_other_blob() {
+    // slot A blob claims more than a slot; the target (slot B) blob is fine
+    Bytes upd = buildUpd(buildBlob(1, 0, 300, 1), buildBlob(1, 1, 300, 2));
+    putLe32(&upd[32], FW_SLOT_SIZE + 1);
+    FakeSlot w;
+    TEST_ASSERT_EQUAL_UINT8((uint8_t)UpdateStatus::Failed,
+                            (uint8_t)receive(w, upd, 1, 7, 64 + 556 + FW_SLOT_SIZE + 1));
+    TEST_ASSERT_EQUAL_UINT8((uint8_t)UpdateError::TooLarge, (uint8_t)rx.error());
+    TEST_ASSERT_EQUAL_UINT32(0, (uint32_t)w.erases.size());
+}
+
+static void test_receiver_rejects_short_other_blob() {
+    Bytes upd = buildUpd(buildBlob(1, 0, 300, 1), buildBlob(1, 1, 300, 2));
+    putLe32(&upd[32], 255);  // slot A blob shorter than a slot header
+    FakeSlot w;
+    TEST_ASSERT_EQUAL_UINT8((uint8_t)UpdateStatus::Failed, (uint8_t)receive(w, upd, 1, 7));
+    TEST_ASSERT_EQUAL_UINT8((uint8_t)UpdateError::BadHeader, (uint8_t)rx.error());
+    TEST_ASSERT_EQUAL_UINT32(0, (uint32_t)w.erases.size());
+}
+
+static void test_receiver_accepts_golden_upd_from_the_real_tool() {
+    // golden_upd.h is made by tools/fw_release.py build_upd with the dev key
+    // (test/tools/golden_upd.py; test_fw_tools.py checks it is current)
+    Bytes upd(GOLDEN_UPD, GOLDEN_UPD + sizeof(GOLDEN_UPD));
+    for (uint8_t slot = 0; slot < 2; slot++) {
+        for (size_t chunk : CHUNKS) {
+            FakeSlot w;
+            uint8_t id[8];
+            memcpy(id, GOLDEN_KEY_ID, 8);
+            rx.begin(slot, (uint32_t)upd.size(), id, w);
+            TEST_ASSERT_EQUAL_UINT8((uint8_t)UpdateStatus::InProgress, (uint8_t)feedAll(upd, chunk));
+            TEST_ASSERT_EQUAL_UINT8((uint8_t)UpdateStatus::Done, (uint8_t)rx.finish());
+            TEST_ASSERT_EQUAL_STRING("3.4.0", rx.version());
+            uint32_t off = (uint32_t)upd[24 + 4 * slot] | ((uint32_t)upd[25 + 4 * slot] << 8);
+            uint32_t len = (uint32_t)upd[32 + 4 * slot] | ((uint32_t)upd[33 + 4 * slot] << 8);
+            TEST_ASSERT_EQUAL_UINT32(256 + (slot ? 4200u : 300u), len);
+            TEST_ASSERT_EQUAL_MEMORY(&upd[off], w.flash.data(), len);
+            // the slot header reads back valid from the reassembled flash
+            SlotHeader h;
+            TEST_ASSERT_EQUAL_UINT8((uint8_t)SlotCheck::Ok, (uint8_t)slotHeaderParse(w.flash.data(), len, slot, id, h));
+        }
+    }
+    // a different trusted key id is rejected before any erase
+    FakeSlot w;
+    uint8_t other[8];
+    memcpy(other, GOLDEN_KEY_ID, 8);
+    other[0] ^= 1;
+    rx.begin(0, (uint32_t)upd.size(), other, w);
+    TEST_ASSERT_EQUAL_UINT8((uint8_t)UpdateStatus::Failed, (uint8_t)feedAll(upd, 4096));
+    TEST_ASSERT_EQUAL_UINT32(0, (uint32_t)w.erases.size());
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_receiver_writes_target_blob_only);
@@ -445,5 +555,10 @@ int main() {
     RUN_TEST(test_receiver_blob_of_one_sector_only);
     RUN_TEST(test_receiver_reusable_after_failure);
     RUN_TEST(test_receiver_error_names);
+    RUN_TEST(test_receiver_accepts_target_blob_placed_first);
+    RUN_TEST(test_receiver_skips_gaps_and_trailing_bytes_outside_blobs);
+    RUN_TEST(test_receiver_rejects_oversize_other_blob);
+    RUN_TEST(test_receiver_rejects_short_other_blob);
+    RUN_TEST(test_receiver_accepts_golden_upd_from_the_real_tool);
     return UNITY_END();
 }

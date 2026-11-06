@@ -24,8 +24,9 @@
 class SlotWriter {
 public:
     virtual ~SlotWriter() {}
+    /// Erase the 4 KB sector at offsetInSlot (a multiple of FW_SECTOR_SIZE). False on failure.
     virtual bool eraseSector(uint32_t offsetInSlot) = 0;
-    /// `data` is FW_SECTOR_SIZE bytes.
+    /// Program the (erased) sector at offsetInSlot with `data`, FW_SECTOR_SIZE bytes. False on failure.
     virtual bool writeSector(uint32_t offsetInSlot, const uint8_t* data) = 0;
 };
 

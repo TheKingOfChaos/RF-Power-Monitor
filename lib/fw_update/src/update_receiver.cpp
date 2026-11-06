@@ -10,6 +10,7 @@ const uint32_t UPD_MAGIC = 0x50554652u;
 const uint32_t UPD_FORMAT = 1u;
 const uint32_t UPD_HEADER_SIZE = 64u;
 
+/// Little endian u32 at p.
 uint32_t getLe32(const uint8_t* p) {
     return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
 }
@@ -51,6 +52,7 @@ void UpdateReceiver::begin(uint8_t targetSlot, uint32_t contentLength, const uin
     _finished = false;
 }
 
+/// Record the first error (later ones keep it) and return false.
 bool UpdateReceiver::fail(UpdateError e) {
     if (_error == UpdateError::None) _error = e;
     return false;
@@ -103,6 +105,8 @@ bool UpdateReceiver::flushSector(uint32_t sectorIndex) {
     return true;
 }
 
+/// Take one byte of the file: collect the file header, then route the target blob's bytes
+/// into the sector buffers, flushing each sector as it completes. False once failed.
 bool UpdateReceiver::consume(uint8_t b) {
     uint32_t pos = _pos++;
     if (pos < UPD_HEADER_SIZE) {
