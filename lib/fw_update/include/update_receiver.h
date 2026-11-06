@@ -38,6 +38,7 @@ enum class UpdateError : uint8_t {
     TooLarge,     // a blob is larger than a slot
     WrongSlot,    // target blob was signed for the other slot
     BadHeader,    // file header inconsistent, or slot header rejected
+    WrongKey,     // target slot header is signed with another key than the trusted one
     Truncated,    // fewer bytes than announced
     TooLong,      // more bytes than announced
     WriteFailed,  // the SlotWriter reported failure

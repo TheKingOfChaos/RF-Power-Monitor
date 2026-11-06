@@ -26,6 +26,7 @@ const char* updateErrorName(UpdateError e) {
         case UpdateError::TooLarge: return "image too large";
         case UpdateError::WrongSlot: return "wrong slot";
         case UpdateError::BadHeader: return "bad header";
+        case UpdateError::WrongKey: return "different key";
         case UpdateError::Truncated: return "truncated";
         case UpdateError::TooLong: return "too long";
         case UpdateError::WriteFailed: return "write failed";
@@ -89,6 +90,7 @@ bool UpdateReceiver::checkSlotHeader() {
     SlotHeader h;
     SlotCheck c = slotHeaderParse(_first, FW_SLOT_HEADER_SIZE, _slot, _keyId, h);
     if (c == SlotCheck::WrongSlot) return fail(UpdateError::WrongSlot);
+    if (c == SlotCheck::WrongKey) return fail(UpdateError::WrongKey);
     if (c != SlotCheck::Ok) return fail(UpdateError::BadHeader);
     if ((uint64_t)FW_SLOT_HEADER_SIZE + h.imageLength != _blobLen) return fail(UpdateError::BadHeader);
     memcpy(_version, h.version, sizeof(_version));

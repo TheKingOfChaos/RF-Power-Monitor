@@ -232,6 +232,14 @@ class FwUpdateScriptTest(unittest.TestCase):
         self.assertIn("%s: rejected: different key" % d.host, out)
         self.assertEqual([], d.uploads)
 
+    def test_script_reports_the_devices_own_different_key_refusal(self):
+        # The key matches the pre-check, yet the device (403, "different key") refuses the image
+        d = self.device(upload_status=403, upload_text="different key")
+        code, out = self.run_script([d.host])
+        self.assertNotEqual(0, code)
+        self.assertIn("%s: rejected: different key" % d.host, out)
+        self.assertEqual(1, len(d.uploads))
+
     def test_script_reports_unreachable_host(self):
         host = closed_port()
         code, out = self.run_script([host])

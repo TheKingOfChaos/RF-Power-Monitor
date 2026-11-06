@@ -106,6 +106,7 @@ STACK_MIN_NEVER_USED = 1024              # as test_web.py: core 0 keeps 1 KB tha
 # unreachable trial is the shorttrial variant's 60 s of network time plus two boots
 CRASH_ROLLBACK_LIMIT_S = 120
 UNREACHABLE_ROLLBACK_LIMIT_S = 150
+TEARDOWN_LIMIT_S = 240                   # a test image rolls back within this (shorttrial: 80 s measured)
 
 
 def _newest_source():
@@ -154,6 +155,22 @@ def build_test_images():
         finally:
             os.unlink(seed.name)
     return paths
+
+
+def poe_baseline(sw, port, mac):
+    """Read-only look at the switch before PoE on `port` may be changed.
+
+    Returns (mac_learned, own_statements): whether the switch lists the device's MAC on that port
+    (LLDP neighbours, as test_switch_port.py does), and the port's own PoE statements as
+    "set poe interface <port> ..." lines, which the test restores exactly.
+    """
+    listing = sw.run("show lldp neighbors")
+    learned = bool(re.search(r"^%s(\.\d+)?\s.*%s" % (re.escape(port), re.escape(mac.lower())),
+                             listing, re.MULTILINE))
+    conf = sw.run("show configuration poe | display set")
+    own = [line.strip() for line in conf.splitlines()
+           if re.match(r"set poe interface %s(\s|$)" % re.escape(port), line.strip())]
+    return learned, own
 
 
 def read_file(path):
@@ -210,11 +227,29 @@ class FirmwareUpdateTest(unittest.TestCase):
 
     @classmethod
     def tearDownClass(cls):
+        """Leave the device on a kept development-signed normal build, or fail loudly.
+
+        A failed test can leave a crash or shorttrial image on trial: a login cannot confirm those,
+        they roll back by themselves (80 s measured for shorttrial), so wait for that.
+        """
         try:
-            st = cls.status()
-            if st["fwState"] == "trial":
-                cls.web()  # logging in confirms the trial
-                cls.await_status(lambda s: s["fwState"] == "kept", 30)
+            deadline = time.time() + TEARDOWN_LIMIT_S
+            confirmed = False
+            while True:
+                st = cls.status()
+                # kept means a normal build: the test images (crash, shorttrial) are never confirmed
+                if st["fwState"] == "kept" and st["fwVersion"] == cls.version:
+                    break
+                if not confirmed:
+                    confirmed = True
+                    try:
+                        cls.web()  # confirms a normal build left on trial; test images ignore it
+                    except AssertionError:
+                        pass
+                if time.time() > deadline:
+                    raise AssertionError("device not on a kept normal build %d s after the tests: %s" % (
+                        TEARDOWN_LIMIT_S, {x: st[x] for x in ("fwSlot", "fwVersion", "fwState", "fwLastUpdate")}))
+                time.sleep(3)
         finally:
             if cls.listener:
                 cls.listener.close()
@@ -393,9 +428,8 @@ class FirmwareUpdateTest(unittest.TestCase):
     def test_upload_with_other_key_is_rejected(self):
         before = self.kept_state()
         code, text = self.upload(self.upd["otherkey"])
-        self.assertNotEqual(200, code)
-        # The receiver reports a slot header with another key id as "bad header" (HTTP 400)
-        self.assertTrue(code == 403 or "different key" in text or "bad header" in text, "%s %s" % (code, text))
+        self.assertEqual(403, code, text)
+        self.assertEqual("different key", text)
         self.assert_unchanged(before, other_changes=True)
 
     def corrupted_image(self, st):
@@ -531,17 +565,29 @@ class FirmwareUpdateTest(unittest.TestCase):
         if not m:
             self.skipTest("the device has not seen its switch port over LLDP: %s" % before["switch"])
         port = m.group(1)
+        with SwitchConsole(port=SWITCH_CONSOLE) as sw:
+            learned, own = poe_baseline(sw, port, before["mac"])
+        if not learned:
+            self.skipTest("the switch does not list the device's MAC on %s, PoE is not changed" % port)
+        if any("disable" in line for line in own):
+            self.skipTest("PoE is already disabled on %s: %s" % (port, own))
+        restore = ["delete poe interface %s" % port] + own  # exactly what the port had before
         self.assertIn(self.upload(self.upd["normal"])[0], (200, None))
         self.await_status(self.flipped(before), 90)
-        for _ in range(4):
-            try:
+        try:
+            for _ in range(4):
                 with SwitchConsole(port=SWITCH_CONSOLE) as sw:
                     sw.configure(["set poe interface %s disable" % port], confirm_minutes=5)
                 time.sleep(8)
-            finally:
                 with SwitchConsole(port=SWITCH_CONSOLE) as sw:
-                    sw.configure(["delete poe interface %s" % port])  # the port had no PoE statement of its own
-            self.reconnect()
+                    sw.configure(restore)
+                self.reconnect()
+        finally:
+            # Also when a step failed: put the port back (plain commit, which ends commit confirmed)
+            with SwitchConsole(port=SWITCH_CONSOLE) as sw:
+                _, now = poe_baseline(sw, port, before["mac"])
+                if now != own:
+                    sw.configure(restore)
         st = self.status()
         self.assertNotEqual(before["fwSlot"], st["fwSlot"], "rolled back by the power cycles")
         self.assertNotIn("rolled back", st["fwLastUpdate"])

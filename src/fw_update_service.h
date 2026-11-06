@@ -60,6 +60,7 @@ void fwUpdateNoteValidRequest();
 enum class FwUploadFault : uint8_t {
     None,
     BadFile,      ///< the file was refused (bad header, signature, length...): 400
+    WrongKey,     ///< signed with another key than the one this firmware trusts: 403
     Busy,         ///< not now: on trial, uploading, restart pending: 409
     TooLarge,     ///< larger than FW_UPLOAD_MAX: 413
     NoMemory,     ///< no RAM for the receiver right now: 503

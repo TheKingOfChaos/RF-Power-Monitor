@@ -355,7 +355,9 @@ bool fwUpdateUploadFinish(char* versionOut, const char*& error, FwUploadFault& f
     if (receiver->finish() != UpdateStatus::Done) {
         UpdateError e = receiver->error();
         error = updateErrorName(e);
-        fault = e == UpdateError::WriteFailed ? FwUploadFault::DeviceError : FwUploadFault::BadFile;
+        fault = e == UpdateError::WriteFailed ? FwUploadFault::DeviceError
+                : e == UpdateError::WrongKey  ? FwUploadFault::WrongKey
+                                              : FwUploadFault::BadFile;
         rejectUpload(error, otherWriter.touched());
         return false;
     }
@@ -365,8 +367,8 @@ bool fwUpdateUploadFinish(char* versionOut, const char*& error, FwUploadFault& f
     if (c != SlotCheck::Ok) {
         // Erase its header, so the slot reads as empty rather than as a bad image
         flashErase(FW_SLOT_OFFSET[OTHER_SLOT]);
-        error = slotCheckName(c);
-        fault = FwUploadFault::BadFile;
+        error = c == SlotCheck::WrongKey ? updateErrorName(UpdateError::WrongKey) : slotCheckName(c);
+        fault = c == SlotCheck::WrongKey ? FwUploadFault::WrongKey : FwUploadFault::BadFile;
         rejectUpload(error, true);
         return false;
     }

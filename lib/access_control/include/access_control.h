@@ -177,7 +177,7 @@ enum class AccessEvent : uint8_t {
     SetRejected,   ///< SetRequest with the right community (all objects are read-only)
     WebLoginFailed,  ///< Wrong user name or password on the web page
     WebLoginLocked,  ///< Web login refused during the lockout after repeated failures
-    WebUploadRefused ///< Firmware upload without a valid session or CSRF token
+    WebUploadRefused ///< Firmware upload without a valid session or CSRF token, or signed with another key
 };
 
 /**

@@ -340,6 +340,7 @@ static void closeConnection();
 static int uploadStatus(FwUploadFault fault) {
     switch (fault) {
     case FwUploadFault::BadFile:     return 400;
+    case FwUploadFault::WrongKey:    return 403;
     case FwUploadFault::TooLarge:    return 413;
     case FwUploadFault::NoMemory:    return 503;
     case FwUploadFault::DeviceError: return 500;
@@ -401,6 +402,8 @@ static void pollUpload() {
         if (fwUpdateUploadFinish(version, error, fault)) {
             respondUpload(200, version);
         } else {
+            // An image signed with another key is a refusal like a missing session: on the access log
+            if (fault == FwUploadFault::WrongKey) accessLogRecord(peer, AccessEvent::WebUploadRefused);
             respondUpload(uploadStatus(fault), error);
         }
         return;

@@ -272,7 +272,7 @@ static void test_receiver_rejects_other_key_before_erasing() {
     Bytes upd = buildUpd(buildBlob(1, 0, 300, 1), buildBlob(2, 1, 300, 2));
     FakeSlot w;
     TEST_ASSERT_EQUAL_UINT8((uint8_t)UpdateStatus::Failed, (uint8_t)receive(w, upd, 1, 7));
-    TEST_ASSERT_EQUAL_UINT8((uint8_t)UpdateError::BadHeader, (uint8_t)rx.error());
+    TEST_ASSERT_EQUAL_UINT8((uint8_t)UpdateError::WrongKey, (uint8_t)rx.error());
     TEST_ASSERT_EQUAL_UINT32(0, (uint32_t)w.erases.size());
     TEST_ASSERT_EQUAL_UINT32(0, (uint32_t)w.writes.size());
 }
@@ -420,6 +420,8 @@ static void test_receiver_error_names() {
     TEST_ASSERT_EQUAL_STRING("bad magic", updateErrorName(UpdateError::BadMagic));
     TEST_ASSERT_EQUAL_STRING("truncated", updateErrorName(UpdateError::Truncated));
     TEST_ASSERT_EQUAL_STRING("none", updateErrorName(UpdateError::None));
+    TEST_ASSERT_EQUAL_STRING("different key", updateErrorName(UpdateError::WrongKey));
+    TEST_ASSERT_EQUAL_STRING("bad header", updateErrorName(UpdateError::BadHeader));
 }
 
 namespace {

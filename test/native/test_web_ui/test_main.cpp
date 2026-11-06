@@ -1647,6 +1647,14 @@ static std::string uploadResponse(int code, const char* text) {
     return std::string(resp, len);
 }
 
+static void test_upload_result_names_a_different_key() {
+    webSetUp();
+    std::string r = uploadResponse(403, "different key");
+    TEST_ASSERT_EQUAL(403, statusCode(r));
+    TEST_ASSERT_TRUE(r.find("403 Forbidden") != std::string::npos);
+    TEST_ASSERT_EQUAL_STRING("different key", responseBody(r).c_str());
+}
+
 static void test_upload_result_texts() {
     webSetUp();
     std::string r = uploadResponse(200, "3.3.0");
@@ -2147,6 +2155,7 @@ int main() {
     RUN_TEST(test_upload_with_valid_session_is_authenticated);
     RUN_TEST(test_upload_refused_while_on_trial);
     RUN_TEST(test_second_upload_while_busy_is_refused);
+    RUN_TEST(test_upload_result_names_a_different_key);
     RUN_TEST(test_upload_result_texts);
     RUN_TEST(test_firmware_page_needs_login);
     RUN_TEST(test_firmware_page_shows_slots_and_fingerprint);
