@@ -2,6 +2,8 @@
 
 #include <LittleFS.h>
 
+#include "ab_files.h"
+
 const char* const SETTINGS_FILE_A = "data/settings_a.json";
 const char* const SETTINGS_FILE_B = "data/settings_b.json";
 
@@ -35,14 +37,8 @@ static const char* slotName(SettingsSlot slot) {
 }
 
 bool SettingsStore::readSlot(const char* path, Settings& out) {
-    File f = LittleFS.open(path, "r");
-    if (!f) return false;
-
-    size_t len = f.readBytes(jsonBuf, sizeof(jsonBuf) - 1);
-    bool tooBig = f.available() > 0;
-    f.close();
-    jsonBuf[len] = '\0';
-
+    bool tooBig;
+    if (!abReadFile(path, jsonBuf, sizeof(jsonBuf), tooBig)) return false;
     if (tooBig) {
         Serial.printf("Settings %s: file too large, ignored\r\n", path);
         return false;
@@ -84,17 +80,7 @@ bool SettingsStore::save(Settings& s) {
         return false;
     }
 
-    File f = LittleFS.open(path, "w");
-    if (!f) {
-        Serial.printf("Settings %s: cannot open for writing\r\n", path);
-        return false;
-    }
-    size_t written = f.write((const uint8_t*)jsonBuf, len);
-    f.close();
-    if (written != len) {
-        Serial.printf("Settings %s: short write (%u of %u bytes)\r\n", path, (unsigned)written, (unsigned)len);
-        return false;
-    }
+    if (!abWriteFile("Settings", path, jsonBuf, len)) return false;
 
     // Only switch to the new copy once it reads back identical
     if (!readSlot(path, verify) || !settingsEqual(verify, pending)) {

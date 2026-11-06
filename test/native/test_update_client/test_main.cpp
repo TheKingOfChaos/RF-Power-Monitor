@@ -8,6 +8,7 @@
 #include <unity.h>
 #include <http_response.h>
 #include <update_schedule.h>
+#include <update_settings.h>
 #include <update_url.h>
 #include <update_version.h>
 
@@ -358,6 +359,121 @@ static void test_scheduler_survives_millis_wrap() {
     TEST_ASSERT_TRUE(s.due(start + 60000 + 1800000));
 }
 
+// --- update settings codec ---
+
+static UpdateSettings fullSettings() {
+    UpdateSettings s;
+    updateSettingsDefaults(s);
+    strcpy(s.url, "http://10.132.0.45:8071");
+    s.fromDhcp = true;
+    s.hasKey = true;
+    for (size_t i = 0; i < UPDATE_KEY_LEN; i++) s.key[i] = (uint8_t)(0xA0 + i);
+    s.sequence = 7;
+    return s;
+}
+
+static void test_update_settings_defaults_are_off() {
+    UpdateSettings s;
+    updateSettingsDefaults(s);
+    TEST_ASSERT_EQUAL_STRING("", s.url);
+    TEST_ASSERT_FALSE(s.fromDhcp);
+    TEST_ASSERT_FALSE(s.hasKey);
+    TEST_ASSERT_EQUAL(UPDATE_SETTINGS_VERSION, s.version);
+}
+
+static void test_update_settings_round_trip() {
+    UpdateSettings in = fullSettings(), out;
+    char json[UPDATE_SETTINGS_JSON_MAX];
+    TEST_ASSERT_GREATER_THAN(0, updateSettingsToJson(in, json, sizeof(json)));
+    TEST_ASSERT_TRUE(updateSettingsFromJson(json, out));
+    TEST_ASSERT_TRUE(updateSettingsEqual(in, out));
+    TEST_ASSERT_EQUAL_MEMORY(in.key, out.key, UPDATE_KEY_LEN);
+    TEST_ASSERT_EQUAL(7, out.sequence);
+}
+
+static void test_update_settings_without_key_round_trip() {
+    UpdateSettings in = fullSettings(), out;
+    in.hasKey = false;
+    char json[UPDATE_SETTINGS_JSON_MAX];
+    TEST_ASSERT_GREATER_THAN(0, updateSettingsToJson(in, json, sizeof(json)));
+    TEST_ASSERT_TRUE(updateSettingsFromJson(json, out));
+    TEST_ASSERT_FALSE(out.hasKey);
+}
+
+static void test_update_settings_worst_case_fits_512() {
+    UpdateSettings in = fullSettings();
+    memset(in.url, 0, sizeof(in.url));
+    strcpy(in.url, "http://");
+    memset(in.url + 7, 'h', 63);
+    strcpy(in.url + 70, ":65535/");
+    memset(in.url + 77, 'p', UPDATE_URL_MAX - 77);
+    in.sequence = 0xFFFFFFFFu;
+    TEST_ASSERT_EQUAL(UPDATE_URL_MAX, strlen(in.url));
+    char json[UPDATE_SETTINGS_JSON_MAX];
+    TEST_ASSERT_EQUAL(512, UPDATE_SETTINGS_JSON_MAX);
+    TEST_ASSERT_GREATER_THAN(0, updateSettingsToJson(in, json, sizeof(json)));
+    UpdateSettings out;
+    TEST_ASSERT_TRUE(updateSettingsFromJson(json, out));
+    TEST_ASSERT_TRUE(updateSettingsEqual(in, out));
+}
+
+static void test_update_settings_empty_url_is_valid() {
+    UpdateSettings in = fullSettings(), out;
+    in.url[0] = '\0';
+    char json[UPDATE_SETTINGS_JSON_MAX];
+    updateSettingsToJson(in, json, sizeof(json));
+    TEST_ASSERT_TRUE(updateSettingsFromJson(json, out));
+    TEST_ASSERT_EQUAL_STRING("", out.url);
+}
+
+static void test_update_settings_rejects_bad_url() {
+    UpdateSettings out;
+    TEST_ASSERT_FALSE(updateSettingsFromJson(
+        "{\"version\":1,\"sequence\":1,\"url\":\"https://x\",\"fromDhcp\":false,\"key\":\"\"}", out));
+}
+
+static void test_update_settings_rejects_short_key() {
+    UpdateSettings out;
+    TEST_ASSERT_FALSE(updateSettingsFromJson(
+        "{\"version\":1,\"sequence\":1,\"url\":\"\",\"fromDhcp\":false,\"key\":\"0011\"}", out));
+}
+
+static void test_update_settings_rejects_wrong_version() {
+    UpdateSettings out;
+    TEST_ASSERT_FALSE(updateSettingsFromJson(
+        "{\"version\":2,\"sequence\":1,\"url\":\"\",\"fromDhcp\":false,\"key\":\"\"}", out));
+    TEST_ASSERT_FALSE(updateSettingsFromJson("{\"sequence\":1,\"url\":\"\",\"fromDhcp\":false,\"key\":\"\"}", out));
+}
+
+static void test_update_settings_rejects_mistyped_fields() {
+    UpdateSettings out;
+    TEST_ASSERT_FALSE(updateSettingsFromJson(
+        "{\"version\":1,\"sequence\":1,\"url\":5,\"fromDhcp\":false,\"key\":\"\"}", out));
+    TEST_ASSERT_FALSE(updateSettingsFromJson(
+        "{\"version\":1,\"sequence\":1,\"url\":\"\",\"fromDhcp\":\"yes\",\"key\":\"\"}", out));
+    TEST_ASSERT_FALSE(updateSettingsFromJson("[]", out));
+    TEST_ASSERT_FALSE(updateSettingsFromJson("", out));
+    TEST_ASSERT_FALSE(updateSettingsFromJson(nullptr, out));
+}
+
+static void test_update_settings_every_truncation_rejected() {
+    UpdateSettings in = fullSettings(), out;
+    char json[UPDATE_SETTINGS_JSON_MAX];
+    size_t len = updateSettingsToJson(in, json, sizeof(json));
+    for (size_t cut = 0; cut < len; cut++) {
+        char part[UPDATE_SETTINGS_JSON_MAX];
+        memcpy(part, json, cut);
+        part[cut] = '\0';
+        TEST_ASSERT_FALSE(updateSettingsFromJson(part, out));
+    }
+}
+
+static void test_update_settings_to_json_too_small_returns_zero() {
+    UpdateSettings in = fullSettings();
+    char json[40];
+    TEST_ASSERT_EQUAL(0, updateSettingsToJson(in, json, sizeof(json)));
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_url_accepts_name_port_path);
@@ -394,5 +510,16 @@ int main(int, char**) {
     RUN_TEST(test_scheduler_net_ready_repeated_does_not_postpone);
     RUN_TEST(test_scheduler_force_now);
     RUN_TEST(test_scheduler_survives_millis_wrap);
+    RUN_TEST(test_update_settings_defaults_are_off);
+    RUN_TEST(test_update_settings_round_trip);
+    RUN_TEST(test_update_settings_without_key_round_trip);
+    RUN_TEST(test_update_settings_worst_case_fits_512);
+    RUN_TEST(test_update_settings_empty_url_is_valid);
+    RUN_TEST(test_update_settings_rejects_bad_url);
+    RUN_TEST(test_update_settings_rejects_short_key);
+    RUN_TEST(test_update_settings_rejects_wrong_version);
+    RUN_TEST(test_update_settings_rejects_mistyped_fields);
+    RUN_TEST(test_update_settings_every_truncation_rejected);
+    RUN_TEST(test_update_settings_to_json_too_small_returns_zero);
     return UNITY_END();
 }

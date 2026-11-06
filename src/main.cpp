@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <settings.h>
+#include <update_settings_store.h>
 #include <LittleFS.h>
 #include <W5500lwIP.h>
 #include <mains_input.h>
@@ -230,6 +231,7 @@ void setup() {
 
     // Load settings
     settingsLoaded = loadSettings();
+    loadUpdateSettings();  // update server URL and key: own files, defaults (off) when absent
     hostnameBegin();  // before Ethernet, so the first DHCP request carries the name
     watchdogFeed();
 

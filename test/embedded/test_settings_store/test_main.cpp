@@ -7,13 +7,19 @@
 #include <LittleFS.h>
 #include <unity.h>
 #include <settings.h>
+#include <update_settings_store.h>
 
 static const char* const PATH_A = "test/settings_a.json";
 static const char* const PATH_B = "test/settings_b.json";
 
+static const char* const UPDATE_PATH_A = "test/update_a.json";
+static const char* const UPDATE_PATH_B = "test/update_b.json";
+
 static void removeTestFiles() {
     LittleFS.remove(PATH_A);
     LittleFS.remove(PATH_B);
+    LittleFS.remove(UPDATE_PATH_A);
+    LittleFS.remove(UPDATE_PATH_B);
 }
 
 static void writeRaw(const char* path, const char* content) {
@@ -265,6 +271,134 @@ static void test_save_and_load_use_little_stack() {
     TEST_ASSERT_LESS_OR_EQUAL_MESSAGE(SAVE_LOAD_STACK_BUDGET, used, msg);
 }
 
+// ---- update server settings (UpdateSettingsStore) ----
+
+/// Update settings with a URL and a key whose bytes start at first
+static void fillUpdateSettings(UpdateSettings& s, const char* url, uint8_t first) {
+    updateSettingsDefaults(s);
+    strcpy(s.url, url);
+    s.hasKey = true;
+    for (size_t i = 0; i < UPDATE_KEY_LEN; i++) s.key[i] = (uint8_t)(first + i);
+}
+
+static void test_update_store_empty_loads_defaults() {
+    UpdateSettingsStore store(UPDATE_PATH_A, UPDATE_PATH_B);
+    static UpdateSettings s;
+    TEST_ASSERT_EQUAL(SettingsSlot::None, store.load(s));
+    TEST_ASSERT_EQUAL_STRING("", s.url);
+    TEST_ASSERT_FALSE(s.hasKey);
+}
+
+static void test_update_store_newest_copy_wins() {
+    static UpdateSettings s, loaded;
+    UpdateSettingsStore store(UPDATE_PATH_A, UPDATE_PATH_B);
+    store.load(s);
+    fillUpdateSettings(s, "http://10.0.0.1:8071", 1);
+    TEST_ASSERT_TRUE(store.save(s));
+    fillUpdateSettings(s, "http://10.0.0.2:8071", 2);
+    TEST_ASSERT_TRUE(store.save(s));
+    TEST_ASSERT_TRUE(LittleFS.exists(UPDATE_PATH_A));
+    TEST_ASSERT_TRUE(LittleFS.exists(UPDATE_PATH_B));
+
+    UpdateSettingsStore fresh(UPDATE_PATH_A, UPDATE_PATH_B);
+    TEST_ASSERT_EQUAL(SettingsSlot::B, fresh.load(loaded));
+    TEST_ASSERT_EQUAL_STRING("http://10.0.0.2:8071", loaded.url);
+    TEST_ASSERT_EQUAL_UINT8(2, loaded.key[0]);
+}
+
+static void test_update_store_corrupt_copy_falls_back() {
+    static UpdateSettings s, loaded;
+    UpdateSettingsStore store(UPDATE_PATH_A, UPDATE_PATH_B);
+    store.load(s);
+    fillUpdateSettings(s, "http://10.0.0.1:8071", 1);
+    TEST_ASSERT_TRUE(store.save(s));  // A
+    fillUpdateSettings(s, "http://10.0.0.2:8071", 2);
+    TEST_ASSERT_TRUE(store.save(s));  // B, newest
+    writeRaw(UPDATE_PATH_B, "{\"version\":1,\"sequence\":99,\"url\":\"http://half");  // a torn write
+
+    UpdateSettingsStore fresh(UPDATE_PATH_A, UPDATE_PATH_B);
+    TEST_ASSERT_EQUAL(SettingsSlot::A, fresh.load(loaded));
+    TEST_ASSERT_EQUAL_STRING("http://10.0.0.1:8071", loaded.url);
+}
+
+static void test_main_settings_file_unchanged_by_update_settings_save() {
+    SettingsStore main(PATH_A, PATH_B);
+    static Settings ms;
+    main.load(ms);
+    fillStaticSettings(ms, "192.168.50.77");
+    TEST_ASSERT_TRUE(main.save(ms));
+    static char before[SETTINGS_JSON_MAX], after[SETTINGS_JSON_MAX];
+    File f = LittleFS.open(PATH_A, "r");
+    size_t n1 = f.readBytes(before, sizeof(before));
+    f.close();
+
+    static UpdateSettings s;
+    UpdateSettingsStore store(UPDATE_PATH_A, UPDATE_PATH_B);
+    store.load(s);
+    fillUpdateSettings(s, "http://10.0.0.1:8071", 1);
+    TEST_ASSERT_TRUE(store.save(s));
+    TEST_ASSERT_TRUE(store.save(s));
+
+    f = LittleFS.open(PATH_A, "r");
+    size_t n2 = f.readBytes(after, sizeof(after));
+    f.close();
+    TEST_ASSERT_EQUAL(n1, n2);
+    TEST_ASSERT_EQUAL_MEMORY(before, after, n1);
+    TEST_ASSERT_FALSE(LittleFS.exists(PATH_B));  // the main store was saved once: B never written
+}
+
+static void test_factory_reset_clears_update_settings() {
+    static UpdateSettings s, loaded;
+    UpdateSettingsStore store(UPDATE_PATH_A, UPDATE_PATH_B);
+    store.load(s);
+    fillUpdateSettings(s, "http://10.0.0.1:8071", 1);
+    TEST_ASSERT_TRUE(store.save(s));
+    TEST_ASSERT_TRUE(store.save(s));
+    TEST_ASSERT_TRUE(store.clear());
+    // Both copies are gone, so the key is not left behind in flash
+    TEST_ASSERT_FALSE(LittleFS.exists(UPDATE_PATH_A));
+    TEST_ASSERT_FALSE(LittleFS.exists(UPDATE_PATH_B));
+    UpdateSettingsStore fresh(UPDATE_PATH_A, UPDATE_PATH_B);
+    TEST_ASSERT_EQUAL(SettingsSlot::None, fresh.load(loaded));
+    TEST_ASSERT_FALSE(loaded.hasKey);
+    TEST_ASSERT_EQUAL_STRING("", loaded.url);
+}
+
+static void test_update_store_save_after_clear_starts_over() {
+    static UpdateSettings s, loaded;
+    UpdateSettingsStore store(UPDATE_PATH_A, UPDATE_PATH_B);
+    store.load(s);
+    fillUpdateSettings(s, "http://10.0.0.1:8071", 1);
+    TEST_ASSERT_TRUE(store.save(s));
+    TEST_ASSERT_TRUE(store.clear());
+    fillUpdateSettings(s, "http://10.0.0.3:8071", 3);
+    TEST_ASSERT_TRUE(store.save(s));
+    UpdateSettingsStore fresh(UPDATE_PATH_A, UPDATE_PATH_B);
+    TEST_ASSERT_NOT_EQUAL(SettingsSlot::None, fresh.load(loaded));
+    TEST_ASSERT_EQUAL_STRING("http://10.0.0.3:8071", loaded.url);
+}
+
+static void updateSaveAndLoadOnce() {
+    static UpdateSettingsStore store(UPDATE_PATH_A, UPDATE_PATH_B);
+    static UpdateSettings s;
+    store.load(s);
+    fillUpdateSettings(s, "http://10.132.0.45:8071/a/long/path/for/the/update/server", 9);
+    store.save(s);
+    store.load(s);
+}
+
+static void test_update_save_and_load_use_little_stack() {
+    if ((size_t)rp2040.getFreeStack() < STACK_PROBE_SPAN + 512) {
+        TEST_IGNORE_MESSAGE("not enough free stack to probe");
+    }
+    size_t used = measureStackUse(updateSaveAndLoadOnce);
+    char msg[64];
+    snprintf(msg, sizeof(msg), "update save+load used %u bytes of stack", (unsigned)used);
+    Serial.println(msg);
+    TEST_ASSERT_LESS_THAN_MESSAGE(STACK_PROBE_SPAN, used, "probe span exhausted, usage unknown");
+    TEST_ASSERT_LESS_OR_EQUAL_MESSAGE(SAVE_LOAD_STACK_BUDGET, used, msg);
+}
+
 void setup() {
     // The boot program starts every image with the watchdog armed (~8.3 s);
     // these tests run longer than that in setup() and do not feed it
@@ -291,6 +425,13 @@ void setup() {
     RUN_TEST(test_maximum_size_settings_survive_save_and_reload);
     RUN_TEST(test_save_and_load_use_little_stack);
     RUN_TEST(test_legacy_files_are_removed_and_settings_kept);
+    RUN_TEST(test_update_store_empty_loads_defaults);
+    RUN_TEST(test_update_store_newest_copy_wins);
+    RUN_TEST(test_update_store_corrupt_copy_falls_back);
+    RUN_TEST(test_main_settings_file_unchanged_by_update_settings_save);
+    RUN_TEST(test_factory_reset_clears_update_settings);
+    RUN_TEST(test_update_store_save_after_clear_starts_over);
+    RUN_TEST(test_update_save_and_load_use_little_stack);
 
     LittleFS.rmdir("test");
     UNITY_END();

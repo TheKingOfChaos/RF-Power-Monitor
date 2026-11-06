@@ -2,6 +2,7 @@
 
 #include <reset_button.h>
 #include <settings.h>
+#include <update_settings_store.h>
 #include "pins.h"
 
 // How long the fast blink is shown before rebooting (reset must finish within 2 s)
@@ -71,6 +72,7 @@ void factoryResetPoll() {
     Serial.printf("\r\nFactory reset after %lu ms hold\r\n", (unsigned long)lastEventHeldMs);
     settingsDefaults(currentSettings);
     bool saved = saveSettings();
+    if (!clearUpdateSettings()) saved = false;  // update server URL and shared key
     Serial.printf("Factory defaults %s in %lu ms, rebooting\r\n", saved ? "saved" : "NOT saved",
                   (unsigned long)(millis() - start));
     Serial.flush();
