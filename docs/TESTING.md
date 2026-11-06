@@ -5,7 +5,7 @@ The project has three test layers. Each one tests what the layer below cannot.
 | Layer | Folder | Runs on | Framework | Command | Time |
 |---|---|---|---|---|---|
 | Unit | `test/native/` | Your PC | Unity | `pio test -e native` | ~5 s |
-| On-device | `test/embedded/` | The Pico | Unity | `pio test -e pico` | ~35 s |
+| On-device | `test/embedded/` | The Pico | Unity | `pio test -e pico` | ~55 s |
 | Hardware-in-the-loop (HIL) | `test/hil/` | PC talking to flashed Pico | Python `unittest` | see below | several minutes (longer with mains tests) |
 
 The rules for writing tests are in [.clinerules](../.clinerules), section *Testing Requirements → Test Rules*.
@@ -329,6 +329,17 @@ Uses `test/settings_a.json` and `test/settings_b.json`, never the real settings.
 ### `test/embedded/test_ethernet`: W5500 and lwIP
 - W5500 detected over SPI, link up, DHCP lease with a gateway, gateway answers ping
 
+### `test/embedded/test_fw_flash`: `src/fw_update_service.cpp` on the real flash
+Writes only the slot that is not running (left erased afterwards) and the two boot record sectors (saved and
+restored). `test_build_src` is off, so the test compiles the service, `boot_info.cpp` and `stack_watch.cpp` in.
+- The slot writer erases and writes sectors of the other slot (read back through XIP)
+- It refuses the running slot, offsets at or past the slot size or inside a sector, and source data in flash
+- Boot record writes go to the copy that is not the newest, with the sequence + 1
+- The golden dev-signed `.upd` (`test/native/test_fw_receiver/golden_upd.h`) through the upload path in
+  512-byte pieces, including the Ed25519 check from flash: verified, recorded as the trial slot, and core 0
+  keeps more than 1024 bytes of stack never used (prints the figure; ~5.7 KB)
+- A file with one image byte flipped is rejected with "bad signature", the other slot reads empty, no record
+
 ### `test/hil/test_serial_menu.py`: the flashed firmware
 - Menu text, status output with state, lease and MAC, ping from the PC
 - Boot does not wait for DHCP: the prompt appears within 5 s, before `Network up`, and the lease still arrives
@@ -434,6 +445,7 @@ Uses `test/settings_a.json` and `test/settings_b.json`, never the real settings.
 - The hidden menu commands `stall0` and `stall1` hang core 0 (interrupts off) or core 1 for good; the device restarts within 8 s (core 1: 9 s), and the status screen shows `Last restart: watchdog` with the watchdog restart count one higher The core 1 restart time is taken from when the device stops answering SNMP (core 0 answers until the restart): Windows sometimes reports the USB drop 2 s late, which made the old USB-based timing fail now and then (9.1 s or 11.1 s against an 11 s limit). The core 0 time still comes from the USB drop, as core 0 stops answering at once.
 - A menu reboot (option 2, DHCP unchanged) shows `Last restart: reboot` and does not count; twice the watchdog timeout of normal running restarts nothing
 - Each test restarts the device once; settings are not touched (the reboot test skips in static mode)
+- Three crash restarts in a row make the boot program start the other slot. So a stall test whose device last restarted by the watchdog first restarts it through option 2 (a planned restart clears the crash count): the tests never cause two crashes in a row (in static mode such a stall test skips)
 
 ### `test/hil/test_factory_reset.py`: the reset button (manual, `RFPOWER_MANUAL_BUTTON=1`)
 - A ~3 s press is released without reset, the log shows how long it was held, and SNMP keeps answering while it is held

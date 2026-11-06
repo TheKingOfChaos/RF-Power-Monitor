@@ -10,6 +10,7 @@
  * counter and scratch2 how long the slot verification took. It also arms the
  * watchdog (~8.3 s), so the SDK's own reset reason reads every restart as a
  * watchdog reset: the restart cause comes from here instead (watchdog.cpp).
+ * src/fw_update_service.cpp acts on it and prints it.
  */
 
 #include <stdint.h>
@@ -30,8 +31,14 @@ uint8_t bootInfoSlot();
 /// Why that slot was started
 BootReason bootInfoReason();
 
+/// The kind of reset before this start (PowerOn without valid boot info)
+ResetKind bootInfoResetKind();
+
+/// The slot the boot program gave up on (Fallback), else FW_NO_SLOT
+uint8_t bootInfoFailedSlot();
+
+/// The crash counter (scratch1) as the boot program left it
+uint32_t bootInfoCrashScratch();
+
 /// How long the boot program took to read the boot record and verify the slot(s), in microseconds
 uint32_t bootInfoVerifyMicros();
-
-/// Print "Boot: slot A verified in <n> ms (normal|trial|fallback|no record)"
-void bootInfoPrint();

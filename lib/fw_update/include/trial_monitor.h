@@ -10,6 +10,12 @@
 
 #include <stdint.h>
 
+// Test build (tools/fw_release.py --test-variant shorttrial): a trial that ends in minutes
+#if defined(RFPOWER_FWTEST_SHORTTRIAL) && !defined(FW_TRIAL_REACH_MS) && !defined(FW_TRIAL_LIMIT_MS)
+#define FW_TRIAL_REACH_MS 60000u
+#define FW_TRIAL_LIMIT_MS 180000u
+#endif
+
 /// Network up this long without a valid request: the firmware cannot be reached
 #ifndef FW_TRIAL_REACH_MS
 #define FW_TRIAL_REACH_MS 600000u

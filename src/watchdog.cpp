@@ -2,7 +2,7 @@
 
 #include <Arduino.h>
 
-#include "boot_info.h"
+#include "fw_update_service.h"
 
 // Survives watchdog and soft resets (the startup code does not clear this section); random after power-on
 static RestartRecord restartRecord __attribute__((section(".uninitialized_data.restart")));
@@ -24,8 +24,8 @@ static volatile bool stallCore1 = false;
  * restart; it is only used when the firmware was started without the boot program.
  */
 static RestartCause readCause() {
-    RestartCause fromBoot;
-    if (restartCauseFromBootInfo(bootInfoRaw(), fromBoot)) return fromBoot;
+    RestartCause fromBoot = fwUpdateRestartCause();
+    if (fromBoot != RestartCause::Unknown) return fromBoot;
     switch (rp2040.getResetReason()) {
     case RP2040::PWRON_RESET:
     case RP2040::BROWNOUT_RESET:

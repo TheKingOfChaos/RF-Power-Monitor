@@ -1564,6 +1564,45 @@ static void test_upload_needs_session() {
     TEST_ASSERT_EQUAL(401, uploadStatus(token, csrf, 1000 + WEB_SESSION_IDLE_MS + 1));
 }
 
+static void test_request_with_valid_session_is_authenticated() {
+    webSetUp();
+    std::string csrf;
+    std::string token = logIn(csrf);
+    get("/", token);
+    TEST_ASSERT_TRUE(app->authenticated());
+    get("/nope", token);  // any request: the session is what counts
+    TEST_ASSERT_TRUE(app->authenticated());
+    get("/");
+    TEST_ASSERT_FALSE(app->authenticated());
+    get("/", "0123456789abcdef0123456789abcdef");
+    TEST_ASSERT_FALSE(app->authenticated());
+    get("/", token, 1000 + WEB_SESSION_IDLE_MS + 1);  // expired
+    TEST_ASSERT_FALSE(app->authenticated());
+}
+
+static void test_login_is_authenticated_only_with_right_password() {
+    webSetUp();
+    post("/login", "user=admin&password=wrongpasswd");
+    TEST_ASSERT_FALSE(app->authenticated());
+    post("/login", "user=admin&password=goodpasswd1");
+    TEST_ASSERT_TRUE(app->authenticated());
+    send("BAD\r\n\r\n");
+    TEST_ASSERT_FALSE(app->authenticated());
+}
+
+static void test_upload_with_valid_session_is_authenticated() {
+    webSetUp();
+    std::string csrf;
+    std::string token = logIn(csrf);
+    TEST_ASSERT_EQUAL(401, uploadStatus("", csrf));
+    TEST_ASSERT_FALSE(app->authenticated());
+    TEST_ASSERT_EQUAL(403, uploadStatus(token, ""));  // a session, though the upload is refused
+    TEST_ASSERT_TRUE(app->authenticated());
+    get("/");
+    TEST_ASSERT_EQUAL(0, uploadStatus(token, csrf));
+    TEST_ASSERT_TRUE(app->authenticated());
+}
+
 static void test_upload_needs_csrf_header() {
     webSetUp();
     std::string csrf;
@@ -2103,6 +2142,9 @@ int main() {
     RUN_TEST(test_other_paths_still_buffered);
     RUN_TEST(test_upload_needs_session);
     RUN_TEST(test_upload_needs_csrf_header);
+    RUN_TEST(test_request_with_valid_session_is_authenticated);
+    RUN_TEST(test_login_is_authenticated_only_with_right_password);
+    RUN_TEST(test_upload_with_valid_session_is_authenticated);
     RUN_TEST(test_upload_refused_while_on_trial);
     RUN_TEST(test_second_upload_while_busy_is_refused);
     RUN_TEST(test_upload_result_texts);

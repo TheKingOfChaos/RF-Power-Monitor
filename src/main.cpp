@@ -11,6 +11,7 @@
 #include "cpu_temp.h"
 #include "dhcp6_service.h"
 #include "factory_reset.h"
+#include "fw_update_service.h"
 #include "host_stats.h"
 #include "hostname.h"
 #include "ipv6_static.h"
@@ -168,6 +169,13 @@ void setup() {
     // restart cause from it and the watchdog it armed: fed through setup()
     bootInfoBegin();
     watchdogBegin();
+    // Boot record and trial; after a fallback the record is rewritten here, before the network
+    fwUpdateBegin();
+#ifdef RFPOWER_FWTEST_CRASH
+    // Test build (tools/fw_release.py --test-variant crash): hang, so the watchdog restarts it as a crash
+    while (true) {
+    }
+#endif
 
     // Initialize serial for debugging
     Serial.begin(115200);
@@ -178,7 +186,7 @@ void setup() {
         delay(10);
     }
     Serial.println("\r\nRF-Power-Monitor " FIRMWARE_VERSION " starting...");
-    bootInfoPrint();
+    fwUpdatePrintBoot();
     watchdogPrintCause();
     diagBegin();  // only with -DRFPOWER_DIAG
     cpuTempBegin();
@@ -248,9 +256,27 @@ void setup() {
     watchdogArm();
 }
 
+/**
+ * @brief The network counts as up for a firmware trial: Ethernet link and an
+ *        IPv4 address, or a valid (not tentative) IPv6 address, link-local included
+ */
+static bool networkReady() {
+    if (!ethPresent || !netStatsPhy().linkUp) return false;
+    if (eth.connected()) return true;
+#if LWIP_IPV6
+    netif* nif = eth.getNetIf();
+    for (int i = 0; i < LWIP_IPV6_NUM_ADDRESSES; i++) {
+        if (ip6_addr_isvalid(netif_ip6_addr_state(nif, i))) return true;
+    }
+#endif
+    return false;
+}
+
 void loop() {
     hostStatsLoopPass();  // core 0 load: passes per second against an idle second (lib/cpu_load)
     watchdogPoll();
+    // Trial, crash counter; the first pass also checks the other slot's signature (about a second)
+    fwUpdatePoll(networkReady());
     diagPoll();
     DIAG_MARK(1);
     // Report when the address is obtained, changed or lost

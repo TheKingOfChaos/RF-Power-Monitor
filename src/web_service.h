@@ -11,6 +11,12 @@
  * is closed. SNMP is served in between, so a slow or hostile browser cannot
  * stall the agent.
  *
+ * A firmware upload (POST /firmware/upload) is the one request whose body is
+ * not buffered: after the session check it is read 512 bytes at a time into
+ * the update service (fw_update_service.h), which writes it to the other
+ * slot; 30 s without data ends it. After a verified upload the device
+ * restarts into the new firmware, on trial.
+ *
  * Login: user "admin". Until a password is set with serial menu option 6 the
  * device default password is used: 10 random characters generated once and
  * kept in data/web_default.txt (not touched by a factory reset), shown only

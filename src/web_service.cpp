@@ -9,6 +9,7 @@
 #include "ambient_temp.h"
 #include "cpu_temp.h"
 #include "dhcp6_service.h"
+#include "fw_update_service.h"
 #include "hostname.h"
 #include "lldp_service.h"
 #include "net_stats.h"
@@ -29,7 +30,17 @@ static char defaultPassword[WEB_DEFAULT_PASSWORD_LEN + 1];
 static bool started = false;
 static Settings settingsBackup;  // restored when a save fails; static: too big for core 0's stack
 
-enum class Conn : uint8_t { Idle, Receiving, Checking, Sending };
+enum class Conn : uint8_t { Idle, Receiving, Checking, Uploading, Sending };
+
+// Firmware upload (POST /firmware/upload): the body is streamed into the update
+// service, never buffered whole. A pause this long without data ends it
+static const uint32_t UPLOAD_IDLE_TIMEOUT_MS = 30000;
+// Reads per webPoll() pass: one flash sector at most, so SNMP keeps answering
+static const int UPLOAD_READS_PER_POLL = 8;
+static uint8_t uploadBuf[512];  // static: kept off core 0's stack
+static uint32_t uploadLeft = 0;     // body bytes not read yet
+static uint32_t uploadLastDataMs = 0;
+static bool uploadAccepted = false;  // false once the file was refused: the rest is read and dropped
 
 // A login with an own password needs WEB_HASH_ITERATIONS SHA-256 rounds (~0.45 s).
 // Run them a few at a time (~5 ms per loop pass) so SNMP keeps answering.
@@ -208,11 +219,9 @@ public:
 
     void requestReboot() override { rebootRequested = true; }
 
-    // Firmware page: not wired up yet (Task 8 replaces these with the update service)
-    void firmware(WebFirmware& out) override {
-        strlcpy(out.lastResult, "not available", sizeof(out.lastResult));
-    }
-    bool switchSlot() override { return false; }
+    void firmware(WebFirmware& out) override { fwUpdateStatus(out); }
+
+    bool switchSlot() override { return fwUpdateSwitchSlot(); }
 
     void random(uint8_t* buf, size_t len) override {
         for (size_t i = 0; i < len; i += 4) {
@@ -277,6 +286,7 @@ bool webRegenerateDefaultPassword() {
 
 void webBegin() {
     loadDefaultPassword();
+    request.streamPath("/firmware/upload");  // its body goes to the update service (Conn::Uploading)
     started = true;
     hostnameAdvertiseWeb(currentSettings.webEnabled);  // before mDNS starts with the network
     if (currentSettings.webEnabled) {
@@ -321,6 +331,71 @@ static void respond() {
     staticBody = app.staticBody(staticLen);
     outPos = 0;
     conn = Conn::Sending;
+    if (app.authenticated()) fwUpdateNoteValidRequest();  // reachable: a firmware on trial is kept
+}
+
+static void closeConnection();
+
+/// Answer an upload (text/plain) and start sending it; a success reboots after it went out
+static void respondUpload(int code, const char* text) {
+    out = app.uploadResult(code, text, outLen);
+    staticBody = nullptr;
+    staticLen = 0;
+    outPos = 0;
+    connStartMs = millis();  // the send timeout starts now, not when the upload began
+    conn = Conn::Sending;
+    if (code == 200) rebootRequested = true;  // planned restart into the new slot, on trial
+}
+
+/// The head of POST /firmware/upload is in: check the session, then start feeding the update service
+static void startUpload() {
+    int code = app.authorizeUpload(request, peer, millis(), backend);
+    if (app.authenticated()) fwUpdateNoteValidRequest();
+    if (code != 0) {
+        respondUpload(code, code == 401 ? "not logged in" : code == 403 ? "bad CSRF token" : "busy or on trial");
+        return;
+    }
+    uint32_t length = (uint32_t)request.contentLength();
+    const char* error = nullptr;
+    if (!fwUpdateUploadBegin(length, error)) {
+        respondUpload(length == 0 ? 400 : length > FW_UPLOAD_MAX ? 413 : 409, error);
+        return;
+    }
+    size_t prefixLen = 0;
+    const uint8_t* prefix = request.bodyPrefix(prefixLen);
+    if (prefixLen > length) prefixLen = length;
+    uploadAccepted = prefixLen == 0 || fwUpdateUploadFeed(prefix, prefixLen);
+    uploadLeft = length - (uint32_t)prefixLen;
+    uploadLastDataMs = millis();
+    conn = Conn::Uploading;
+}
+
+/// Read the next part of the upload body; answer when all of it is in, give up on a silent client
+static void pollUpload() {
+    for (int i = 0; i < UPLOAD_READS_PER_POLL && uploadLeft > 0 && client.available() > 0; i++) {
+        size_t want = uploadLeft < sizeof(uploadBuf) ? uploadLeft : sizeof(uploadBuf);
+        int n = client.read(uploadBuf, want);  // never more than the buffer it goes into
+        if (n <= 0) break;
+        uploadLeft -= (uint32_t)n;
+        uploadLastDataMs = millis();
+        if (uploadAccepted) uploadAccepted = fwUpdateUploadFeed(uploadBuf, (size_t)n);
+    }
+    if (uploadLeft == 0) {
+        char version[17];
+        const char* error = nullptr;
+        if (fwUpdateUploadFinish(version, error)) {
+            respondUpload(200, version);
+        } else {
+            // The file was refused (400), unless the device itself failed to write it (500)
+            bool deviceFault = strcmp(error, "write failed") == 0 || strcmp(error, "boot record not written") == 0;
+            respondUpload(deviceFault ? 500 : 400, error);
+        }
+        return;
+    }
+    if ((!client.connected() && client.available() <= 0) || millis() - uploadLastDataMs > UPLOAD_IDLE_TIMEOUT_MS) {
+        fwUpdateUploadAbort();
+        closeConnection();  // the client is gone or silent: no answer
+    }
 }
 
 static void closeConnection() {
@@ -369,7 +444,9 @@ void webPoll() {
             if (n <= 0) break;
             request.feed(buf, (size_t)n);
         }
-        if (request.state() != HttpParse::Incomplete) {
+        if (request.state() == HttpParse::Streaming) {
+            startUpload();
+        } else if (request.state() != HttpParse::Incomplete) {
             if (needsHashedCheck()) {
                 char password[WEB_PASSWORD_MAX + 2];
                 if (!formValue(request.body(), request.bodyLength(), "password", password, sizeof(password))) {
@@ -386,6 +463,8 @@ void webPoll() {
             return;
         }
     }
+
+    if (conn == Conn::Uploading) pollUpload();
 
     if (conn == Conn::Checking && passwordCheck.step(HASH_ROUNDS_PER_POLL)) {
         respond();

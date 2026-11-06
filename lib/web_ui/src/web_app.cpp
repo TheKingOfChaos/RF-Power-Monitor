@@ -418,6 +418,7 @@ const char* WebApp::login(const HttpRequest& req, const SourceKey& sourceIP, uin
         size_t slot = _sessions.create(random, nowMs);
         memset(random, 0, sizeof(random));
         backend.log(sourceIP, WebEvent::LoggedIn);
+        _authenticated = true;
         char cookie[128];
         TextBuffer c(cookie, sizeof(cookie));
         c.add("Set-Cookie: sid=");
@@ -763,6 +764,7 @@ int WebApp::authorizeUpload(const HttpRequest& req, const SourceKey& source, uin
     if (req.header("Cookie", _cookies, sizeof(_cookies)) && cookieValue(_cookies, "sid", token, sizeof(token))) {
         slot = _sessions.find(token, nowMs);
     }
+    _authenticated = slot >= 0;
     if (slot < 0) {
         backend.log(source, WebEvent::UploadRefused);
         return 401;
@@ -812,6 +814,7 @@ const char* WebApp::handle(const HttpRequest& req, const SourceKey& sourceIP, ui
     _staticBody = nullptr;
     _staticLen = 0;
     _scripts = false;
+    _authenticated = false;
     if (req.state() == HttpParse::TooLarge) {
         return notice(413, "Payload Too Large", "Request too large", "The request was too large.", len);
     }
@@ -824,6 +827,7 @@ const char* WebApp::handle(const HttpRequest& req, const SourceKey& sourceIP, ui
     if (req.header("Cookie", _cookies, sizeof(_cookies)) && cookieValue(_cookies, "sid", token, sizeof(token))) {
         slot = _sessions.find(token, nowMs);
     }
+    _authenticated = slot >= 0;
 
     const char* path = req.path();
     bool get = req.method() == HttpMethod::Get, post = req.method() == HttpMethod::Post;

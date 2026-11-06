@@ -158,6 +158,14 @@ public:
      */
     const char* uploadResult(int code, const char* text, size_t& len);
 
+    /**
+     * @brief Did the last request (handle() or authorizeUpload()) come from a logged-in browser?
+     *
+     * true for a valid session cookie (whatever the request then asked for) and
+     * for a successful login; a firmware on trial counts that as reachable.
+     */
+    bool authenticated() const { return _authenticated; }
+
     /// Log every browser out, e.g. after the password changed
     void logoutAll() { _sessions.clear(); }
 
@@ -196,6 +204,7 @@ private:
     WebSessions _sessions;
     WebStatus _status;  // ~340 bytes: a member, not on core 0's stack
     WebFirmware _fw;    // ~150 bytes, same
+    bool _authenticated = false;  ///< see authenticated()
     bool _scripts = false;  ///< the page being built is the Firmware page: its policy allows its script
     char _scriptHash[45];   ///< base64 SHA-256 of that script, for the policy
     LoginThrottle _throttle;

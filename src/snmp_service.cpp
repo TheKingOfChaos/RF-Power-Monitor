@@ -9,6 +9,7 @@
 #include <snmp_trap.h>
 #include "ambient_temp.h"
 #include "cpu_temp.h"
+#include "fw_update_service.h"
 #include "host_stats.h"
 #include "hostname.h"
 #include "lldp_service.h"
@@ -288,9 +289,11 @@ void snmpPoll() {
         case SnmpOutcome::NoRoom:
             // Right community: exempt from the shared bucket, so spoofed floods cannot starve it
             limiter.markTrusted(source);
+            fwUpdateNoteValidRequest();  // reachable: a firmware on trial is kept
             break;
         case SnmpOutcome::RespondedBulk:
             // A GetBulk with a spoofed source must not give that address the larger trusted budget
+            fwUpdateNoteValidRequest();
             break;
         case SnmpOutcome::BadCommunity:
             logAccess(source, AccessEvent::BadCommunity);

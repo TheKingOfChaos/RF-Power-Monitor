@@ -18,8 +18,9 @@
 /// Watchdog timeout; the RP2040 allows at most ~8.3 s
 constexpr uint32_t WATCHDOG_TIMEOUT_MS = 8000;
 
-/// Record why this start happened and take over the watchdog (WATCHDOG_TIMEOUT_MS).
-/// Call first in setup(), right after bootInfoBegin() and before diagBegin().
+/// Record why this start happened (from the boot program, fwUpdateRestartCause()) and take over the
+/// watchdog (WATCHDOG_TIMEOUT_MS). Call first in setup(), right after bootInfoBegin() and before
+/// fwUpdateBegin() and diagBegin().
 void watchdogBegin();
 /// Print the restart cause (after the serial terminal wait)
 void watchdogPrintCause();

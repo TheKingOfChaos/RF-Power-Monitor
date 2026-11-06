@@ -4,6 +4,12 @@ The hidden menu commands "stall0" and "stall1" hang core 0 or core 1 for good;
 the watchdog must then restart the device, and the status screen must say so.
 Each test restarts the device once; settings are not touched.
 
+Three crash restarts in a row make the boot program start the other firmware
+slot (FW_CRASH_LIMIT), if it holds a valid image. A stall test therefore never
+stalls right after a crash restart: when the last restart was the watchdog, it
+first restarts the device the planned way (menu option 2), which clears the
+crash count. So the tests never cause more than one crash in a row.
+
 Run:
     %USERPROFILE%\\.platformio\\penv\\Scripts\\python.exe -m unittest discover -s test/hil -p "test_watchdog.py" -v
 """
@@ -79,7 +85,17 @@ class WatchdogTest(unittest.TestCase):
                 return time.time() - start
         return None
 
+    def planned_reboot(self):
+        """Restart through menu option 2 (DHCP, unchanged): a planned restart clears the crash count."""
+        if self.dev.status()["mode"] != "DHCP":
+            self.skipTest("uses option 2 (DHCP, unchanged) to reboot; device is in static mode")
+        self.dev.send("2", expect=r"Save and reboot\? \(y/n\): $")
+        self.dev.send("y", expect=r"Rebooting", timeout=10)
+        self.dev.reconnect_after_reboot()
+
     def stall_and_check(self, core):
+        if self.dev.status()["lastRestart"] == "watchdog":
+            self.planned_reboot()  # never two crash restarts in a row (see the module docstring)
         st = self.dev.wait_connected(timeout=60)
         before = st["watchdogRestarts"]
         self.assertIsNotNone(before, "status screen has no 'Last restart' line")
@@ -117,13 +133,8 @@ class WatchdogTest(unittest.TestCase):
         self.stall_and_check(1)
 
     def test_normal_reboot_is_not_counted_as_watchdog(self):
-        st = self.dev.status()
-        if st["mode"] != "DHCP":
-            self.skipTest("uses option 2 (DHCP, unchanged) to reboot; device is in static mode")
-        before = st["watchdogRestarts"]
-        self.dev.send("2", expect=r"Save and reboot\? \(y/n\): $")
-        self.dev.send("y", expect=r"Rebooting", timeout=10)
-        self.dev.reconnect_after_reboot()
+        before = self.dev.status()["watchdogRestarts"]
+        self.planned_reboot()
         st = self.dev.status()
         self.assertEqual("reboot", st["lastRestart"])
         self.assertEqual(before, st["watchdogRestarts"])
