@@ -4,5 +4,6 @@
     "description": "Firmware slot layout, slot header and Ed25519 verification (pure, freestanding-safe)",
     "license": "MIT",
     "frameworks": "*",
-    "platforms": "*"
+    "platforms": "*",
+    "dependencies": {"monocypher": "*"}
 }

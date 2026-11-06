@@ -4,5 +4,6 @@
     "description": "Boot record and boot decision for A/B firmware updates (pure, freestanding-safe)",
     "license": "MIT",
     "frameworks": "*",
-    "platforms": "*"
+    "platforms": "*",
+    "dependencies": {"fw_image": "*"}
 }
