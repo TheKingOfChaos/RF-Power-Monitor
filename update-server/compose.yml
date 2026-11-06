@@ -10,7 +10,8 @@ services:
     image: rfupdate:local
     container_name: rfupdate
     ports:
-      - "8071:8071"
+      # host port: RFUPDATE_PORT in .env (gitignored), default 8071
+      - "${RFUPDATE_PORT:-8071}:8071"
     volumes:
       - rfupdate-data:/data
     restart: unless-stopped

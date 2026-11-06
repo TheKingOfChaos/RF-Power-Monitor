@@ -31,7 +31,7 @@ EOF
 docker compose up -d --build
 ```
 
-The site listens on TCP **8071** (LibreNMS uses 8070). Devices on the LAN need to
+The site listens on TCP **8071** (LibreNMS uses 8070). If 8071 is taken on the PC, set another host port in `update-server/.env` (gitignored), e.g. `RFUPDATE_PORT=8074`, and use that port in the devices' URL. Devices on the LAN need to
 reach it: on Windows with WSL in mirrored mode, add the same kind of firewall rules
 as for LibreNMS (a Hyper-V firewall rule and a Windows rule for TCP 8071).
 
