@@ -102,6 +102,11 @@
    - Must recover from a corrupt or half-written copy by using the other one
    - Changes to the JSON layout must keep older files loadable, or bump
      SETTINGS_VERSION and add a migration with a test
+   - A firmware that changes `SETTINGS_VERSION` writes the new layout to new
+     files and keeps the old layout's files intact and updated, so a rollback
+     or downgrade to older firmware comes up with its settings. The change
+     comes with a test that an older-layout load still succeeds after a save
+     by the new code
 
 ## Documentation Requirements
 
