@@ -15,10 +15,17 @@
  *   POST /ipv6      static IPv6 address and gateway (empty = none); saves and reboots
  *   POST /reboot
  *   POST /disable   turn the web interface off (asks first; confirm=yes does it)
+ *   GET  /firmware  firmware page: slots, upload form, switch form
+ *   POST /firmware/switch  boot the other slot (needs confirm=yes); reboots
+ *   GET  /firmware/status  the same facts as text/plain key=value lines (fw_update.py)
+ *   POST /firmware/upload  not here: the body is streamed, see HttpRequest::streamPath();
+ *                  authorizeUpload() checks the head, uploadResult() builds the answer
  *   GET  /favicon.svg  the logo, no login
  *   GET  /static/bootstrap-<version>.min.css  Bootstrap from flash, gzip, cached a year, no login
  * Every POST except /login needs a valid session cookie and the session's
- * CSRF token in the form. The cookie is HttpOnly and SameSite=Strict.
+ * CSRF token in the form (the upload: in the X-CSRF-Token header). The cookie
+ * is HttpOnly and SameSite=Strict. The pages have no scripts, except the
+ * Firmware page: its upload script is allowed by that page's own policy.
  */
 
 #include <stddef.h>
@@ -68,6 +75,21 @@ struct WebStatus {
     char lldpSwitchAddr[46];  ///< Its management address, empty if none
 };
 
+/**
+ * @brief What the Firmware page shows. Plain text, so this library does not
+ *        depend on the update libraries.
+ */
+struct WebFirmware {
+    uint8_t runningSlot;        ///< 0 = slot A, 1 = slot B
+    char runningVersion[17];
+    bool trial;                 ///< the running firmware is on trial (not yet kept)
+    char otherVersion[17];      ///< version of the other slot, empty when it is not OK
+    char otherProblem[24];      ///< why the other slot is not OK (slotCheckName), empty when OK
+    char lastResult[64];        ///< result of the last update, e.g. "ok 3.3.0" or an error name, may be empty
+    char keyFingerprint[17];    ///< fingerprint of the update signing key
+    bool uploading;             ///< an upload is in progress
+};
+
 /// Events the backend may log
 enum class WebEvent : uint8_t { LoginFailed, LoginLocked, LoggedIn };
 
@@ -93,6 +115,11 @@ public:
     virtual bool disableWeb() = 0;
     /// Reboot once the response has been sent
     virtual void requestReboot() = 0;
+    /// Fill out for the Firmware page (out is zeroed first)
+    virtual void firmware(WebFirmware& out) = 0;
+    /// Make the other slot the one to boot; false when it is not OK or the running firmware is on trial.
+    /// On success the caller asks for a reboot
+    virtual bool switchSlot() = 0;
     /// Fill out with random bytes from a good source
     virtual void random(uint8_t* out, size_t len) = 0;
     /// source: the client address (lib/access_control SourceKey)
@@ -113,6 +140,23 @@ public:
      * @return The full HTTP response; valid until the next call
      */
     const char* handle(const HttpRequest& req, const SourceKey& source, uint32_t nowMs, WebBackend& backend, size_t& len);
+
+    /**
+     * @brief May this streamed POST /firmware/upload go on?
+     * @param req A request in state Streaming (its headers are read)
+     * @return 0 when the session cookie is valid and the X-CSRF-Token header matches the session's
+     *         and no upload is running and the firmware is not on trial; else the HTTP status:
+     *         401 no session, 403 CSRF token missing or wrong, 409 trial or an upload in progress
+     */
+    int authorizeUpload(const HttpRequest& req, const SourceKey& source, uint32_t nowMs, WebBackend& backend);
+
+    /**
+     * @brief The full text/plain response to an upload
+     * @param code 200 (or 0) for success, else the HTTP status of the failure
+     * @param text The new version on success (body "ok <version>"), else the error name
+     * @return The response, valid until the next call
+     */
+    const char* uploadResult(int code, const char* text, size_t& len);
 
     /// Log every browser out, e.g. after the password changed
     void logoutAll() { _sessions.clear(); }
@@ -135,6 +179,11 @@ private:
     const char* community(const HttpRequest& req, size_t slot, WebBackend& backend, size_t& len);
     const char* hostname(const HttpRequest& req, size_t slot, WebBackend& backend, size_t& len);
     const char* disable(const HttpRequest& req, size_t slot, WebBackend& backend, size_t& len);
+    const char* firmwarePage(int code, const char* reason, size_t slot, WebBackend& backend, const char* message,
+                             bool error, size_t& len);
+    const char* firmwareSwitch(const HttpRequest& req, size_t slot, WebBackend& backend, size_t& len);
+    const char* firmwareStatus(WebBackend& backend, size_t& len);
+    const char* plainResponse(int code, const char* body, size_t& len);
     const char* favicon(size_t& len);
     const char* mainPage(int code, const char* reason, size_t slot, WebBackend& backend, const char* message,
                          bool error, size_t& len);
@@ -146,6 +195,8 @@ private:
 
     WebSessions _sessions;
     WebStatus _status;  // ~340 bytes: a member, not on core 0's stack
+    WebFirmware _fw;    // ~150 bytes, same
+    bool _scripts = false;  ///< the page being built is the Firmware page: its policy allows its script
     LoginThrottle _throttle;
     char _cookies[WEB_COOKIE_HEADER_MAX];
     char _body[WEB_BODY_MAX];

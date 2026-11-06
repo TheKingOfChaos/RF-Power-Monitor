@@ -524,9 +524,18 @@ public:
     int failed = 0, locked = 0, loggedIn = 0;
     uint8_t seed = 1;
     WebStatus st;
+    WebFirmware fw;
+    bool switchOk = true;
+    int switches = 0;
 
     FakeBackend() {
         memset(&st, 0, sizeof(st));
+        memset(&fw, 0, sizeof(fw));
+        fw.runningSlot = 0;
+        strcpy(fw.runningVersion, "3.2.0");
+        strcpy(fw.otherVersion, "3.1.0");
+        strcpy(fw.lastResult, "ok 3.2.0");
+        strcpy(fw.keyFingerprint, "0123456789abcdef");
         st.version = "2.0.0";
         st.uptimeSeconds = 90061;
         st.mainsKnown = true;
@@ -553,6 +562,11 @@ public:
         strcpy(st.lldpSwitch, "none seen");
     }
     void status(WebStatus& out) override { out = st; }
+    void firmware(WebFirmware& out) override { out = fw; }
+    bool switchSlot() override {
+        switches++;
+        return switchOk;
+    }
     bool checkPassword(const char* p) override {
         passwordChecks++;
         return password == p;
@@ -1381,6 +1395,384 @@ static void test_longest_values_with_an_error_message_still_fit_the_page() {
     }
 }
 
+// ---- streaming upload request and the Firmware page ----
+
+static const size_t UPLOAD_MAX = 0xD7000u * 2 + 64;
+
+static HttpParse streamFeed(HttpRequest& r, const std::string& raw) {
+    r.reset();
+    r.streamPath("/firmware/upload");
+    return r.feed((const uint8_t*)raw.data(), raw.size());
+}
+
+static void test_stream_path_returns_streaming_with_prefix() {
+    HttpRequest r;
+    HttpParse p = streamFeed(r, "POST /firmware/upload HTTP/1.1\r\nHost: d\r\nContent-Length: 900000\r\n\r\nABCDEFGH");
+    TEST_ASSERT_EQUAL(HttpParse::Streaming, p);
+    TEST_ASSERT_EQUAL(HttpParse::Streaming, r.state());
+    TEST_ASSERT_EQUAL(HttpMethod::Post, r.method());
+    TEST_ASSERT_EQUAL_STRING("/firmware/upload", r.path());
+    TEST_ASSERT_EQUAL(900000, r.contentLength());
+    size_t n = 0;
+    const uint8_t* prefix = r.bodyPrefix(n);
+    TEST_ASSERT_EQUAL(8, n);
+    TEST_ASSERT_EQUAL_MEMORY("ABCDEFGH", prefix, 8);
+    // More bytes after the head are the caller's to stream: the parser keeps its state
+    TEST_ASSERT_EQUAL(HttpParse::Streaming, r.feed((const uint8_t*)"X", 1));
+    // Headers stay readable
+    char v[16];
+    TEST_ASSERT_TRUE(r.header("Host", v, sizeof(v)));
+}
+
+static void test_stream_path_head_alone_streams_with_empty_prefix() {
+    HttpRequest r;
+    TEST_ASSERT_EQUAL(HttpParse::Streaming,
+                      streamFeed(r, "POST /firmware/upload HTTP/1.1\r\nContent-Length: 5\r\n\r\n"));
+    size_t n = 99;
+    r.bodyPrefix(n);
+    TEST_ASSERT_EQUAL(0, n);
+}
+
+static void test_stream_path_without_content_length_is_bad() {
+    HttpRequest r;
+    TEST_ASSERT_EQUAL(HttpParse::Bad, streamFeed(r, "POST /firmware/upload HTTP/1.1\r\nHost: d\r\n\r\n"));
+    TEST_ASSERT_EQUAL(HttpParse::Bad, streamFeed(r, "POST /firmware/upload HTTP/1.1\r\nContent-Length: 0\r\n\r\n"));
+    TEST_ASSERT_EQUAL(HttpParse::Bad, streamFeed(r, "POST /firmware/upload HTTP/1.1\r\nContent-Length: 12x\r\n\r\n"));
+    TEST_ASSERT_EQUAL(HttpParse::Bad,
+                      streamFeed(r, "POST /firmware/upload HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n"));
+}
+
+static void test_stream_path_over_max_is_too_large() {
+    HttpRequest r;
+    TEST_ASSERT_EQUAL(HttpParse::Streaming,
+                      streamFeed(r, "POST /firmware/upload HTTP/1.1\r\nContent-Length: " +
+                                        std::to_string(UPLOAD_MAX) + "\r\n\r\n"));
+    TEST_ASSERT_EQUAL(HttpParse::TooLarge,
+                      streamFeed(r, "POST /firmware/upload HTTP/1.1\r\nContent-Length: " +
+                                        std::to_string(UPLOAD_MAX + 1) + "\r\n\r\n"));
+    TEST_ASSERT_EQUAL(HttpParse::TooLarge,
+                      streamFeed(r, "POST /firmware/upload HTTP/1.1\r\nContent-Length: 99999999999\r\n\r\n"));
+}
+
+static void test_stream_prefix_longer_than_content_length_is_bad() {
+    HttpRequest r;
+    TEST_ASSERT_EQUAL(HttpParse::Bad,
+                      streamFeed(r, "POST /firmware/upload HTTP/1.1\r\nContent-Length: 3\r\n\r\nABCD"));
+}
+
+static void test_other_paths_still_buffered() {
+    HttpRequest r;
+    r.streamPath("/firmware/upload");
+    // A large body on another path is still refused, a small one still buffered and Complete
+    const std::string big = "POST /login HTTP/1.1\r\nContent-Length: 300000\r\n\r\n";
+    TEST_ASSERT_EQUAL(HttpParse::TooLarge, r.feed((const uint8_t*)big.data(), big.size()));
+    r.reset();
+    const std::string small = "POST /login HTTP/1.1\r\nContent-Length: 4\r\n\r\nuser";
+    TEST_ASSERT_EQUAL(HttpParse::Complete, r.feed((const uint8_t*)small.data(), small.size()));
+    TEST_ASSERT_EQUAL(4, r.bodyLength());
+    // GET on the stream path is an ordinary request, and the stream path survives reset()
+    r.reset();
+    const std::string g = "GET /firmware/upload HTTP/1.1\r\nHost: d\r\n\r\n";
+    TEST_ASSERT_EQUAL(HttpParse::Complete, r.feed((const uint8_t*)g.data(), g.size()));
+    r.reset();
+    const std::string again = "POST /firmware/upload HTTP/1.1\r\nContent-Length: 9\r\n\r\n";
+    TEST_ASSERT_EQUAL(HttpParse::Streaming, r.feed((const uint8_t*)again.data(), again.size()));
+}
+
+/// Parse an upload request head and ask the app whether it may go on
+static int uploadStatus(const std::string& cookie, const std::string& csrfHeader, uint32_t now = 1000) {
+    static HttpRequest req;
+    std::string raw = "POST /firmware/upload HTTP/1.1\r\nHost: d\r\n";
+    if (!cookie.empty()) raw += "Cookie: sid=" + cookie + "\r\n";
+    if (!csrfHeader.empty()) raw += "X-CSRF-Token: " + csrfHeader + "\r\n";
+    raw += "Content-Length: 900000\r\n\r\n";
+    TEST_ASSERT_EQUAL(HttpParse::Streaming, streamFeed(req, raw));
+    return app->authorizeUpload(req, 0x0A0A0641, now, *fb);
+}
+
+static void test_upload_needs_session() {
+    webSetUp();
+    std::string csrf;
+    std::string token = logIn(csrf);
+    TEST_ASSERT_EQUAL(401, uploadStatus("", csrf));
+    TEST_ASSERT_EQUAL(401, uploadStatus("0123456789abcdef0123456789abcdef", csrf));
+    // An expired session is no session
+    TEST_ASSERT_EQUAL(0, uploadStatus(token, csrf));
+    TEST_ASSERT_EQUAL(401, uploadStatus(token, csrf, 1000 + WEB_SESSION_IDLE_MS + 1));
+}
+
+static void test_upload_needs_csrf_header() {
+    webSetUp();
+    std::string csrf;
+    std::string token = logIn(csrf);
+    TEST_ASSERT_EQUAL(403, uploadStatus(token, ""));
+    std::string wrong = csrf;
+    wrong[0] = wrong[0] == 'a' ? 'b' : 'a';
+    TEST_ASSERT_EQUAL(403, uploadStatus(token, wrong));
+    TEST_ASSERT_EQUAL(403, uploadStatus(token, csrf.substr(0, csrf.size() - 1)));
+    TEST_ASSERT_EQUAL(0, uploadStatus(token, csrf));
+}
+
+static void test_upload_refused_while_on_trial() {
+    webSetUp();
+    std::string csrf;
+    std::string token = logIn(csrf);
+    fb->fw.trial = true;
+    TEST_ASSERT_EQUAL(409, uploadStatus(token, csrf));
+    // Authentication is checked first: a stranger learns nothing about the state
+    TEST_ASSERT_EQUAL(401, uploadStatus("", csrf));
+    TEST_ASSERT_EQUAL(403, uploadStatus(token, ""));
+    fb->fw.trial = false;
+    TEST_ASSERT_EQUAL(0, uploadStatus(token, csrf));
+}
+
+static void test_second_upload_while_busy_is_refused() {
+    webSetUp();
+    std::string csrf;
+    std::string token = logIn(csrf);
+    fb->fw.uploading = true;
+    TEST_ASSERT_EQUAL(409, uploadStatus(token, csrf));
+    fb->fw.uploading = false;
+    TEST_ASSERT_EQUAL(0, uploadStatus(token, csrf));
+}
+
+static std::string responseBody(const std::string& r) { return r.substr(r.find("\r\n\r\n") + 4); }
+
+static std::string uploadResponse(int code, const char* text) {
+    size_t len = 0;
+    const char* resp = app->uploadResult(code, text, len);
+    TEST_ASSERT_EQUAL(strlen(resp), len);
+    return std::string(resp, len);
+}
+
+static void test_upload_result_texts() {
+    webSetUp();
+    std::string r = uploadResponse(200, "3.3.0");
+    TEST_ASSERT_EQUAL(200, statusCode(r));
+    TEST_ASSERT_TRUE(r.find("Content-Type: text/plain") != std::string::npos);
+    TEST_ASSERT_TRUE(r.find("Cache-Control: no-store") != std::string::npos);
+    TEST_ASSERT_TRUE(r.find("Connection: close") != std::string::npos);
+    TEST_ASSERT_EQUAL_STRING("ok 3.3.0", responseBody(r).c_str());
+    TEST_ASSERT_EQUAL(responseBody(r).size(), atoi(between(r, "Content-Length: ", "\r\n").c_str()));
+
+    r = uploadResponse(409, "busy");
+    TEST_ASSERT_EQUAL(409, statusCode(r));
+    TEST_ASSERT_EQUAL_STRING("busy", responseBody(r).c_str());
+    r = uploadResponse(401, "not_logged_in");
+    TEST_ASSERT_EQUAL(401, statusCode(r));
+    r = uploadResponse(403, "bad_csrf");
+    TEST_ASSERT_EQUAL(403, statusCode(r));
+    r = uploadResponse(400, "bad_signature");
+    TEST_ASSERT_EQUAL(400, statusCode(r));
+    TEST_ASSERT_EQUAL_STRING("bad_signature", responseBody(r).c_str());
+    r = uploadResponse(413, "too_large");
+    TEST_ASSERT_EQUAL(413, statusCode(r));
+    // A text that is too long is cut, never overflows
+    r = uploadResponse(400, std::string(500, 'x').c_str());
+    TEST_ASSERT_EQUAL(400, statusCode(r));
+    TEST_ASSERT_TRUE(r.size() < 400);
+}
+
+static void test_firmware_page_needs_login() {
+    webSetUp();
+    std::string r = get("/firmware");
+    TEST_ASSERT_EQUAL(200, statusCode(r));
+    TEST_ASSERT_TRUE(r.find("name=\"password\"") != std::string::npos);  // the login page
+    TEST_ASSERT_TRUE(r.find("/firmware/upload") == std::string::npos);
+    TEST_ASSERT_EQUAL(405, statusCode(post("/firmware", "")));
+}
+
+static void test_firmware_page_shows_slots_and_fingerprint() {
+    webSetUp();
+    std::string csrf;
+    std::string page = get("/firmware", logIn(csrf));
+    TEST_ASSERT_EQUAL(200, statusCode(page));
+    TEST_ASSERT_TRUE(page.find("Running</th><td>slot A, version 3.2.0</td>") != std::string::npos);
+    TEST_ASSERT_TRUE(page.find("State</th><td><span class=\"badge text-bg-success\">kept</span></td>") !=
+                     std::string::npos);
+    TEST_ASSERT_TRUE(page.find("Other slot</th><td>slot B, version 3.1.0</td>") != std::string::npos);
+    TEST_ASSERT_TRUE(page.find("Last update</th><td>ok 3.2.0</td>") != std::string::npos);
+    TEST_ASSERT_TRUE(page.find("Signing key</th><td>0123456789abcdef</td>") != std::string::npos);
+    TEST_ASSERT_TRUE(page.find("type=\"file\"") != std::string::npos);
+    TEST_ASSERT_TRUE(page.find("action=\"/firmware/switch\"") != std::string::npos);
+    TEST_ASSERT_TRUE(page.find("name=\"confirm\"") != std::string::npos);
+    // The page's csrf token (for the upload script and the switch form) is the session's
+    TEST_ASSERT_TRUE(page.find("data-csrf=\"" + csrf + "\"") != std::string::npos);
+    TEST_ASSERT_TRUE(page.find("name=\"csrf\" value=\"" + csrf + "\"") != std::string::npos);
+    // Slot B running: the labels follow
+    fb->fw.runningSlot = 1;
+    page = get("/firmware", logIn(csrf));
+    TEST_ASSERT_TRUE(page.find("slot B, version 3.2.0") != std::string::npos);
+    TEST_ASSERT_TRUE(page.find("slot A, version 3.1.0") != std::string::npos);
+}
+
+static void test_firmware_page_shows_trial_and_unusable_other_slot() {
+    webSetUp();
+    fb->fw.trial = true;
+    fb->fw.otherVersion[0] = '\0';
+    strcpy(fb->fw.otherProblem, "bad_signature");
+    std::string csrf;
+    std::string page = get("/firmware", logIn(csrf));
+    TEST_ASSERT_TRUE(page.find("<span class=\"badge text-bg-warning\">on trial</span>") != std::string::npos);
+    TEST_ASSERT_TRUE(page.find("Other slot</th><td>slot B, not usable: bad_signature</td>") != std::string::npos);
+    fb->fw.lastResult[0] = '\0';
+    page = get("/firmware", logIn(csrf));
+    TEST_ASSERT_TRUE(page.find("Last update</th><td>none</td>") != std::string::npos);
+}
+
+static void test_firmware_page_escapes_versions() {
+    webSetUp();
+    strcpy(fb->fw.runningVersion, "<b>&\"'");
+    strcpy(fb->fw.otherVersion, "<i>x");
+    strcpy(fb->fw.lastResult, "<u>alert(1)</u>");
+    strcpy(fb->fw.keyFingerprint, "\"><x");
+    std::string csrf;
+    std::string page = get("/firmware", logIn(csrf));
+    TEST_ASSERT_TRUE(page.find("version &lt;b&gt;&amp;&quot;&#39;</td>") != std::string::npos);
+    TEST_ASSERT_TRUE(page.find("version &lt;i&gt;x</td>") != std::string::npos);
+    TEST_ASSERT_TRUE(page.find("&lt;u&gt;alert(1)&lt;/u&gt;") != std::string::npos);
+    TEST_ASSERT_TRUE(page.find("&quot;&gt;&lt;x") != std::string::npos);
+    TEST_ASSERT_TRUE(page.find("<b>&") == std::string::npos);
+    TEST_ASSERT_TRUE(page.find("<u>alert") == std::string::npos);
+    TEST_ASSERT_TRUE(page.find("<i>x") == std::string::npos);
+}
+
+static void test_firmware_page_script_policy_is_limited_to_that_page() {
+    webSetUp();
+    std::string csrf;
+    std::string token = logIn(csrf);
+    std::string fw = get("/firmware", token);
+    std::string csp = between(fw, "Content-Security-Policy: ", "\r\n");
+    TEST_ASSERT_TRUE(csp.find("script-src 'unsafe-inline'") != std::string::npos);
+    TEST_ASSERT_TRUE(csp.find("connect-src 'self'") != std::string::npos);
+    TEST_ASSERT_EQUAL(0, csp.find("default-src 'none'"));
+    TEST_ASSERT_TRUE(fw.find("<script>") != std::string::npos);
+    TEST_ASSERT_TRUE(fw.find("<script src") == std::string::npos);
+    // Every other page keeps the no-scripts policy, also after a Firmware page was built
+    const std::string others[] = {get("/", token), get("/"), get("/nothing"), post("/reboot", "csrf=x", token)};
+    for (const std::string& r : others) {
+        TEST_ASSERT_TRUE(between(r, "Content-Security-Policy: ", "\r\n").find("script-src") == std::string::npos);
+        TEST_ASSERT_TRUE(between(r, "Content-Security-Policy: ", "\r\n").find("connect-src") == std::string::npos);
+        TEST_ASSERT_TRUE(r.find("<script") == std::string::npos);
+    }
+}
+
+static void test_main_page_links_to_firmware_page() {
+    webSetUp();
+    std::string csrf;
+    std::string page = get("/", logIn(csrf));
+    TEST_ASSERT_TRUE(page.find("href=\"/firmware\"") != std::string::npos);
+    page = get("/firmware", logIn(csrf));
+    TEST_ASSERT_TRUE(page.find("href=\"/\"") != std::string::npos);
+}
+
+static void test_switch_needs_confirm_and_csrf() {
+    webSetUp();
+    std::string csrf;
+    std::string token = logIn(csrf);
+    // No session
+    TEST_ASSERT_EQUAL(403, statusCode(post("/firmware/switch", "csrf=" + csrf + "&confirm=yes")));
+    // No or wrong csrf
+    TEST_ASSERT_EQUAL(403, statusCode(post("/firmware/switch", "confirm=yes", token)));
+    TEST_ASSERT_EQUAL(403, statusCode(post("/firmware/switch", "csrf=nope&confirm=yes", token)));
+    // No confirmation: the page again with a message, nothing happens
+    std::string r = post("/firmware/switch", "csrf=" + csrf, token);
+    TEST_ASSERT_EQUAL(400, statusCode(r));
+    TEST_ASSERT_TRUE(r.find("alert alert-danger") != std::string::npos);
+    r = post("/firmware/switch", "csrf=" + csrf + "&confirm=no", token);
+    TEST_ASSERT_EQUAL(400, statusCode(r));
+    TEST_ASSERT_EQUAL(0, fb->switches);
+    TEST_ASSERT_EQUAL(0, fb->reboots);
+    TEST_ASSERT_EQUAL(405, statusCode(get("/firmware/switch", token)));
+}
+
+static void test_switch_switches_and_reboots() {
+    webSetUp();
+    std::string csrf;
+    std::string token = logIn(csrf);
+    std::string r = post("/firmware/switch", "csrf=" + csrf + "&confirm=yes", token);
+    TEST_ASSERT_EQUAL(200, statusCode(r));
+    TEST_ASSERT_EQUAL(1, fb->switches);
+    TEST_ASSERT_EQUAL(1, fb->reboots);
+    TEST_ASSERT_TRUE(r.find("restarts now") != std::string::npos);
+}
+
+static void test_switch_refused_when_other_slot_invalid() {
+    webSetUp();
+    std::string csrf;
+    std::string token = logIn(csrf);
+    fb->switchOk = false;
+    std::string r = post("/firmware/switch", "csrf=" + csrf + "&confirm=yes", token);
+    TEST_ASSERT_EQUAL(409, statusCode(r));
+    TEST_ASSERT_TRUE(r.find("alert alert-danger") != std::string::npos);
+    TEST_ASSERT_TRUE(r.find("action=\"/firmware/switch\"") != std::string::npos);  // the Firmware page again
+    TEST_ASSERT_EQUAL(1, fb->switches);
+    TEST_ASSERT_EQUAL(0, fb->reboots);
+}
+
+static void test_status_text_lists_all_keys() {
+    webSetUp();
+    std::string csrf;
+    std::string token = logIn(csrf);
+    std::string r = get("/firmware/status", token);
+    TEST_ASSERT_EQUAL(200, statusCode(r));
+    TEST_ASSERT_TRUE(r.find("Content-Type: text/plain") != std::string::npos);
+    TEST_ASSERT_TRUE(r.find("Cache-Control: no-store") != std::string::npos);
+    std::string body = responseBody(r);
+    TEST_ASSERT_EQUAL_STRING("running_slot=A\nrunning_version=3.2.0\nstate=kept\nslot_a=3.2.0\nslot_b=3.1.0\n"
+                             "last_result=ok 3.2.0\nkey=0123456789abcdef\n",
+                             body.c_str());
+    TEST_ASSERT_EQUAL(body.size(), atoi(between(r, "Content-Length: ", "\r\n").c_str()));
+    // Slot B on trial, slot A unusable: versions of unusable slots are empty
+    fb->fw.runningSlot = 1;
+    fb->fw.trial = true;
+    fb->fw.otherVersion[0] = '\0';
+    fb->fw.lastResult[0] = '\0';
+    body = responseBody(get("/firmware/status", token));
+    TEST_ASSERT_EQUAL_STRING("running_slot=B\nrunning_version=3.2.0\nstate=trial\nslot_a=\nslot_b=3.2.0\n"
+                             "last_result=\nkey=0123456789abcdef\n",
+                             body.c_str());
+    // Text that could break the one-line format is flattened
+    strcpy(fb->fw.lastResult, "a\nb\r=c");
+    TEST_ASSERT_TRUE(get("/firmware/status", token).find("last_result=a b =c\n") != std::string::npos);
+    TEST_ASSERT_EQUAL(405, statusCode(post("/firmware/status", "csrf=" + csrf, token)));
+}
+
+static void test_status_text_needs_login() {
+    webSetUp();
+    std::string r = get("/firmware/status");
+    TEST_ASSERT_EQUAL(401, statusCode(r));
+    TEST_ASSERT_TRUE(r.find("running_slot") == std::string::npos);
+    TEST_ASSERT_TRUE(r.find("0123456789abcdef") == std::string::npos);
+}
+
+static void test_longest_values_still_fit_the_firmware_page() {
+    webSetUp();
+    strcpy(fb->st.hostname, std::string(32, 'h').c_str());
+    strcpy(fb->fw.runningVersion, std::string(16, '"').c_str());  // every character escaped to 6
+    strcpy(fb->fw.otherVersion, std::string(16, '"').c_str());
+    strcpy(fb->fw.lastResult, std::string(63, '"').c_str());
+    strcpy(fb->fw.keyFingerprint, std::string(16, '"').c_str());
+    fb->fw.trial = true;
+    std::string csrf;
+    std::string token = logIn(csrf);
+    std::string page = get("/firmware", token);
+    TEST_ASSERT_EQUAL(200, statusCode(page));
+    TEST_ASSERT_TRUE(page.find("</html>") != std::string::npos);
+    // The unusable-slot variant and the refused-switch page too
+    fb->fw.otherVersion[0] = '\0';
+    strcpy(fb->fw.otherProblem, std::string(23, '"').c_str());
+    page = get("/firmware", token);
+    TEST_ASSERT_TRUE(page.find("</html>") != std::string::npos);
+    fb->switchOk = false;
+    fb->fw.trial = false;
+    page = post("/firmware/switch", "csrf=" + csrf + "&confirm=yes", token);
+    TEST_ASSERT_EQUAL(409, statusCode(page));
+    TEST_ASSERT_TRUE(page.find("</html>") != std::string::npos);
+    // The status text with the longest values
+    TEST_ASSERT_EQUAL(200, statusCode(get("/firmware/status", token)));
+}
+
 static void test_pages_carry_the_project_name() {
     webSetUp();
     std::string login = get("/");  // no session: the login page
@@ -1587,5 +1979,28 @@ int main() {
     RUN_TEST(test_empty_ipv6_form_removes_the_static_address);
     RUN_TEST(test_invalid_static_ipv6_is_not_saved);
     RUN_TEST(test_failed_ipv6_save_does_not_reboot);
+    RUN_TEST(test_stream_path_returns_streaming_with_prefix);
+    RUN_TEST(test_stream_path_head_alone_streams_with_empty_prefix);
+    RUN_TEST(test_stream_path_without_content_length_is_bad);
+    RUN_TEST(test_stream_path_over_max_is_too_large);
+    RUN_TEST(test_stream_prefix_longer_than_content_length_is_bad);
+    RUN_TEST(test_other_paths_still_buffered);
+    RUN_TEST(test_upload_needs_session);
+    RUN_TEST(test_upload_needs_csrf_header);
+    RUN_TEST(test_upload_refused_while_on_trial);
+    RUN_TEST(test_second_upload_while_busy_is_refused);
+    RUN_TEST(test_upload_result_texts);
+    RUN_TEST(test_firmware_page_needs_login);
+    RUN_TEST(test_firmware_page_shows_slots_and_fingerprint);
+    RUN_TEST(test_firmware_page_shows_trial_and_unusable_other_slot);
+    RUN_TEST(test_firmware_page_escapes_versions);
+    RUN_TEST(test_firmware_page_script_policy_is_limited_to_that_page);
+    RUN_TEST(test_main_page_links_to_firmware_page);
+    RUN_TEST(test_switch_needs_confirm_and_csrf);
+    RUN_TEST(test_switch_switches_and_reboots);
+    RUN_TEST(test_switch_refused_when_other_slot_invalid);
+    RUN_TEST(test_status_text_lists_all_keys);
+    RUN_TEST(test_status_text_needs_login);
+    RUN_TEST(test_longest_values_still_fit_the_firmware_page);
     return UNITY_END();
 }

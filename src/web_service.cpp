@@ -208,6 +208,12 @@ public:
 
     void requestReboot() override { rebootRequested = true; }
 
+    // Firmware page: not wired up yet (Task 8 replaces these with the update service)
+    void firmware(WebFirmware& out) override {
+        strlcpy(out.lastResult, "not available", sizeof(out.lastResult));
+    }
+    bool switchSlot() override { return false; }
+
     void random(uint8_t* buf, size_t len) override {
         for (size_t i = 0; i < len; i += 4) {
             uint32_t r = rp2040.hwrand32();

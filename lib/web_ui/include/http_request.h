@@ -9,6 +9,11 @@
  * into a fixed buffer, and the request is parsed once the headers and the
  * Content-Length body are complete. Anything larger than HTTP_REQUEST_MAX,
  * chunked bodies and malformed request lines are rejected.
+ *
+ * One path can be named with streamPath(): a POST to it is not buffered. The
+ * parser stops after the headers (state Streaming) and the caller reads the
+ * body from the connection itself, starting with bodyPrefix(), the body bytes
+ * that arrived together with the headers. It is used for the firmware upload.
  */
 
 #include <stddef.h>
@@ -16,12 +21,16 @@
 
 static const size_t HTTP_REQUEST_MAX = 2048;
 static const size_t HTTP_PATH_MAX = 64;
+/// Largest Content-Length on the stream path: an update file holds two slot images
+/// (2 x 0xD7000 bytes, lib/fw_image fw_layout.h) and a 64 byte header
+static const size_t HTTP_STREAM_MAX = 0xD7000u * 2 + 64;
 
 enum class HttpMethod : uint8_t { Other, Get, Post };
 
 enum class HttpParse : uint8_t {
     Incomplete,  ///< Need more bytes
     Complete,    ///< Request ready: method(), path(), header(), body()
+    Streaming,   ///< Headers of a POST to the stream path are in; the body is the caller's to read
     TooLarge,    ///< Headers or body exceed HTTP_REQUEST_MAX (answer 413)
     Bad          ///< Malformed or unsupported (answer 400)
 };
@@ -30,8 +39,14 @@ class HttpRequest {
 public:
     HttpRequest() { reset(); }
 
-    /// Forget the current request, ready for the next connection
+    /// Forget the current request, ready for the next connection (the stream path stays)
     void reset();
+
+    /**
+     * @brief The path whose POST body is not buffered (nullptr: none). The string must stay valid.
+     *        Needs a Content-Length of 1 to HTTP_STREAM_MAX; none or 0 is Bad, more is TooLarge.
+     */
+    void streamPath(const char* path) { _streamPath = path; }
 
     /// Add received bytes; returns the state after them
     HttpParse feed(const uint8_t* data, size_t len);
@@ -50,6 +65,15 @@ public:
     const char* body() const { return _buf + _bodyStart; }
     size_t bodyLength() const { return _contentLength; }
 
+    /// Announced body size (the Content-Length), also in state Streaming
+    size_t contentLength() const { return _contentLength; }
+
+    /// In state Streaming: the body bytes that came with the headers (len may be 0)
+    const uint8_t* bodyPrefix(size_t& len) const {
+        len = _len - _bodyStart;
+        return (const uint8_t*)_buf + _bodyStart;
+    }
+
 private:
     HttpParse parseHead();
 
@@ -60,6 +84,7 @@ private:
     size_t _contentLength;
     HttpParse _state;
     HttpMethod _method;
+    const char* _streamPath = nullptr;
     char _path[HTTP_PATH_MAX + 1];
 };
 

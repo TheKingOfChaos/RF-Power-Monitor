@@ -1,0 +1,80 @@
+// Host unit tests for the trial monitor (lib/fw_update): decides when a firmware
+// on trial is confirmed (a valid request arrived) or given up (unreachable).
+// Run: pio test -e native -f native/test_fw_trial
+
+#include <unity.h>
+#include <trial_monitor.h>
+
+void setUp() {}
+void tearDown() {}
+
+static void test_trial_confirms_after_valid_request() {
+    TrialMonitor m;
+    m.begin(1000);
+    TEST_ASSERT_EQUAL(TrialVerdict::Pending, m.poll(2000, true));
+    m.noteValidRequest();
+    TEST_ASSERT_EQUAL(TrialVerdict::Confirmed, m.poll(2010, true));
+    TEST_ASSERT_EQUAL(TrialVerdict::Confirmed, m.poll(FW_TRIAL_LIMIT_MS * 2, false));  // stays confirmed
+}
+
+static void test_trial_unreachable_after_10_min_with_network() {
+    TrialMonitor m;
+    m.begin(0);
+    TEST_ASSERT_EQUAL(TrialVerdict::Pending, m.poll(1, true));
+    TEST_ASSERT_EQUAL(TrialVerdict::Pending, m.poll(FW_TRIAL_REACH_MS - 1, true));
+    TEST_ASSERT_EQUAL(TrialVerdict::Unreachable, m.poll(FW_TRIAL_REACH_MS, true));
+}
+
+static void test_trial_time_without_network_does_not_count() {
+    TrialMonitor m;
+    m.begin(0);
+    // 20 minutes without network: well past the reach time, still pending
+    for (uint32_t t = 60000; t <= 1200000; t += 60000) {
+        TEST_ASSERT_EQUAL(TrialVerdict::Pending, m.poll(t, false));
+    }
+    // Network arrives: the reach time counts from here
+    uint32_t up = 1200000;
+    TEST_ASSERT_EQUAL(TrialVerdict::Pending, m.poll(up, true));
+    TEST_ASSERT_EQUAL(TrialVerdict::Pending, m.poll(up + FW_TRIAL_REACH_MS - 1, true));
+    TEST_ASSERT_EQUAL(TrialVerdict::Unreachable, m.poll(up + FW_TRIAL_REACH_MS, true));
+}
+
+static void test_trial_hard_limit_60_min_without_network() {
+    TrialMonitor m;
+    m.begin(5000);
+    TEST_ASSERT_EQUAL(TrialVerdict::Pending, m.poll(5000 + FW_TRIAL_LIMIT_MS - 1, false));
+    TEST_ASSERT_EQUAL(TrialVerdict::Unreachable, m.poll(5000 + FW_TRIAL_LIMIT_MS, false));
+}
+
+static void test_trial_survives_millis_wraparound() {
+    TrialMonitor m;
+    uint32_t start = 0xFFFFFFFFu - 100000u;  // 100 s before the wrap
+    m.begin(start);
+    TEST_ASSERT_EQUAL(TrialVerdict::Pending, m.poll(start + 50000u, true));
+    TEST_ASSERT_EQUAL(TrialVerdict::Pending, m.poll(start + FW_TRIAL_REACH_MS - 1, true));  // wrapped past 0
+    TEST_ASSERT_EQUAL(TrialVerdict::Unreachable, m.poll(start + FW_TRIAL_REACH_MS, true));
+
+    TrialMonitor n;
+    n.begin(start);
+    TEST_ASSERT_EQUAL(TrialVerdict::Pending, n.poll(start + 200000u, false));  // across the wrap, no network
+    n.noteValidRequest();
+    TEST_ASSERT_EQUAL(TrialVerdict::Confirmed, n.poll(start + 200001u, true));
+}
+
+static void test_trial_request_before_network_still_confirms() {
+    TrialMonitor m;
+    m.begin(0);
+    m.noteValidRequest();  // e.g. a request that arrived before the first poll saw the network
+    TEST_ASSERT_EQUAL(TrialVerdict::Confirmed, m.poll(100, false));
+}
+
+int main() {
+    UNITY_BEGIN();
+    RUN_TEST(test_trial_confirms_after_valid_request);
+    RUN_TEST(test_trial_unreachable_after_10_min_with_network);
+    RUN_TEST(test_trial_time_without_network_does_not_count);
+    RUN_TEST(test_trial_hard_limit_60_min_without_network);
+    RUN_TEST(test_trial_survives_millis_wraparound);
+    RUN_TEST(test_trial_request_before_network_still_confirms);
+    return UNITY_END();
+}

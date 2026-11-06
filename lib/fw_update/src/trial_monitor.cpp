@@ -1,0 +1,22 @@
+#include "trial_monitor.h"
+
+void TrialMonitor::begin(uint32_t nowMs) {
+    _startMs = nowMs;
+    _lastMs = nowMs;
+    _netMs = 0;
+    _requested = false;
+    _confirmed = false;
+}
+
+TrialVerdict TrialMonitor::poll(uint32_t nowMs, bool netReady) {
+    uint32_t step = nowMs - _lastMs;  // unsigned: correct across the millis() wrap
+    _lastMs = nowMs;
+    if (_requested) _confirmed = true;
+    if (_confirmed) return TrialVerdict::Confirmed;
+    if (netReady) {
+        _netMs += step;
+        if (_netMs < step) _netMs = 0xFFFFFFFFu;  // saturate, never wrap back to small
+    }
+    if (_netMs >= FW_TRIAL_REACH_MS || (nowMs - _startMs) >= FW_TRIAL_LIMIT_MS) return TrialVerdict::Unreachable;
+    return TrialVerdict::Pending;
+}

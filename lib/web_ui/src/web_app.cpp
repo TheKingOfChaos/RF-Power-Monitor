@@ -6,17 +6,22 @@
 #include "bootstrap_css.h"
 #include "logo_svg.h"
 
-// Headers on every page. The pages have no scripts at all; the policy keeps it that way.
+// Headers on every page. The pages have no scripts at all, except the Firmware page (its upload script);
+// the policy keeps it that way.
 // Bootstrap's form controls use small data: SVG images, the favicon is our own: img-src 'self' data:.
 static const char COMMON_HEADERS[] =
     "Content-Type: text/html; charset=utf-8\r\n"
     "Cache-Control: no-store\r\n"
     "X-Frame-Options: DENY\r\n"
     "X-Content-Type-Options: nosniff\r\n"
-    "Referrer-Policy: no-referrer\r\n"
+    "Referrer-Policy: no-referrer\r\n";
+static const char CSP_PAGE[] =
     "Content-Security-Policy: default-src 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; "
-    "form-action 'self'; frame-ancestors 'none'\r\n"
-    "Connection: close\r\n";
+    "form-action 'self'; frame-ancestors 'none'\r\n";
+/// The Firmware page: its inline script, which may only talk to this device
+static const char CSP_FIRMWARE_PAGE[] =
+    "Content-Security-Policy: default-src 'none'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; "
+    "script-src 'unsafe-inline'; connect-src 'self'; form-action 'self'; frame-ancestors 'none'\r\n";
 
 static void pageStart(TextBuffer& b, const char* title) {
     b.add("<!DOCTYPE html><html lang=\"en\"><head><meta charset=\"utf-8\">"
@@ -120,6 +125,8 @@ const char* WebApp::respond(int code, const char* reason, const char* extraHeade
     out.add(reason);
     out.add("\r\n");
     out.add(COMMON_HEADERS);
+    out.add(_scripts ? CSP_FIRMWARE_PAGE : CSP_PAGE);
+    out.add("Connection: close\r\n");
     if (extraHeaders) out.add(extraHeaders);
     out.add("Content-Length: ");
     size_t bodyLen = strlen(_body);
@@ -214,7 +221,8 @@ const char* WebApp::mainPage(int code, const char* reason, size_t slot, WebBacke
     b.addEscaped(st.hostname);
     b.add(" &middot; v");
     b.addEscaped(st.version ? st.version : "");
-    b.add("</span><form method=\"post\" action=\"/logout\" class=\"m-0\">");
+    b.add("</span><a class=\"btn btn-outline-light btn-sm\" href=\"/firmware\">Firmware</a>"
+          "<form method=\"post\" action=\"/logout\" class=\"m-0\">");
     csrfField(b, csrf);
     b.add("<button class=\"btn btn-outline-light btn-sm\" type=\"submit\">Log out</button></form></div>");
     navEnd(b);
@@ -553,6 +561,205 @@ const char* WebApp::disable(const HttpRequest& req, size_t slot, WebBackend& bac
                   "The web interface is now off. Turn it on again with serial menu option 8.", len);
 }
 
+// The upload script: raw file as the body, the CSRF token in a header, progress text, then a reload
+// once the device has had time to restart. Answers are shown with textContent, never as HTML.
+static const char UPLOAD_SCRIPT[] =
+    "(function(){var b=document.getElementById('fw-up'),f=document.getElementById('fw-file'),"
+    "m=document.getElementById('fw-msg');b.onclick=function(){var file=f.files[0];"
+    "if(!file){m.textContent='Choose an update file first.';return;}b.disabled=true;"
+    "var x=new XMLHttpRequest();x.open('POST','/firmware/upload');"
+    "x.setRequestHeader('X-CSRF-Token',b.getAttribute('data-csrf'));"
+    "x.upload.onprogress=function(e){if(e.lengthComputable)"
+    "m.textContent='Uploading '+Math.floor(e.loaded*100/e.total)+' %';};"
+    "x.onload=function(){m.textContent=x.responseText;if(x.status==200){"
+    "m.textContent+=' - the device restarts, this page reloads in 20 s';"
+    "setTimeout(function(){location.href='/';},20000);}else{b.disabled=false;}};"
+    "x.onerror=function(){m.textContent='The connection was lost. The device may be restarting: "
+    "reload this page in a minute.';b.disabled=false;};x.send(file);};})();";
+
+static char slotLetter(uint8_t slot) { return slot == 0 ? 'A' : 'B'; }
+
+const char* WebApp::firmwarePage(int code, const char* reason, size_t slot, WebBackend& backend, const char* text,
+                                 bool error, size_t& len) {
+    WebFirmware& fw = _fw;
+    memset(&fw, 0, sizeof(fw));
+    backend.firmware(fw);
+    const char* csrf = _sessions.csrf(slot);
+    bool otherOk = fw.otherVersion[0] != '\0';
+    char runLetter = slotLetter(fw.runningSlot), otherLetter = slotLetter(fw.runningSlot ? 0 : 1);
+
+    _scripts = true;  // this page's policy allows its script (respond() reads it)
+    TextBuffer b(_body, sizeof(_body));
+    pageStart(b, "RF-Power-Monitor firmware");
+    b.add("<div class=\"d-flex align-items-center gap-3\"><a class=\"btn btn-outline-light btn-sm\" href=\"/\">"
+          "Status</a><form method=\"post\" action=\"/logout\" class=\"m-0\">");
+    csrfField(b, csrf);
+    b.add("<button class=\"btn btn-outline-light btn-sm\" type=\"submit\">Log out</button></form></div>");
+    navEnd(b);
+    message(b, text, error);
+
+    char line[96];
+    b.add("<div class=\"row g-4\"><div class=\"col-lg-6\">");
+    cardStart(b, "Firmware slots");
+    b.add("<table class=\"table table-sm mb-0\"><tbody>");
+    TextBuffer lb(line, sizeof(line));
+    lb.add("slot ");
+    lb.add(&runLetter, 1);
+    lb.add(", version ");
+    lb.add(fw.runningVersion);
+    row(b, "Running", line);
+    badgeRow(b, "State", fw.trial ? "on trial" : "kept", fw.trial ? "warning" : "success");
+    lb = TextBuffer(line, sizeof(line));
+    lb.add("slot ");
+    lb.add(&otherLetter, 1);
+    if (otherOk) {
+        lb.add(", version ");
+        lb.add(fw.otherVersion);
+    } else {
+        lb.add(", not usable");
+        if (fw.otherProblem[0]) {
+            lb.add(": ");
+            lb.add(fw.otherProblem);
+        }
+    }
+    row(b, "Other slot", line);
+    row(b, "Last update", fw.lastResult[0] ? fw.lastResult : "none");
+    row(b, "Signing key", fw.keyFingerprint);
+    b.add("</tbody></table></div>");
+
+    cardStart(b, "Switch firmware", "mt-4");
+    b.add("<div class=\"card-body\"><form method=\"post\" action=\"/firmware/switch\">");
+    csrfField(b, csrf);
+    b.add("<div class=\"form-check mb-3\"><input class=\"form-check-input\" type=\"checkbox\" name=\"confirm\" "
+          "value=\"yes\" id=\"f-confirm\"><label class=\"form-check-label\" for=\"f-confirm\">Restart into the "
+          "other firmware</label></div><button class=\"btn btn-outline-danger\" type=\"submit\"");
+    if (!otherOk || fw.trial) b.add(" disabled");
+    b.add(">Switch and restart</button><span class=\"form-text ms-2\">Not possible while the running firmware "
+          "is on trial or the other slot is not usable.</span></form></div></div>");
+
+    b.add("</div><div class=\"col-lg-6\">");
+    cardStart(b, "Upload an update");
+    b.add("<div class=\"card-body\"><p class=\"form-text mt-0\">Choose the signed update file (.upd). The device "
+          "checks the signature, writes the other slot and restarts into the new firmware on trial. If it is "
+          "not reached over the network within about 10 minutes, it goes back to the previous firmware.</p>"
+          "<div class=\"mb-3\"><input class=\"form-control\" type=\"file\" id=\"fw-file\" accept=\".upd\"></div>"
+          "<button class=\"btn btn-primary\" type=\"button\" id=\"fw-up\" data-csrf=\"");
+    b.addEscaped(csrf);
+    b.add("\"");
+    if (fw.trial || fw.uploading) b.add(" disabled");
+    b.add(">Upload</button><p class=\"form-text mt-2 mb-0\" id=\"fw-msg\" role=\"status\"></p></div></div>"
+          "</div></div><script>");
+    b.add(UPLOAD_SCRIPT);
+    b.add("</script>");
+    pageEnd(b);
+    return respond(code, reason, nullptr, len);
+}
+
+const char* WebApp::firmwareSwitch(const HttpRequest& req, size_t slot, WebBackend& backend, size_t& len) {
+    char confirm[8];
+    if (!formValue(req.body(), req.bodyLength(), "confirm", confirm, sizeof(confirm)) || strcmp(confirm, "yes") != 0) {
+        return firmwarePage(400, "Bad Request", slot, backend, "Tick the box to confirm the switch.", true, len);
+    }
+    if (!backend.switchSlot()) {
+        return firmwarePage(409, "Conflict", slot, backend,
+                            "Cannot switch: the other firmware is not usable, or the running firmware is still on "
+                            "trial.", true, len);
+    }
+    backend.requestReboot();
+    return notice(200, "OK", "Restarting",
+                  "The device restarts now into the other firmware. Log in again in a few seconds.", len);
+}
+
+/// Add text on one line: control characters become spaces
+static void addFlat(TextBuffer& b, const char* text) {
+    for (const char* c = text; *c; c++) b.add((unsigned char)*c < 0x20 || *c == 0x7F ? " " : c, 1);
+}
+
+static const char* reasonPhrase(int code) {
+    switch (code) {
+    case 200: return "OK";
+    case 400: return "Bad Request";
+    case 401: return "Unauthorized";
+    case 403: return "Forbidden";
+    case 409: return "Conflict";
+    case 413: return "Payload Too Large";
+    default: return "Error";
+    }
+}
+
+const char* WebApp::plainResponse(int code, const char* body, size_t& len) {
+    TextBuffer out(_response, sizeof(_response));
+    out.add("HTTP/1.1 ");
+    out.addUnsigned((uint32_t)code);
+    out.add(" ");
+    out.add(reasonPhrase(code));
+    out.add("\r\nContent-Type: text/plain; charset=utf-8\r\n"
+            "Cache-Control: no-store\r\n"
+            "X-Content-Type-Options: nosniff\r\n"
+            "Connection: close\r\n"
+            "Content-Length: ");
+    out.addUnsigned((uint32_t)strlen(body));
+    out.add("\r\n\r\n");
+    out.add(body);
+    len = out.length();
+    return _response;
+}
+
+const char* WebApp::firmwareStatus(WebBackend& backend, size_t& len) {
+    WebFirmware& fw = _fw;
+    memset(&fw, 0, sizeof(fw));
+    backend.firmware(fw);
+    const char* slotA = fw.runningSlot == 0 ? fw.runningVersion : fw.otherVersion;
+    const char* slotB = fw.runningSlot == 0 ? fw.otherVersion : fw.runningVersion;
+    char text[384];
+    TextBuffer t(text, sizeof(text));
+    char letter = slotLetter(fw.runningSlot);
+    t.add("running_slot=");
+    t.add(&letter, 1);
+    t.add("\nrunning_version=");
+    addFlat(t, fw.runningVersion);
+    t.add(fw.trial ? "\nstate=trial" : "\nstate=kept");
+    t.add("\nslot_a=");
+    addFlat(t, slotA);
+    t.add("\nslot_b=");
+    addFlat(t, slotB);
+    t.add("\nlast_result=");
+    addFlat(t, fw.lastResult);
+    t.add("\nkey=");
+    addFlat(t, fw.keyFingerprint);
+    t.add("\n");
+    return plainResponse(200, text, len);
+}
+
+int WebApp::authorizeUpload(const HttpRequest& req, const SourceKey&, uint32_t nowMs, WebBackend& backend) {
+    int slot = -1;
+    char token[WEB_TOKEN_HEX + 2];
+    if (req.header("Cookie", _cookies, sizeof(_cookies)) && cookieValue(_cookies, "sid", token, sizeof(token))) {
+        slot = _sessions.find(token, nowMs);
+    }
+    if (slot < 0) return 401;
+    char csrf[WEB_TOKEN_HEX + 2];
+    if (!req.header("X-CSRF-Token", csrf, sizeof(csrf)) ||
+        !webConstantTimeEquals(csrf, _sessions.csrf((size_t)slot))) {
+        return 403;
+    }
+    WebFirmware& fw = _fw;
+    memset(&fw, 0, sizeof(fw));
+    backend.firmware(fw);
+    return (fw.trial || fw.uploading) ? 409 : 0;
+}
+
+const char* WebApp::uploadResult(int code, const char* text, size_t& len) {
+    char body[80];
+    TextBuffer b(body, sizeof(body));
+    bool ok = code == 0 || code == 200;
+    if (ok) b.add("ok ");
+    size_t room = sizeof(body) - 1 - b.length();
+    size_t n = text ? strlen(text) : 0;
+    b.add(text ? text : "", n < room ? n : room);  // a long text is cut
+    return plainResponse(ok ? 200 : code, body, len);
+}
+
 const char* WebApp::favicon(size_t& len) {
     static const char SVG[] = LOGO_SVG_FILE;
     TextBuffer out(_response, sizeof(_response));
@@ -574,6 +781,7 @@ const char* WebApp::handle(const HttpRequest& req, const SourceKey& sourceIP, ui
                            size_t& len) {
     _staticBody = nullptr;
     _staticLen = 0;
+    _scripts = false;
     if (req.state() == HttpParse::TooLarge) {
         return notice(413, "Payload Too Large", "Request too large", "The request was too large.", len);
     }
@@ -610,7 +818,18 @@ const char* WebApp::handle(const HttpRequest& req, const SourceKey& sourceIP, ui
         return login(req, sourceIP, nowMs, backend, len);
     }
 
-    bool action = strcmp(path, "/logout") == 0 || strcmp(path, "/network") == 0 ||
+    if (strcmp(path, "/firmware") == 0) {
+        if (!get) return notice(405, "Method Not Allowed", "Not allowed", "Use GET for this page.", len);
+        if (slot < 0) return loginPage(200, "OK", nullptr, len);
+        return firmwarePage(200, "OK", (size_t)slot, backend, nullptr, false, len);
+    }
+    if (strcmp(path, "/firmware/status") == 0) {
+        if (!get) return notice(405, "Method Not Allowed", "Not allowed", "Use GET for this page.", len);
+        if (slot < 0) return plainResponse(401, "not logged in\n", len);
+        return firmwareStatus(backend, len);
+    }
+
+    bool action = strcmp(path, "/firmware/switch") == 0 || strcmp(path, "/logout") == 0 || strcmp(path, "/network") == 0 ||
                   strcmp(path, "/community") == 0 || strcmp(path, "/reboot") == 0 ||
                   strcmp(path, "/hostname") == 0 || strcmp(path, "/disable") == 0 || strcmp(path, "/ipv6") == 0;
     if (!action) return notice(404, "Not Found", "Not found", "There is no such page.", len);
@@ -633,6 +852,7 @@ const char* WebApp::handle(const HttpRequest& req, const SourceKey& sourceIP, ui
     if (strcmp(path, "/community") == 0) return community(req, (size_t)slot, backend, len);
     if (strcmp(path, "/hostname") == 0) return hostname(req, (size_t)slot, backend, len);
     if (strcmp(path, "/disable") == 0) return disable(req, (size_t)slot, backend, len);
+    if (strcmp(path, "/firmware/switch") == 0) return firmwareSwitch(req, (size_t)slot, backend, len);
     backend.requestReboot();
     return notice(200, "OK", "Restarting", "The device restarts now. Log in again in a few seconds.", len);
 }

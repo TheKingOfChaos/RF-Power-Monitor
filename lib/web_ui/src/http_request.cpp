@@ -44,6 +44,7 @@ HttpParse HttpRequest::feed(const uint8_t* data, size_t len) {
         if (end == nullptr) return _state;
         _headEnd = (size_t)(end - _buf) + 4;
         _state = parseHead();
+        if (_state == HttpParse::Streaming && _len - _bodyStart > _contentLength) _state = HttpParse::Bad;
         if (_state != HttpParse::Incomplete) return _state;
     }
     if (_len - _bodyStart >= _contentLength) {
@@ -86,14 +87,20 @@ HttpParse HttpRequest::parseHead() {
     char value[24];
     if (header("Transfer-Encoding", value, sizeof(value))) return HttpParse::Bad;
     _contentLength = 0;
-    if (header("Content-Length", value, sizeof(value))) {
-        if (value[0] == '\0' || strlen(value) > 6) return value[0] ? HttpParse::TooLarge : HttpParse::Bad;
+    bool stream = _method == HttpMethod::Post && _streamPath != nullptr && strcmp(_path, _streamPath) == 0;
+    bool haveLength = header("Content-Length", value, sizeof(value));
+    if (haveLength) {
+        if (value[0] == '\0' || strlen(value) > (stream ? 9u : 6u)) return value[0] ? HttpParse::TooLarge : HttpParse::Bad;
         for (const char* c = value; *c; c++) {
             if (*c < '0' || *c > '9') return HttpParse::Bad;
             _contentLength = _contentLength * 10 + (size_t)(*c - '0');
         }
     }
     _bodyStart = _headEnd;
+    if (stream) {
+        if (_contentLength == 0) return HttpParse::Bad;
+        return _contentLength > HTTP_STREAM_MAX ? HttpParse::TooLarge : HttpParse::Streaming;
+    }
     if (_contentLength > HTTP_REQUEST_MAX - _bodyStart) return HttpParse::TooLarge;
     return HttpParse::Incomplete;
 }
