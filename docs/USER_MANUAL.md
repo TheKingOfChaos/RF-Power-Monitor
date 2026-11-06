@@ -23,6 +23,7 @@ The RF-Power-Monitor watches one mains supply and tells your monitoring system (
 | Onboard LED blinking slowly (2 Hz) | The factory reset button is being held |
 | Onboard LED blinking fast | Factory reset triggered, the device restarts |
 | Onboard LED blinking steadily, device not answering | The internal flash could not be read at start-up; see Troubleshooting |
+| Onboard LED: 3 short blinks, 1 long, repeating | The boot program found no firmware slot with a good signature; install a `-usb.uf2` over USB (see Updating the firmware) |
 
 ### The web page
 
@@ -36,7 +37,7 @@ Open **http://&lt;device address&gt;/** or **http://&lt;hostname&gt;.local/** an
 
 ![The web page (addresses, MAC and community are example values)](images/web/web-status.png)
 
-From the page you can change the network settings, the name and the SNMP community, restart the device, and log out. A session ends after 15 minutes without use.
+From the page you can change the network settings, the name and the SNMP community, update or switch the firmware (the **Firmware** page, see Updating the firmware), restart the device, and log out. A session ends after 15 minutes without use.
 
 ### The serial menu
 
@@ -254,14 +255,61 @@ Letting go before 10 s cancels the reset. The device keeps working while you hol
 
 ## Updating the firmware
 
-Settings are kept across firmware updates.
+From firmware 3.3.0 the device updates itself over the network, from its web page or from a script. Settings are kept. Only firmware **signed with your firmware key** is accepted (see the [setup manual](SETUP_MANUAL.md#firmware-signing-key)), so the web password alone cannot install anything. If a new firmware does not work, the device goes back to the old one by itself.
 
-1. Get the new `firmware.uf2` (built from this repository with PlatformIO, see the README's [Building and flashing](../README.md#building-and-flashing)).
+### How it works
+
+The flash holds two firmware **slots**, A and B, and a small boot program that checks the signature of a slot before it starts it. An update is always written to the slot that is **not** running; the running firmware is never touched. After the upload the device restarts into the new slot **on trial**:
+
+| State | Meaning |
+|---|---|
+| **Kept** | The running firmware is confirmed. The other slot holds the previous version as a fallback. |
+| **On trial** | The firmware is new and not yet confirmed. It becomes *kept* as soon as it has answered one valid request: an SNMP request with the right community (LibreNMS polling does this within seconds) or an authenticated web request (logging in to the page). |
+| **Rolled back** | The trial failed and the device is back on the previous firmware: it crashed or hung (the watchdog restarted it three times in a row), or the network was up for 10 minutes without a valid request, or 60 minutes passed on trial whatever the network did. The Firmware page, the status screen and SNMP say why (`rolled back (crash)` or `rolled back (unreachable)`), and the device sends the *firmwareRolledBack* trap. |
+
+Only a restart by the watchdog counts as a crash. Power cuts, PoE restarts and planned restarts (menu, web page, factory reset, the restart after an update) never do. The 10 minutes count only while the Ethernet link is up and the device has an address, so a switch that is down does not throw away a good release.
+
+If a **kept** firmware later crashes three times in a row (a bug that only shows after days), the boot program starts the other slot, if its signature is good, and the device reports a **fallback**: *Last update* reads `fallback (crash)` and the trap *firmwareRolledBack* is sent. The same text is used when the boot program finds that the active slot fails its signature check at start-up (damaged flash): that case is recorded with the crash result.
+
+Downgrades are allowed: any file signed with your key installs, an older version too.
+
+### From the web page
+
+1. Open the device's web page and click **Firmware** in the top bar. It shows the running slot and version, whether it is *kept* or *on trial*, the version in the other slot, the last update result and the **key id** the device trusts.
+2. Under **Upload an update**, choose the `rf-power-monitor-<version>.upd` file (about 0.8 MB) and press **Upload**. The page shows the progress. The device checks the signature while it receives the file, then answers `verified` and restarts. The page reloads after 20 seconds.
+3. The page shows **on trial** and then **kept** once the device has been reached (a few seconds with LibreNMS polling it, or when you log in again). Allow about 30 seconds from the upload to *kept*.
+4. **Switch firmware** restarts the device into the other slot, on trial, if that slot holds a good firmware and the running one is *kept*. Use it as a manual way back when a release works but you do not want it.
+
+Things to know while updating:
+
+- **The device is busy during an upload.** Each flash write takes tens of milliseconds and pauses the whole device, so SNMP answers can be slow or missed and the web page is slow. **Mains detection can be late by up to one flash erase (tens of milliseconds) while an upload is running.** The upload itself takes under half a minute: do not update during a mains test where the exact time matters.
+- **Uploads are refused while the firmware is on trial** (`on trial`), while another upload is running, and while a restart is pending. Wait until the page says *kept*, or until the trial has rolled back.
+- **A rejected upload empties the other slot** until the next good upload: the device starts writing the other slot as soon as the file's header checks out, so a file that then fails (bad signature, truncated, connection lost) leaves that slot unusable. The running firmware is not affected. The page then reads *Other slot: not usable* and *Last update: rejected: ...*, for example `bad signature`, `truncated`, `different key` (signed with a key this device does not trust, HTTP 403) or `on trial`. Upload again with a good file.
+- Update **one device at a time** if you do it by hand: a device on trial that nobody asks for 10 minutes rolls back.
+
+### With a script: `tools/fw_update.py`
+
+For many devices, or to avoid the browser (Python 3, standard library only; it needs `tools/fw_release.py` beside it):
+
+```powershell
+$env:RFPOWER_WEB_PASSWORD = "<the web password>"   # or leave it out and the script asks
+python tools/fw_update.py release/rf-power-monitor-3.3.0.upd 10.0.0.21 10.0.0.22
+python tools/fw_update.py file.upd --hosts-file devices.txt --continue --timeout-min 15
+```
+
+For each device, one at a time, it logs in as `admin`, compares the file's key id with the device's (a device that trusts another key is refused before anything is uploaded), uploads, waits for the restart and polls until the new version is **kept**. It prints one line per device: `updated`, `rejected: <reason>`, `rolled back: <last result>`, `unreachable` or `timeout`. It **stops at the first device that is not updated**, so a bad release does not reach the whole fleet; `--continue` carries on. The exit code is 0 only when every device was updated. The password is never an argument and never printed.
+
+### Over USB (first install, or a device that cannot start)
+
+The network update replaces only the two firmware slots. The boot program and the flash layout change only over USB. A device with firmware older than 3.3.0 needs this once, and so does a device whose slots both fail their check (the onboard LED then blinks 3 short and 1 long, forever).
+
+1. Get the release's `rf-power-monitor-<version>-usb.uf2` (see the [setup manual](SETUP_MANUAL.md#installing-or-recovering-over-usb)).
 2. Unplug USB, hold the **BOOTSEL** button on the module and plug USB in again. A drive called `RPI-RP2` appears.
-3. Copy `firmware.uf2` to that drive. The device restarts with the new firmware.
-4. Check the version in the web page's top bar or in LibreNMS (it picks up the new version at its next discovery, or at once with Rediscover).
+3. Copy the `-usb.uf2` file to that drive. The device restarts with the new firmware in slot A and nothing in slot B. Settings are kept.
 
-With PlatformIO installed, `pio run -e pico -t upload` does the same over the USB cable. Close PuTTY first.
+**Use only the release's `-usb.uf2` (or a build's `firmware_full.uf2`) on the BOOTSEL drive.** The plain `firmware.uf2` that PlatformIO also writes holds only the firmware image, without the boot program: copied to the drive it leaves a device that does not start, and the way back is to copy a `-usb.uf2` file the same way. With PlatformIO installed, `pio run -e pico -t upload` sends the right file over the USB cable (close PuTTY first).
+
+The boot program verifies the active slot at every start, which adds about a second to the start-up.
 
 ## Troubleshooting
 
@@ -278,6 +326,10 @@ With PlatformIO installed, `pio run -e pico -t upload` does the same over the US
 | Someone else knows the default web password | Serial menu option 7 makes a new random one; or set your own with option 6. |
 | The device restarted by itself | Status screen `Last restart:` says why. `watchdog` means the firmware hung and the 8 s watchdog restarted it; settings are kept. If it repeats, report it. |
 | Onboard LED blinks steadily, no network, no menu | The internal flash could not be read at start-up. Unplug and plug in again; if it stays, reinstall the firmware (see Updating). |
+| LED blinks 3 short, 1 long, no network, no menu | Neither firmware slot has a good signature. Install a `-usb.uf2` over USB (see Updating). |
+| Upload says `on trial`, `different key`, `bad signature` or `truncated` | `on trial`: wait until the Firmware page says *kept*. `different key`: the file is signed with a key this device does not trust (compare the key ids). `bad signature`, `truncated`: the file is damaged, get it again. |
+| `Last update:` says `rolled back` | The new firmware crashed or could not be reached, and the device went back by itself. The other slot still holds the bad version until the next update. |
+| The BOOTSEL drive took `firmware.uf2` and the device does not start | That file has no boot program. Copy a `-usb.uf2` file to the drive the same way. |
 | No text in PuTTY | PuTTY must be set to Serial, the right COM port, 115200. Press Enter. Only one program can use the COM port at a time. |
 | Temperature seems high | The ambient sensor sits on the board and warms with it; a few degrees above the room is normal. |
 

@@ -14,7 +14,7 @@ The rules for writing tests are in [.clinerules](../.clinerules), section *Testi
 
 ## CI
 
-[.github/workflows/tests.yml](../.github/workflows/tests.yml) runs on every push and pull request on GitHub: the native unit tests, the same tests under AddressSanitizer/UBSan, the SNMP agent against net-snmp (`scripts/host_agent_check.sh`, including MIB validation), and a firmware build that uploads `firmware.uf2` as an artifact. It also compiles the on-device test programs. The on-device and HIL tests need the Pico and are run locally.
+[.github/workflows/tests.yml](../.github/workflows/tests.yml) runs on every push and pull request on GitHub: the native unit tests, the same tests under AddressSanitizer/UBSan, the SNMP agent against net-snmp (`scripts/host_agent_check.sh`, including MIB validation), the tool tests (`test/tools`), and a firmware build that uploads `firmware_full.uf2` (boot program and slot A, the file for the BOOTSEL drive) as an artifact. It also compiles the on-device test programs. The on-device and HIL tests need the Pico and are run locally.
 
 ## One-time setup
 
@@ -44,6 +44,10 @@ The Pico is expected on `COM16` (set in `platformio.ini`; the HIL tests read `RF
 ## Running the tests
 
 `pio` is not on `PATH` by default. Use the full path, or the PlatformIO terminal / Testing panel in VS Code.
+
+`platformio.ini` has `default_envs = pico`, so a bare `pio run`, `pio test` or upload builds `pico` only. The `pico_b` environment (the same firmware linked for slot B) is built by `tools/fw_release.py` with `-e pico_b`, and an upload to it is refused. `pio test -e native` and the CI jobs name their environment and are unaffected.
+
+**Flashing a Pico by hand.** The Pico's flash holds the boot program, slot A and slot B (see the user manual). `pio run -e pico -t upload` and `pio test -e pico` send `firmware_full.uf2` (boot program, boot record and slot A). Copy only that file, or a release's `-usb.uf2`, to a BOOTSEL drive: the plain `firmware.uf2` the platform also writes has no boot program, and a device flashed with it does not start. `pio test -e pico` replaces the firmware with a test program; afterwards `pio run -e pico -t upload` puts the normal firmware back (slot A behind the boot program, kept).
 
 ```powershell
 $pio = "$env:USERPROFILE\.platformio\penv\Scripts\pio.exe"

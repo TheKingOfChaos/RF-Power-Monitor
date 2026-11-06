@@ -15,6 +15,8 @@ The device works in LibreNMS as a plain SNMP device out of the box: it answers S
 | Temperature sensor "CPU (RP2040 die)", warning at 60 °C, critical at 70 °C, low limit −20 °C | `cpuTemperature` / 10 |
 | Temperature sensor "Ambient (TMP1075)", warning at 40 °C, critical at 50 °C, low limit −20 °C; only with the carrier board | `ambientTemperature` / 10 |
 | Count sensor "Mains power changes since boot" | `mainsPowerChanges` |
+| State sensor "Firmware": kept (OK) / trial (warning) | `fwState` (`fwUpdate` group, `63050.7`, firmware 3.3.0) |
+| State sensor "Firmware last update": none, installed (OK); rolled back or fallback (warning) | `fwLastResult` (3.3.0) |
 | Uptime, reboot detection | sysUpTime |
 | Neighbours tab: the switch and port the device is plugged into | LLDP-MIB `lldpRemTable` (firmware 2.7.0) |
 | Location and contact on the device page (and the map, once the location has coordinates) | sysLocation, sysContact: set on the device's web page or menu option 4 |
@@ -121,6 +123,24 @@ Checked 2026-11-01 with LibreNMS 26.9.1 in the Docker setup below (`autodiscover
 Set the device's trap destination (menu option 4) to the LibreNMS server and the trap version to `2c` (or enter `dhcp` and let the DHCP server hand out the LibreNMS address in option 224, see [MIB.md](MIB.md#trap-destination-from-dhcp)), and set up snmptrapd on the server as described in the LibreNMS documentation (SNMP Trap Handler). LibreNMS has no trap handler for the RF-POWER-MONITOR-MIB notifications, so it logs them as unhandled traps: the device's event log shows an entry of type `trap` with the message `RF-POWER-MONITOR-MIB::mainsPowerLost` (or `...Restored`, `...LostTooLong`), checked with LibreNMS 26.9.1. The sensors change on the next poll.
 
 LibreNMS finds the device for a trap by the address the trap came from. If something between the device and snmptrapd rewrites that address (NAT, such as Docker Desktop's port forwarding), LibreNMS logs "Could not find device for trap" in snmptrapd's output and drops the trap; the Docker setup below works around that.
+
+### Firmware update (3.3.0)
+
+The `fwUpdate` group (`63050.7`, see [MIB.md](MIB.md)) describes the two firmware slots, and the discovery definition turns two of its objects into state sensors, which appear after the next discovery of a device on 3.3.0 or later (copy the YAML files and the MIB again first):
+
+| Sensor | Object | States |
+|---|---|---|
+| Firmware | `fwState` (`63050.7.4`) | kept (OK), trial (warning: a new firmware that has not answered a valid request yet) |
+| Firmware last update | `fwLastResult` (`63050.7.5`) | none, installed (OK); rolledBackCrash, rolledBackUnreachable, fallbackCrash (warning) |
+
+The running slot (`fwRunningSlot`) and each slot's version (`fwSlotAVersion`, `fwSlotBVersion`) are readable by any SNMP manager but are not sensors.
+
+Two traps report the outcome: `firmwareUpdateKept` (`63050.0.4`, v1 specific trap 4, once when an update is confirmed) and `firmwareRolledBack` (`63050.0.5`, v1 specific trap 5, after a rollback or a fallback), both with fwRunningSlot, fwSlotAVersion, fwSlotBVersion and fwLastResult. LibreNMS logs them as unhandled traps like the mains traps; the Docker setup's trap script polls the device after them, so the *Firmware* sensors change within seconds (`State sensor Firmware ...` in the event log).
+
+Two things that cost time when you change anything here:
+
+- **snmptrapd reads MIBs only when it starts.** After you copy a changed `RF-POWER-MONITOR-MIB`, restart snmptrapd, or it keeps naming the new traps by their parent (`rfPowerMonitorNotifications.4`). In the Docker setup: `docker restart lnms-test-snmptrapd-1`.
+- **`.php` files must keep LF line endings.** `.gitattributes` has `*.php text eol=lf`. With CRLF the handler `librenms/test/snmptrap-agent-addr.php` fails in the container with `/usr/bin/env: 'php\r': No such file or directory` (the `\r` is the carriage return), and no trap reaches LibreNMS. After a checkout on Windows with an older Git setting, run `git add --renormalize .` or check the file with `file`.
 
 ## Trying it in Docker
 

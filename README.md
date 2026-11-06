@@ -434,7 +434,9 @@ $pio = "$env:USERPROFILE\.platformio\penv\Scripts\pio.exe"
 & $pio device monitor            # serial monitor
 ```
 
-If upload fails, hold BOOTSEL while plugging in the Pico and copy `.pio\build\pico\firmware.uf2` to the `RPI-RP2` drive.
+If upload fails, hold BOOTSEL while plugging in the Pico and copy `.pio\build\pico\firmware_full.uf2` to the `RPI-RP2` drive. Use only that file or a release's `-usb.uf2`: the plain `firmware.uf2` has no boot program and the device would not start.
+
+From 3.3.0 the firmware is updated over the network, signed with your key, with automatic rollback: see the [user manual](docs/USER_MANUAL.md#updating-the-firmware), the [setup manual](docs/SETUP_MANUAL.md#firmware-signing-key) for the key and field builds, and `python tools/fw_release.py --field` for the release files.
 
 The PlatformIO platform is pinned to a commit in `platformio.ini`, which fixes Arduino-Pico 5.4.3 (lwIP 2.2.1) and GCC 14.2, so every PC and CI build the same firmware. Newer cores (6.x) use GCC 16 and change stack use: move the pin on purpose, then measure the stacks again and run every test layer.
 
@@ -497,6 +499,13 @@ test/host/                  Host build of the agent for net-snmp checks
 test/native/                Unit tests, run on the PC
 test/embedded/              Unity tests, run on the Pico
 test/hil/                   Python tests over the serial port
+boot/                       Boot program: verifies and starts a firmware slot (own build, scripts/build_boot.py)
+lib/fw_image/, lib/fw_update/  Slot header and Ed25519 check, boot record and decision, update receiver, trial monitor (pure C++)
+lib/monocypher/             Vendored Monocypher (Ed25519, SHA-512)
+src/fw_update_service.cpp   Upload to the other slot, trial, rollback, boot record
+tools/                      fw_keygen.py, fw_release.py, fw_update.py, fwsign (host signing program)
+keys/dev/                   Development signing key (public by design)
+scripts/slot_build.py       Links the firmware per slot and builds firmware_full.uf2
 scripts/wait_for_port.py    Waits for the USB port after flashing, for pio test
 scripts/embed_bootstrap.py  Embeds Bootstrap's CSS (pinned, integrity-checked) in lib/web_ui
 scripts/sanitize.sh         Native tests under ASan/UBSan (run in WSL)

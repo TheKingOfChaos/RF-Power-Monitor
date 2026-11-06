@@ -6,9 +6,37 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [3.3.0] - 2026-11-06
+
+Signed A/B firmware updates over the web page, with automatic rollback.
+
+### Breaking: the flash layout changed, the first install needs USB
+- Flash now holds our own **boot program**, firmware **slot A**, firmware **slot B**, then the settings (LittleFS) and EEPROM sector where they were. A device with firmware older than 3.3.0 cannot be updated over the network to this release: flash the release's `rf-power-monitor-3.3.0-usb.uf2` over USB once (BOOTSEL, see docs/SETUP_MANUAL.md). The settings in LittleFS are kept.
+- **Use only the `-usb.uf2` file (or the build's `firmware_full.uf2`) on the BOOTSEL drive.** The `firmware.uf2` that PlatformIO still writes holds only slot A's image, without the boot program, and a device flashed with it does not start. `pio run -e pico -t upload` and `pio test -e pico` send the right file.
+- The boot program verifies the active slot at every start: about 0.9 s more start-up for a 360 KB firmware.
+- A device flashed with a development build (`pio run`, CI, tests) trusts the development key in `keys/dev`, whose private half is committed: it accepts only development-signed files, and anyone with the repository can sign for it. Field devices need a field build (`tools/fw_release.py --field`, key from `tools/fw_keygen.py`).
+
 ### Added
-- Firmware update: serial status screen lines `Firmware:`, `Other slot:`, `Last update:` and `Firmware key:`; `tools/fw_update.py` updates one or more devices over the web interface (login, key check, upload, waits until the new firmware is kept; password from `RFPOWER_WEB_PASSWORD` or a prompt).
+- **Firmware update**: web page **Firmware** (running slot and version, kept or on trial, the other slot, last result, signing key id; upload of a `.upd` file; switch to the other slot) and `POST /firmware/upload` for scripts. The image is written to the slot that is not running and its Ed25519 signature is checked before anything switches. Any correctly signed file is accepted, older versions included.
+- **Trial and rollback**: a new firmware starts on trial and is kept after one valid SNMP (right community) or authenticated web request. It is rolled back when it crashes (three watchdog resets in a row), when the network was up for 10 minutes without a valid request, or after 60 minutes on trial. A kept firmware that crashes three times in a row falls back to the other slot. Power cuts and planned restarts never count as crashes. Uploads are refused while on trial.
+- `tools/fw_keygen.py` (creates `secret/fw_signing_key` and `include/fw_public_key.h`, refuses to overwrite, never prints the key, prints the key id), `tools/fw_release.py` (builds both slots and writes `release/rf-power-monitor-<version>.upd` and `-usb.uf2`; `--field` signs with the field key), `tools/fw_update.py` (updates one or more devices over the web interface, stops at the first failure; password from `RFPOWER_WEB_PASSWORD` or a prompt), `tools/fwsign` (host signing program built from the same Monocypher code the device uses), `scripts/slot_build.py` (links the firmware per slot and builds `firmware_full.uf2`).
+- Boot program (`boot/`): verifies a slot's signature before starting it, picks the slot from a power-safe two-sector boot record, falls back after three crashes, and blinks 3 short and 1 long when nothing is bootable. Monocypher is vendored in `lib/monocypher`.
+- Serial status screen lines `Firmware:`, `Other slot:`, `Last update:` and `Firmware key:`, and boot messages for slot, verification time and fallbacks.
+- SNMP: the `fwUpdate` group (`63050.7`: fwRunningSlot, fwSlotAVersion, fwSlotBVersion, fwState, fwLastResult) and the traps `firmwareUpdateKept` (`63050.0.4`) and `firmwareRolledBack` (`63050.0.5`), v1 and v2c. MIB file and docs/MIB.md updated.
+- LibreNMS: state sensors *Firmware* (trial is a warning) and *Firmware last update* (rollback and fallback are warnings); the traps trigger a poll like the mains traps. docs/LIBRENMS.md covers the sensors, the traps, restarting snmptrapd after a MIB change, and that `.php` files must stay LF.
+- Tests: native suites for the image header and signature (`fw_image`, with RFC 8032 vectors), boot decision and records, the streaming receiver (golden `.upd`, truncation and corruption), trial monitor, web routes; tool tests (`test/tools`); on-device `test_fw_flash`; HIL `test_fw_update.py` (opt-in `RFPOWER_FW_UPDATE_TEST=1`: signed update, rollback on crash and when unreachable, crash-loop fallback, wrong key, switch, optional PoE cycles with `RFPOWER_POE_CYCLE=1`).
+- User manual (Firmware page, trial, kept, rolled back, `fw_update.py`, what a rejected upload leaves) and setup manual (generate the key once, back it up, what losing or leaking it means, field builds, the first USB flash).
 - Hardware: rev 2 board in `hardware/rf-power-monitor-rev2/` (designed, not built yet). One 2-layer board, 100 x 64 mm, with the RP2040, 2 MB flash, W5500, magnetics, RJ45, a 3.3 V buck and USB-C on it; PoE stays the plug-in WIZnet WIZPoE-P1 module. The mains detector, TMP1075 and factory reset button are the rev 1 circuits with the same pins, so the firmware runs unchanged. KiCad 10 project, JLCPCB fab and assembly files, 3D model, renders and a datasheet. No firmware change.
+
+### Changed
+- `platformio.ini` has `default_envs = pico`: a bare `pio run`, `pio test` or upload no longer also builds `pico_b` (the same firmware linked for slot B, which is built by `tools/fw_release.py` and is refused by upload).
+- Settings rule (`.clinerules`): a firmware that changes `SETTINGS_VERSION` writes the new layout to new files and keeps the old layout's files up to date, so a rollback or downgrade comes up with its settings. Nothing changes yet (the layout is still version 1).
+- CI uploads `firmware_full.uf2` (the USB-installable image) as the artifact, not `firmware.uf2`.
+
+### Notes
+- Size of the normal build (`pio run -e pico`): firmware image 388,992 bytes, 44 % of a 880,640-byte slot (the 70 % limit); static RAM 48.6 % (127,340 of 262,144 bytes), within the 50 % limit. The heap in use during an upload is not in that figure: peak RAM use while an upload runs is about 50.9 %.
+- While an upload runs, each flash erase or write pauses both cores for tens of milliseconds, so mains detection can be late by up to one flash erase. The device is busy during an upload.
+- Boot verification time grows with the firmware (about 2.6 us per byte, mostly SHA-512 on the M0+); `scripts/slot_build.py` warns above 550 KB (TODO.md section 20).
 
 ## [3.2.0] - 2026-11-02
 

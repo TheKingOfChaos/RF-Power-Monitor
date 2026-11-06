@@ -241,10 +241,17 @@ An item is only ticked when it is implemented **and** its tests exist and pass (
 - [ ] New case (the rev 1 case does not fit)
 
 ## 20. Firmware update (A/B slots, signed)
+- [x] Flash layout: boot program, slot A, slot B, LittleFS and EEPROM where they were; firmware linked per slot (`scripts/slot_build.py`), `firmware_full.uf2` for USB, `default_envs = pico` — tool tests (`test/tools`), `pio run -e pico`, flashed and booted on the Pico
+- [x] Boot program: verifies the Ed25519 signature of a slot, picks it from the two-sector boot record, falls back after 3 crashes, LED pattern when nothing boots — native `test_fw_boot`, `test_fw_records`, `test_fw_image` (RFC 8032 vectors, byte-compatible with `tools/fwsign`), embedded `test_fw_flash`, HIL `BootProgramTest`
+- [x] Signed `.upd` upload over the web page and `POST /firmware/upload`, streaming into the other slot, key check, rejected uploads leave it empty — native `test_fw_receiver` (golden `.upd`, truncated and corrupted input, sanitizers), `test_web_ui`, embedded `test_fw_flash`, HIL `FirmwareUpdateTest`
+- [x] Trial boot, rollback (crash, unreachable, 60 min limit), fallback after 3 crashes of a kept firmware, manual switch — native `test_fw_trial`, `test_fw_boot`, `test_fw_records`, HIL (crash, shorttrial, crash loop, switch; PoE cycles opt-in `RFPOWER_POE_CYCLE=1`)
+- [x] SNMP `fwUpdate` group (63050.7), traps `firmwareUpdateKept` and `firmwareRolledBack`, LibreNMS sensors — native `test_snmp_agent`, `test_snmp_trap`, net-snmp `host_agent_check.sh`, HIL, LibreNMS
+- [x] `tools/fw_keygen.py`, `fw_release.py`, `fw_update.py`, serial status lines, user and setup manuals — tool tests, native, HIL
+- [x] Final verification of 3.3.0: all native suites, sanitizers, net-snmp check, tool tests, on-device suites, full HIL and the opt-in firmware update set (see the task report and CHANGELOG)
 - [ ] Boot verification time: ~2.6 us per byte (943 ms for 359 KB, mostly SHA-512 on the M0+), so the 1.5 s budget runs out near 570 KB of firmware; `scripts/slot_build.py` warns above 550 KB. Speed up SHA-512 (or the verification) before the image gets there
 
 ## Notes
 - SNMP must be v1 and v2c (no v3) and our own code; networking may use libraries
-- Memory limits: 70 % flash, 50 % RAM (3.1.0: 19.6 % flash / 47.3 % RAM, built with -Os). About 7 KB of RAM is left below the 50 % limit: check the build's RAM line before adding buffers (the web page body and response alone are 22 KB)
+- Memory limits: 70 % flash, 50 % RAM (3.3.0: image 44 % of a slot, 21.2 % of the core's flash figure; static RAM 48.6 %, about 50.9 % at the peak of an upload; built with -Os). About 3.7 KB of RAM is left below the 50 % limit: check the build's RAM line before adding buffers (the web page body and response alone are 22 KB)
 - Version: `include/version.h`; every user-visible change goes into CHANGELOG.md under [Unreleased]
 - Core 0 has an 8 KB stack (core1_separate_stack, since 2.3.0) shared with USB/lwIP/W5500 interrupts: keep big buffers static

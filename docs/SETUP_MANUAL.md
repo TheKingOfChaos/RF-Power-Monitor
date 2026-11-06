@@ -60,6 +60,8 @@ Two LEDs on the carrier show mains directly, without the firmware: **green = mai
 
 The menu is available right after power-on, even before the network is up.
 
+A new device comes with the module's own firmware or a development image. Install the release's `-usb.uf2` first (see [Installing or recovering over USB](#installing-or-recovering-over-usb)); later updates go over the network.
+
 ## 3. Network
 
 The device uses **DHCP** by default and keeps retrying until it gets an address. If DHCP is what you want, you are done with this step. Tip: reserve the device's MAC address (status screen `MAC:`) in the DHCP server, so the address stays the same.
@@ -150,6 +152,59 @@ Do this once, with the electrician, before you rely on the box:
 
 If something does not behave this way, see Troubleshooting in the [user manual](USER_MANUAL.md#troubleshooting).
 
+## Firmware signing key
+
+Devices accept a firmware update only when it is signed with **your** key (Ed25519). You create the key once, before the first field device is built. The person who builds releases needs a C++ compiler on the PC (g++ and gcc, as for the unit tests; the signing program is built from the same code the device verifies with) and Python 3.
+
+1. **Generate the key, once:**
+
+   ```powershell
+   python tools/fw_keygen.py
+   ```
+
+   It writes the private key to `secret/fw_signing_key` (random, never printed, never overwritten: the tool refuses if the file exists) and the public key to `include/fw_public_key.h`, and prints the key's **fingerprint**, 16 hex digits. The status screen, the web page's Firmware page and `fw_update.py` show the same fingerprint, so you can see which key a device trusts.
+2. **Commit `include/fw_public_key.h`.** It is public by design. The private key stays out of git (`secret/` is ignored).
+3. **Back up `secret/fw_signing_key` now, outside this PC**: a password manager or an offline copy. Treat it like a root password.
+
+What the key means:
+
+- **Losing it**: no firmware the devices accept can be built again. Devices in the field keep running, but can only be changed over USB, with a new boot program and a new key. Back it up.
+- **Leaking it**: anyone with the key and the device's web password (or access to the network path: the web page is plain HTTP) can install their own firmware. The devices cannot change their key over the network, so replacing a leaked key means a USB visit to every device.
+- The web password alone installs nothing, and a file signed with another key is refused (`different key`) before it is written.
+
+`tools/fw_keygen.py --force` replaces an existing key after you type `REPLACE`; it locks out every device built for the old key. Do not use it unless you mean to do USB visits.
+
+### Field builds and development builds
+
+- A normal build (`pio run -e pico`, `pio run -e pico -t upload`, the CI build and all tests) is a **development build**. It trusts the development key in `keys/dev`, whose private half is committed on purpose. **A device flashed with a development build accepts only development-signed files, and anybody who has this repository can sign for it.** Use development builds on the bench only.
+- A **field build** trusts your key. Build the release files with:
+
+  ```powershell
+  python tools/fw_release.py --field
+  ```
+
+  It builds the firmware for both slots, signs both with `secret/fw_signing_key` (it stops if the key is missing, or does not match `include/fw_public_key.h`) and writes two files to `release/` (not in git):
+
+  | File | Use |
+  |---|---|
+  | `rf-power-monitor-<version>.upd` | Network update: the web page's Firmware page and `tools/fw_update.py` |
+  | `rf-power-monitor-<version>-usb.uf2` | USB install: boot program, the firmware in slot A, no firmware in slot B yet |
+
+  Without `--field` the same command makes development-signed files.
+- A field device never accepts a development-signed file, and a development device never accepts a field file. To move a device from one to the other, install the other kind's `-usb.uf2` over USB.
+
+## Installing or recovering over USB
+
+The first install of a device, a device with firmware older than 3.3.0 (its flash is laid out differently: the update needs the boot program), and a device that has no usable firmware slot (LED: 3 short blinks, 1 long, repeating) are installed over USB with the release's `-usb.uf2`:
+
+1. Unplug USB, hold the **BOOTSEL** button on the module and plug USB in again. A drive called `RPI-RP2` appears.
+2. Copy `rf-power-monitor-<version>-usb.uf2` to that drive. The device restarts after a few seconds. The settings in its LittleFS area are kept, since that area is not touched.
+3. Check the serial status screen: `Firmware:` shows the version and slot A as *kept*, and `Firmware key:` the fingerprint from `fw_keygen.py` (a field build) or the development key's.
+
+**Use only the release's `-usb.uf2`.** PlatformIO also writes a plain `firmware.uf2`; it holds only the firmware image for slot A, **without the boot program**, so a device flashed with it does not start (the way back is to copy a `-usb.uf2` the same way). With PlatformIO, `pio run -e pico -t upload` sends the right full image over the cable, but it is a development build: for field devices always use the release's `-usb.uf2`.
+
+After that, updates go over the network: see "Updating the firmware" in the [user manual](USER_MANUAL.md#updating-the-firmware).
+
 ## Checklist
 
 - [ ] Mains wired by a qualified person, enclosure closed, supply fused upstream
@@ -160,3 +215,5 @@ If something does not behave this way, see Troubleshooting in the [user manual](
 - [ ] Own web password set (or web page turned off)
 - [ ] Device in LibreNMS as RF-Power-Monitor with its sensors
 - [ ] 30 s outage: warning, no alert; 90 s outage: alert, then recovery
+- [ ] Firmware key generated once, `secret/fw_signing_key` backed up outside the PC, `include/fw_public_key.h` committed
+- [ ] Field devices installed from the release's `-usb.uf2` (not `firmware.uf2`); the status screen's `Firmware key:` matches the key's fingerprint
