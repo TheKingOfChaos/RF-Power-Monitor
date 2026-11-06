@@ -17,7 +17,9 @@ Every admin POST needs the session cookie and the session's CSRF token.
 
 import hmac
 import html
+import os
 import secrets
+import socket
 import time
 from email.parser import BytesParser
 from email.policy import HTTP
@@ -374,9 +376,21 @@ class Handler(BaseHTTPRequestHandler):
         self.send(200, data, "application/octet-stream")
 
 
+class SiteServer(ThreadingHTTPServer):
+    """The port is ours alone: on Windows SO_REUSEADDR (http.server's default) would let a
+    second process, e.g. an old copy with another key, bind it too and answer check-ins."""
+
+    allow_reuse_address = os.name != "nt"
+
+    def server_bind(self):
+        if os.name == "nt":
+            self.socket.setsockopt(socket.SOL_SOCKET, socket.SO_EXCLUSIVEADDRUSE, 1)
+        super().server_bind()
+
+
 def make_server(store, host, port, admin_password, clock=time.time, verbose=False):
     """A threading HTTP server for the site (call serve_forever())."""
-    server = ThreadingHTTPServer((host, port), Handler)
+    server = SiteServer((host, port), Handler)
     server.daemon_threads = True
     server.site = Site(store, admin_password, clock)
     server.verbose = verbose

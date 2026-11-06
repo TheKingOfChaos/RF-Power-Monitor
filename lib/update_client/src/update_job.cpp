@@ -9,8 +9,16 @@ bool UpdateJob::begin(const char* wanted, const char* running) {
     _active = false;
     if (wanted == nullptr || running == nullptr || strcmp(wanted, running) == 0) return false;
     snprintf(_version, sizeof(_version), "%s", wanted);
+    if (compareVersions(wanted, UPDATE_MIN_VERSION) < 0) {
+        refused("older than 3.4.0");
+        return false;
+    }
     _active = true;
     return true;
+}
+
+uint32_t downloadDeadlineMs(uint32_t contentLength) {
+    return 120000u + contentLength / 2u;  // at least 2 bytes per millisecond
 }
 
 UpdateJob::Step UpdateJob::head(const uint8_t* first, size_t len) {

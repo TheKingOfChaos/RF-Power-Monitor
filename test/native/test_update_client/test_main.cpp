@@ -659,6 +659,44 @@ static void test_signed_slot_version_match_continues() {
     TEST_ASSERT_TRUE(job.active());
 }
 
+static void test_job_refuses_version_older_than_3_4_0() {
+    // Older firmware never checks in again: refused on the device too, not only on the site
+    UpdateJob job;
+    TEST_ASSERT_FALSE(job.begin("3.3.0", "3.4.0"));
+    TEST_ASSERT_FALSE(job.active());
+    TEST_ASSERT_EQUAL_STRING("3.3.0 refused older than 3.4.0", job.failLine());
+    TEST_ASSERT_FALSE(job.begin("3.4.0-rc1", "3.4.1"));
+    TEST_ASSERT_TRUE(job.begin("3.4.0", "3.4.1"));  // the floor itself is allowed
+}
+
+static void test_download_deadline_scales_with_size() {
+    TEST_ASSERT_EQUAL_UINT32(120000, downloadDeadlineMs(0));
+    TEST_ASSERT_EQUAL_UINT32(120000 + 844064 / 2, downloadDeadlineMs(844064));  // 2 KB/s at least
+    TEST_ASSERT_EQUAL_UINT32(120000 + 1761344 / 2, downloadDeadlineMs(1761344));
+    TEST_ASSERT_EQUAL_UINT32(120000 + 0xFFFFFFFFu / 2, downloadDeadlineMs(0xFFFFFFFFu));  // no overflow
+}
+
+static void test_scheduler_force_survives_net_ready_edge() {
+    // "checkin" typed in the same loop pass as a settings save (net ready drops and returns),
+    // or before the network is up after boot: the forced check-in must still happen at once
+    CheckinScheduler s;
+    s.netReady(true, 0);
+    s.netReady(false, 1000);  // a settings save
+    s.forceNow(1000);
+    s.netReady(true, 1001);   // the next poll
+    TEST_ASSERT_TRUE(s.due(1001));
+    s.checkinDone(true, 1002);
+    TEST_ASSERT_FALSE(s.due(1003));  // done: back to the normal plan
+}
+
+static void test_scheduler_force_waits_for_network() {
+    CheckinScheduler s;
+    s.forceNow(0);
+    TEST_ASSERT_FALSE(s.due(0));
+    s.netReady(true, 5000);
+    TEST_ASSERT_TRUE(s.due(5000));
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_url_accepts_name_port_path);
@@ -724,5 +762,9 @@ int main(int, char**) {
     RUN_TEST(test_apply_refuses_bad_key_and_changes_nothing);
     RUN_TEST(test_signed_slot_version_mismatch_is_refused);
     RUN_TEST(test_signed_slot_version_match_continues);
+    RUN_TEST(test_job_refuses_version_older_than_3_4_0);
+    RUN_TEST(test_download_deadline_scales_with_size);
+    RUN_TEST(test_scheduler_force_survives_net_ready_edge);
+    RUN_TEST(test_scheduler_force_waits_for_network);
     return UNITY_END();
 }

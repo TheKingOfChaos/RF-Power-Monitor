@@ -315,6 +315,11 @@ const char* httpFetchError() {
     return error;
 }
 
+bool httpFetchBusy() {
+    DriverLock lock;
+    return state != FetchState::Idle;
+}
+
 void httpFetchAbort() {
     DriverLock lock;
     generation++;

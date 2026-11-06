@@ -591,6 +591,8 @@ static void handleLine(const char* line) {
             UpdateUrl url;
             if (!parseUpdateUrl(line + 10, url)) {
                 Serial.println("fetchtest: not an http:// URL");
+            } else if (fetchTestActive || httpFetchBusy()) {
+                Serial.println("fetchtest: busy (a check-in or download is running), try again");
             } else if (httpFetchStart(url, "GET", url.path[0] != '\0' ? url.path : "/", nullptr, nullptr, 0,
                                       0x7FFFFFFF, millis(), 0)) {
                 fetchTestActive = true;
@@ -604,7 +606,8 @@ static void handleLine(const char* line) {
         } else if (strcmp(line, "checkin") == 0) {
             // Hidden test command (docs/TESTING.md): check in with the update server now
             updateServiceForceCheckin();
-            Serial.println("checkin: requested");
+            Serial.printf("checkin: requested (service %s, fetch %s)\r\n", updateServicePhaseName(),
+                          httpFetchBusy() ? "busy" : "free");
             Serial.print("> ");
         } else if (strcmp(line, "lldpdump") == 0) {
             // Hidden test command (docs/TESTING.md): the switch's last LLDPDU in hex, for test vectors
@@ -934,8 +937,8 @@ static void pollFetchTest() {
     if (st == FetchState::Done) {
         Serial.printf("\r\nfetchtest: %d %lu bytes in %lu ms\r\n> ", httpFetchStatus(), (unsigned long)fetchTestBytes,
                       (unsigned long)(millis() - fetchTestStartMs));
-    } else if (st == FetchState::Failed) {
-        Serial.printf("\r\nfetchtest: failed: %s after %lu ms\r\n> ", httpFetchError(),
+    } else if (st == FetchState::Failed || st == FetchState::Idle) {
+        Serial.printf("\r\nfetchtest: failed: %s after %lu ms\r\n> ", st == FetchState::Idle ? "aborted" : httpFetchError(),
                       (unsigned long)(millis() - fetchTestStartMs));
     } else {
         return;

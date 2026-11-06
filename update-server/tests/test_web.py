@@ -215,6 +215,13 @@ class WebTest(unittest.TestCase):
         self.assertIn(b"Shared key: set", admin)
         self.assertEqual(403, self.form("/admin/key/new", {"csrf": "x"}, sid)[0])
 
+    def test_second_server_on_same_port_fails_to_start(self):
+        # On Windows SO_REUSEADDR would let a second process (an old copy with another key)
+        # bind the same port and answer some of the devices' check-ins
+        with self.assertRaises(OSError):
+            other = make_server(self.store, "127.0.0.1", self.port, self.password)
+            other.server_close()
+
     def test_delete_release(self):
         self.store.add_release(fake_upd("3.4.1"), now=0)
         sid, csrf = self.login()

@@ -52,6 +52,7 @@ uint8_t head[UPD_HEAD_SIZE];
 size_t headLen = 0;
 bool uploadStarted = false;
 bool signedVersionChecked = false;  // the signed slot header's version was compared
+uint32_t downloadStartMs = 0;
 
 void setResult(const char* text) {
     snprintf(lastResult, sizeof(lastResult), "%s", text);
@@ -173,6 +174,7 @@ void startDownload(const CheckinReply& r, uint32_t now) {
         return;
     }
     phase = Phase::Download;
+    downloadStartMs = now;
     Serial.printf("\r\nUpdate server: downloading %s\r\n", r.version);
 }
 
@@ -209,6 +211,9 @@ void finishCheckin(uint32_t now) {
         snprintf(text, sizeof(text), "update %s", r.version);
         setResult(text);
         startDownload(r, now);
+    } else if (kind == ReplyKind::Update && strcmp(r.version, FIRMWARE_VERSION) != 0) {
+        setResult(job.failLine());  // refused: older than the first firmware that checks in
+        scheduler.reportSoon(now);
     } else {
         setResult("ok");
     }
@@ -222,8 +227,8 @@ void pollCheckin(uint32_t now) {
     }
     if (st == FetchState::Done) {
         finishCheckin(now);
-    } else if (st == FetchState::Failed) {
-        setResult(httpFetchError());
+    } else if (st == FetchState::Failed || st == FetchState::Idle) {  // Idle: taken away, should not happen
+        setResult(st == FetchState::Idle ? "aborted" : httpFetchError());
         httpFetchAbort();
         phase = Phase::Idle;
         lastCheckinMs = now;
@@ -262,8 +267,15 @@ void refusedByReceiver(uint32_t now) {
 
 void pollDownload(uint32_t now) {
     FetchState st = httpFetchPoll(now);
-    if (st == FetchState::Failed) {
-        job.failDownload(httpFetchError());
+    if (st == FetchState::Failed || st == FetchState::Idle) {  // Idle: taken away, should not happen
+        job.failDownload(st == FetchState::Idle ? "aborted" : httpFetchError());
+        endDownload(now);
+        return;
+    }
+    // A server that trickles bytes (under the idle timeout) must not hold the device here
+    bool lengthKnown = st == FetchState::Body || st == FetchState::Done;
+    if (now - downloadStartMs > downloadDeadlineMs(lengthKnown ? httpFetchContentLength() : 0)) {
+        job.failDownload("too slow");
         endDownload(now);
         return;
     }
@@ -361,7 +373,7 @@ void updateServicePoll(bool netReady) {
 
     switch (phase) {
     case Phase::Idle:
-        if (scheduler.due(now)) startCheckin(now);
+        if (scheduler.due(now) && !httpFetchBusy()) startCheckin(now);  // fetchtest may hold the one fetch
         break;
     case Phase::Checkin:
         pollCheckin(now);
@@ -380,6 +392,11 @@ void updateServicePoll(bool netReady) {
 
 void updateServiceForceCheckin() {
     scheduler.forceNow(millis());
+}
+
+const char* updateServicePhaseName() {
+    static const char* const names[] = {"idle", "checkin", "download", "restarting"};
+    return names[(int)phase];
 }
 
 bool updateServiceSave(const char* url, bool fromDhcp, const char* keyHex, bool clearKey, const char*& error) {

@@ -27,7 +27,8 @@ public:
 
     /**
      * @brief Start a download of wanted (the version an authenticated reply named)
-     * @return false when it is the running version: nothing to do
+     * @return false when it is the running version (nothing to do), or when it is older than
+     *         UPDATE_MIN_VERSION (refused: "<v> refused older than 3.4.0" is reported)
      */
     bool begin(const char* wanted, const char* running);
 
@@ -75,6 +76,17 @@ private:
     char _fail[sizeof(CheckinInfo::fail)] = "";
     uint32_t _failSeq = 0;
 };
+
+/// The first firmware that checks in: older releases are refused (they could never report back)
+static const char* const UPDATE_MIN_VERSION = "3.4.0";
+
+/**
+ * @brief Longest a download may take: 2 minutes plus 2 KB/s for its length
+ *
+ * Without it a server that trickles a byte now and then (under the idle timeout)
+ * would keep the device downloading, and not checking in, for ever.
+ */
+uint32_t downloadDeadlineMs(uint32_t contentLength);
 
 /**
  * @brief The check-in's "last" value for the boot record's last result

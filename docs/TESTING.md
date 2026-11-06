@@ -221,9 +221,9 @@ $env:RFPOWER_SNMP_COMMUNITY = "rfit"   # the device's community, default public
 ```
 
 - The device must run the current version (development key), kept; it ends on that version, kept, with no update server set. A refused test release leaves the other slot `empty`, as any refused upload does.
-- The test builds `.pio/fwtest/3.4.1-hil.upd` and `.pio/fwtest/<current>.upd` once with `tools/fw_release.py --test-version` (delete them after source changes). These builds use other build flags: run `pio run -e pico -t upload` afterwards before flashing anything else.
+- The test builds `.pio/fwtest/3.4.1-hil.upd` and `.pio/fwtest/<current>.upd` with `tools/fw_release.py --test-version` and rebuilds them when a file in `src/`, `lib/`, `include/`, `boot/`, `scripts/` or `platformio.ini` is newer (the test ends by installing the current version from there). Do not build anything else while it runs: PlatformIO builds in the same project collide. These builds use other build flags: run `pio run -e pico -t upload` afterwards before flashing anything else.
 - The device must reach this PC on TCP 8072 (Windows firewall; Python was allowed here). `RFPOWER_UPDATE_SERVER_HOST` overrides the address the device is given, `RFPOWER_UPDATE_SERVER_PORT` the port. Nothing else may listen on that port.
-- The hidden menu commands `checkin` (check in now) and `fetchtest <url>` (one GET with the update client, result printed) exist for these tests and for debugging.
+- The hidden menu commands `checkin` (check in as soon as the network is up; prints the service's phase and whether the one HTTP fetch is busy) and `fetchtest <url>` (one GET with the update client, result printed; refused while a check-in or download runs) exist for these tests and for debugging.
 
 ## What is covered
 

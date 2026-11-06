@@ -43,6 +43,9 @@ void updateServicePoll(bool netReady);
 /// Check in now (hidden menu command "checkin", for tests); ignored without URL, key or network
 void updateServiceForceCheckin();
 
+/// "idle", "checkin", "download" or "restarting" (hidden checkin command, tests)
+const char* updateServicePhaseName();
+
 /// Fill out for the status screen and web page
 void updateServiceStatus(UpdateServiceStatus& out);
 

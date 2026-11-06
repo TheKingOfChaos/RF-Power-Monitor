@@ -448,8 +448,48 @@ static void test_request_two_options_in_captured_discover() {
     }
 }
 
+static void test_one_spare_byte_takes_224_and_refuses_225() {
+    // Cut the DISCOVER to END plus one padding byte (lengths, IP checksum fixed; UDP checksum kept valid)
+    Frame f = frame(DEVICE_DISCOVER);
+    size_t u = udpOffset(f);
+    size_t i = optionsOffset(f);
+    while (f[i] != 255) i += f[i] == 0 ? 1 : 2 + f[i + 1];
+    size_t newLen = i + 2;
+    size_t ulen = newLen - u, iplen = newLen - 14;
+    f.resize(newLen);
+    f[newLen - 1] = 0;
+    f[16] = (uint8_t)(iplen >> 8);
+    f[17] = (uint8_t)iplen;
+    f[u + 4] = (uint8_t)(ulen >> 8);
+    f[u + 5] = (uint8_t)ulen;
+    f[24] = f[25] = 0;
+    uint32_t s = 0;
+    for (size_t k = 14; k < 34; k += 2) s += (uint32_t)f[k] << 8 | f[k + 1];
+    while (s >> 16) s = (s & 0xFFFF) + (s >> 16);
+    f[24] = (uint8_t)(~s >> 8);
+    f[25] = (uint8_t)~s;
+    f[u + 6] = f[u + 7] = 0;  // recompute the UDP checksum over the shorter datagram
+    uint32_t c = 0;
+    for (size_t k = 26; k < 34; k += 2) c += (uint32_t)f[k] << 8 | f[k + 1];
+    c += 17 + (uint32_t)ulen;
+    for (size_t k = 0; k < ulen; k += 2) c += (uint32_t)f[u + k] << 8 | (k + 1 < ulen ? f[u + k + 1] : 0);
+    while (c >> 16) c = (c & 0xFFFF) + (c >> 16);
+    f[u + 6] = (uint8_t)(~c >> 8);
+    f[u + 7] = (uint8_t)~c;
+    TEST_ASSERT_TRUE(udpChecksumOk(f));
+
+    TEST_ASSERT_EQUAL(DhcpEdit::Added, dhcpRequestOption(f.data(), f.size(), DHCP_OPTION_TRAP_TARGET));
+    Frame after224 = f;
+    TEST_ASSERT_EQUAL(DhcpEdit::NoRoom, dhcpRequestOption(f.data(), f.size(), DHCP_OPTION_UPDATE_URL));
+    TEST_ASSERT_TRUE(after224 == f);  // unchanged
+    TEST_ASSERT_TRUE(udpChecksumOk(f));
+    Frame list = option(f, 55);
+    TEST_ASSERT_TRUE(std::find(list.begin(), list.end(), DHCP_OPTION_TRAP_TARGET) != list.end());
+}
+
 int main() {
     UNITY_BEGIN();
+    RUN_TEST(test_one_spare_byte_takes_224_and_refuses_225);
     RUN_TEST(test_ack_text_reads_url_option);
     RUN_TEST(test_ack_text_accepts_127_and_rejects_too_long);
     RUN_TEST(test_ack_text_rejects_non_printable);

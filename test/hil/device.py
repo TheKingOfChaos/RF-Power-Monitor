@@ -282,10 +282,11 @@ class Device:
     def set_update_server(self, url, key=""):
         """Menu option 10: url is a URL, "dhcp", "none" or "" (keep); key is 64 hex, "clear" or "" (keep).
         Returns the output from the key prompt on."""
-        self.send("10", expect=r"Update server URL .*: $")
-        out = self.send(url, expect=r"(Shared key .*: $|not an http[\s\S]*URL .*: $)")
+        # No "$" after the prompts: a log line (e.g. "SNMP v2c trap ... sent") may follow them
+        self.send("10", expect=r"Update server URL [^\n]*\]: ")
+        out = self.send(url, expect=r"(Shared key [^\n]*\]: |not an http[\s\S]*URL [^\n]*\]: )")
         if "not an http" in out:
-            self.send("none", expect=r"Shared key .*: $")
+            self.send("none", expect=r"Shared key [^\n]*\]: ")
             self.send("", expect=re.escape(PROMPT) + r"$")
             return out
         return self.send(key, expect=r"(saved|failed|must)[\s\S]*" + re.escape(PROMPT) + r"$")

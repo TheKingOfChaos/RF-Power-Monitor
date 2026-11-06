@@ -58,3 +58,11 @@ const char* httpFetchError();
 
 /// Stop the fetch and free everything; the state returns to Idle
 void httpFetchAbort();
+
+/**
+ * @brief A fetch is in use (running, or ended and not yet released with httpFetchAbort())
+ *
+ * There is one fetch: its two users (update service, the fetchtest menu command)
+ * start one only when this is false, so neither takes the other's connection away.
+ */
+bool httpFetchBusy();

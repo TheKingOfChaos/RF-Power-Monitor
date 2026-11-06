@@ -33,7 +33,8 @@ public:
     /// Check in within CHECKIN_SOON_MS (never later than already planned)
     void reportSoon(uint32_t nowMs);
 
-    /// Check in now (hidden menu command for tests)
+    /// Check in as soon as the network is ready (hidden menu command for tests); stays
+    /// pending through network changes and settings saves until a check-in ends
     void forceNow(uint32_t nowMs);
 
 private:
@@ -41,5 +42,6 @@ private:
     void notLaterThan(uint32_t nowMs, uint32_t delayMs);
 
     bool _ready = false;
+    bool _forced = false;
     uint32_t _next = 0;
 };
