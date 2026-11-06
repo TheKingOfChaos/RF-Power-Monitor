@@ -1,6 +1,6 @@
 """Build the release files for a firmware update.
 
-    python tools/fw_release.py [--field] [--test-variant crash|noconfirm|shorttrial]
+    python tools/fw_release.py [--field] [--test-variant crash|noconfirm|shorttrial] [--test-version X.Y.Z-tag]
 
 Builds the pico (slot A) and pico_b (slot B) environments, signs both slot
 images and writes
@@ -21,6 +21,7 @@ the slot B blob.
 
 import argparse
 import os
+import re
 import shutil
 import struct
 import subprocess
@@ -72,21 +73,32 @@ def main(argv=None) -> int:
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("--field", action="store_true", help="sign with the field key in secret/")
     ap.add_argument("--test-variant", choices=VARIANTS, help="build a misbehaving test image")
+    ap.add_argument("--test-version", metavar="VERSION",
+                    help="build the firmware as this version (e.g. 3.4.1-hil), development key, "
+                         "written to .pio/fwtest/<VERSION>.upd (update site HIL test)")
     args = ap.parse_args(argv)
-    if args.field and args.test_variant:
-        ap.error("test variants use the development key only")
+    if args.field and (args.test_variant or args.test_version is not None):
+        ap.error("test builds use the development key only")
+    if args.test_variant and args.test_version is not None:
+        ap.error("--test-variant and --test-version cannot be combined")
+    if args.test_version is not None and not re.fullmatch(r"\d+\.\d+\.\d+(-[0-9A-Za-z.]+)?", args.test_version):
+        ap.error("--test-version must look like 3.4.1 or 3.4.1-hil")
+    if args.test_version is not None and len(args.test_version) > 15:
+        ap.error("--test-version is at most 15 characters (the .upd header holds 16 bytes with its NUL)")
 
     try:
         seed = fwtool.signing_seed(args.field)
     except RuntimeError as e:
         print(e, file=sys.stderr)
         return 1
-    version = fwtool.firmware_version()
+    version = args.test_version or fwtool.firmware_version()
     extra = {}
     if args.field:
         extra["RFPOWER_FW_KEY"] = "field"
     if args.test_variant:
         extra["PLATFORMIO_BUILD_FLAGS"] = "-DRFPOWER_FWTEST_%s=1" % args.test_variant.upper()
+    if args.test_version:
+        extra["PLATFORMIO_BUILD_FLAGS"] = '-DFIRMWARE_VERSION=\\"%s\\"' % args.test_version
 
     blobs = []
     for slot, env_name in ((0, "pico"), (1, "pico_b")):
@@ -95,10 +107,10 @@ def main(argv=None) -> int:
         blobs.append(fwtool.sign_slot(seed, slot, version, image))
     upd = build_upd(version, blobs[0], blobs[1])
 
-    if args.test_variant:
+    if args.test_variant or args.test_version:
         out_dir = os.path.join(fwtool.ROOT, ".pio", "fwtest")
         os.makedirs(out_dir, exist_ok=True)
-        upd_path = os.path.join(out_dir, args.test_variant + ".upd")
+        upd_path = os.path.join(out_dir, (args.test_variant or args.test_version) + ".upd")
     else:
         out_dir = os.path.join(fwtool.ROOT, "release")
         os.makedirs(out_dir, exist_ok=True)

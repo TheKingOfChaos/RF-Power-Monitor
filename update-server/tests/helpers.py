@@ -12,9 +12,19 @@ KEY = bytes(range(32))
 SERIAL = "E6614103E7452D2F"
 
 
-def fake_upd(version, blob_a=b"A" * 300, blob_b=b"B" * 400):
-    """A .upd with the real header layout (tools/fw_release.py build_upd) and dummy blobs.
-    The site does not check signatures (the device does), so dummy blobs are enough."""
+def fake_blob(version, size, slot_version=None):
+    """A slot blob: dummy bytes with the slot header's magic and version (lib/fw_image fw_image.h layout:
+    [64,68) magic "RFFW", [80,96) version). The site does not check signatures (the device does)."""
+    blob = bytearray(b"\x5a" * max(size, 256))
+    struct.pack_into("<I", blob, 64, 0x57464652)
+    blob[80:96] = (slot_version or version).encode("ascii").ljust(16, b"\0")
+    return bytes(blob)
+
+
+def fake_upd(version, blob_a=None, blob_b=None, slot_version=None):
+    """A .upd with the real header layout (tools/fw_release.py build_upd) and two slot blobs."""
+    blob_a = fake_blob(version, 300, slot_version) if blob_a is None else blob_a
+    blob_b = fake_blob(version, 400, slot_version) if blob_b is None else blob_b
     v = version.encode("ascii")
     header = struct.pack("<II16s4I", 0x50554652, 1, v, 64, 64 + len(blob_a), len(blob_a), len(blob_b))
     return header + b"\xff" * (64 - len(header)) + blob_a + blob_b

@@ -10,7 +10,7 @@ import unittest
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.dirname(HERE))
-from helpers import fake_upd  # noqa: E402
+from helpers import fake_blob, fake_upd  # noqa: E402
 from rfupdate import upd  # noqa: E402
 from rfupdate.store import Store  # noqa: E402
 
@@ -33,6 +33,18 @@ class UpdTest(unittest.TestCase):
         good[8:24] = b"\0" * 16
         with self.assertRaises(ValueError):
             upd.parse_header(bytes(good))
+
+    def test_header_rejects_slot_version_mismatch(self):
+        # The outer header is not signed: it must name the release the slots hold
+        with self.assertRaises(ValueError) as cm:
+            upd.parse_header(fake_upd("3.4.2", slot_version="3.4.1"))
+        self.assertIn("3.4.1", str(cm.exception))
+        with self.assertRaises(ValueError):
+            upd.parse_header(fake_upd("3.4.2", blob_b=fake_blob("3.4.1", 400)))
+
+    def test_header_rejects_blob_without_slot_header(self):
+        with self.assertRaises(ValueError):
+            upd.parse_header(fake_upd("3.4.1", blob_a=b"A" * 300))
 
     def test_compare_versions(self):
         self.assertGreater(upd.compare_versions("3.10.0", "3.9.0"), 0)
@@ -67,7 +79,7 @@ class StoreTest(unittest.TestCase):
     def test_duplicate_version_is_refused(self):
         self.store.add_release(fake_upd("3.4.1"), now=1000.0)
         with self.assertRaises(ValueError):
-            self.store.add_release(fake_upd("3.4.1", blob_a=b"other"), now=1001.0)
+            self.store.add_release(fake_upd("3.4.1", blob_a=fake_blob("3.4.1", 500)), now=1001.0)
 
     def test_upload_non_upd_is_refused(self):
         with self.assertRaises(ValueError):

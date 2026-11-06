@@ -15,7 +15,7 @@ import uuid
 HERE = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, HERE)
 sys.path.insert(0, os.path.dirname(HERE))
-from helpers import KEY, SERIAL, FakeDevice, fake_upd, reply_lines  # noqa: E402
+from helpers import KEY, SERIAL, FakeDevice, fake_blob, fake_upd, reply_lines  # noqa: E402
 from rfupdate import upd  # noqa: E402
 from rfupdate.store import Store  # noqa: E402
 from rfupdate.web import make_server  # noqa: E402
@@ -184,7 +184,7 @@ class WebTest(unittest.TestCase):
         self.assertEqual(405, self.request("GET", "/api/checkin")[0])
 
     def test_release_download_serves_exact_bytes(self):
-        data = fake_upd("3.4.1", blob_a=bytes(range(256)) * 10)
+        data = fake_upd("3.4.1", blob_a=fake_blob("3.4.1", 256) + bytes(range(256)) * 10)
         self.store.add_release(data, now=0)
         status, headers, got = self.request("GET", "/releases/3.4.1.upd")
         self.assertEqual(200, status)

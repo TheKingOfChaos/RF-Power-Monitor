@@ -202,6 +202,39 @@ class KeyGuardTests(unittest.TestCase):
         self.assertEqual(fwtool.signing_seed(False), fwtool.DEV_KEY)
 
 
+class TestVersionTests(unittest.TestCase):
+    """fw_release.py --test-version: a development-signed build with another version (update site HIL test)."""
+
+    def run_release(self, argv):
+        with mock.patch.object(fw_release, "pio_run") as pio, mock.patch.object(fwtool, "sign_slot") as sign:
+            sign.return_value = b"x" * 10
+            with mock.patch("builtins.open", mock.mock_open()):
+                with mock.patch.object(os, "makedirs"):
+                    rc = fw_release.main(argv)
+        return rc, pio, sign
+
+    def test_test_version_refused_with_field(self):
+        with self.assertRaises(SystemExit):
+            fw_release.main(["--field", "--test-version", "3.4.1-hil"])
+
+    def test_test_version_refused_with_variant(self):
+        with self.assertRaises(SystemExit):
+            fw_release.main(["--test-variant", "crash", "--test-version", "3.4.1-hil"])
+
+    def test_test_version_must_be_a_version(self):
+        for bad in ("../x", "3.4", "3.4.1-hil/../x", "3.4.1-0123456789", ""):
+            with self.assertRaises(SystemExit, msg=bad):
+                fw_release.main(["--test-version", bad])
+
+    def test_test_version_builds_and_signs_with_that_version(self):
+        rc, pio, sign = self.run_release(["--test-version", "3.4.1-hil"])
+        self.assertEqual(0, rc)
+        flags = pio.call_args_list[0][0][1]["PLATFORMIO_BUILD_FLAGS"]
+        self.assertEqual('-DFIRMWARE_VERSION=\\"3.4.1-hil\\"', flags)
+        self.assertEqual("3.4.1-hil", sign.call_args_list[0][0][2])
+        self.assertEqual(fwtool.DEV_KEY, sign.call_args_list[0][0][0])
+
+
 class UpdLayoutTests(unittest.TestCase):
     def test_upd_layout_offsets_and_lengths(self):
         with tempfile.TemporaryDirectory() as d:

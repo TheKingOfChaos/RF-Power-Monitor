@@ -643,6 +643,22 @@ static void test_apply_refuses_bad_key_and_changes_nothing() {
     TEST_ASSERT_FALSE(updateSettingsApply(s, "http://a", false, nullptr, false, error));
 }
 
+static void test_signed_slot_version_mismatch_is_refused() {
+    UpdateJob job;
+    job.begin("3.4.2", "3.4.0");
+    // The outer header said 3.4.2, the signed slot header says 3.4.1: a mislabeled file
+    TEST_ASSERT_EQUAL(UpdateJob::Step::Refuse, job.signedVersion("3.4.1"));
+    TEST_ASSERT_FALSE(job.active());
+    TEST_ASSERT_EQUAL_STRING("3.4.2 refused version mismatch", job.failLine());
+}
+
+static void test_signed_slot_version_match_continues() {
+    UpdateJob job;
+    job.begin("3.4.2", "3.4.0");
+    TEST_ASSERT_EQUAL(UpdateJob::Step::Continue, job.signedVersion("3.4.2"));
+    TEST_ASSERT_TRUE(job.active());
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_url_accepts_name_port_path);
@@ -706,5 +722,7 @@ int main(int, char**) {
     RUN_TEST(test_apply_clear_key_wins);
     RUN_TEST(test_apply_refuses_bad_url_and_changes_nothing);
     RUN_TEST(test_apply_refuses_bad_key_and_changes_nothing);
+    RUN_TEST(test_signed_slot_version_mismatch_is_refused);
+    RUN_TEST(test_signed_slot_version_match_continues);
     return UNITY_END();
 }

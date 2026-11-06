@@ -89,6 +89,9 @@ bool fwUpdateUploadFeed(const uint8_t* data, size_t len);
  */
 bool fwUpdateUploadFinish(char* versionOut, const char*& error, FwUploadFault& fault);
 
+/// The version in the upload's signed slot header, "" until the receiver has validated that header
+const char* fwUpdateUploadVersion();
+
 /// The connection was lost or timed out: end the upload (the other slot reads as empty if it was written)
 void fwUpdateUploadAbort();
 

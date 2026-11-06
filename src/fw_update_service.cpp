@@ -375,6 +375,10 @@ bool fwUpdateUploadFeed(const uint8_t* data, size_t len) {
     return receiver.feed(data, len) != UpdateStatus::Failed;
 }
 
+const char* fwUpdateUploadVersion() {
+    return uploading ? receiver.version() : "";
+}
+
 bool fwUpdateUploadFinish(char* versionOut, const char*& error, FwUploadFault& fault) {
     versionOut[0] = '\0';
     error = "no upload";

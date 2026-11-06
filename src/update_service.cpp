@@ -51,6 +51,7 @@ uint32_t restartAtMs = 0;
 uint8_t head[UPD_HEAD_SIZE];
 size_t headLen = 0;
 bool uploadStarted = false;
+bool signedVersionChecked = false;  // the signed slot header's version was compared
 
 void setResult(const char* text) {
     snprintf(lastResult, sizeof(lastResult), "%s", text);
@@ -165,6 +166,7 @@ void startDownload(const CheckinReply& r, uint32_t now) {
     snprintf(downloadPath, sizeof(downloadPath), "%s%s", url.path, r.path);
     headLen = 0;
     uploadStarted = false;
+    signedVersionChecked = false;
     if (!httpFetchStart(url, "GET", downloadPath, nullptr, nullptr, 0, FW_UPLOAD_MAX, now, 0)) {
         job.failDownload(httpFetchError());
         scheduler.reportSoon(now);
@@ -238,6 +240,7 @@ void pollCheckin(uint32_t now) {
 void endDownload(uint32_t now) {
     if (uploadStarted) fwUpdateUploadAbort();
     uploadStarted = false;
+    signedVersionChecked = false;
     httpFetchAbort();
     phase = Phase::Idle;
     setResult(job.failLine());
@@ -252,6 +255,7 @@ void refusedByReceiver(uint32_t now) {
     FwUploadFault fault;
     fwUpdateUploadFinish(version, error, fault);  // gives the reason; the slot reads empty again
     uploadStarted = false;
+    signedVersionChecked = false;
     job.refused(error);
     endDownload(now);
 }
@@ -306,6 +310,14 @@ void pollDownload(uint32_t now) {
         if (!fwUpdateUploadFeed(chunk, n)) {
             refusedByReceiver(now);
             return;
+        }
+        // Once the signed slot header is validated: it must be the release the site named
+        if (!signedVersionChecked && fwUpdateUploadVersion()[0] != '\0') {
+            signedVersionChecked = true;
+            if (job.signedVersion(fwUpdateUploadVersion()) == UpdateJob::Step::Refuse) {
+                endDownload(now);  // aborts the upload: the other slot reads empty again
+                return;
+            }
         }
     }
 

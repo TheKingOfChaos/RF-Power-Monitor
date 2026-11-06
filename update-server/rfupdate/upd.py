@@ -10,6 +10,8 @@ UPD_MAGIC = 0x50554652  # "RFUP"
 UPD_FORMAT = 1
 HEADER_SIZE = 64
 SLOT_SIZE = 0xD7000
+SLOT_HEADER_SIZE = 256  # lib/fw_image fw_image.h: [64,68) magic "RFFW", [80,96) version
+SLOT_MAGIC = 0x57464652
 MAX_UPLOAD = HEADER_SIZE + 2 * SLOT_SIZE  # FW_UPLOAD_MAX in the firmware: 1 761 344 bytes
 MIN_VERSION = "3.4.0"  # the first firmware with check-ins; older ones could never report back
 
@@ -31,6 +33,14 @@ def parse_header(data: bytes) -> str:
         raise ValueError("not a .upd file (bad version)")
     if off_a != HEADER_SIZE or off_b != off_a + len_a or off_b + len_b != len(data) or len_a == 0 or len_b == 0:
         raise ValueError("not a .upd file (slot offsets do not match its length)")
+    # The file header is not signed, the slot headers are: they must hold the same version
+    for off, length in ((off_a, len_a), (off_b, len_b)):
+        if length < SLOT_HEADER_SIZE or struct.unpack_from("<I", data, off + 64)[0] != SLOT_MAGIC:
+            raise ValueError("not a .upd file (no slot header)")
+        slot_version = data[off + 80:off + 96].split(b"\0", 1)[0].decode("ascii", "replace")
+        if slot_version != version:
+            raise ValueError("The file says %s but its firmware is %s: not uploaded."
+                             % (version, slot_version))
     return version
 
 
