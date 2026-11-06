@@ -8,6 +8,7 @@
 #include <string>
 #include <sha256.h>
 #include <web_auth.h>
+#include <default_password.h>
 #include <http_request.h>
 #include <web_app.h>
 #include <bootstrap_css.h>
@@ -2279,6 +2280,80 @@ static void test_stream_body_done_never_expires() {
     TEST_ASSERT_FALSE(b.expired(STREAM_TOTAL_TIMEOUT_MS * 2));
 }
 
+// ---- Default password: two copies, lock (default_password.h) ----
+
+static void test_default_password_valid_needs_ten_alphabet_chars() {
+    TEST_ASSERT_TRUE(webDefaultPasswordIsValid("k7mq2xr9tp"));
+    TEST_ASSERT_FALSE(webDefaultPasswordIsValid(nullptr));
+    TEST_ASSERT_FALSE(webDefaultPasswordIsValid(""));
+    TEST_ASSERT_FALSE(webDefaultPasswordIsValid("k7mq2xr9t"));    // 9
+    TEST_ASSERT_FALSE(webDefaultPasswordIsValid("k7mq2xr9tpa"));  // 11
+    TEST_ASSERT_FALSE(webDefaultPasswordIsValid("k7mq2xr9t0"));   // 0 is not in the alphabet
+    TEST_ASSERT_FALSE(webDefaultPasswordIsValid("K7MQ2XR9TP"));   // upper case
+}
+
+static void test_default_password_both_copies_equal_writes_nothing() {
+    DefaultPasswordChoice c = chooseDefaultPassword("k7mq2xr9tp", "k7mq2xr9tp", false);
+    TEST_ASSERT_TRUE(c.source == DefaultPasswordSource::CopyA);
+    TEST_ASSERT_FALSE(c.writeA);
+    TEST_ASSERT_FALSE(c.writeB);
+    TEST_ASSERT_FALSE(c.lostWhileLocked);
+}
+
+static void test_default_password_missing_b_is_repaired_from_a() {
+    DefaultPasswordChoice c = chooseDefaultPassword("k7mq2xr9tp", nullptr, true);
+    TEST_ASSERT_TRUE(c.source == DefaultPasswordSource::CopyA);
+    TEST_ASSERT_FALSE(c.writeA);
+    TEST_ASSERT_TRUE(c.writeB);
+    TEST_ASSERT_FALSE(c.lostWhileLocked);
+}
+
+static void test_default_password_corrupt_a_uses_b_and_repairs_a() {
+    DefaultPasswordChoice c = chooseDefaultPassword("k7mq2x\xff", "k7mq2xr9tp", true);
+    TEST_ASSERT_TRUE(c.source == DefaultPasswordSource::CopyB);
+    TEST_ASSERT_TRUE(c.writeA);
+    TEST_ASSERT_FALSE(c.writeB);
+    TEST_ASSERT_FALSE(c.lostWhileLocked);
+}
+
+static void test_default_password_copies_differ_a_wins() {
+    DefaultPasswordChoice c = chooseDefaultPassword("k7mq2xr9tp", "abcdefghij", false);
+    TEST_ASSERT_TRUE(c.source == DefaultPasswordSource::CopyA);
+    TEST_ASSERT_FALSE(c.writeA);
+    TEST_ASSERT_TRUE(c.writeB);
+}
+
+static void test_default_password_old_firmware_single_file_is_copy_a() {
+    // A device updated from 3.4.0 has only data/web_default.txt, which is copy A
+    DefaultPasswordChoice c = chooseDefaultPassword("k7mq2xr9tp", nullptr, false);
+    TEST_ASSERT_TRUE(c.source == DefaultPasswordSource::CopyA);
+    TEST_ASSERT_TRUE(c.writeB);
+}
+
+static void test_default_password_none_valid_unlocked_is_not_lost() {
+    DefaultPasswordChoice c = chooseDefaultPassword(nullptr, "", false);
+    TEST_ASSERT_TRUE(c.source == DefaultPasswordSource::None);
+    TEST_ASSERT_TRUE(c.writeA);
+    TEST_ASSERT_TRUE(c.writeB);
+    TEST_ASSERT_FALSE(c.lostWhileLocked);
+}
+
+static void test_default_password_none_valid_locked_is_lost() {
+    DefaultPasswordChoice c = chooseDefaultPassword("garbage", "k7mq2", true);
+    TEST_ASSERT_TRUE(c.source == DefaultPasswordSource::None);
+    TEST_ASSERT_TRUE(c.writeA);
+    TEST_ASSERT_TRUE(c.writeB);
+    TEST_ASSERT_TRUE(c.lostWhileLocked);
+}
+
+static void test_made_default_password_is_valid() {
+    uint8_t random[WEB_DEFAULT_PASSWORD_LEN];
+    for (size_t i = 0; i < sizeof(random); i++) random[i] = (uint8_t)(i * 37 + 200);
+    char out[WEB_DEFAULT_PASSWORD_LEN + 1];
+    webMakeDefaultPassword(random, out);
+    TEST_ASSERT_TRUE(webDefaultPasswordIsValid(out));
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_sha256_known_vectors);
@@ -2424,5 +2499,14 @@ int main() {
     RUN_TEST(test_status_text_lists_all_keys);
     RUN_TEST(test_status_text_needs_login);
     RUN_TEST(test_longest_values_still_fit_the_firmware_page);
+    RUN_TEST(test_default_password_valid_needs_ten_alphabet_chars);
+    RUN_TEST(test_default_password_both_copies_equal_writes_nothing);
+    RUN_TEST(test_default_password_missing_b_is_repaired_from_a);
+    RUN_TEST(test_default_password_corrupt_a_uses_b_and_repairs_a);
+    RUN_TEST(test_default_password_copies_differ_a_wins);
+    RUN_TEST(test_default_password_old_firmware_single_file_is_copy_a);
+    RUN_TEST(test_default_password_none_valid_unlocked_is_not_lost);
+    RUN_TEST(test_default_password_none_valid_locked_is_lost);
+    RUN_TEST(test_made_default_password_is_valid);
     return UNITY_END();
 }

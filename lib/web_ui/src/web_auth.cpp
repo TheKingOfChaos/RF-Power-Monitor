@@ -1,13 +1,13 @@
 #include "web_auth.h"
 
 #include <string.h>
+#include "default_password.h"
 #include "sha256.h"
 #include <settings_codec.h>
 
 static_assert(WEB_PASSWORD_HASH_LEN == SETTINGS_WEB_PASSWORD_LEN, "settings must hold the stored web password");
 
 static const char HEX[] = "0123456789abcdef";
-static const char DEFAULT_ALPHABET[] = "abcdefghijkmnpqrstuvwxyz23456789";  // 32 characters
 
 static void toHex(const uint8_t* in, size_t len, char* out) {
     for (size_t i = 0; i < len; i++) {
@@ -119,7 +119,7 @@ void WebPasswordCheck::clear() {
 }
 
 void webMakeDefaultPassword(const uint8_t* random, char* out) {
-    for (size_t i = 0; i < WEB_DEFAULT_PASSWORD_LEN; i++) out[i] = DEFAULT_ALPHABET[random[i] & 31];
+    for (size_t i = 0; i < WEB_DEFAULT_PASSWORD_LEN; i++) out[i] = WEB_DEFAULT_ALPHABET[random[i] & 31];
     out[WEB_DEFAULT_PASSWORD_LEN] = '\0';
 }
 
