@@ -7,6 +7,7 @@
 #include "ambient_temp.h"
 #include "cpu_temp.h"
 #include "dhcp6_service.h"
+#include "fw_update_service.h"
 #include "hostname.h"
 #include "lldp_service.h"
 #include "net_stats.h"
@@ -216,6 +217,21 @@ static void printStatus() {
     Serial.printf("Last restart: %s (%lu watchdog restarts since power-on)\r\n",
                   restartCauseName(watchdogRestartCause()), (unsigned long)watchdogRestarts());
     if (diagReport()) Serial.println(diagReport());
+    {
+        static WebFirmware fw;  // static: not on core 0's small stack
+        memset(&fw, 0, sizeof(fw));
+        fwUpdateStatus(fw);
+        char other = fw.runningSlot == 0 ? 'B' : 'A';
+        Serial.printf("Firmware: slot %c, %s, %s\r\n", fw.runningSlot == 0 ? 'A' : 'B', fw.runningVersion,
+                      fw.trial ? "trial" : "kept");
+        if (fw.otherVersion[0]) {
+            Serial.printf("Other slot: %c, %s\r\n", other, fw.otherVersion);
+        } else {
+            Serial.printf("Other slot: %c, %s\r\n", other, fw.otherProblem[0] ? fw.otherProblem : "unknown");
+        }
+        Serial.printf("Last update: %s\r\n", fw.lastResult[0] ? fw.lastResult : "none");
+        Serial.printf("Firmware key: %s\r\n", fw.keyFingerprint);
+    }
 
     Serial.printf("Mode: %s\r\n", currentSettings.dhcpEnabled ? "DHCP" : "Static");
     Serial.printf("Stored static IP: %s / %s, gateway %s\r\n",

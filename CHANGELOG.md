@@ -7,6 +7,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 ## [Unreleased]
 
 ### Added
+- Firmware update: serial status screen lines `Firmware:`, `Other slot:`, `Last update:` and `Firmware key:`; `tools/fw_update.py` updates one or more devices over the web interface (login, key check, upload, waits until the new firmware is kept; password from `RFPOWER_WEB_PASSWORD` or a prompt).
 - Hardware: rev 2 board in `hardware/rf-power-monitor-rev2/` (designed, not built yet). One 2-layer board, 100 x 64 mm, with the RP2040, 2 MB flash, W5500, magnetics, RJ45, a 3.3 V buck and USB-C on it; PoE stays the plug-in WIZnet WIZPoE-P1 module. The mains detector, TMP1075 and factory reset button are the rev 1 circuits with the same pins, so the firmware runs unchanged. KiCad 10 project, JLCPCB fab and assembly files, 3D model, renders and a datasheet. No firmware change.
 
 ## [3.2.0] - 2026-11-02

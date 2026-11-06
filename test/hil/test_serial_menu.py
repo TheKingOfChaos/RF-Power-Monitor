@@ -149,6 +149,16 @@ class SerialMenuTest(unittest.TestCase):
 
     # ---- SNMP settings entry, always cancelled ----
 
+    def test_status_shows_firmware_lines(self):
+        st = self.dev.status()
+        self.assertIsNotNone(st["fwSlot"], "Firmware line missing:\n%s" % st["raw"])
+        self.assertRegex(st["fwVersion"], r"^\d+\.\d+\.\d+")
+        self.assertEqual("kept", st["fwState"])  # a device at rest is not on trial
+        self.assertNotEqual(st["fwSlot"], st["fwOtherSlot"])
+        self.assertIsNotNone(st["fwOther"])
+        self.assertIsNotNone(st["fwLastUpdate"])
+        self.assertIsNotNone(st["fwKey"], "Firmware key line missing:\n%s" % st["raw"])
+
     def test_status_shows_snmp_settings(self):
         st = self.dev.status()
         for key in ("community", "sysName", "sysContact", "sysLocation"):

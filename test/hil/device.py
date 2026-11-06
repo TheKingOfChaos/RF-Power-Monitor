@@ -151,6 +151,17 @@ class Device:
         m = re.search(r"^Last restart: (.+) \((\d+) watchdog restarts since power-on\)\r?$", out, re.MULTILINE)
         info["lastRestart"] = m.group(1) if m else None
         info["watchdogRestarts"] = int(m.group(2)) if m else None
+        m = re.search(r"^Firmware: slot ([AB]), (\S+), (kept|trial)\r?$", out, re.MULTILINE)
+        info["fwSlot"] = m.group(1) if m else None
+        info["fwVersion"] = m.group(2) if m else None
+        info["fwState"] = m.group(3) if m else None
+        m = re.search(r"^Other slot: ([AB]), (.+?)\r?$", out, re.MULTILINE)
+        info["fwOtherSlot"] = m.group(1) if m else None
+        info["fwOther"] = m.group(2) if m else None
+        m = re.search(r"^Last update: (.+?)\r?$", out, re.MULTILINE)
+        info["fwLastUpdate"] = m.group(1) if m else None
+        m = re.search(r"^Firmware key: ([0-9a-f]{16})\r?$", out, re.MULTILINE)
+        info["fwKey"] = m.group(1) if m else None
         m = re.search(r"^CPU load: core 0 (\d+) %, core 1 (\d+) %", out, re.MULTILINE)
         info["cpuLoad"] = (int(m.group(1)), int(m.group(2))) if m else None
         m = re.search(r"^RAM used: (\d+) of (\d+) bytes", out, re.MULTILINE)
