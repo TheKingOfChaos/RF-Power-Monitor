@@ -6,6 +6,7 @@
 #include <hardware/structs/watchdog.h>
 #include <boot_decision.h>
 #include <fw_image.h>
+#include <fw_records.h>
 #include <fw_key.h>
 #include <trial_monitor.h>
 #include <update_receiver.h>
@@ -19,9 +20,6 @@
 // The slot this image was linked for (it can run nowhere else)
 static const uint8_t RUNNING_SLOT = FW_SLOT;
 static const uint8_t OTHER_SLOT = 1 - FW_SLOT;
-
-// The crash counter's encoding (boot_decision.h): 0xC7A50000 | slot << 8 | count
-static const uint32_t CRASH_SCRATCH_MAGIC = 0xC7A50000u;
 
 // ---- flash ----
 
@@ -143,17 +141,6 @@ static bool writeRecord(BootRecord r) {
     return true;
 }
 
-/// A record with no trial and the given outcome
-static BootRecord settledRecord(uint8_t active, FwResult result, const char* version, bool trap) {
-    BootRecord r = {};
-    r.active = active;
-    r.trial = FW_NO_SLOT;
-    r.lastResult = result;
-    r.trapPending = trap;
-    strlcpy(r.lastVersion, version, sizeof(r.lastVersion));
-    return r;
-}
-
 // ---- state ----
 
 enum class OtherSlot : uint8_t { Unchecked, Checked };
@@ -227,16 +214,10 @@ void fwUpdateResultText(FwResult result, const char* version, char* out, size_t 
 /// After a fallback: the running slot becomes the active one, and the rollback is reported
 static void recordFallback() {
     uint8_t failed = bootInfoFailedSlot();
-    bool wasTrial = haveRecord && failed <= 1 && record.trial == failed;
-    // boot_decision.h: the crash limit falls back only after a crash and restarts the count
-    uint32_t crash = bootInfoCrashScratch();
-    uint8_t count = (crash & 0xFFFF0000u) == CRASH_SCRATCH_MAGIC ? (uint8_t)(crash & 0xFF) : 0;
-    bool crashLimit = bootInfoResetKind() == ResetKind::Crash && count == 0;
+    bool crashLimit = fwFallbackWasCrashLimit(bootInfoResetKind(), bootInfoCrashScratch());
     char version[17] = "";
     if (failed <= 1) headerVersion(failed, version, sizeof(version));
-    BootRecord r = settledRecord(RUNNING_SLOT, wasTrial ? FwResult::RolledBackCrash : FwResult::FallbackCrash,
-                                 version, true);
-    bool ok = writeRecord(r);
+    bool ok = writeRecord(fwRecordAfterFallback(haveRecord, record, RUNNING_SLOT, failed, version));
     trapPending = ok;
     snprintf(bootNote, sizeof(bootNote), "Firmware: slot %c %s, back on slot %c%s", failed <= 1 ? 'A' + failed : '?',
              crashLimit ? "crashed 3 times" : "failed its signature check", 'A' + RUNNING_SLOT,
@@ -278,15 +259,15 @@ void fwUpdatePrintBoot() {
 static void endTrial(TrialVerdict verdict) {
     if (verdict == TrialVerdict::Confirmed) {
         onTrial = false;
-        clearCrashCounter();
-        bool ok = writeRecord(settledRecord(RUNNING_SLOT, FwResult::Installed, FIRMWARE_VERSION, true));
+        if (fwShouldClearCrashCount(true, true, millis())) clearCrashCounter();
+        bool ok = writeRecord(fwRecordConfirmed(RUNNING_SLOT, FIRMWARE_VERSION));
         trapPending = ok;
         Serial.printf("\r\nFirmware: trial passed, %s kept in slot %c%s\r\n", FIRMWARE_VERSION, 'A' + RUNNING_SLOT,
                       ok ? "" : " (boot record NOT written, trial again at the next start)");
         return;
     }
     Serial.printf("\r\nFirmware: no valid request on trial, going back to slot %c\r\n", 'A' + OTHER_SLOT);
-    if (!writeRecord(settledRecord(OTHER_SLOT, FwResult::RolledBackUnreachable, FIRMWARE_VERSION, true))) {
+    if (!writeRecord(fwRecordUnreachable(RUNNING_SLOT, FIRMWARE_VERSION))) {
         // A planned restart would start this trial again; a hang counts as a crash, and three fall back
         Serial.println("Firmware: boot record NOT written, waiting for the watchdog");
         Serial.flush();
@@ -301,13 +282,13 @@ void fwUpdatePoll(bool netReady) {
     if (otherState == OtherSlot::Unchecked && !uploading) checkOtherSlot();
     if (clearTrapInRecord) {
         clearTrapInRecord = false;
-        BootRecord r = record;
-        r.trapPending = false;
-        if (haveRecord && record.trapPending && !writeRecord(r)) {
+        if (haveRecord && record.trapPending && !writeRecord(fwRecordTrapSent(record))) {
             Serial.println("\r\nFirmware: boot record NOT written (trap flag)");
         }
     }
-    if (!crashCleared && millis() >= FW_HEALTHY_MS) {
+    // On trial only a confirmation clears it: a trial firmware that hangs every few minutes must
+    // still reach the crash limit (the trial monitor starts over at each boot)
+    if (!crashCleared && fwShouldClearCrashCount(onTrial, false, millis())) {
         crashCleared = true;
         clearCrashCounter();
     }
@@ -323,11 +304,12 @@ void fwUpdateNoteValidRequest() {
 #endif
 }
 
-/// Upload outcome for the page: "rejected: <reason>"
-static void rejectUpload(const char* reason) {
+/// Upload outcome for the page: "rejected: <reason>". slotErased: the other slot's first
+/// sector is erased (the receiver or the failed check erased it), so it reads empty now
+static void rejectUpload(const char* reason, bool slotErased) {
     releaseReceiver();
     snprintf(uploadResultText, sizeof(uploadResultText), "rejected: %s", reason);
-    if (otherWriter.touched()) {
+    if (slotErased) {
         otherState = OtherSlot::Checked;  // its first sector is erased: Empty
         otherCheck = SlotCheck::Empty;
         otherVersion[0] = '\0';
@@ -335,20 +317,23 @@ static void rejectUpload(const char* reason) {
     Serial.printf("\r\nFirmware: upload %s\r\n", uploadResultText);
 }
 
-bool fwUpdateUploadBegin(uint32_t contentLength, const char*& error) {
+bool fwUpdateUploadBegin(uint32_t contentLength, const char*& error, FwUploadFault& fault) {
     error = nullptr;
+    fault = FwUploadFault::Busy;
     if (uploading) error = "upload in progress";
     else if (onTrial) error = "on trial";
-    else if (haveRecord && (record.trial != FW_NO_SLOT || record.active != RUNNING_SLOT)) error = "restart pending";
+    else if (!fwRecordSettled(haveRecord, record, RUNNING_SLOT)) error = "restart pending";
     else if (bootInfoValid() && bootInfoSlot() != RUNNING_SLOT) error = "slot mismatch";
-    else if (contentLength == 0) error = "empty file";
-    else if (contentLength > FW_UPLOAD_MAX) error = "file too large";
+    else if (contentLength == 0) error = "empty file", fault = FwUploadFault::BadFile;
+    else if (contentLength > FW_UPLOAD_MAX) error = "file too large", fault = FwUploadFault::TooLarge;
     if (error) return false;
     receiver = new (std::nothrow) UpdateReceiver();
     if (receiver == nullptr) {
         error = "out of memory";
+        fault = FwUploadFault::NoMemory;
         return false;
     }
+    fault = FwUploadFault::None;
     otherWriter = FlashSlotWriter(OTHER_SLOT);
     receiver->begin(OTHER_SLOT, contentLength, keyId, otherWriter);
     uploading = true;
@@ -362,13 +347,16 @@ bool fwUpdateUploadFeed(const uint8_t* data, size_t len) {
     return receiver->feed(data, len) != UpdateStatus::Failed;
 }
 
-bool fwUpdateUploadFinish(char* versionOut, const char*& error) {
+bool fwUpdateUploadFinish(char* versionOut, const char*& error, FwUploadFault& fault) {
     versionOut[0] = '\0';
     error = "no upload";
+    fault = FwUploadFault::Busy;
     if (!uploading) return false;
     if (receiver->finish() != UpdateStatus::Done) {
-        error = updateErrorName(receiver->error());
-        rejectUpload(error);
+        UpdateError e = receiver->error();
+        error = updateErrorName(e);
+        fault = e == UpdateError::WriteFailed ? FwUploadFault::DeviceError : FwUploadFault::BadFile;
+        rejectUpload(error, otherWriter.touched());
         return false;
     }
     SlotHeader h;
@@ -378,14 +366,18 @@ bool fwUpdateUploadFinish(char* versionOut, const char*& error) {
         // Erase its header, so the slot reads as empty rather than as a bad image
         flashErase(FW_SLOT_OFFSET[OTHER_SLOT]);
         error = slotCheckName(c);
-        rejectUpload(error);
+        fault = FwUploadFault::BadFile;
+        rejectUpload(error, true);
         return false;
     }
-    BootRecord r = settledRecord(RUNNING_SLOT, FwResult::None, h.version, false);
-    r.trial = OTHER_SLOT;
-    if (!writeRecord(r)) {
+    if (!writeRecord(fwRecordTrialOfOther(RUNNING_SLOT, h.version))) {
         error = "boot record not written";
-        rejectUpload(error);
+        fault = FwUploadFault::DeviceError;
+        rejectUpload(error, false);
+        // The slot holds the verified image: it can still be switched to
+        otherState = OtherSlot::Checked;
+        otherCheck = SlotCheck::Ok;
+        strlcpy(otherVersion, h.version, sizeof(otherVersion));
         return false;
     }
     releaseReceiver();
@@ -397,20 +389,20 @@ bool fwUpdateUploadFinish(char* versionOut, const char*& error) {
     snprintf(uploadResultText, sizeof(uploadResultText), "verified %s, restarting on trial", h.version);
     Serial.printf("\r\nFirmware: %s verified in slot %c, restarting into it on trial\r\n", h.version, 'A' + OTHER_SLOT);
     error = nullptr;
+    fault = FwUploadFault::None;
     return true;
 }
 
 void fwUpdateUploadAbort() {
     if (!uploading) return;
-    rejectUpload(receiver->error() != UpdateError::None ? updateErrorName(receiver->error()) : "connection lost");
+    rejectUpload(receiver->error() != UpdateError::None ? updateErrorName(receiver->error()) : "connection lost",
+                 otherWriter.touched());
 }
 
 bool fwUpdateSwitchSlot() {
     if (uploading || onTrial || otherState != OtherSlot::Checked || otherCheck != SlotCheck::Ok) return false;
-    if (haveRecord && (record.trial != FW_NO_SLOT || record.active != RUNNING_SLOT)) return false;
-    BootRecord r = settledRecord(RUNNING_SLOT, FwResult::None, otherVersion, false);
-    r.trial = OTHER_SLOT;
-    if (!writeRecord(r)) return false;
+    if (!fwRecordSettled(haveRecord, record, RUNNING_SLOT)) return false;
+    if (!writeRecord(fwRecordTrialOfOther(RUNNING_SLOT, otherVersion))) return false;
     trapPending = false;
     Serial.printf("\r\nFirmware: switching to slot %c (%s) on trial\r\n", 'A' + OTHER_SLOT, otherVersion);
     return true;

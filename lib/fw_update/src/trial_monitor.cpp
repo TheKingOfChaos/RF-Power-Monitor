@@ -23,3 +23,12 @@ TrialVerdict TrialMonitor::poll(uint32_t nowMs, bool netReady) {
     if (_netMs >= FW_TRIAL_REACH_MS || (nowMs - _startMs) >= FW_TRIAL_LIMIT_MS) return TrialVerdict::Unreachable;
     return TrialVerdict::Pending;
 }
+
+bool fwTrialNetReady(bool linkUp, bool hasIPv4, bool hasRoutableIPv6) {
+    return linkUp && (hasIPv4 || hasRoutableIPv6);
+}
+
+bool fwShouldClearCrashCount(bool onTrial, bool confirmed, uint32_t uptimeMs) {
+    if (confirmed) return true;
+    return !onTrial && uptimeMs >= FW_HEALTHY_MS;
+}

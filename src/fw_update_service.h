@@ -15,8 +15,8 @@
  *  - on a trial boot it waits for a valid management request (SNMP with the
  *    right community or an authenticated web request): then the new slot is
  *    kept; without one (lib/fw_update TrialMonitor) it goes back to the old slot;
- *  - after FW_HEALTHY_MS of uptime, or when a trial is confirmed, it clears
- *    the crash counter.
+ *  - it clears the crash counter when a trial is confirmed, or after
+ *    FW_HEALTHY_MS of uptime when not on trial (fwShouldClearCrashCount).
  *
  * Uploads write only the slot that is not running. Flash writes idle core 1
  * (mains detection pauses, as for settings saves) and feed the watchdog after
@@ -49,19 +49,30 @@ void fwUpdatePrintBoot();
  * @brief Trial monitor, crash counter, deferred record writes; call every loop() on core 0
  *
  * The first call also checks the other slot's signature (about a second, once).
- * @param netReady Ethernet link up and an IPv4 or IPv6 address in use
+ * @param netReady fwTrialNetReady(): link up and an IPv4 or a non-link-local IPv6 address
  */
 void fwUpdatePoll(bool netReady);
 
 /// A valid management request arrived (SNMP with the right community, an authenticated web request)
 void fwUpdateNoteValidRequest();
 
+/// Why an upload was not accepted (the web layer picks the HTTP status from it)
+enum class FwUploadFault : uint8_t {
+    None,
+    BadFile,      ///< the file was refused (bad header, signature, length...): 400
+    Busy,         ///< not now: on trial, uploading, restart pending: 409
+    TooLarge,     ///< larger than FW_UPLOAD_MAX: 413
+    NoMemory,     ///< no RAM for the receiver right now: 503
+    DeviceError,  ///< the device failed to write flash or the boot record: 500
+};
+
 /**
  * @brief Start receiving an update file of contentLength bytes into the slot that is not running
  * @param error Set to a short reason on failure ("on trial", "upload in progress", ...)
+ * @param fault Set to the kind of failure (None on success)
  * @return false when an upload cannot start now (nothing is written then)
  */
-bool fwUpdateUploadBegin(uint32_t contentLength, const char*& error);
+bool fwUpdateUploadBegin(uint32_t contentLength, const char*& error, FwUploadFault& fault);
 
 /// The next bytes of the file; false once the file was refused (fwUpdateUploadFinish() then gives the reason)
 bool fwUpdateUploadFeed(const uint8_t* data, size_t len);
@@ -74,8 +85,9 @@ bool fwUpdateUploadFeed(const uint8_t* data, size_t len);
  * slot reads as empty when anything was written to it.
  * @param versionOut 17 bytes: the new firmware version on success
  * @param error A short reason on failure, e.g. "bad signature"
+ * @param fault The kind of failure (None on success)
  */
-bool fwUpdateUploadFinish(char* versionOut, const char*& error);
+bool fwUpdateUploadFinish(char* versionOut, const char*& error, FwUploadFault& fault);
 
 /// The connection was lost or timed out: end the upload (the other slot reads as empty if it was written)
 void fwUpdateUploadAbort();

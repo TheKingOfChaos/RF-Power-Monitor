@@ -120,7 +120,7 @@ static void test_record_write_alternates_copies_and_increments_sequence() {
     TEST_ASSERT_FALSE(haveRecord);
 
     bool valid0, valid1;
-    BootRecord r = settledRecord(RUNNING_SLOT, FwResult::Installed, "3.3.0", true);
+    BootRecord r = fwRecordConfirmed(RUNNING_SLOT, "3.3.0");
     TEST_ASSERT_TRUE(writeRecord(r));  // no valid copy: copy 0, sequence 1
     TEST_ASSERT_EQUAL_UINT32(1, recordSequence(0, valid0));
     TEST_ASSERT_TRUE(valid0);
@@ -153,7 +153,8 @@ static const char* uploadError = nullptr;
 /// The upload path as webPoll() runs it: begin, 512-byte feeds, finish (Ed25519 check from flash)
 static void __attribute__((noinline)) uploadGolden() {
     const char* error = nullptr;
-    uploadOk = fwUpdateUploadBegin(sizeof(GOLDEN_UPD), error);
+    FwUploadFault fault;
+    uploadOk = fwUpdateUploadBegin(sizeof(GOLDEN_UPD), error, fault);
     if (!uploadOk) {
         uploadError = error;
         return;
@@ -164,7 +165,7 @@ static void __attribute__((noinline)) uploadGolden() {
         memcpy(chunk, GOLDEN_UPD + pos, n);
         uploadOk = fwUpdateUploadFeed(chunk, n);
     }
-    uploadOk = uploadOk && fwUpdateUploadFinish(uploadVersion, uploadError);
+    uploadOk = uploadOk && fwUpdateUploadFinish(uploadVersion, uploadError, fault);
 }
 
 /// Erase what an upload wrote to the other slot (the golden blob spans two sectors)
@@ -216,9 +217,11 @@ static void test_rejected_upload_leaves_other_slot_empty_and_no_record() {
 
     const char* error = nullptr;
     char version[17];
-    TEST_ASSERT_TRUE(fwUpdateUploadBegin(sizeof(bad), error));
+    FwUploadFault fault;
+    TEST_ASSERT_TRUE(fwUpdateUploadBegin(sizeof(bad), error, fault));
     TEST_ASSERT_TRUE(fwUpdateUploadFeed(bad, sizeof(bad)));
-    TEST_ASSERT_FALSE(fwUpdateUploadFinish(version, error));
+    TEST_ASSERT_FALSE(fwUpdateUploadFinish(version, error, fault));
+    TEST_ASSERT_EQUAL(FwUploadFault::BadFile, fault);  // the file, not the device: 400
     TEST_ASSERT_EQUAL_STRING("bad signature", error);
     SlotHeader h;
     TEST_ASSERT_EQUAL(SlotCheck::Empty, slotVerify(xip(FW_SLOT_OFFSET[OTHER_SLOT]), OTHER_SLOT, FW_PUBLIC_KEY, h));

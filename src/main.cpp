@@ -12,6 +12,7 @@
 #include "dhcp6_service.h"
 #include "factory_reset.h"
 #include "fw_update_service.h"
+#include <trial_monitor.h>
 #include "host_stats.h"
 #include "hostname.h"
 #include "ipv6_static.h"
@@ -257,19 +258,12 @@ void setup() {
 }
 
 /**
- * @brief The network counts as up for a firmware trial: Ethernet link and an
- *        IPv4 address, or a valid (not tentative) IPv6 address, link-local included
+ * @brief The network counts as up for a firmware trial (fwTrialNetReady): Ethernet
+ *        link and an IPv4 address, or a valid IPv6 address that is not link-local
  */
 static bool networkReady() {
-    if (!ethPresent || !netStatsPhy().linkUp) return false;
-    if (eth.connected()) return true;
-#if LWIP_IPV6
-    netif* nif = eth.getNetIf();
-    for (int i = 0; i < LWIP_IPV6_NUM_ADDRESSES; i++) {
-        if (ip6_addr_isvalid(netif_ip6_addr_state(nif, i))) return true;
-    }
-#endif
-    return false;
+    if (!ethPresent) return false;
+    return fwTrialNetReady(netStatsPhy().linkUp, eth.connected(), netStatsHasRoutableIPv6());
 }
 
 void loop() {

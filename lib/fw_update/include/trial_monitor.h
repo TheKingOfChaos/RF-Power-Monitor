@@ -56,3 +56,24 @@ private:
     bool _requested = false;
     bool _confirmed = false;
 };
+
+/**
+ * @brief Network up, as a trial counts it: the link is up and the device has
+ *        an IPv4 address or an IPv6 address that is not link-local (a
+ *        link-local address is always there, it says nothing about DHCP or
+ *        router advertisements having worked)
+ */
+bool fwTrialNetReady(bool linkUp, bool hasIPv4, bool hasRoutableIPv6);
+
+/**
+ * @brief May the crash counter be cleared now?
+ *
+ * On trial, only a confirmation clears it: a trial firmware that hangs some
+ * minutes after every boot must still reach the crash limit and be rolled
+ * back (the trial monitor starts over at each boot). Otherwise it is cleared
+ * once the firmware ran FW_HEALTHY_MS.
+ * @param onTrial the running firmware is on trial (not yet confirmed)
+ * @param confirmed the trial was confirmed just now
+ * @param uptimeMs time since boot
+ */
+bool fwShouldClearCrashCount(bool onTrial, bool confirmed, uint32_t uptimeMs);

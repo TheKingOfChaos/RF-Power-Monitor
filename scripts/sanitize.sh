@@ -45,6 +45,7 @@ declare -A SUITES=(
     [test_fw_boot]="fw_update fw_image monocypher"
     [test_fw_receiver]="fw_update fw_image monocypher"
     [test_fw_trial]="fw_update fw_image monocypher"
+    [test_fw_records]="fw_update fw_image monocypher"
 )
 
 failed=0

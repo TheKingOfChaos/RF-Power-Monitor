@@ -336,6 +336,19 @@ static void respond() {
 
 static void closeConnection();
 
+/// HTTP status for an upload the update service did not accept
+static int uploadStatus(FwUploadFault fault) {
+    switch (fault) {
+    case FwUploadFault::BadFile:     return 400;
+    case FwUploadFault::TooLarge:    return 413;
+    case FwUploadFault::NoMemory:    return 503;
+    case FwUploadFault::DeviceError: return 500;
+    case FwUploadFault::Busy:
+    case FwUploadFault::None:        break;
+    }
+    return 409;
+}
+
 /// Answer an upload (text/plain) and start sending it; a success reboots after it went out
 static void respondUpload(int code, const char* text) {
     out = app.uploadResult(code, text, outLen);
@@ -357,8 +370,9 @@ static void startUpload() {
     }
     uint32_t length = (uint32_t)request.contentLength();
     const char* error = nullptr;
-    if (!fwUpdateUploadBegin(length, error)) {
-        respondUpload(length == 0 ? 400 : length > FW_UPLOAD_MAX ? 413 : 409, error);
+    FwUploadFault fault;
+    if (!fwUpdateUploadBegin(length, error, fault)) {
+        respondUpload(uploadStatus(fault), error);
         return;
     }
     size_t prefixLen = 0;
@@ -383,12 +397,11 @@ static void pollUpload() {
     if (uploadLeft == 0) {
         char version[17];
         const char* error = nullptr;
-        if (fwUpdateUploadFinish(version, error)) {
+        FwUploadFault fault;
+        if (fwUpdateUploadFinish(version, error, fault)) {
             respondUpload(200, version);
         } else {
-            // The file was refused (400), unless the device itself failed to write it (500)
-            bool deviceFault = strcmp(error, "write failed") == 0 || strcmp(error, "boot record not written") == 0;
-            respondUpload(deviceFault ? 500 : 400, error);
+            respondUpload(uploadStatus(fault), error);
         }
         return;
     }

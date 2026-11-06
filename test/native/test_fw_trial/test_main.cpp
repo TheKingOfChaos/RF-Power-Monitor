@@ -90,6 +90,41 @@ static void test_trial_request_before_network_still_confirms() {
     TEST_ASSERT_EQUAL(TrialVerdict::Confirmed, m.poll(100, false));
 }
 
+static void test_crash_count_kept_on_trial_after_healthy_time() {
+    // A trial firmware that hangs every ~6 min must still reach the crash limit
+    TEST_ASSERT_FALSE(fwShouldClearCrashCount(true, false, FW_HEALTHY_MS));
+    TEST_ASSERT_FALSE(fwShouldClearCrashCount(true, false, FW_HEALTHY_MS * 10));
+}
+
+static void test_crash_count_cleared_when_trial_confirmed() {
+    TEST_ASSERT_TRUE(fwShouldClearCrashCount(true, true, 0));
+    TEST_ASSERT_TRUE(fwShouldClearCrashCount(false, true, 0));
+}
+
+static void test_crash_count_cleared_after_healthy_time_when_kept() {
+    TEST_ASSERT_FALSE(fwShouldClearCrashCount(false, false, 0));
+    TEST_ASSERT_FALSE(fwShouldClearCrashCount(false, false, FW_HEALTHY_MS - 1));
+    TEST_ASSERT_TRUE(fwShouldClearCrashCount(false, false, FW_HEALTHY_MS));
+    TEST_ASSERT_TRUE(fwShouldClearCrashCount(false, false, 0xFFFFFFFFu));
+}
+
+static void test_net_ready_needs_link_and_ipv4_or_routable_ipv6() {
+    TEST_ASSERT_TRUE(fwTrialNetReady(true, true, false));
+    TEST_ASSERT_TRUE(fwTrialNetReady(true, false, true));
+    TEST_ASSERT_TRUE(fwTrialNetReady(true, true, true));
+}
+
+static void test_net_not_ready_with_link_local_only() {
+    // Link up but DHCP and SLAAC failed: only link-local, which is always there
+    TEST_ASSERT_FALSE(fwTrialNetReady(true, false, false));
+}
+
+static void test_net_not_ready_without_link() {
+    // A static IPv4 address stays configured when the cable is out
+    TEST_ASSERT_FALSE(fwTrialNetReady(false, true, true));
+    TEST_ASSERT_FALSE(fwTrialNetReady(false, false, false));
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_trial_confirms_after_valid_request);
@@ -100,5 +135,11 @@ int main() {
     RUN_TEST(test_trial_hard_limit_60_min_without_network);
     RUN_TEST(test_trial_survives_millis_wraparound);
     RUN_TEST(test_trial_request_before_network_still_confirms);
+    RUN_TEST(test_crash_count_kept_on_trial_after_healthy_time);
+    RUN_TEST(test_crash_count_cleared_when_trial_confirmed);
+    RUN_TEST(test_crash_count_cleared_after_healthy_time_when_kept);
+    RUN_TEST(test_net_ready_needs_link_and_ipv4_or_routable_ipv6);
+    RUN_TEST(test_net_not_ready_with_link_local_only);
+    RUN_TEST(test_net_not_ready_without_link);
     return UNITY_END();
 }
