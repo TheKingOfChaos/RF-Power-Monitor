@@ -12,7 +12,8 @@
  * LibreNMS only logs the RF-POWER-MONITOR-MIB traps; alerts come from the sensors. After a mains
  * trap (lost, restored, or lost for 60 s) this polls the device's sensors, which runs its alert
  * rules, so "State Sensor Critical" on "Mains lost over 60 s" opens about 60 s after mains goes and
- * recovers when it returns, instead of at the next 5-minute poll.
+ * recovers when it returns, instead of at the next 5-minute poll. The firmware traps (update kept,
+ * rolled back) poll the "Firmware" sensors the same way.
  */
 
 use LibreNMS\Util\Debug;
@@ -47,18 +48,19 @@ function useAgentAddress(string $text): string
 }
 
 /**
- * Whether the trap is mainsPowerLost, mainsPowerRestored or mainsPowerLostTooLong, by name or by number.
+ * Whether the trap is one that changes a sensor: mainsPowerLost, mainsPowerRestored, mainsPowerLostTooLong,
+ * firmwareUpdateKept or firmwareRolledBack, by name or by number.
  *
  * @param  string  $trapOid  snmpTrapOID.0 as snmptrapd printed it
  * @return bool
  */
-function isMainsTrap(string $trapOid): bool
+function isPollingTrap(string $trapOid): bool
 {
     // RF-UPS-MONITOR-MIB is the module's name before 3.0.0: snmptrapd keeps it until restarted
-    return preg_match('/RF-(UPS|POWER)-MONITOR-MIB::mainsPower/', $trapOid) === 1
-        || preg_match('/(\.1\.3\.6\.1\.4\.1\.|enterprises\.)63050\.0\.[123]$/', $trapOid) === 1
+    return preg_match('/RF-(UPS|POWER)-MONITOR-MIB::(mainsPower|firmwareUpdateKept|firmwareRolledBack)/', $trapOid) === 1
+        || preg_match('/(\.1\.3\.6\.1\.4\.1\.|enterprises\.)63050\.0\.[12345]$/', $trapOid) === 1
         // snmptrapd started with an older MIB file names a newer trap by its parent
-        || preg_match('/RF-(UPS|POWER)-MONITOR-MIB::rf(Ups|Power)MonitorNotifications\.[123]$/', $trapOid) === 1;
+        || preg_match('/RF-(UPS|POWER)-MONITOR-MIB::rf(Ups|Power)MonitorNotifications\.[12345]$/', $trapOid) === 1;
 }
 
 $trap = new \LibreNMS\Snmptrap\Trap(useAgentAddress(stream_get_contents(STDIN)));
@@ -66,6 +68,6 @@ $trap = new \LibreNMS\Snmptrap\Trap(useAgentAddress(stream_get_contents(STDIN)))
 
 // snmptrapd runs this as root; the poller writes RRD files and must run as librenms
 $device = $trap->getDevice();
-if ($device !== null && isMainsTrap($trap->getTrapOid())) {
+if ($device !== null && isPollingTrap($trap->getTrapOid())) {
     exec('s6-setuidgid librenms /opt/librenms/lnms device:poll ' . (int) $device->device_id . ' -m sensors -q');
 }

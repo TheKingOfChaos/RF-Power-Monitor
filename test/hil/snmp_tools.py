@@ -99,11 +99,14 @@ TRAP_OIDS_V2C = {
     "1.3.6.1.4.1.63050.0.1": "mainsPowerLost",
     "1.3.6.1.4.1.63050.0.2": "mainsPowerRestored",
     "1.3.6.1.4.1.63050.0.3": "mainsPowerLostTooLong",
+    "1.3.6.1.4.1.63050.0.4": "firmwareUpdateKept",
+    "1.3.6.1.4.1.63050.0.5": "firmwareRolledBack",
 }
 # snmpTrapAddress.0 (RFC 3584): the device's address in its v2c traps, as the v1 agent-addr
 SNMP_TRAP_ADDRESS = "1.3.6.1.6.3.18.1.3.0"
 TRAPS_V1 = {(0, 0): "coldStart", (4, 0): "authenticationFailure",
-            (6, 1): "mainsPowerLost", (6, 2): "mainsPowerRestored", (6, 3): "mainsPowerLostTooLong"}
+            (6, 1): "mainsPowerLost", (6, 2): "mainsPowerRestored", (6, 3): "mainsPowerLostTooLong",
+            (6, 4): "firmwareUpdateKept", (6, 5): "firmwareRolledBack"}
 
 
 def _varbinds(vbl):

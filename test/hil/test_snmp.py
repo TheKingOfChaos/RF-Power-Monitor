@@ -40,6 +40,8 @@ NO_TMP1075 = bool(os.environ.get("RFPOWER_NO_TMP1075"))
 # Enterprise objects in walk order: ambientTemperature (.5) exists only with the TMP1075
 ENTERPRISE_OBJECTS = [n for n in range(1, 7) if not (NO_TMP1075 and n == 5)]
 LAST_ENTERPRISE = ENTERPRISE_OBJECTS[-1]
+# fwUpdate group (63050.7): fwRunningSlot, fwSlotAVersion, fwSlotBVersion, fwState, fwLastResult
+FW_OBJECTS = list(range(1, 6))
 # The object that sorts last: snmpSetSerialNo (SNMPv2-MIB)
 LAST_OID = ".1.3.6.1.6.3.1.1.6.1.0"
 # snmp group (SNMPv2-MIB): 1.3.6.1.2.1.11.1-32, 7 and 23 were never assigned
@@ -76,6 +78,7 @@ def all_oids(v1, neighbour):
     # ENTITY-MIB: the device's entPhysicalTable row (columns 2-16), entLastChangeTime
     oids += [".1.3.6.1.2.1.47.1.1.1.1.%d.1" % i for i in range(2, 17)] + [".1.3.6.1.2.1.47.1.4.1.0"]
     oids += ["." + ENTERPRISE + ".%d.0" % i for i in ENTERPRISE_OBJECTS]
+    oids += ["." + ENTERPRISE + ".7.%d.0" % i for i in FW_OBJECTS]
     oids += [LAST_OID]
     return oids
 
@@ -191,7 +194,29 @@ class SnmpAgentTest(unittest.TestCase):
 
     def test_walk_enterprise_subtree(self):
         rc, out = self.snmp("snmpwalk", ENTERPRISE)
-        self.assertEqual(len(ENTERPRISE_OBJECTS), sum(1 for l in out.splitlines() if " = " in l), out)
+        self.assertEqual(len(ENTERPRISE_OBJECTS) + len(FW_OBJECTS), sum(1 for l in out.splitlines() if " = " in l), out)
+
+    def test_walk_includes_fw_group(self):
+        rc, out = self.snmp("snmpwalk", ENTERPRISE + ".7", version="2c")
+        self.assertEqual(0, rc, out)
+        oids = [l.split(" = ")[0] for l in out.splitlines() if " = " in l]
+        self.assertEqual(["." + ENTERPRISE + ".7.%d.0" % i for i in FW_OBJECTS], oids, out)
+        values = dict((int(m.group(1)), m.group(2)) for m in
+                      re.finditer(r"63050\.7\.(\d)\.0 = (?:INTEGER: |STRING: )?(.*)", out))
+        slot, state, last = int(values[1]), int(values[4]), int(values[5])
+        self.assertIn(slot, (1, 2))
+        self.assertIn(state, (1, 2))  # kept, trial
+        self.assertIn(last, range(0, 5))
+        # The running slot reports the version the agent announces in sysDescr; the other one is
+        # a version too, or empty without a valid image
+        rc, descr = self.snmp("snmpget", "1.3.6.1.2.1.1.1.0")
+        running = re.search(r"RF-Power-Monitor (\d+\.\d+\.\d+) ", descr).group(1)
+        versions = [values[2].strip('"'), values[3].strip('"')]
+        self.assertEqual(running, versions[slot - 1])
+        self.assertRegex(versions[2 - slot], r"^(\d+\.\d+\.\d+)?$")
+        # v1 sees the same group (no Counter64 involved)
+        rc, v1 = self.snmp("snmpwalk", ENTERPRISE + ".7")
+        self.assertEqual(len(FW_OBJECTS), sum(1 for l in v1.splitlines() if " = " in l), v1)
 
     def test_walk_system_group(self):
         rc, out = self.snmp("snmpwalk", "1.3.6.1.2.1.1")
@@ -371,7 +396,8 @@ class SnmpAgentTest(unittest.TestCase):
         self.assertEqual(0, rc, out)
         self.assertIn("No more variables left in this MIB View", out)
         # The enterprise objects, then snmpSetSerialNo, then the end
-        self.assertEqual(len(ENTERPRISE_OBJECTS) + 1, sum(1 for l in out.splitlines() if " = " in l and "No more" not in l))
+        self.assertEqual(len(ENTERPRISE_OBJECTS) + len(FW_OBJECTS) + 1,
+                         sum(1 for l in out.splitlines() if " = " in l and "No more" not in l))
 
     # ---- IF-MIB ----
 

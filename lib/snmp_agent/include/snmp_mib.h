@@ -31,6 +31,9 @@
  *   1.3.6.1.4.1.63050.4.0  cpuTemperature        INTEGER, tenths of a degree Celsius (RP2040 die)
  *   1.3.6.1.4.1.63050.5.0  ambientTemperature    INTEGER, tenths of a degree Celsius (TMP1075),
  *                                                absent while the sensor does not answer
+ *   1.3.6.1.4.1.63050.6.0  mainsPowerAlarm       INTEGER 0 = none, 1 = lostTooLong
+ *   1.3.6.1.4.1.63050.7.n.0 fwUpdate group: fwRunningSlot (1), fwSlotAVersion (2), fwSlotBVersion (3),
+ *                                fwState (4), fwLastResult (5)
  *   1.3.6.1.6.3.1.1.6.1.0  snmpSetSerialNo       INTEGER (0)
  *
  * The ifHC* columns are Counter64. SNMPv1 cannot carry Counter64, so in v1
@@ -164,6 +167,17 @@ struct SnmpStats {
 };
 
 /**
+ * @brief Firmware update state for the fwUpdate group (63050.7), filled in by the firmware
+ */
+struct SnmpFwState {
+    uint8_t runningSlot;      ///< 0 = slot A, 1 = slot B (fwRunningSlot is 1 or 2)
+    bool trial;               ///< The running firmware is on trial (fwState trial(2)), else kept(1)
+    char slotVersion[2][17];  ///< Version of slot A and B; empty when the slot has no valid image
+    uint8_t lastResult;       ///< fwLastResult: 0 none, 1 installed, 2 rolledBackCrash, 3 rolledBackUnreachable,
+                              ///< 4 fallbackCrash (the values of lib/fw_update FwResult)
+};
+
+/**
  * @brief Everything the MIB reports, captured once per request
  */
 struct SnmpDeviceState {
@@ -172,6 +186,7 @@ struct SnmpDeviceState {
     uint32_t mainsChanges;         ///< Accepted mains changes since boot
     uint32_t mainsLastChangeTicks; ///< uptimeTicks at the last change, 0 if none
     bool mainsAlarm;               ///< mainsPowerAlarm: mains lost for 60 s or more
+    SnmpFwState fw;                ///< fwUpdate group (63050.7)
     const char* sysDescr;
     const char* sysContact;
     const char* sysName;

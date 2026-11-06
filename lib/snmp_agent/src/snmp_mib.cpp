@@ -163,6 +163,21 @@ static SnmpValue getMainsAlarm(const SnmpDeviceState& s) {
     return SnmpValue::makeInteger(s.mainsAlarm ? 1 : 0);
 }
 
+// ---- fwUpdate group (63050.7) ----
+
+static SnmpValue getFwRunningSlot(const SnmpDeviceState& s) {
+    return SnmpValue::makeInteger(s.fw.runningSlot == 0 ? 1 : 2);  // slotA(1), slotB(2)
+}
+
+static SnmpValue getFwSlotAVersion(const SnmpDeviceState& s) { return SnmpValue::makeString(s.fw.slotVersion[0]); }
+static SnmpValue getFwSlotBVersion(const SnmpDeviceState& s) { return SnmpValue::makeString(s.fw.slotVersion[1]); }
+
+static SnmpValue getFwState(const SnmpDeviceState& s) {
+    return SnmpValue::makeInteger(s.fw.trial ? 2 : 1);  // kept(1), trial(2)
+}
+
+static SnmpValue getFwLastResult(const SnmpDeviceState& s) { return SnmpValue::makeInteger(s.fw.lastResult); }
+
 // ---- LLDP-MIB (IEEE 802.1AB-2005 Annex F): our one port and the one neighbour ----
 
 static const int32_t LLDP_PORT_ID_MAC = 3;
@@ -504,6 +519,7 @@ static bool dynamicInstance(const MibDynamicColumn& c, const SnmpIpAddress& a, O
 #define IF(n) {{1, 3, 6, 1, 2, 1, 2, 2, 1, n, 1}, 11}
 #define IFX(n) {{1, 3, 6, 1, 2, 1, 31, 1, 1, 1, n, 1}, 12}
 #define PRIVATE(n) {{1, 3, 6, 1, 4, 1, ENTERPRISE_NUMBER, n, 0}, 9}
+#define FW_UPDATE(n) {{1, 3, 6, 1, 4, 1, ENTERPRISE_NUMBER, 7, n, 0}, 10}
 // lldpLocPortTable row lldpLocPortNum 1; lldpRemTable row lldpRemTimeMark 0, lldpRemLocalPortNum 1, lldpRemIndex 1
 #define LLDP_LOC(n) {{1, 0, 8802, 1, 1, 2, 1, 3, 7, 1, n, 1}, 12}
 #define LLDP_REM(n) {{1, 0, 8802, 1, 1, 2, 1, 4, 1, 1, n, 0, 1, 1}, 14}
@@ -712,6 +728,11 @@ static const MibEntry MIB[] = {
     {PRIVATE(4), getCpuTemperature},
     {PRIVATE(5), getAmbientTemperature},
     {PRIVATE(6), getMainsAlarm},
+    {FW_UPDATE(1), getFwRunningSlot},
+    {FW_UPDATE(2), getFwSlotAVersion},
+    {FW_UPDATE(3), getFwSlotBVersion},
+    {FW_UPDATE(4), getFwState},
+    {FW_UPDATE(5), getFwLastResult},
 
     {SNMP_SET_SERIAL_NO, getSnmpSetSerialNo},
 };

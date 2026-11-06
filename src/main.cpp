@@ -300,6 +300,7 @@ void loop() {
         snmpNotifyMainsChange();
     }
     snmpPollMainsAlarm();
+    snmpPollFirmwareTrap();
 
     // Link state for IF-MIB, CPU and ambient temperature
     DIAG_MARK(3);

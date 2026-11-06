@@ -81,6 +81,11 @@ int main(int argc, char** argv) {
         state.mainsChanges = 2;
         state.mainsLastChangeTicks = 42;
         state.mainsAlarm = false;
+        state.fw.runningSlot = 1;  // slot B on trial, slot A holds the previous firmware; the last update was rolled back
+        state.fw.trial = true;
+        strcpy(state.fw.slotVersion[0], "3.3.0");
+        strcpy(state.fw.slotVersion[1], "3.4.0");
+        state.fw.lastResult = 2;
         state.sysDescr = "RF-Power-Monitor host test";
         state.sysContact = "ops@example.com";
         state.sysName = "host-agent";

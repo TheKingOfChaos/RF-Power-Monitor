@@ -3,11 +3,13 @@ RF-POWER-MONITOR-MIB DEFINITIONS ::= BEGIN
 IMPORTS
     MODULE-IDENTITY, OBJECT-TYPE, NOTIFICATION-TYPE, Counter32, Integer32, TimeTicks, enterprises
         FROM SNMPv2-SMI
+    DisplayString
+        FROM SNMPv2-TC
     MODULE-COMPLIANCE, OBJECT-GROUP, NOTIFICATION-GROUP
         FROM SNMPv2-CONF;
 
 rfPowerMonitor MODULE-IDENTITY
-    LAST-UPDATED "202611010100Z"
+    LAST-UPDATED "202611060000Z"
     ORGANIZATION "RF-Power-Monitor project"
     CONTACT-INFO
         "https://github.com/TheKingOfChaos/RF-Power-Monitor
@@ -17,6 +19,12 @@ rfPowerMonitor MODULE-IDENTITY
          Ethernet module. The agent speaks SNMPv1 and SNMPv2c, and all objects
          are read-only. The standard system group (RFC 1213) is also
          implemented."
+    REVISION "202611060000Z"
+    DESCRIPTION
+        "Added the fwUpdate group (firmware update: running slot, slot
+         versions, trial state, last result) and the firmwareUpdateKept
+         and firmwareRolledBack notifications (SNMPv1 specific-trap 4
+         and 5)."
     REVISION "202611010100Z"
     DESCRIPTION
         "Project renamed RF-Power-Monitor: module RF-UPS-MONITOR-MIB is now
@@ -74,6 +82,29 @@ mainsPowerLostTooLong NOTIFICATION-TYPE
          mains returns first. mainsPowerLastChange and the trap
          time-stamp are the time of the loss."
     ::= { rfPowerMonitorNotifications 3 }
+
+firmwareUpdateKept NOTIFICATION-TYPE
+    OBJECTS     { fwRunningSlot, fwSlotAVersion, fwSlotBVersion, fwLastResult }
+    STATUS      current
+    DESCRIPTION
+        "A firmware update was confirmed and is kept: the new firmware
+         received a valid management request during its trial, and
+         fwLastResult is installed(1). Sent once, after the device has
+         a trap destination and an address."
+    ::= { rfPowerMonitorNotifications 4 }
+
+firmwareRolledBack NOTIFICATION-TYPE
+    OBJECTS     { fwRunningSlot, fwSlotAVersion, fwSlotBVersion, fwLastResult }
+    STATUS      current
+    DESCRIPTION
+        "The device went back to the firmware it ran before: a new
+         firmware crashed or was not reachable during its trial
+         (fwLastResult rolledBackCrash(2) or rolledBackUnreachable(3)),
+         or a running slot crashed three times and the other slot took
+         over (fallbackCrash(4)). fwRunningSlot is the slot now running.
+         Sent once, after the device has a trap destination and an
+         address."
+    ::= { rfPowerMonitorNotifications 5 }
 
 -- Objects
 
@@ -144,6 +175,62 @@ mainsPowerAlarm OBJECT-TYPE
          than on mainsPowerStatus to ignore short outages."
     ::= { rfPowerMonitor 6 }
 
+fwUpdate OBJECT IDENTIFIER ::= { rfPowerMonitor 7 }
+
+fwRunningSlot OBJECT-TYPE
+    SYNTAX      INTEGER { slotA(1), slotB(2) }
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "The firmware slot the device is running. The device has two
+         firmware slots; an update is written to the one that is not
+         running."
+    ::= { fwUpdate 1 }
+
+fwSlotAVersion OBJECT-TYPE
+    SYNTAX      DisplayString (SIZE (0..16))
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Firmware version in slot A, e.g. 3.4.0. Empty when the slot
+         holds no valid image."
+    ::= { fwUpdate 2 }
+
+fwSlotBVersion OBJECT-TYPE
+    SYNTAX      DisplayString (SIZE (0..16))
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Firmware version in slot B. Empty when the slot holds no valid
+         image."
+    ::= { fwUpdate 3 }
+
+fwState OBJECT-TYPE
+    SYNTAX      INTEGER { kept(1), trial(2) }
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "kept(1): the running firmware is the one to keep. trial(2): the
+         running firmware is new and on trial; it is kept once it has
+         answered a valid management request, and the device goes back to
+         the previous slot if it crashes or nobody reaches it."
+    ::= { fwUpdate 4 }
+
+fwLastResult OBJECT-TYPE
+    SYNTAX      INTEGER { none(0), installed(1), rolledBackCrash(2),
+                          rolledBackUnreachable(3), fallbackCrash(4) }
+    MAX-ACCESS  read-only
+    STATUS      current
+    DESCRIPTION
+        "Outcome of the last firmware update, kept across restarts.
+         none(0): no update since the device was set up or reset.
+         installed(1): the new firmware was kept. rolledBackCrash(2): the
+         new firmware crashed during its trial. rolledBackUnreachable(3):
+         the new firmware was not reached by a management request in
+         time. fallbackCrash(4): the running slot crashed three times
+         and the other slot took over."
+    ::= { fwUpdate 5 }
+
 -- Conformance
 
 rfPowerMonitorConformance OBJECT IDENTIFIER ::= { rfPowerMonitor 100 }
@@ -185,6 +272,21 @@ rfPowerMonitorAlarmNotificationGroup NOTIFICATION-GROUP
         "Notification for a long mains outage."
     ::= { rfPowerMonitorGroups 6 }
 
+rfPowerMonitorFwGroup OBJECT-GROUP
+    OBJECTS     { fwRunningSlot, fwSlotAVersion, fwSlotBVersion, fwState,
+                  fwLastResult }
+    STATUS      current
+    DESCRIPTION
+        "Firmware update state."
+    ::= { rfPowerMonitorGroups 7 }
+
+rfPowerMonitorFwNotificationGroup NOTIFICATION-GROUP
+    NOTIFICATIONS { firmwareUpdateKept, firmwareRolledBack }
+    STATUS      current
+    DESCRIPTION
+        "Firmware update notifications."
+    ::= { rfPowerMonitorGroups 8 }
+
 rfPowerMonitorMainsNotificationGroup NOTIFICATION-GROUP
     NOTIFICATIONS { mainsPowerLost, mainsPowerRestored }
     STATUS      current
@@ -200,7 +302,8 @@ rfPowerMonitorCompliance MODULE-COMPLIANCE
     MODULE      -- this module
         MANDATORY-GROUPS { rfPowerMonitorMainsGroup, rfPowerMonitorMainsNotificationGroup,
                            rfPowerMonitorBoardGroup, rfPowerMonitorAlarmGroup,
-                           rfPowerMonitorAlarmNotificationGroup }
+                           rfPowerMonitorAlarmNotificationGroup,
+                           rfPowerMonitorFwGroup, rfPowerMonitorFwNotificationGroup }
         GROUP       rfPowerMonitorAmbientGroup
         DESCRIPTION
             "Only on the carrier board with the TMP1075."

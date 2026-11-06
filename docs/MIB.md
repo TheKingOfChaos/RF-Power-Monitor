@@ -30,6 +30,11 @@ The device runs an SNMP agent on UDP port 161 and sends traps. Every object is r
 | `1.3.6.1.4.1.63050.4.0` | cpuTemperature | Integer32 | RP2040 die temperature in 0.1 °C (`392` = 39.2 °C), average of 8 readings, updated every 2 s |
 | `1.3.6.1.4.1.63050.5.0` | ambientTemperature | Integer32 | TMP1075 temperature in 0.1 °C (`271` = 27.1 °C), read every 2 s; absent without the sensor |
 | `1.3.6.1.4.1.63050.6.0` | mainsPowerAlarm | INTEGER | `1` = mains lost for 60 s or more, `0` = none |
+| `1.3.6.1.4.1.63050.7.1.0` | fwRunningSlot | INTEGER | Firmware slot that runs: `1` = slot A, `2` = slot B |
+| `1.3.6.1.4.1.63050.7.2.0` | fwSlotAVersion | DisplayString | Firmware version in slot A (`3.4.0`); empty = no valid image |
+| `1.3.6.1.4.1.63050.7.3.0` | fwSlotBVersion | DisplayString | Firmware version in slot B; empty = no valid image |
+| `1.3.6.1.4.1.63050.7.4.0` | fwState | INTEGER | `1` = kept, `2` = trial (the running firmware is new and not yet confirmed) |
+| `1.3.6.1.4.1.63050.7.5.0` | fwLastResult | INTEGER | Last update: `0` none, `1` installed, `2` rolledBackCrash, `3` rolledBackUnreachable, `4` fallbackCrash |
 
 `cpuTemperature` comes from the RP2040's internal sensor. It measures the chip, which runs a few degrees above the air around it, and the sensor is only accurate to a few degrees: use it to spot an overheating chip, not as a room thermometer. It was named `boardTemperature` before; the OID and value are unchanged, only the name in the MIB file.
 
@@ -38,6 +43,8 @@ The device runs an SNMP agent on UDP port 161 and sends traps. Every object is r
 `mainsPowerStatus` is debounced: a change must last 5 ms to count and is reported within 10 ms of the input changing. On the carrier board the detector holds the input 30-50 ms after mains is lost, so a loss shows within 80 ms of mains going off. To detect an outage between two polls, compare `mainsPowerChanges` with the previous poll; `mainsPowerLastChange` tells you when it happened.
 
 `mainsPowerAlarm` becomes `1` once mains has been lost for 60 s without a break, counted from the debounced loss (from start-up if the device starts without mains), and goes back to `0` when mains returns. A loss that is restored, even briefly, starts a new 60 s. Alert on this object rather than on `mainsPowerStatus` to ignore short outages; when it becomes `1` the device sends one `mainsPowerLostTooLong` trap (below). The 60 s is fixed.
+
+The **fwUpdate** group (`63050.7`) describes the two firmware slots (see the Firmware page of the web interface for updates). `fwState` is `trial(2)` from the first start of an uploaded firmware until it has answered a valid management request (SNMP with the right community, or an authenticated web request); it then becomes `kept(1)`. If the new firmware crashes or nobody reaches it in time, the device goes back to the previous slot, `fwLastResult` says why and the old slot's `fwState` is `kept(1)`. `fwLastResult` is stored with the boot record, so it survives restarts; `fallbackCrash(4)` means a running slot crashed three times and the other slot took over. A slot version that is empty has no image that verifies (after a failed upload, for instance). The group sorts after `mainsPowerAlarm`; it has no gaps, and v1 behaviour of the other objects is unchanged.
 
 ## SNMPv2-MIB: sysORTable, snmp group, snmpSetSerialNo
 
@@ -296,11 +303,15 @@ Traps are sent to the trap destination set in menu option 4 (a fixed address, or
 | mainsPowerLost | 6 (enterpriseSpecific) / 1 | `1.3.6.1.4.1.63050.0.1` | mainsPowerStatus, mainsPowerChanges, mainsPowerLastChange | Mains lost |
 | mainsPowerRestored | 6 (enterpriseSpecific) / 2 | `1.3.6.1.4.1.63050.0.2` | same | Mains restored |
 | mainsPowerLostTooLong | 6 (enterpriseSpecific) / 3 | `1.3.6.1.4.1.63050.0.3` | same, then mainsPowerAlarm | Mains lost for 60 s (mainsPowerAlarm became 1); once per outage |
+| firmwareUpdateKept | 6 (enterpriseSpecific) / 4 | `1.3.6.1.4.1.63050.0.4` | fwRunningSlot, fwSlotAVersion, fwSlotBVersion, fwLastResult | A new firmware was confirmed and kept (fwLastResult = 1); once per update |
+| firmwareRolledBack | 6 (enterpriseSpecific) / 5 | `1.3.6.1.4.1.63050.0.5` | same | The device went back to the old firmware after a crash or no contact (fwLastResult = 2 or 3), or fell back after three crashes (4); once per event. fwRunningSlot is the slot now running |
 
 - **v1** traps carry enterprise `1.3.6.1.4.1.63050` and the device's IP as agent-addr.
 - **v2c** traps start with `sysUpTime.0` and `snmpTrapOID.0`, as RFC 3416 requires, then the variable bindings above, and end with `snmpTrapAddress.0` (`1.3.6.1.6.3.18.1.3.0`, IpAddress, RFC 3584): the device's IPv4 address, as the v1 agent-addr. A manager behind NAT, such as LibreNMS in Docker Desktop, sees another sender address and can find the device by this one. It is left out while the device has no IPv4 address. Each trap has its own request-id.
 - The time (v1 time-stamp, v2c sysUpTime.0) of a mains trap is the moment of the change, equal to mainsPowerLastChange, not when the trap was sent.
-- In the MIB file the mains traps are the notifications `mainsPowerLost` (`63050.0.1`), `mainsPowerRestored` (`63050.0.2`) and `mainsPowerLostTooLong` (`63050.0.3`); RFC 3584 maps them to the v1 traps above.
+- The time (v1 time-stamp, v2c sysUpTime.0) of a firmware trap is the moment it is sent (sysUpTime), since the device restarts for the event.
+- The firmware traps are held like `mainsPowerLostTooLong`: the device remembers in its boot record that one is due, and sends it once the agent runs, the link is up and it has a trap destination and an address of the destination's family, also after the restart that caused it. One attempt is made (no acknowledgement); the boot record is then marked as sent. Poll `fwLastResult` and `fwState` as well: a trap sent while the network was unreliable is not repeated.
+- In the MIB file the mains traps are the notifications `mainsPowerLost` (`63050.0.1`), `mainsPowerRestored` (`63050.0.2`) and `mainsPowerLostTooLong` (`63050.0.3`), and the firmware traps `firmwareUpdateKept` (`63050.0.4`) and `firmwareRolledBack` (`63050.0.5`); RFC 3584 maps them to the v1 traps above.
 - `mainsPowerLostTooLong` is held until it can be sent: if there is no trap destination when the alarm is raised (network not up yet, no destination set, DHCP destination not received yet), it goes out once as soon as there is one, unless mains returns first. There is no separate trap when the alarm clears; `mainsPowerRestored` marks that.
 
 Traps are not acknowledged (v2c InformRequest is not used), so a manager should also poll `mainsPowerChanges`: if it changed between two polls, an outage happened even if its traps were lost.

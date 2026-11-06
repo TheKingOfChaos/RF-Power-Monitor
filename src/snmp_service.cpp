@@ -80,6 +80,12 @@ static SnmpDeviceState captureState() {
         }
     }
     s.mainsAlarm = mainsAlarm.raised();
+    FwSnmpState fw;
+    fwUpdateSnmpState(fw);
+    s.fw.runningSlot = fw.runningSlot;
+    s.fw.trial = fw.trial;
+    memcpy(s.fw.slotVersion, fw.slotVersion, sizeof(s.fw.slotVersion));
+    s.fw.lastResult = (uint8_t)fw.lastResult;
     // LLDP-MIB: a static copy (core 0 only), so the response never reads the table lwIP updates
     static SnmpLldpState lldp;
     if (lldpServiceSnmpState(lldp)) s.lldp = &lldp;
@@ -116,7 +122,7 @@ void accessLogRecord(const SourceKey& source, AccessEvent event) {
 /// request-id of the next v2c trap
 static int32_t nextTrapRequestId = 1;
 
-enum class TrapKind { ColdStart, AuthFailure, Mains, MainsAlarm };
+enum class TrapKind { ColdStart, AuthFailure, Mains, MainsAlarm, Firmware };
 
 /**
  * @brief Encode a trap in the configured version (v1 Trap-PDU or v2c SNMPv2-Trap)
@@ -129,6 +135,7 @@ static size_t buildTrap(TrapKind kind, const SnmpDeviceState& state) {
         case TrapKind::AuthFailure: return snmpBuildAuthFailureTrap(c, agentAddr, state.uptimeTicks, outBuf, sizeof(outBuf));
         case TrapKind::Mains:       return snmpBuildMainsTrap(c, agentAddr, state, outBuf, sizeof(outBuf));
         case TrapKind::MainsAlarm:  return snmpBuildMainsAlarmTrap(c, agentAddr, state, outBuf, sizeof(outBuf));
+        case TrapKind::Firmware:    return snmpBuildFirmwareTrap(c, agentAddr, state, outBuf, sizeof(outBuf));
         }
         return 0;
     }
@@ -138,6 +145,7 @@ static size_t buildTrap(TrapKind kind, const SnmpDeviceState& state) {
     case TrapKind::AuthFailure: return snmpBuildAuthFailureTrapV2c(c, agentAddr, state.uptimeTicks, id, outBuf, sizeof(outBuf));
     case TrapKind::Mains:       return snmpBuildMainsTrapV2c(c, agentAddr, state, id, outBuf, sizeof(outBuf));
     case TrapKind::MainsAlarm:  return snmpBuildMainsAlarmTrapV2c(c, agentAddr, state, id, outBuf, sizeof(outBuf));
+    case TrapKind::Firmware:    return snmpBuildFirmwareTrapV2c(c, agentAddr, state, id, outBuf, sizeof(outBuf));
     }
     return 0;
 }
@@ -244,6 +252,24 @@ void snmpPollMainsAlarm() {
     if (!trapCanLeave(path)) return;
     sendTrap(buildTrap(TrapKind::MainsAlarm, captureState()), "mainsPowerLostTooLong");
     mainsAlarm.trapSent();
+}
+
+void snmpPollFirmwareTrap() {
+    // fwUpdateTakeTrap() consumes the pending trap, so ask it only when the trap can leave now
+    static const uint8_t NO_ADDRESS[4] = {0, 0, 0, 0};
+    TrapAddress target;
+    TrapPath path;
+    path.agentStarted = started;
+    path.linkUp = netStatsPhy().linkUp;
+    path.hasIPv4 = memcmp(agentAddr, NO_ADDRESS, 4) != 0;
+    path.hasIPv6 = netStatsHasRoutableIPv6();
+    path.targetKnown = snmpTrapTarget(target);
+    path.targetIPv6 = path.targetKnown && target.ipv6;
+    if (!trapCanLeave(path)) return;
+    FwResult result;
+    if (!fwUpdateTakeTrap(result)) return;
+    sendTrap(buildTrap(TrapKind::Firmware, captureState()),
+             result == FwResult::Installed ? "firmwareUpdateKept" : "firmwareRolledBack");
 }
 
 bool snmpMainsAlarm() {

@@ -103,6 +103,12 @@ void snmpNotifyMainsChange();
 void snmpPollMainsAlarm();
 
 /**
+ * @brief Send the pending firmwareUpdateKept / firmwareRolledBack trap (lib/fw_update's boot record keeps it
+ *        across the restart) once a trap can leave. Call from the core 0 loop.
+ */
+void snmpPollFirmwareTrap();
+
+/**
  * @brief mainsPowerAlarm: mains has been lost for 60 s or more
  */
 bool snmpMainsAlarm();

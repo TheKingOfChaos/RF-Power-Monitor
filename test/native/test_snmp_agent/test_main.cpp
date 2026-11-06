@@ -22,6 +22,10 @@ void setUp() {
     state.mainsChanges = 3;
     state.mainsLastChangeTicks = 100000;
     state.mainsAlarm = false;
+    state.fw = {};
+    state.fw.runningSlot = 0;
+    strcpy(state.fw.slotVersion[0], "3.4.0");
+    strcpy(state.fw.slotVersion[1], "3.3.0");
     state.sysDescr = "RF-Power-Monitor";
     state.sysContact = "ops@example.com";
     state.sysName = "power-monitor";
@@ -290,6 +294,7 @@ static void test_mib_contains_expected_objects() {
     for (int i = 2; i <= 16; i++) snprintf(expected[n++], 48, "1.3.6.1.2.1.47.1.1.1.1.%d.1", i);
     snprintf(expected[n++], 48, "1.3.6.1.2.1.47.1.4.1.0");
     for (int i = 1; i <= 6; i++) snprintf(expected[n++], 48, "1.3.6.1.4.1.63050.%d.0", i);
+    for (int i = 1; i <= 5; i++) snprintf(expected[n++], 48, "1.3.6.1.4.1.63050.7.%d.0", i);  // fwUpdate
     snprintf(expected[n++], 48, "1.3.6.1.6.3.1.1.6.1.0");
     TEST_ASSERT_EQUAL_UINT16(n, mibSize());
     for (uint16_t i = 0; i < n; i++) TEST_ASSERT_EQUAL_STRING(expected[i], str(mibEntry(i).oid));
@@ -1056,12 +1061,14 @@ static void test_ambient_temperature_absent_is_skipped_by_getbulk() {
     SnmpAgent agent("public");
     state.ambientTempValid = false;
     const char* oids[] = {"1.3.6.1.4.1.63050.3.0", "1.3.6.1.4.1.63050.4.0"};
-    Reply r = bulk(agent, 1, 3, oids, 2);
+    Reply r = bulk(agent, 1, 8, oids, 2);
     TEST_ASSERT_EQUAL_INT32(0, r.errorStatus);
     TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050.4.0", str(r.names[0]));  // non-repeater
     TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050.6.0", str(r.names[1]));  // repeater skips .5.0
-    TEST_ASSERT_EQUAL_STRING(LAST_OID, str(r.names[2]));                  // snmpSetSerialNo
-    TEST_ASSERT_EQUAL_HEX8(BerTag::EndOfMibView, r.tags[3]);              // then ends
+    TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050.7.1.0", str(r.names[2]));  // fwUpdate group follows
+    TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050.7.5.0", str(r.names[6]));
+    TEST_ASSERT_EQUAL_STRING(LAST_OID, str(r.names[7]));                  // snmpSetSerialNo
+    TEST_ASSERT_EQUAL_HEX8(BerTag::EndOfMibView, r.tags[8]);              // then ends
     for (uint8_t i = 0; i < r.count; i++) TEST_ASSERT_NOT_EQUAL(BerTag::NoSuchInstance, r.tags[i]);
 }
 
@@ -1242,6 +1249,79 @@ static void test_getnext_after_ambient_temperature_is_mains_alarm() {
     TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050.6.0", str(r.names[0]));
 }
 
+// ---- fwUpdate group (63050.7) ----
+
+static void test_get_fw_running_slot() {
+    SnmpAgent agent("public");
+    const char* oids[] = {"1.3.6.1.4.1.63050.7.1.0"};
+    Reply r = request(agent, BerTag::GetRequest, oids, 1);
+    TEST_ASSERT_EQUAL_INT32(0, r.errorStatus);
+    TEST_ASSERT_EQUAL_HEX8(BerTag::Integer, r.tags[0]);
+    TEST_ASSERT_EQUAL_INT32(1, r.ints[0]);  // slot A
+    state.fw.runningSlot = 1;
+    r = requestV2c(agent, BerTag::GetRequest, oids, 1);
+    TEST_ASSERT_EQUAL_INT32(2, r.ints[0]);  // slot B
+}
+
+static void test_get_fw_slot_versions_empty_when_invalid() {
+    SnmpAgent agent("public");
+    const char* oids[] = {"1.3.6.1.4.1.63050.7.2.0", "1.3.6.1.4.1.63050.7.3.0"};
+    Reply r = request(agent, BerTag::GetRequest, oids, 2);
+    TEST_ASSERT_EQUAL_HEX8(BerTag::OctetString, r.tags[0]);
+    TEST_ASSERT_EQUAL_STRING("3.4.0", r.strings[0]);
+    TEST_ASSERT_EQUAL_STRING("3.3.0", r.strings[1]);
+    state.fw.slotVersion[1][0] = '\0';  // the other slot does not verify
+    r = request(agent, BerTag::GetRequest, oids, 2);
+    TEST_ASSERT_EQUAL_INT32(0, r.errorStatus);
+    TEST_ASSERT_EQUAL_HEX8(BerTag::OctetString, r.tags[1]);
+    TEST_ASSERT_EQUAL_STRING("", r.strings[1]);
+}
+
+static void test_get_fw_state_and_last_result() {
+    SnmpAgent agent("public");
+    const char* oids[] = {"1.3.6.1.4.1.63050.7.4.0", "1.3.6.1.4.1.63050.7.5.0"};
+    Reply r = request(agent, BerTag::GetRequest, oids, 2);
+    TEST_ASSERT_EQUAL_INT32(1, r.ints[0]);  // kept
+    TEST_ASSERT_EQUAL_INT32(0, r.ints[1]);  // none
+    state.fw.trial = true;
+    state.fw.lastResult = 3;
+    r = requestV2c(agent, BerTag::GetRequest, oids, 2);
+    TEST_ASSERT_EQUAL_INT32(2, r.ints[0]);  // trial
+    TEST_ASSERT_EQUAL_INT32(3, r.ints[1]);
+}
+
+static void test_walk_goes_from_mains_alarm_into_fw_group() {
+    SnmpAgent agent("public");
+    char names[6][40];
+    walkNames(agent, false, "1.3.6.1.4.1.63050.5.0", 3, names);
+    TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050.6.0", names[0]);
+    TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050.7.1.0", names[1]);
+    TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050.7.2.0", names[2]);
+}
+
+static void test_getnext_after_fw_group_ends_enterprise_tree() {
+    SnmpAgent agent("public");
+    // The enterprise tree ends with fwLastResult; the next object is snmpSetSerialNo (SNMPv2-MIB)
+    const char* oids[] = {"1.3.6.1.4.1.63050.7.5.0"};
+    Reply r = request(agent, BerTag::GetNextRequest, oids, 1);
+    TEST_ASSERT_EQUAL_INT32(0, r.errorStatus);
+    TEST_ASSERT_EQUAL_STRING(LAST_OID, str(r.names[0]));
+    r = requestV2c(agent, BerTag::GetNextRequest, oids, 1);
+    TEST_ASSERT_EQUAL_STRING(LAST_OID, str(r.names[0]));
+    // Nothing past the group inside the enterprise subtree: v1 noSuchName, v2c noSuchInstance for 7.5.1
+    const char* inside[] = {"1.3.6.1.4.1.63050.7.6.0"};
+    r = request(agent, BerTag::GetRequest, inside, 1);
+    TEST_ASSERT_EQUAL_INT32((int32_t)SnmpError::NoSuchName, r.errorStatus);
+    r = requestV2c(agent, BerTag::GetRequest, inside, 1);
+    TEST_ASSERT_EQUAL_HEX8(BerTag::NoSuchObject, r.tags[0]);
+    // ...and past the whole MIB as today
+    const char* last[] = {LAST_OID};
+    r = request(agent, BerTag::GetNextRequest, last, 1);
+    TEST_ASSERT_EQUAL_INT32((int32_t)SnmpError::NoSuchName, r.errorStatus);
+    r = requestV2c(agent, BerTag::GetNextRequest, last, 1);
+    TEST_ASSERT_EQUAL_HEX8(BerTag::EndOfMibView, r.tags[0]);
+}
+
 static void test_getnext_after_the_last_object_is_end_of_mib() {
     SnmpAgent agent("public");
     const char* oids[] = {LAST_OID};
@@ -1278,7 +1358,8 @@ static void test_mib_get_and_get_next() {
     TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050.4.0", nextOf("1.3.6.1.4.1.63050.3.0"));
     TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050.5.0", nextOf("1.3.6.1.4.1.63050.4.0"));
     TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050.6.0", nextOf("1.3.6.1.4.1.63050.5.0"));
-    TEST_ASSERT_EQUAL_STRING(LAST_OID, nextOf("1.3.6.1.4.1.63050.6.0"));
+    TEST_ASSERT_EQUAL_STRING("1.3.6.1.4.1.63050.7.1.0", nextOf("1.3.6.1.4.1.63050.6.0"));
+    TEST_ASSERT_EQUAL_STRING(LAST_OID, nextOf("1.3.6.1.4.1.63050.7.5.0"));
     TEST_ASSERT_EQUAL_STRING("end", nextOf(LAST_OID));
     TEST_ASSERT_EQUAL_STRING("end", nextOf("2.0"));
 }
@@ -1960,6 +2041,11 @@ int main() {
     RUN_TEST(test_mib2_walk_unchanged);
     RUN_TEST(test_get_mains_alarm_reports_state);
     RUN_TEST(test_getnext_after_ambient_temperature_is_mains_alarm);
+    RUN_TEST(test_get_fw_running_slot);
+    RUN_TEST(test_get_fw_slot_versions_empty_when_invalid);
+    RUN_TEST(test_get_fw_state_and_last_result);
+    RUN_TEST(test_walk_goes_from_mains_alarm_into_fw_group);
+    RUN_TEST(test_getnext_after_fw_group_ends_enterprise_tree);
     RUN_TEST(test_getnext_after_the_last_object_is_end_of_mib);
     RUN_TEST(test_no_such_instance_for_wrong_if_index);
     RUN_TEST(test_get_netsnmp_request_returns_sysdescr);
