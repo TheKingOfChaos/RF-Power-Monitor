@@ -9,6 +9,7 @@ import re
 import subprocess
 import sys
 import time
+import unittest
 
 import serial
 from serial.tools import list_ports
@@ -16,6 +17,8 @@ from serial.tools import list_ports
 PORT = os.environ.get("RFPOWER_PORT", "COM16")
 BAUD = 115200
 PROMPT = "> "
+# The device's own update site key, so tests that change option 10 can restore it (never printed)
+UPDATE_KEY_ENV = "RFPOWER_UPDATE_KEY"
 
 
 class Device:
@@ -315,6 +318,39 @@ class Device:
         st = self.status()
         m = re.search(r"^Update server: (.*?)\r?$", st["raw"], re.MULTILINE)
         return m.group(1) if m else None
+
+    def update_server_setting(self):
+        """(url, key_set) from the status line, url as option 10 takes it: "none", "dhcp" or the fixed URL."""
+        line = self.update_server_line() or ""
+        if line.startswith("off"):
+            return "none", False
+        m = re.match(r"(.*?) \((fixed|DHCP option 225)\), key (set|not set)", line)
+        if not m:
+            raise AssertionError("unexpected update server line: %r" % line)
+        return (m.group(1) if m.group(2) == "fixed" else "dhcp"), m.group(3) == "set"
+
+    def save_update_server(self):
+        """The device's update server setting as set_update_server() arguments that put it back.
+
+        The device never shows its key, so a set key can only be restored from the
+        environment variable RFPOWER_UPDATE_KEY; without it this raises SkipTest
+        rather than letting a test wipe the device's real update site setting.
+        """
+        url, key_set = self.update_server_setting()
+        key = os.environ.get(UPDATE_KEY_ENV, "")
+        if key_set and not key:
+            raise unittest.SkipTest("the device has an update server key, which it never shows back: set %s to "
+                                    "it so the test can restore it, or set option 10 to none first"
+                                    % UPDATE_KEY_ENV)
+        return url, key if key_set else "clear"
+
+    def keep_update_server(self, testcase):
+        """Start a test with no update server and put the device's own setting back when it ends."""
+        saved = self.save_update_server()
+        if saved == ("none", "clear"):
+            return
+        testcase.addCleanup(self.set_update_server, *saved)
+        self.set_update_server("none", "clear")
 
     def access_log(self):
         """Menu option 5: list of (ip, event, count) tuples, newest first."""

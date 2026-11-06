@@ -5,8 +5,9 @@ Opt-in: they run the site (update-server/, python -m rfupdate) on this PC with a
 temporary data directory and a new shared key, point the device at it, and
 install a development-signed test build (tools/fw_release.py --test-version
 3.4.1-hil, built on first use into .pio/fwtest/). The device ends on the
-firmware version it started with (3.4.0, development-signed, slot A or B), with
-no update server set.
+firmware version it started with (development-signed, slot A or B), with its
+own update server setting back. A device with an update server key is skipped
+unless RFPOWER_UPDATE_KEY holds that key (the device never shows it back).
 
 Run (firmware already flashed, PuTTY closed):
     set RFPOWER_UPDATE_SERVER_TEST=1
@@ -94,6 +95,7 @@ class UpdateServerTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         cls.site = None
+        cls.saved_update_server = None  # the device's own setting, put back at the end
         try:
             cls._set_up()
         except BaseException:
@@ -112,6 +114,7 @@ class UpdateServerTest(unittest.TestCase):
             raise unittest.SkipTest("the device must run %s, kept (it runs %s, %s)"
                                     % (cls.release_version, st["fwVersion"], st["fwState"]))
         cls.ip = st["ip"]
+        cls.saved_update_server = cls.dev.save_update_server()  # SkipTest when its key cannot be restored
         cls.good = build_release(TEST_VERSION)
         cls.back = build_release(cls.release_version)
         cls.data = tempfile.mkdtemp(prefix="rfupdate-hil-")
@@ -151,8 +154,8 @@ class UpdateServerTest(unittest.TestCase):
     @classmethod
     def _clean_up(cls):
         try:
-            if getattr(cls, "dev", None) is not None and cls.dev.ser is not None:
-                cls.dev.set_update_server("none", "clear")
+            if getattr(cls, "dev", None) is not None and cls.dev.ser is not None and cls.saved_update_server:
+                cls.dev.set_update_server(*cls.saved_update_server)
         finally:
             if getattr(cls, "dev", None) is not None:
                 cls.dev.close()

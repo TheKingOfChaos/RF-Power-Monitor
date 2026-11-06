@@ -161,9 +161,8 @@ class SerialMenuTest(unittest.TestCase):
         self.assertIsNotNone(st["fwKey"], "Firmware key line missing:\n%s" % st["raw"])
 
     def test_update_server_menu_sets_url_and_key_and_restores(self):
+        self.dev.keep_update_server(self)  # starts from "off", the device's setting comes back afterwards
         key = "a5" * 32
-        before = self.dev.update_server_line()
-        self.assertTrue(before.startswith("off"), before)  # HIL runs start without an update server
         try:
             out = self.dev.set_update_server("http://192.0.2.1:8071/rf", key)
             self.assertIn("Update server settings saved", out)
@@ -182,6 +181,7 @@ class SerialMenuTest(unittest.TestCase):
         self.assertTrue(self.dev.update_server_line().startswith("off"))
 
     def test_update_server_menu_refuses_short_key(self):
+        self.dev.keep_update_server(self)
         try:
             out = self.dev.set_update_server("http://192.0.2.1:8071", "0011")
             self.assertIn("The key must be 64 hex characters", out)

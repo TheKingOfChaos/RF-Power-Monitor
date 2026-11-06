@@ -127,6 +127,10 @@ $env:RFPOWER_STATIC_IPV6_GATEWAY = "fe80::1"         # optional: gateway for tha
 - **A VPN client (for example Cisco AnyConnect) is connected.** It can take over the routes to the LAN's IPv6 prefix, even link-local, and then `test_ipv6.py` fails: ping6 says "General failure", SNMP and the web page get no answer over IPv6, and `test_zz_device_did_not_restart_during_the_tests` fails as well. Check with `ping -6 <device IPv6 address>` and disconnect the VPN for the run.
 - **Windows' Host Network Service (WSL, Docker Desktop) is running.** It runs its own DHCP server on UDP port 67 (svchost, services SharedAccess and HNS), and Windows then does not let other programs' packets from source port 67 reach the LAN; WSL in mirrored mode cannot bind the port either. `test_dhcp_trap.py`'s `test_forged_dhcp_ack_with_option_224_is_ignored` sends its forged ACK from port 67, so it fails on such a PC (2026-11-02: 0 of 20 datagrams from port 67 reached the device, all from a random port did). The firmware's check of forged ACKs is covered by `test/native/test_dhcp_option`; run this HIL test from a PC without WSL/Docker networking, or with those services stopped.
 
+### Tests that change the update server (option 10)
+
+`test_serial_menu.py` (its update server tests) and `test_update_server.py` change menu option 10 and put the device's own setting back afterwards. The device never shows its key, so when a key is set these tests are skipped unless `RFPOWER_UPDATE_KEY` holds it (64 hex characters; a user environment variable keeps it out of the shell history). Without it they leave the device alone.
+
 ### Bench tool commands (`test_bench.py`)
 
 `test/hil/test_bench.py` checks the hidden menu commands the bench tool uses: `benchinfo` (its values match the status screen), `pwlock` (option 7 refuses, the lock and the password survive a reboot) and `pwunlock` (option 7 works again). Only the serial port is needed; each test restores the lock state it found. `test_unlock_allows_option_7_again` replaces the device default web password. That the lock and the password survive a factory reset is checked in the manual `test_factory_reset.py` (`RFPOWER_MANUAL_BUTTON=1`).
@@ -224,7 +228,7 @@ $env:RFPOWER_SNMP_COMMUNITY = "rfit"   # the device's community, default public
 & "$env:USERPROFILE\.platformio\penv\Scripts\python.exe" -m unittest discover -s test/hil -p "test_update_server.py" -v
 ```
 
-- The device must run the current version (development key), kept; it ends on that version, kept, with no update server set. A refused test release leaves the other slot `empty`, as any refused upload does.
+- The device must run the current version (development key), kept; it ends on that version, kept, with its own update server setting back. A refused test release leaves the other slot `empty`, as any refused upload does.
 - The test builds `.pio/fwtest/3.4.1-hil.upd` and `.pio/fwtest/<current>.upd` with `tools/fw_release.py --test-version` and rebuilds them when a file in `src/`, `lib/`, `include/`, `boot/`, `scripts/` or `platformio.ini` is newer (the test ends by installing the current version from there). Do not build anything else while it runs: PlatformIO builds in the same project collide. These builds use other build flags: run `pio run -e pico -t upload` afterwards before flashing anything else.
 - The device must reach this PC on TCP 8072 (Windows firewall; Python was allowed here). `RFPOWER_UPDATE_SERVER_HOST` overrides the address the device is given, `RFPOWER_UPDATE_SERVER_PORT` the port. Nothing else may listen on that port.
 - The hidden menu commands `checkin` (check in as soon as the network is up; prints the service's phase and whether the one HTTP fetch is busy) and `fetchtest <url>` (one GET with the update client, result printed; refused while a check-in or download runs) exist for these tests and for debugging.
