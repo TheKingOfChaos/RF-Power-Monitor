@@ -148,7 +148,7 @@ enum class OtherSlot : uint8_t { Unchecked, Checked };
 static TrialMonitor trialMonitor;
 static bool onTrial = false;
 static bool trapPending = false;
-static bool clearTrapInRecord = false;  // fwUpdateTakeTrap() asked; written by fwUpdatePoll()
+static bool clearTrapInRecord = false;  // fwUpdateTrapSent() asked; written by fwUpdatePoll()
 static bool crashCleared = false;
 static OtherSlot otherState = OtherSlot::Unchecked;
 static SlotCheck otherCheck = SlotCheck::Empty;
@@ -443,12 +443,16 @@ void fwUpdateSnmpState(FwSnmpState& out) {
     out.lastResult = haveRecord ? record.lastResult : FwResult::None;
 }
 
-bool fwUpdateTakeTrap(FwResult& result) {
+bool fwUpdatePendingTrap(FwResult& result) {
     if (!trapPending || !haveRecord) return false;
-    trapPending = false;
-    clearTrapInRecord = true;
     result = record.lastResult;
     return true;
+}
+
+void fwUpdateTrapSent() {
+    if (!trapPending) return;
+    trapPending = false;
+    clearTrapInRecord = true;
 }
 
 RestartCause fwUpdateRestartCause() {

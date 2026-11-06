@@ -104,7 +104,9 @@ void snmpPollMainsAlarm();
 
 /**
  * @brief Send the pending firmwareUpdateKept / firmwareRolledBack trap (lib/fw_update's boot record keeps it
- *        across the restart) once a trap can leave. Call from the core 0 loop.
+ *        across the restart) once a trap can leave, at least FW_TRAP_SETTLE_MS after the network came up so
+ *        coldStart is out first. It stays pending until a send succeeds; a failed one is retried every
+ *        FW_TRAP_RETRY_MS. Call from the core 0 loop.
  */
 void snmpPollFirmwareTrap();
 

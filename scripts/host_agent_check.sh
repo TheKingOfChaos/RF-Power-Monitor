@@ -109,10 +109,10 @@ check "cpuTemperature"          '63050\.4\.0 = INTEGER: 250' snmpget $V2 $TARGET
 check "ambientTemperature"      '63050\.5\.0 = INTEGER: 215' snmpget $V2 $TARGET 1.3.6.1.4.1.63050.5.0
 check "mainsPowerAlarm"         '63050\.6\.0 = INTEGER: 0' snmpget $SNMP_OPTS $TARGET 1.3.6.1.4.1.63050.6.0
 # fwUpdate group (the host agent runs slot B on trial, slot A 3.3.0, slot B 3.4.0, last result 2)
-check "v1 fwUpdate walk, 5 objects, in order" '63050\.7\.1\.0 = INTEGER: 2.*63050\.7\.2\.0 = STRING: "3\.3\.0".*63050\.7\.3\.0 = STRING: "3\.4\.0".*63050\.7\.4\.0 = INTEGER: 2.*63050\.7\.5\.0 = INTEGER: 2$'       bash -c "snmpwalk $SNMP_OPTS $TARGET 1.3.6.1.4.1.63050.7 | tr '
-' ' ' | sed 's/ *\$//'"
-check "v2c fwUpdate walk ends at the group" '63050\.7\.5\.0 = INTEGER: 2$' bash -c "snmpwalk $V2 $TARGET 1.3.6.1.4.1.63050.7 | tr '
-' ' ' | sed 's/ *\$//'"
+check "v1 fwUpdate walk, 5 objects, in order" '63050\.7\.1\.0 = INTEGER: 2.*63050\.7\.2\.0 = STRING: "3\.3\.0".*63050\.7\.3\.0 = STRING: "3\.4\.0".*63050\.7\.4\.0 = INTEGER: 2.*63050\.7\.5\.0 = INTEGER: 2$' \
+      bash -c "snmpwalk $SNMP_OPTS $TARGET 1.3.6.1.4.1.63050.7 | tr '\n' ' ' | sed 's/ *\$//'"
+check "v2c fwUpdate walk ends at the group" '63050\.7\.5\.0 = INTEGER: 2$' \
+      bash -c "snmpwalk $V2 $TARGET 1.3.6.1.4.1.63050.7 | tr '\n' ' ' | sed 's/ *\$//'"
 check "getnext mainsPowerAlarm is fwRunningSlot" '63050\.7\.1\.0 = INTEGER: 2' snmpgetnext $SNMP_OPTS $TARGET 1.3.6.1.4.1.63050.6.0
 check "getnext after fwLastResult"  '6\.3\.1\.1\.6\.1\.0 = INTEGER: 0' snmpgetnext $SNMP_OPTS $TARGET 1.3.6.1.4.1.63050.7.5.0
 check "v2c fwUpdate unknown object" '63050\.7\.6\.0 = No Such Object' snmpget $V2 $TARGET 1.3.6.1.4.1.63050.7.6.0
@@ -211,12 +211,14 @@ if snmptranslate -M "$MIBDIRS" -m SNMPv2-MIB -On SNMPv2-MIB::sysDescr >/dev/null
           snmptranslate -M "$MIBDIRS" -m +RF-POWER-MONITOR-MIB -On RF-POWER-MONITOR-MIB::mainsPowerLostTooLong
     check "MIB mainsPowerAlarm by name" 'RF-POWER-MONITOR-MIB::mainsPowerAlarm\.0 = INTEGER: none\(0\)' \
           snmpget -v1 -c public -r0 -t1 -M "$MIBDIRS" -m +RF-POWER-MONITOR-MIB $TARGET 1.3.6.1.4.1.63050.6.0
-    check "MIB fwUpdate group with names" 'fwRunningSlot\.0 = INTEGER: slotB\(2\).*fwSlotAVersion\.0 = STRING: 3\.3\.0.*fwSlotBVersion\.0 = STRING: 3\.4\.0.*fwState\.0 = INTEGER: trial\(2\).*fwLastResult\.0 = INTEGER: rolledBackCrash\(2\)$'           bash -c "snmpwalk -v2c -c public -r0 -t1 -M '$MIBDIRS' -m +RF-POWER-MONITOR-MIB $TARGET 1.3.6.1.4.1.63050.7 | sed 's/^RF-POWER-MONITOR-MIB:://' | tr '
-' ' ' | sed 's/ *\$//'"
-    check "MIB notification firmwareUpdateKept" '^\.1\.3\.6\.1\.4\.1\.63050\.0\.4$'           snmptranslate -M "$MIBDIRS" -m +RF-POWER-MONITOR-MIB -On RF-POWER-MONITOR-MIB::firmwareUpdateKept
-    check "MIB notification firmwareRolledBack" '^\.1\.3\.6\.1\.4\.1\.63050\.0\.5$'           snmptranslate -M "$MIBDIRS" -m +RF-POWER-MONITOR-MIB -On RF-POWER-MONITOR-MIB::firmwareRolledBack
-    check "MIB fwUpdate in the tree" 'fwRunningSlot.*fwSlotAVersion.*fwSlotBVersion.*fwState.*fwLastResult'           bash -c "snmptranslate -M '$MIBDIRS' -m +RF-POWER-MONITOR-MIB -Tp RF-POWER-MONITOR-MIB::fwUpdate | tr '
-' ' '"
+    check "MIB fwUpdate group with names" 'fwRunningSlot\.0 = INTEGER: slotB\(2\).*fwSlotAVersion\.0 = STRING: 3\.3\.0.*fwSlotBVersion\.0 = STRING: 3\.4\.0.*fwState\.0 = INTEGER: trial\(2\).*fwLastResult\.0 = INTEGER: rolledBackCrash\(2\)$' \
+          bash -c "snmpwalk -v2c -c public -r0 -t1 -M '$MIBDIRS' -m +RF-POWER-MONITOR-MIB $TARGET 1.3.6.1.4.1.63050.7 | sed 's/^RF-POWER-MONITOR-MIB:://' | tr '\n' ' ' | sed 's/ *\$//'"
+    check "MIB notification firmwareUpdateKept" '^\.1\.3\.6\.1\.4\.1\.63050\.0\.4$' \
+          snmptranslate -M "$MIBDIRS" -m +RF-POWER-MONITOR-MIB -On RF-POWER-MONITOR-MIB::firmwareUpdateKept
+    check "MIB notification firmwareRolledBack" '^\.1\.3\.6\.1\.4\.1\.63050\.0\.5$' \
+          snmptranslate -M "$MIBDIRS" -m +RF-POWER-MONITOR-MIB -On RF-POWER-MONITOR-MIB::firmwareRolledBack
+    check "MIB fwUpdate in the tree" 'fwRunningSlot.*fwSlotAVersion.*fwSlotBVersion.*fwState.*fwLastResult' \
+          bash -c "snmptranslate -M '$MIBDIRS' -m +RF-POWER-MONITOR-MIB -Tp RF-POWER-MONITOR-MIB::fwUpdate | tr '\n' ' '"
     check "MIB cpuTemperature with units" 'RF-POWER-MONITOR-MIB::cpuTemperature\.0 = INTEGER: 250 0\.1 degrees Celsius' \
           snmpget -v2c -c public -r0 -t1 -M "$MIBDIRS" -m +RF-POWER-MONITOR-MIB $TARGET 1.3.6.1.4.1.63050.4.0
     check "MIB ambientTemperature with units" 'RF-POWER-MONITOR-MIB::ambientTemperature\.0 = INTEGER: 215 0\.1 degrees Celsius' \

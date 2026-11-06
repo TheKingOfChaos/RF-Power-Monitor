@@ -30,6 +30,7 @@ static WiFiUDP udp;
 static bool started = false;
 static bool coldStartSent = false;
 static uint8_t agentAddr[4] = {0, 0, 0, 0};
+static FwTrapTiming fwTrapTiming = {};  ///< Core 0 only: snmpNetworkUp/Down() and snmpPollFirmwareTrap()
 static MainsAlarm mainsAlarm;  ///< Core 0 only: snmpPollMainsAlarm() and captureState()
 
 static SnmpAgent agent(currentSettings.community);
@@ -178,15 +179,16 @@ static IPAddress trapDestination(const TrapAddress& t) {
 
 /**
  * @brief Send an encoded trap to the destination in use, if any
+ * @return true if the packet was handed to the stack
  */
-static void sendTrap(size_t len, const char* what) {
+static bool sendTrap(size_t len, const char* what) {
     TrapAddress target;
-    if (!snmpTrapTarget(target)) return;
+    if (!snmpTrapTarget(target)) return false;
     char targetText[IPV6_TEXT_MAX];
     formatTrapAddress(target, targetText);
     if (len == 0) {
         serviceStats.trapsFailed++;
-        return;
+        return false;
     }
     IPAddress dest = trapDestination(target);
     bool ok = udp.beginPacket(dest, SNMP_TRAP_PORT) == 1 && udp.write(outBuf, len) == len && udp.endPacket() == 1;
@@ -198,6 +200,7 @@ static void sendTrap(size_t len, const char* what) {
         serviceStats.trapsFailed++;
         Serial.printf("SNMP trap %s to %s failed\r\n", what, targetText);
     }
+    return ok;
 }
 
 bool snmpBegin() {
@@ -210,12 +213,14 @@ bool snmpBegin() {
 
 void snmpNetworkUp(const IPAddress& localIP) {
     for (int i = 0; i < 4; i++) agentAddr[i] = localIP[i];
+    fwTrapTiming = {true, millis(), false, 0};  // a held firmware trap follows coldStart by FW_TRAP_SETTLE_MS
     if (!started || coldStartSent) return;
     coldStartSent = true;
     sendTrap(buildTrap(TrapKind::ColdStart, captureState()), "coldStart");
 }
 
 void snmpNetworkDown() {
+    fwTrapTiming = {};
     memset(agentAddr, 0, sizeof(agentAddr));
 }
 
@@ -255,7 +260,16 @@ void snmpPollMainsAlarm() {
 }
 
 void snmpPollFirmwareTrap() {
-    // fwUpdateTakeTrap() consumes the pending trap, so ask it only when the trap can leave now
+    FwResult result;
+    if (!fwUpdatePendingTrap(result)) return;
+    if (result == FwResult::None) {  // nothing to report (the builders make no trap for it): do not keep asking
+        fwUpdateTrapSent();
+        return;
+    }
+    // Held until coldStart is out (lwIP queues one packet per ARP entry) and a trap can leave now (trapCanLeave);
+    // it stays pending until a send succeeds and is retried every FW_TRAP_RETRY_MS
+    uint32_t now = millis();
+    if (!fwTrapDue(fwTrapTiming, now)) return;
     static const uint8_t NO_ADDRESS[4] = {0, 0, 0, 0};
     TrapAddress target;
     TrapPath path;
@@ -266,10 +280,12 @@ void snmpPollFirmwareTrap() {
     path.targetKnown = snmpTrapTarget(target);
     path.targetIPv6 = path.targetKnown && target.ipv6;
     if (!trapCanLeave(path)) return;
-    FwResult result;
-    if (!fwUpdateTakeTrap(result)) return;
-    sendTrap(buildTrap(TrapKind::Firmware, captureState()),
-             result == FwResult::Installed ? "firmwareUpdateKept" : "firmwareRolledBack");
+    fwTrapTiming.attempted = true;
+    fwTrapTiming.lastAttemptMs = now;
+    if (sendTrap(buildTrap(TrapKind::Firmware, captureState()),
+                 result == FwResult::Installed ? "firmwareUpdateKept" : "firmwareRolledBack")) {
+        fwUpdateTrapSent();
+    }
 }
 
 bool snmpMainsAlarm() {

@@ -113,11 +113,14 @@ struct FwSnmpState {
 void fwUpdateSnmpState(FwSnmpState& out);
 
 /**
- * @brief Take the pending trap (an update kept or rolled back), once
+ * @brief The pending trap (an update kept or rolled back), if any; stays pending until fwUpdateTrapSent()
  * @param result The outcome the trap is about (Installed = kept, else rolled back)
  * @return false when none is pending
  */
-bool fwUpdateTakeTrap(FwResult& result);
+bool fwUpdatePendingTrap(FwResult& result);
+
+/// The pending trap was sent: it is not pending any more (the boot record is marked at the next fwUpdatePoll())
+void fwUpdateTrapSent();
 
 /// Why the device started, from the boot program (Planned -> Reboot, Crash -> Watchdog); Unknown without boot info
 RestartCause fwUpdateRestartCause();

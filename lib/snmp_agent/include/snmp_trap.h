@@ -110,6 +110,7 @@ size_t snmpBuildMainsAlarmTrap(const char* community, const uint8_t agentAddr[4]
  * @brief Encode firmwareUpdateKept (state.fw.lastResult 1, installed) or firmwareRolledBack (any other result)
  *
  * Varbinds fwRunningSlot, fwSlotAVersion, fwSlotBVersion, fwLastResult; time-stamp is state.uptimeTicks.
+ * @return 0 (nothing built) for lastResult none (0): no update happened, so there is no trap
  */
 size_t snmpBuildFirmwareTrap(const char* community, const uint8_t agentAddr[4], const SnmpDeviceState& state,
                              uint8_t* out, size_t capacity);
@@ -185,6 +186,27 @@ struct TrapPath {
  *        out snmpTrapAddress.0 then)
  */
 bool trapCanLeave(const TrapPath& p);
+
+/// A firmware trap leaves this long after the network came up, so coldStart (sent when the network first
+/// comes up) is out first: lwIP holds one packet per unresolved ARP entry (ARP_QUEUEING 0) and a second
+/// packet to the same destination would replace it
+constexpr uint32_t FW_TRAP_SETTLE_MS = 2000;
+/// A firmware trap whose send failed is tried again no sooner than this
+constexpr uint32_t FW_TRAP_RETRY_MS = 10000;
+
+/// What decides when a pending firmware trap is sent
+struct FwTrapTiming {
+    bool networkUp;          ///< snmpNetworkUp() was called and the network has not gone down since
+    uint32_t networkUpMs;    ///< millis() at that call (where coldStart is sent, the first time)
+    bool attempted;          ///< a send was tried since the network came up
+    uint32_t lastAttemptMs;  ///< millis() of the last try
+};
+
+/**
+ * @brief Whether the pending firmware trap may be sent now: the network is up, FW_TRAP_SETTLE_MS have passed since
+ *        it came up, and the last failed try is FW_TRAP_RETRY_MS ago (wrap-around safe)
+ */
+bool fwTrapDue(const FwTrapTiming& t, uint32_t nowMs);
 
 /**
  * @brief Allows at most one event per interval (wrap-around safe)

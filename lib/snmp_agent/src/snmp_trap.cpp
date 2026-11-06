@@ -59,37 +59,59 @@ size_t snmpBuildAuthFailureTrap(const char* community, const uint8_t agentAddr[4
                             capacity);
 }
 
-/// mainsPowerStatus, mainsPowerChanges, mainsPowerLastChange and, for the alarm trap, mainsPowerAlarm
-static const uint32_t MAINS_OBJECTS[] = {1, 2, 3, 6};
+/// Objects of the mains traps: mainsPowerStatus, mainsPowerChanges, mainsPowerLastChange and, for the alarm trap,
+/// mainsPowerAlarm
+static const Oid MAINS_OIDS[4] = {
+    {{1, 3, 6, 1, 4, 1, ENTERPRISE_NUMBER, 1, 0}, 9},
+    {{1, 3, 6, 1, 4, 1, ENTERPRISE_NUMBER, 2, 0}, 9},
+    {{1, 3, 6, 1, 4, 1, ENTERPRISE_NUMBER, 3, 0}, 9},
+    {{1, 3, 6, 1, 4, 1, ENTERPRISE_NUMBER, 6, 0}, 9},
+};
+
+/// Objects of the firmware traps: fwRunningSlot, fwSlotAVersion, fwSlotBVersion, fwLastResult
+static const Oid FW_OIDS[4] = {
+    {{1, 3, 6, 1, 4, 1, ENTERPRISE_NUMBER, 7, 1, 0}, 10},
+    {{1, 3, 6, 1, 4, 1, ENTERPRISE_NUMBER, 7, 2, 0}, 10},
+    {{1, 3, 6, 1, 4, 1, ENTERPRISE_NUMBER, 7, 3, 0}, 10},
+    {{1, 3, 6, 1, 4, 1, ENTERPRISE_NUMBER, 7, 5, 0}, 10},
+};
 
 /**
- * @brief Read the first count mains objects through the MIB
+ * @brief Read count objects of the MIB into values
  * @return false if one is missing from the MIB
  */
-static bool mainsVarbinds(const SnmpDeviceState& state, uint8_t count, Oid* names, SnmpValue* values) {
+static bool readObjects(const SnmpDeviceState& state, const Oid* oids, uint8_t count, SnmpValue* values) {
+    static MibObject found;  // ~300 bytes: off the stack (traps are built on core 0 only)
     for (uint8_t i = 0; i < count; i++) {
-        names[i] = {{1, 3, 6, 1, 4, 1, ENTERPRISE_NUMBER, MAINS_OBJECTS[i], 0}, 9};
-        static MibObject found;  // ~300 bytes: off the stack (traps are built on core 0 only)
-        if (!mibGet(names[i], state, found)) return false;
+        if (!mibGet(oids[i], state, found)) return false;
         values[i] = found.value;
     }
     return true;
 }
 
-/// An enterprise-specific mains trap with the first count mains objects, stamped with the last change
-static size_t buildMainsTrap(MainsTrap specific, uint8_t count, const char* community, const uint8_t agentAddr[4],
-                             const SnmpDeviceState& state, uint8_t* out, size_t capacity) {
-    SnmpTrap t;
+/// An enterprise-specific trap with the first count objects of oids, stamped with timestamp
+static size_t buildEnterpriseTrap(int32_t specific, uint32_t timestamp, const Oid* oids, uint8_t count,
+                                  const char* community, const uint8_t agentAddr[4], const SnmpDeviceState& state,
+                                  uint8_t* out, size_t capacity) {
+    static SnmpTrap t;  // ~1.2 KB: off the stack (traps are built on core 0 only, one at a time)
     memset(&t, 0, sizeof(t));
     t.community = community;
     t.enterprise = enterpriseOid();
     memcpy(t.agentAddr, agentAddr, 4);
     t.generic = SnmpGenericTrap::EnterpriseSpecific;
-    t.specific = (int32_t)specific;
-    t.timestamp = state.mainsLastChangeTicks;
-    if (!mainsVarbinds(state, count, t.names, t.values)) return 0;
+    t.specific = specific;
+    t.timestamp = timestamp;
+    if (count > SNMP_TRAP_MAX_VARBINDS || !readObjects(state, oids, count, t.values)) return 0;
+    for (uint8_t i = 0; i < count; i++) t.names[i] = oids[i];
     t.varbindCount = count;
     return snmpBuildTrap(t, out, capacity);
+}
+
+/// Mains traps are stamped with the last change
+static size_t buildMainsTrap(MainsTrap specific, uint8_t count, const char* community, const uint8_t agentAddr[4],
+                             const SnmpDeviceState& state, uint8_t* out, size_t capacity) {
+    return buildEnterpriseTrap((int32_t)specific, state.mainsLastChangeTicks, MAINS_OIDS, count, community, agentAddr,
+                               state, out, capacity);
 }
 
 size_t snmpBuildMainsTrap(const char* community, const uint8_t agentAddr[4], const SnmpDeviceState& state,
@@ -103,41 +125,22 @@ size_t snmpBuildMainsAlarmTrap(const char* community, const uint8_t agentAddr[4]
     return buildMainsTrap(MainsTrap::PowerLostTooLong, 4, community, agentAddr, state, out, capacity);
 }
 
-/// fwRunningSlot, fwSlotAVersion, fwSlotBVersion, fwLastResult: 63050.7.<n>.0
-static const uint32_t FW_OBJECTS[] = {1, 2, 3, 5};
-
 /**
- * @brief Read the four firmware objects through the MIB
- * @return false if one is missing from the MIB
+ * @brief Which firmware trap the last result calls for
+ * @return false for result none (0): nothing happened, so there is no trap
  */
-static bool fwVarbinds(const SnmpDeviceState& state, Oid* names, SnmpValue* values) {
-    for (uint8_t i = 0; i < 4; i++) {
-        names[i] = {{1, 3, 6, 1, 4, 1, ENTERPRISE_NUMBER, 7, FW_OBJECTS[i], 0}, 10};
-        static MibObject found;  // ~300 bytes: off the stack (traps are built on core 0 only)
-        if (!mibGet(names[i], state, found)) return false;
-        values[i] = found.value;
-    }
+static bool fwTrapKind(const SnmpDeviceState& state, FwTrap& kind) {
+    if (state.fw.lastResult == 0) return false;
+    kind = state.fw.lastResult == 1 ? FwTrap::Kept : FwTrap::RolledBack;  // installed, else a way back
     return true;
-}
-
-/// lastResult 1 is installed: the update was kept; every other result is a way back to the old firmware
-static FwTrap fwTrapKind(const SnmpDeviceState& state) {
-    return state.fw.lastResult == 1 ? FwTrap::Kept : FwTrap::RolledBack;
 }
 
 size_t snmpBuildFirmwareTrap(const char* community, const uint8_t agentAddr[4], const SnmpDeviceState& state,
                              uint8_t* out, size_t capacity) {
-    SnmpTrap t;
-    memset(&t, 0, sizeof(t));
-    t.community = community;
-    t.enterprise = enterpriseOid();
-    memcpy(t.agentAddr, agentAddr, 4);
-    t.generic = SnmpGenericTrap::EnterpriseSpecific;
-    t.specific = (int32_t)fwTrapKind(state);
-    t.timestamp = state.uptimeTicks;
-    if (!fwVarbinds(state, t.names, t.values)) return 0;
-    t.varbindCount = 4;
-    return snmpBuildTrap(t, out, capacity);
+    FwTrap kind;
+    if (!fwTrapKind(state, kind)) return 0;
+    return buildEnterpriseTrap((int32_t)kind, state.uptimeTicks, FW_OIDS, 4, community, agentAddr, state, out,
+                               capacity);
 }
 
 // ---- v2c ----
@@ -204,16 +207,23 @@ size_t snmpBuildAuthFailureTrapV2c(const char* community, const uint8_t agentAdd
                        capacity);
 }
 
+/// A v2c trap 63050.0.specific with the first count objects of oids
+static size_t buildEnterpriseTrapV2c(int32_t specific, uint32_t timestamp, const Oid* oids, uint8_t count,
+                                     const char* community, const uint8_t agentAddr[4],
+                                     const SnmpDeviceState& state, int32_t requestId, uint8_t* out,
+                                     size_t capacity) {
+    static SnmpValue values[SNMP_TRAP_MAX_VARBINDS];  // off the stack (traps are built on core 0 only)
+    Oid trapOid = {{1, 3, 6, 1, 4, 1, ENTERPRISE_NUMBER, 0, (uint32_t)specific}, 9};
+    if (count > SNMP_TRAP_MAX_VARBINDS || !readObjects(state, oids, count, values)) return 0;
+    return buildV2Trap(community, agentAddr, requestId, timestamp, trapOid, oids, values, count, out, capacity);
+}
+
 /// A v2c mains trap (63050.0.specific) with the first count mains objects
 static size_t buildMainsTrapV2c(MainsTrap specific, uint8_t count, const char* community,
                                 const uint8_t agentAddr[4], const SnmpDeviceState& state, int32_t requestId,
                                 uint8_t* out, size_t capacity) {
-    Oid trapOid = {{1, 3, 6, 1, 4, 1, ENTERPRISE_NUMBER, 0, (uint32_t)specific}, 9};
-    Oid names[4];
-    SnmpValue values[4];
-    if (!mainsVarbinds(state, count, names, values)) return 0;
-    return buildV2Trap(community, agentAddr, requestId, state.mainsLastChangeTicks, trapOid, names, values, count,
-                       out, capacity);
+    return buildEnterpriseTrapV2c((int32_t)specific, state.mainsLastChangeTicks, MAINS_OIDS, count, community,
+                                  agentAddr, state, requestId, out, capacity);
 }
 
 size_t snmpBuildMainsTrapV2c(const char* community, const uint8_t agentAddr[4], const SnmpDeviceState& state,
@@ -230,11 +240,15 @@ size_t snmpBuildMainsAlarmTrapV2c(const char* community, const uint8_t agentAddr
 
 size_t snmpBuildFirmwareTrapV2c(const char* community, const uint8_t agentAddr[4], const SnmpDeviceState& state,
                                 int32_t requestId, uint8_t* out, size_t capacity) {
-    Oid trapOid = {{1, 3, 6, 1, 4, 1, ENTERPRISE_NUMBER, 0, (uint32_t)fwTrapKind(state)}, 9};
-    Oid names[4];
-    SnmpValue values[4];
-    if (!fwVarbinds(state, names, values)) return 0;
-    return buildV2Trap(community, agentAddr, requestId, state.uptimeTicks, trapOid, names, values, 4, out, capacity);
+    FwTrap kind;
+    if (!fwTrapKind(state, kind)) return 0;
+    return buildEnterpriseTrapV2c((int32_t)kind, state.uptimeTicks, FW_OIDS, 4, community, agentAddr, state,
+                                  requestId, out, capacity);
+}
+
+bool fwTrapDue(const FwTrapTiming& t, uint32_t nowMs) {
+    if (!t.networkUp || nowMs - t.networkUpMs < FW_TRAP_SETTLE_MS) return false;
+    return !t.attempted || nowMs - t.lastAttemptMs >= FW_TRAP_RETRY_MS;
 }
 
 bool trapCanLeave(const TrapPath& p) {

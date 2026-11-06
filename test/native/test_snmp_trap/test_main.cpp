@@ -484,6 +484,12 @@ static void test_fw_trap_kind_follows_the_last_result() {
     }
 }
 
+static void test_fw_trap_builds_nothing_for_result_none() {
+    uint8_t buf[256];
+    TEST_ASSERT_EQUAL_size_t(0, snmpBuildFirmwareTrap("public", AGENT, fwState(0, 0), buf, sizeof(buf)));
+    TEST_ASSERT_EQUAL_size_t(0, snmpBuildFirmwareTrapV2c("public", AGENT, fwState(0, 0), 1, buf, sizeof(buf)));
+}
+
 static void test_v2c_fw_trap_without_ipv4_address_ends_with_the_last_result() {
     uint8_t buf[256];
     size_t len = snmpBuildFirmwareTrapV2c("public", NO_IPV4, fwState(1, 0), 1, buf, sizeof(buf));
@@ -547,6 +553,43 @@ static void test_v2c_trap_fails_cleanly() {
     TEST_ASSERT_EQUAL_size_t(0, snmpBuildColdStartTrapV2c(nullptr, AGENT, 1, 1, buf, sizeof(buf)));
 }
 
+// ---- when the firmware trap goes out after the network came up ----
+
+static FwTrapTiming timingUpAt(uint32_t upMs) {
+    FwTrapTiming t = {};
+    t.networkUp = true;
+    t.networkUpMs = upMs;
+    return t;
+}
+
+static void test_fw_trap_waits_while_the_network_is_down() {
+    FwTrapTiming t = {};
+    TEST_ASSERT_FALSE(fwTrapDue(t, 100000));
+}
+
+// lwIP queues one packet per unresolved ARP entry (ARP_QUEUEING 0): coldStart must have left first
+static void test_fw_trap_waits_2_s_after_network_up() {
+    FwTrapTiming t = timingUpAt(5000);
+    TEST_ASSERT_FALSE(fwTrapDue(t, 5000));
+    TEST_ASSERT_FALSE(fwTrapDue(t, 6999));
+    TEST_ASSERT_TRUE(fwTrapDue(t, 7000));
+}
+
+static void test_fw_trap_retries_no_sooner_than_10_s_after_an_attempt() {
+    FwTrapTiming t = timingUpAt(0);
+    t.attempted = true;
+    t.lastAttemptMs = 20000;
+    TEST_ASSERT_FALSE(fwTrapDue(t, 20001));
+    TEST_ASSERT_FALSE(fwTrapDue(t, 29999));
+    TEST_ASSERT_TRUE(fwTrapDue(t, 30000));
+}
+
+static void test_fw_trap_timing_survives_millis_wraparound() {
+    FwTrapTiming t = timingUpAt(0xFFFFFFFFu - 500);
+    TEST_ASSERT_FALSE(fwTrapDue(t, 1000));   // 1501 ms after network up, across the wrap
+    TEST_ASSERT_TRUE(fwTrapDue(t, 1600));
+}
+
 // ---- throttle ----
 
 static void test_throttle_allows_first_then_one_per_interval() {
@@ -596,7 +639,12 @@ int main() {
     RUN_TEST(test_fw_kept_trap_v1_and_v2c_bytes);
     RUN_TEST(test_fw_rolled_back_trap_v1_and_v2c_bytes);
     RUN_TEST(test_fw_trap_kind_follows_the_last_result);
+    RUN_TEST(test_fw_trap_builds_nothing_for_result_none);
     RUN_TEST(test_v2c_fw_trap_without_ipv4_address_ends_with_the_last_result);
+    RUN_TEST(test_fw_trap_waits_while_the_network_is_down);
+    RUN_TEST(test_fw_trap_waits_2_s_after_network_up);
+    RUN_TEST(test_fw_trap_retries_no_sooner_than_10_s_after_an_attempt);
+    RUN_TEST(test_fw_trap_timing_survives_millis_wraparound);
     RUN_TEST(test_trap_can_leave_when_everything_is_ready);
     RUN_TEST(test_trap_waits_for_agent_link_and_destination);
     RUN_TEST(test_ipv4_destination_waits_for_ipv4_address);

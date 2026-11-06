@@ -1308,7 +1308,7 @@ static void test_getnext_after_fw_group_ends_enterprise_tree() {
     TEST_ASSERT_EQUAL_STRING(LAST_OID, str(r.names[0]));
     r = requestV2c(agent, BerTag::GetNextRequest, oids, 1);
     TEST_ASSERT_EQUAL_STRING(LAST_OID, str(r.names[0]));
-    // Nothing past the group inside the enterprise subtree: v1 noSuchName, v2c noSuchInstance for 7.5.1
+    // Nothing past the group inside the enterprise subtree: v1 noSuchName, v2c noSuchObject for the unused 7.6.0
     const char* inside[] = {"1.3.6.1.4.1.63050.7.6.0"};
     r = request(agent, BerTag::GetRequest, inside, 1);
     TEST_ASSERT_EQUAL_INT32((int32_t)SnmpError::NoSuchName, r.errorStatus);
