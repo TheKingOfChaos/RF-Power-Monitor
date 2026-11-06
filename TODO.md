@@ -249,6 +249,7 @@ An item is only ticked when it is implemented **and** its tests exist and pass (
 - [x] `tools/fw_keygen.py`, `fw_release.py`, `fw_update.py`, serial status lines, user and setup manuals — tool tests, native, HIL
 - [x] Final verification of 3.3.0: all native suites, sanitizers, net-snmp check, tool tests, on-device suites, full HIL and the opt-in firmware update set (see the task report and CHANGELOG)
 - [ ] Boot verification time: ~2.6 us per byte (943 ms for 359 KB, mostly SHA-512 on the M0+), so the 1.5 s budget runs out near 570 KB of firmware; `scripts/slot_build.py` warns above 550 KB. Speed up SHA-512 (or the verification) before the image gets there
+- [ ] Refused uploads (401/403) drain the body under the 5-minute upload deadline, so one client without a login can hold the single web connection that long; give unauthenticated drains a short deadline or a byte cap (SNMP still confirms trials meanwhile)
 
 ## Notes
 - SNMP must be v1 and v2c (no v3) and our own code; networking may use libraries
