@@ -22,6 +22,9 @@
 /// Site-specific option (RFC 2132 range 224-254) carrying the SNMP trap destination (IPv4)
 static const uint8_t DHCP_OPTION_TRAP_TARGET = 224;
 
+/// Site-specific option carrying the update server URL (text, see dhcpAckText)
+static const uint8_t DHCP_OPTION_UPDATE_URL = 225;
+
 /// Result of dhcpRequestOption()
 enum class DhcpEdit : uint8_t {
     NotDhcpRequest,    ///< Not a well-formed client DISCOVER/REQUEST/INFORM with option 55: unchanged
@@ -63,3 +66,16 @@ struct DhcpAckInfo {
  * @param mac This device's MAC; the ACK's chaddr must match
  */
 DhcpAck dhcpReadAck(const uint8_t* frame, size_t len, const uint8_t mac[6], uint8_t code, DhcpAckInfo& info);
+
+/**
+ * @brief Read a text option (the update server URL) from a DHCPACK
+ *
+ * Checks the frame as dhcpReadAck() does (checksums, a DHCPACK from a server);
+ * the caller must also check the ACK was for this device and accepted by lwIP
+ * (see src/net_stats.cpp) before using the value.
+ * @param out Receives the text, NUL terminated; empty on failure
+ * @param outSize The option must be 1..outSize-1 printable ASCII bytes: longer
+ *        or non-printable values are rejected, never truncated
+ * @return true if the option was present and acceptable
+ */
+bool dhcpAckText(const uint8_t* frame, size_t len, uint8_t code, char* out, size_t outSize);

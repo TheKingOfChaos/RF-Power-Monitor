@@ -154,3 +154,26 @@ DhcpAck dhcpReadAck(const uint8_t* frame, size_t len, const uint8_t mac[6], uint
     memcpy(info.value, d + w.wanted + 2, 4);
     return DhcpAck::Option;
 }
+
+bool dhcpAckText(const uint8_t* frame, size_t len, uint8_t code, char* out, size_t outSize) {
+    if (out == nullptr || outSize == 0) return false;
+    out[0] = '\0';
+    Udp u;
+    if (frame == nullptr || !findUdp(frame, len, u) || u.src != 67 || u.dst != 68) return false;
+    if (be16(u.payload + 6) != 0 && udpChecksum(u) != 0) return false;
+    size_t start, stop;
+    if (!findOptions(u, 2, start, stop)) return false;
+    const uint8_t* d = u.payload;
+    Walk w;
+    if (!walkOptions(d, start, stop, code, w) || w.msgType == 0 || d[w.msgType + 2] != ACK) return false;
+    if (w.wanted == 0) return false;
+    size_t n = d[w.wanted + 1];
+    if (n == 0 || n >= outSize) return false;
+    const uint8_t* v = d + w.wanted + 2;
+    for (size_t i = 0; i < n; i++) {
+        if (v[i] < 0x20 || v[i] > 0x7E) return false;
+    }
+    memcpy(out, v, n);
+    out[n] = '\0';
+    return true;
+}

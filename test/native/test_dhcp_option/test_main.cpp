@@ -4,6 +4,7 @@
 
 #include <unity.h>
 #include <string.h>
+#include <algorithm>
 #include <vector>
 #include <dhcp_option.h>
 #include "frames.h"
@@ -332,8 +333,131 @@ static void test_every_truncation_and_corruption_of_an_ack_is_safe() {
     }
 }
 
+// ---- option 225 (update server URL, text) ----
+
+/// Kea's ACK without 224, with option code/value inserted before END (lengths and IP checksum fixed,
+/// UDP checksum set to 0 = unused, which is valid for UDP over IPv4)
+static Frame ackWithOption(uint8_t code, const uint8_t* value, size_t valueLen) {
+    Frame f = frame(KEA_ACK_WITHOUT_224);
+    size_t u = udpOffset(f);
+    size_t i = optionsOffset(f);
+    while (f[i] != 255) i += f[i] == 0 ? 1 : 2 + f[i + 1];
+    Frame opt;
+    opt.push_back(code);
+    opt.push_back((uint8_t)valueLen);
+    opt.insert(opt.end(), value, value + valueLen);
+    f.insert(f.begin() + (long)i, opt.begin(), opt.end());
+    size_t iplen = ((size_t)f[16] << 8 | f[17]) + opt.size();
+    size_t ulen = ((size_t)f[u + 4] << 8 | f[u + 5]) + opt.size();
+    f[16] = (uint8_t)(iplen >> 8);
+    f[17] = (uint8_t)iplen;
+    f[u + 4] = (uint8_t)(ulen >> 8);
+    f[u + 5] = (uint8_t)ulen;
+    f[u + 6] = f[u + 7] = 0;
+    f[24] = f[25] = 0;
+    uint32_t s = 0;
+    for (size_t k = 14; k < 34; k += 2) s += (uint32_t)f[k] << 8 | f[k + 1];
+    while (s >> 16) s = (s & 0xFFFF) + (s >> 16);
+    f[24] = (uint8_t)(~s >> 8);
+    f[25] = (uint8_t)~s;
+    return f;
+}
+
+static Frame ackWithText(const char* text) {
+    return ackWithOption(DHCP_OPTION_UPDATE_URL, (const uint8_t*)text, strlen(text));
+}
+
+static void test_ack_text_reads_url_option() {
+    Frame f = ackWithText("http://10.132.0.45:8071");
+    uint8_t out4[4], yi[4];
+    TEST_ASSERT_EQUAL(DhcpAck::NoOption, read(f, DEVICE_MAC, out4, yi));  // still a valid ACK for us
+    char url[128];
+    TEST_ASSERT_TRUE(dhcpAckText(f.data(), f.size(), DHCP_OPTION_UPDATE_URL, url, sizeof(url)));
+    TEST_ASSERT_EQUAL_STRING("http://10.132.0.45:8071", url);
+}
+
+static void test_ack_text_accepts_127_and_rejects_too_long() {
+    char text[129];
+    memset(text, 'a', 127);
+    text[127] = '\0';
+    char url[128];
+    Frame f = ackWithText(text);
+    TEST_ASSERT_TRUE(dhcpAckText(f.data(), f.size(), DHCP_OPTION_UPDATE_URL, url, sizeof(url)));
+    TEST_ASSERT_EQUAL(127, strlen(url));
+    strcat(text, "a");
+    f = ackWithText(text);
+    strcpy(url, "unchanged");
+    TEST_ASSERT_FALSE(dhcpAckText(f.data(), f.size(), DHCP_OPTION_UPDATE_URL, url, sizeof(url)));
+    TEST_ASSERT_EQUAL_STRING("", url);  // rejected, never truncated
+}
+
+static void test_ack_text_rejects_non_printable() {
+    char url[128];
+    const uint8_t withNul[] = {'h', 't', 0, 'p'};
+    Frame f = ackWithOption(DHCP_OPTION_UPDATE_URL, withNul, sizeof(withNul));
+    TEST_ASSERT_FALSE(dhcpAckText(f.data(), f.size(), DHCP_OPTION_UPDATE_URL, url, sizeof(url)));
+    const uint8_t withHigh[] = {'h', 0xC3, 0xA6};
+    f = ackWithOption(DHCP_OPTION_UPDATE_URL, withHigh, sizeof(withHigh));
+    TEST_ASSERT_FALSE(dhcpAckText(f.data(), f.size(), DHCP_OPTION_UPDATE_URL, url, sizeof(url)));
+    f = ackWithText("http://a\nb");
+    TEST_ASSERT_FALSE(dhcpAckText(f.data(), f.size(), DHCP_OPTION_UPDATE_URL, url, sizeof(url)));
+}
+
+static void test_ack_text_rejects_zero_length() {
+    char url[128];
+    Frame f = ackWithOption(DHCP_OPTION_UPDATE_URL, nullptr, 0);
+    TEST_ASSERT_FALSE(dhcpAckText(f.data(), f.size(), DHCP_OPTION_UPDATE_URL, url, sizeof(url)));
+}
+
+static void test_ack_text_absent() {
+    char url[128];
+    Frame f = frame(KEA_ACK_WITH_224);
+    TEST_ASSERT_FALSE(dhcpAckText(f.data(), f.size(), DHCP_OPTION_UPDATE_URL, url, sizeof(url)));
+    TEST_ASSERT_FALSE(dhcpAckText(nullptr, 0, DHCP_OPTION_UPDATE_URL, url, sizeof(url)));
+}
+
+static void test_ack_text_not_read_from_requests_or_bad_checksum() {
+    char url[128];
+    Frame f = ackWithText("http://site");
+    size_t u = udpOffset(f);
+    f[u + 6] = 0x12;  // a checksum that does not verify
+    TEST_ASSERT_FALSE(dhcpAckText(f.data(), f.size(), DHCP_OPTION_UPDATE_URL, url, sizeof(url)));
+    f = frame(DEVICE_DISCOVER);
+    TEST_ASSERT_FALSE(dhcpAckText(f.data(), f.size(), DHCP_OPTION_UPDATE_URL, url, sizeof(url)));
+}
+
+static void test_ack_text_truncated_frame() {
+    char url[128];
+    Frame full = ackWithText("http://10.132.0.45:8071/rf");
+    for (size_t n = 0; n < full.size(); n++) {
+        Frame f(full.begin(), full.begin() + (long)n);
+        TEST_ASSERT_FALSE(dhcpAckText(f.data(), f.size(), DHCP_OPTION_UPDATE_URL, url, sizeof(url)));
+    }
+}
+
+static void test_request_two_options_in_captured_discover() {
+    Frame frames[] = {frame(DEVICE_DISCOVER), frame(DEVICE_REQUEST_SELECTING), frame(DEVICE_REQUEST_RENEWING)};
+    for (Frame& f : frames) {
+        TEST_ASSERT_EQUAL(DhcpEdit::Added, dhcpRequestOption(f.data(), f.size(), DHCP_OPTION_TRAP_TARGET));
+        DhcpEdit r = dhcpRequestOption(f.data(), f.size(), DHCP_OPTION_UPDATE_URL);
+        TEST_ASSERT_EQUAL(DhcpEdit::Added, r);  // lwIP pads enough for both 224 and 225
+        Frame list = option(f, 55);
+        TEST_ASSERT_TRUE(std::find(list.begin(), list.end(), DHCP_OPTION_TRAP_TARGET) != list.end());
+        TEST_ASSERT_TRUE(std::find(list.begin(), list.end(), DHCP_OPTION_UPDATE_URL) != list.end());
+        TEST_ASSERT_TRUE(udpChecksumOk(f));
+    }
+}
+
 int main() {
     UNITY_BEGIN();
+    RUN_TEST(test_ack_text_reads_url_option);
+    RUN_TEST(test_ack_text_accepts_127_and_rejects_too_long);
+    RUN_TEST(test_ack_text_rejects_non_printable);
+    RUN_TEST(test_ack_text_rejects_zero_length);
+    RUN_TEST(test_ack_text_absent);
+    RUN_TEST(test_ack_text_not_read_from_requests_or_bad_checksum);
+    RUN_TEST(test_ack_text_truncated_frame);
+    RUN_TEST(test_request_two_options_in_captured_discover);
     RUN_TEST(test_captured_requests_are_valid_before_editing);
     RUN_TEST(test_option_224_is_added_to_every_device_request);
     RUN_TEST(test_editing_twice_does_not_add_224_again);
