@@ -248,6 +248,7 @@ static void test_rollback_record_erases_the_failed_release() {
     uploadGolden();
     TEST_ASSERT_TRUE_MESSAGE(uploadOk, uploadError ? uploadError : "upload");
     TEST_ASSERT_TRUE(writeRecord(fwRecordUnreachable(OTHER_SLOT, "3.4.0")));
+    uploadResultText[0] = '\0';  // as after the restarts in between (RAM only)
     TEST_ASSERT_EQUAL_UINT8(RUNNING_SLOT, record.active);
     SlotHeader h;
     TEST_ASSERT_EQUAL(SlotCheck::Ok, slotVerify(xip(FW_SLOT_OFFSET[OTHER_SLOT]), OTHER_SLOT, FW_PUBLIC_KEY, h));
