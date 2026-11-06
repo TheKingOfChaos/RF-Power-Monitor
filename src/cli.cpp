@@ -9,6 +9,7 @@
 #include "dhcp6_service.h"
 #include "fw_update_service.h"
 #include "hostname.h"
+#include "http_fetch.h"
 #include "lldp_service.h"
 #include "net_stats.h"
 #include "snmp_service.h"
@@ -42,10 +43,15 @@ enum CliState {
 };
 
 static CliState state = CLI_MENU;
-static char lineBuf[96];
+static char lineBuf[144];  // room for a 127-character URL after a command word
 static uint8_t lineLen = 0;
 static bool lineOverflow = false;  // More characters were typed than lineBuf holds
 static Settings settingsBackup;    // restored when a save fails; static: too big for core 0's stack
+
+// Hidden command fetchtest <url>: a GET in the background, its result printed when it ends
+static bool fetchTestActive = false;
+static uint32_t fetchTestBytes = 0;
+static uint32_t fetchTestStartMs = 0;
 
 // Network values being entered, applied only on confirm
 static char newIP[16];
@@ -535,6 +541,21 @@ static void handleLine(const char* line) {
             Serial.println("The address is used as a /64 next to the automatic (SLAAC) address.");
             Serial.println("Press Enter to keep the value in brackets.");
             promptIPv6Address();
+        } else if (strncmp(line, "fetchtest ", 10) == 0) {
+            // Hidden test command (docs/TESTING.md): GET a URL with the update client's HTTP code
+            UpdateUrl url;
+            if (!parseUpdateUrl(line + 10, url)) {
+                Serial.println("fetchtest: not an http:// URL");
+            } else if (httpFetchStart(url, "GET", url.path[0] != '\0' ? url.path : "/", nullptr, nullptr, 0,
+                                      0x7FFFFFFF, millis(), 0)) {
+                fetchTestActive = true;
+                fetchTestBytes = 0;
+                fetchTestStartMs = millis();
+                Serial.println("fetchtest: started");
+            } else {
+                Serial.printf("fetchtest: failed: %s\r\n", httpFetchError());
+            }
+            Serial.print("> ");
         } else if (strcmp(line, "lldpdump") == 0) {
             // Hidden test command (docs/TESTING.md): the switch's last LLDPDU in hex, for test vectors
             lldpDump();
@@ -811,12 +832,36 @@ static void handleLine(const char* line) {
     }
 }
 
+/// Drain a running fetchtest and print its result once it ends
+static void pollFetchTest() {
+    if (!fetchTestActive) return;
+    static uint8_t buf[256];
+    FetchState st = httpFetchPoll(millis());
+    if (st == FetchState::Body) {
+        size_t n;
+        while ((n = httpFetchRead(buf, sizeof(buf))) > 0) fetchTestBytes += n;
+        st = httpFetchPoll(millis());
+    }
+    if (st == FetchState::Done) {
+        Serial.printf("\r\nfetchtest: %d %lu bytes in %lu ms\r\n> ", httpFetchStatus(), (unsigned long)fetchTestBytes,
+                      (unsigned long)(millis() - fetchTestStartMs));
+    } else if (st == FetchState::Failed) {
+        Serial.printf("\r\nfetchtest: failed: %s after %lu ms\r\n> ", httpFetchError(),
+                      (unsigned long)(millis() - fetchTestStartMs));
+    } else {
+        return;
+    }
+    fetchTestActive = false;
+    httpFetchAbort();
+}
+
 void cliBegin() {
     printMenu();
 }
 
 void cliProcess() {
     static bool lastWasCR = false;
+    pollFetchTest();
 
     while (Serial.available()) {
         char c = Serial.read();
