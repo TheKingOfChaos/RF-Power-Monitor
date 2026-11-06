@@ -13,7 +13,7 @@ Current version: **3.0.0** (see [CHANGELOG.md](CHANGELOG.md)).
 - **Network:** the device gets its address by DHCP (or a static IP), is reachable as `RF-Power-XXXXXX.local` (mDNS; XXXXXX = the last 6 hex digits of its MAC), answers SNMP v1/v2c on UDP 161 for LibreNMS or net-snmp, sends traps on UDP 162, and serves a configuration web page with login on TCP 80 ([Web page](#web-page)).
 - **PC:** the USB serial port carries the configuration menu and the hardware-in-the-loop tests.
 
-More diagrams (firmware architecture, SNMP request flow, mains flow, settings, tests) are in [docs/diagrams/](docs/diagrams/README.md).
+More diagrams (firmware architecture, SNMP request flow, mains flow, settings, tests, update site) are in [docs/diagrams/](docs/diagrams/README.md).
 
 ## Status
 
@@ -56,7 +56,7 @@ See [TODO.md](TODO.md) for the detailed plan.
 | [CHANGELOG.md](CHANGELOG.md) | What changed in each version |
 | [hardware/pico-poe-mains-carrier/](hardware/pico-poe-mains-carrier/README.md) | Carrier PCB rev 1.1 (KiCad 10): circuit, isolation, mounting, fab files for JLCPCB, 3D models |
 | [hardware/rf-power-monitor-rev2/](hardware/rf-power-monitor-rev2/README.md) | Rev 2 board, RP2040 and W5500 on the board (designed, not built yet): differences from rev 1, pins, isolation, known limits, fab files |
-| [docs/diagrams/](docs/diagrams/README.md) | Excalidraw diagrams (editable) of the system, firmware, SNMP, mains flow, settings and tests |
+| [docs/diagrams/](docs/diagrams/README.md) | Excalidraw diagrams (editable) of the system, firmware, SNMP, mains flow, settings, tests and the update site |
 | [.clinerules](.clinerules) | Project and test rules |
 
 ## Hardware

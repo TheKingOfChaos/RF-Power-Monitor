@@ -303,6 +303,8 @@ Things to know while updating:
 
 From firmware 3.4.0 a device can check in with the **update site**, a small website in Docker (setup manual, [step 8](SETUP_MANUAL.md#8-update-site-optional)). Every 30 minutes it reports its serial number, hostname, IPv4 and IPv6 addresses and firmware. The site's **Devices** page lists them (no login needed) and shows a device as *offline* after 65 minutes without a check-in.
 
+![Check-ins and updates from the update site: the reply MAC, the download, the checks before writing, trial and reporting](diagrams/update-site-flow.svg)
+
 To update devices from the site:
 
 1. Log in to the site's **Admin** page and upload the release's `rf-power-monitor-<version>.upd`. The site refuses files older than 3.4.0 (they could never report back), a version it already has, and a file whose signed firmware is another version than its header says.

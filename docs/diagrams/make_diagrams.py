@@ -153,7 +153,7 @@ def system_overview():
     d.arrow("plug", "bottom", "det", "top")
 
     d.zone("z-board", 420, 80, 650, 640, "RF-Power-Monitor board", ZONE_BLUE)
-    d.box("flash", 470, 140, 300, 90, "Internal flash (LittleFS)\nsettings_a / settings_b.json", GREEN, 16)
+    d.box("flash", 470, 130, 300, 110, "Internal flash (LittleFS)\nsettings_a / settings_b.json\nupdate_a / update_b.json", GREEN, 16)
     d.box("pico", 470, 290, 300, 220,
           "Raspberry Pi Pico\n(RP2040)\n\nCore 0: network, SNMP, web page,\nLLDP, menu, temperatures, load,\n"
           "watchdog 8 s (fed while core 1 runs)\nCore 1: GPIO27 + GPIO22, 1 kHz",
@@ -172,8 +172,8 @@ def system_overview():
     d.box("pc", 40, 610, 330, 100, "PC: PuTTY or HIL tests\nUSB serial, 115200 8N1", GRAY, 16)
     d.arrow("pc", "right", "pico", "left", "USB", b_frac=0.85, both=True)
 
-    d.zone("z-net", 1150, 80, 380, 700, "Network", ZONE_GRAY)
-    d.box("dhcp", 1190, 130, 140, 100, "DHCP server\nopt. 224 = trap\ndestination", GRAY, 16)
+    d.zone("z-net", 1150, 80, 380, 830, "Network", ZONE_GRAY)
+    d.box("dhcp", 1175, 125, 160, 110, "DHCP server\n224: trap dest.\n225: update URL", GRAY, 16)
     d.box("browser", 1350, 140, 140, 80, "Browser\nweb page\nTCP 80", VIOLET, 16)
     d.box("switch", 1190, 360, 300, 90, "LAN switch\nIPv4 + IPv6, LLDP", GRAY, 18)
     d.box("lnms", 1190, 520, 300, 110, "SNMP manager\nLibreNMS / net-snmp\nUDP 161, v1/v2c, IPv4/IPv6", VIOLET, 16)
@@ -183,6 +183,8 @@ def system_overview():
     d.arrow("switch", "top", "browser", "bottom", a_frac=0.77, both=True)
     d.arrow("switch", "bottom", "lnms", "top", both=True)
     d.arrow("switch", "right", "traps", "right", "traps", via=[(1515, 405), (1515, 710)])
+    d.box("updsite", 1190, 790, 300, 100, "Update site (Docker)\nTCP 8071: check-ins every\n30 min, chosen releases", VIOLET, 16)
+    d.arrow("switch", "left", "updsite", "left", a_frac=0.8, via=[(1170, 432), (1170, 840)], both=True)
     d.save()
 
 
@@ -202,7 +204,8 @@ def firmware_architecture():
     src2 = [(70, "d6svc", "dhcp6_service.cpp\nDHCPv6 client,\nframes around lwIP"),
             (300, "lldpsvc", "lldp_service.cpp\nLLDP send / listen,\nLLDP-MIB data"),
             (760, "names", "hostname.cpp\nipv6_static.cpp\nDHCP/mDNS name, IPv6"),
-            (1220, "wdog", "watchdog.cpp\n8 s watchdog,\ncore 1 heartbeat")]
+            (1220, "wdog", "watchdog.cpp\n8 s watchdog,\ncore 1 heartbeat"),
+            (1450, "updsvc", "update_service.cpp\nhttp_fetch.cpp: site\ncheck-ins, downloads")]
     for x, eid, text in src2:
         d.box(eid, x, 290, 210, 110, text, BLUE, 16)
 
@@ -221,9 +224,10 @@ def firmware_architecture():
     d.box("tmp1075", 760, 548 + dy, 200, 72, "tmp1075, cpu_load\n0.1 C, read state;\nload per core", GREEN, 16)
     d.box("dhcpopt", 990, 548 + dy, 210, 72, "dhcp_option\nask for / read\nDHCP option 224", GREEN, 16)
     d.box("wdl", 1220, 548 + dy, 210, 72, "watchdog_logic\nheartbeat check,\nrestart count", GREEN, 16)
+    d.box("updc", 1450, 548 + dy, 210, 72, "update_client\ncheck-in, MACs,\nURL, timing", GREEN, 16)
 
     d.zone("z-hw", 40, 710 + dy, 1650, 170, "lib/  hardware layers", ZONE_YELLOW, title_at="bottom")
-    d.box("settings", 70, 740 + dy, 210, 90, "settings\nLittleFS A/B slots", YELLOW, 16)
+    d.box("settings", 70, 740 + dy, 210, 90, "settings\nLittleFS A/B slots\n(+ update settings)", YELLOW, 16)
     d.box("mains", 1450, 735 + dy, 210, 100, "mains_input\nGPIO27 on core 1,\nseqlock", YELLOW, 16)
 
     d.zone("z-core", 40, 920 + dy, 1650, 150, "Arduino-Pico core (earlephilhower)", ZONE_GRAY)
@@ -243,12 +247,15 @@ def firmware_architecture():
     d.arrow("net", "bottom", "dhcpopt", "top", a_frac=0.95, b_frac=0.95, via=[(gap(990), 280), (gap(990), 660)])
     d.arrow("temp", "bottom", "tmp1075", "top", a_frac=0.05, b_frac=0.05, via=[(gap(530), 280), (gap(530), 660)])
     d.arrow("reset", "bottom", "power", "top", a_frac=0.05, b_frac=0.05, via=[(gap(990) + 10, 280), (gap(990) + 10, 520)])
-    d.arrow("web", "bottom", "webui", "top")
+    # Left of update_service.cpp, which sits below web_service.cpp
+    d.arrow("web", "bottom", "webui", "top", a_frac=0.05, b_frac=0.05, via=[(1440, 280), (1440, 520)])
     d.arrow("d6svc", "bottom", "d6c", "top", a_frac=0.95, b_frac=0.95, via=[(gap(70) - 10, 410), (gap(70) - 10, 668)])
     d.arrow("lldpsvc", "bottom", "lldp", "top", a_frac=0.95, b_frac=0.95, via=[(gap(300) - 10, 410), (gap(300) - 10, 668)])
     d.arrow("wdog", "bottom", "wdl", "top", a_frac=0.95, b_frac=0.95, via=[(gap(1220) - 10, 410), (gap(1220) - 10, 668)])
+    d.arrow("updsvc", "bottom", "updc", "top", a_frac=0.95, b_frac=0.95, via=[(1675, 410), (1675, 668)])
     d.arrow("settings", "top", "codec", "bottom", a_frac=0.05, b_frac=0.05)  # left of dhcp6_client
-    d.arrow("mains", "top", "power", "bottom", b_frac=0.9, via=[(1555, 660), (1409, 660)])  # above watchdog_logic
+    # Up the gap between watchdog_logic and update_client, then above watchdog_logic
+    d.arrow("mains", "top", "power", "bottom", a_frac=0.05, b_frac=0.9, via=[(1440, 855), (1440, 655), (1379, 655)])
     d.save()
 
 
@@ -336,13 +343,13 @@ def test_layers():
     layers = [
         ("lnms", "LibreNMS in Docker: definitions, sensors, LLDP neighbour, alert on a real mains cut", VIOLET),
         ("mains", "Mains HIL: a Dirigera smart plug switches real mains", RED),
-        ("hil", "HIL (Python): menu, SNMP, traps, web, IPv6, DHCP opt. 224,\nLLDP (switch console), watchdog, reboot",
-         ORANGE),
+        ("hil", "HIL (Python): menu, SNMP, traps, web, IPv6, DHCP opt. 224, LLDP,\nwatchdog, firmware updates, "
+                "update site end to end", ORANGE),
         ("emb", "On-device Unity tests: LittleFS, W5500, GPIO27 sampler", YELLOW),
         ("host", "Host agent vs real net-snmp (WSL): 92 checks, all MIBs, MIB validation", CYAN),
         ("san", "Sanitizers (WSL): every native suite under ASan + UBSan", CYAN),
-        ("native", "Native unit tests: about 670 tests of lib/, frames from the device,\nKea, Junos and net-snmp",
-         GREEN),
+        ("native", "Native unit tests: about 970 tests of lib/, frames from the device,\nKea, Junos and net-snmp; "
+                   "update site tests (Python)", GREEN),
     ]
     for i, (eid, text, bg) in enumerate(layers):
         d.box(eid, 120, 110 + i * 100, 820, 80, text, bg, 18)
@@ -352,8 +359,8 @@ def test_layers():
 
     d.box("pc", 1010, 110, 330, 380, "Your PC\nPico on USB (RFPOWER_PORT)\nWSL: net-snmp, Docker\nDirigera hub\nswitch console\n\n"
           "run locally", GRAY, 18)
-    d.box("ci", 1010, 510, 330, 280, "GitHub Actions CI\non every push\n\nnative tests\nsanitizers\nnet-snmp check\nfirmware build (.uf2)",
-          GREEN, 18)
+    d.box("ci", 1010, 510, 330, 280, "GitHub Actions CI\non every push\n\nnative tests\nsanitizers\nnet-snmp check\n"
+          "tool and site tests\nfirmware build (.uf2)", GREEN, 18)
     for eid in ("lnms", "mains", "hil", "emb"):
         d.arrow(eid, "right", "pc", "left", b_frac={"lnms": 0.12, "mains": 0.38, "hil": 0.64, "emb": 0.9}[eid])
     for eid in ("host", "san", "native"):
@@ -391,6 +398,55 @@ def settings_storage():
     d.arrow("valid", "bottom", "defaults", "top", "none")
     d.text(40, 560, "Power cut during a save:\nthe half-written slot fails\nvalidation, so the other slot,\n"
                      "the previous settings, is used.", size=16, color="#495057")
+    d.text(40, 720, "The update site URL and key use\nthe same scheme in their own files,\nupdate_a.json / update_b.json "
+                     "(3.4.0),\nso the main file and older firmware\nare unchanged. A factory reset\ndeletes both.",
+           size=16, color="#495057")
+    d.save()
+
+
+def update_site_flow():
+    d = Diagram("update-site-flow", "RF-Power-Monitor: check-ins and updates from the update site")
+    d.zone("z-site", 20, 80, 1890, 300, "Update site (Docker, TCP 8071)", ZONE_GRAY)
+    d.box("admin", 40, 150, 240, 110, "Admin (login):\nupload a signed .upd,\ntick devices", BLUE, 16)
+    d.box("store", 330, 150, 220, 110, "Releases and\nassignments\n(SQLite)", GREEN, 16)
+    d.box("verify", 600, 150, 230, 110, "Check the MAC\n(shared key) and\nthe nonce (replay)", YELLOW, 16)
+    d.box("decide", 880, 150, 260, 110, "Reply: ok, or update\n<version> + path;\nMAC over the nonce", GREEN, 16)
+    d.box("serve", 1190, 150, 240, 110, "GET /releases/\n<version>.upd\n(no login)", GREEN, 16)
+    d.box("status", 1480, 150, 360, 110, "Devices page: online, versions;\nupdate done / rolled back /\nrefused / failed / lost", VIOLET, 16)
+    d.arrow("admin", "right", "store", "left")
+    d.arrow("store", "top", "decide", "top", "assignments", via=[(440, 120), (1010, 120)], size=14)
+
+    d.zone("z-dev", 20, 430, 1890, 430,
+           "RF-Power-Monitor: first check-in 60 s after the network is up, then every 30 min", ZONE_BLUE,
+           title_at="bottom")
+    d.box("checkin", 40, 500, 280, 120, "Check-in: serial, hostname,\naddresses, version, last\nresult, nonce; MAC", BLUE, 16)
+    d.box("ignore", 380, 500, 230, 120, "No or wrong MAC:\nreply ignored,\nretry in 5 min", RED, 16)
+    d.box("chk", 660, 485, 200, 150, "reply MAC\nright?", YELLOW, 18, shape="diamond")
+    d.box("dl", 920, 500, 250, 120, "update <version>:\ndownload the .upd\n(small TCP window)", BLUE, 16)
+    d.box("checks", 1230, 495, 280, 130, "Before writing: header\nand signed version =\n<version>? signature and\nkey OK? 3.4.0 or newer?",
+          YELLOW, 16)
+    d.box("refuse", 1570, 500, 290, 120, "Refused: the other slot\nis kept; reported at\nthe next check-in", RED, 16)
+    d.box("ok", 660, 700, 200, 110, "ok: nothing to do;\nconfirms a\nfirmware on trial", GREEN, 16)
+    d.box("install", 1230, 700, 280, 110, "Write the other slot,\nrestart on trial", GREEN, 16)
+    d.box("report", 1570, 700, 290, 110, "Next check-in confirms\nthe trial, then reports\nkept (or rolled back)", GREEN, 16)
+
+    d.arrow("checkin", "top", "verify", "bottom", "POST /api/checkin", via=[(180, 330), (715, 330)], size=14)
+    d.arrow("verify", "right", "decide", "left")
+    d.arrow("decide", "bottom", "chk", "top", "reply", via=[(1010, 400), (760, 400)], size=14)
+    d.arrow("chk", "left", "ignore", "right", "no")
+    d.arrow("chk", "bottom", "ok", "top", "ok")
+    d.arrow("chk", "right", "dl", "left", "update")
+    d.arrow("dl", "top", "serve", "bottom", "GET", via=[(1045, 410), (1310, 410)], dashed=True, size=14)
+    d.arrow("dl", "right", "checks", "left")
+    d.arrow("checks", "right", "refuse", "left", "no")
+    d.arrow("checks", "bottom", "install", "top", "yes")
+    d.arrow("install", "right", "report", "left")
+    d.arrow("refuse", "top", "status", "bottom", b_frac=0.65, dashed=True)
+    d.arrow("report", "right", "status", "right", "reported", via=[(1890, 755), (1890, 205)], size=14)
+    d.text(40, 880, "Only a reply with the right MAC (the shared key, over this check-in's nonce) is acted on, and the "
+                    "device still installs\nonly firmware signed with your key. Releases are never retried in a loop: "
+                    "an update ends as done, rolled back, refused,\nfailed (3 broken downloads) or lost (no report in "
+                    "2 hours). The site cannot reach a device: there is no \"update now\".", size=16, color="#495057")
     d.save()
 
 
@@ -499,3 +555,4 @@ if __name__ == "__main__":
     settings_storage()
     web_request_flow()
     network_addresses()
+    update_site_flow()

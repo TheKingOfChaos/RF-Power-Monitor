@@ -14,6 +14,8 @@ signature itself, writes it to its other slot and starts it on trial (rollback i
 it is not reachable). Each check-in and each reply is authenticated with the
 shared key (keyed BLAKE2b), so only this site can tell a device to update.
 
+![Check-ins and updates from the update site](../docs/diagrams/update-site-flow.svg)
+
 Python 3.11+ standard library only; SQLite and the release files live in the data
 directory.
 
