@@ -252,6 +252,6 @@ An item is only ticked when it is implemented **and** its tests exist and pass (
 
 ## Notes
 - SNMP must be v1 and v2c (no v3) and our own code; networking may use libraries
-- Memory limits: 70 % flash, 50 % RAM (3.3.0: image 44 % of a slot, 21.2 % of the core's flash figure; static RAM 48.6 %, about 50.9 % at the peak of an upload; built with -Os). About 3.7 KB of RAM is left below the 50 % limit: check the build's RAM line before adding buffers (the web page body and response alone are 22 KB)
+- Memory limits: 70 % flash, 50 % RAM (3.3.0: image 44 % of a slot, 21.3 % of the core's flash figure; static RAM 48.8 %, measured as PlatformIO's RAM line (.data + .bss); an upload allocates nothing more; built with -Os). About 3 KB of RAM is left below the 50 % limit: check the build's RAM line before adding buffers (the web page body and response alone are 22 KB)
 - Version: `include/version.h`; every user-visible change goes into CHANGELOG.md under [Unreleased]
 - Core 0 has an 8 KB stack (core1_separate_stack, since 2.3.0) shared with USB/lwIP/W5500 interrupts: keep big buffers static

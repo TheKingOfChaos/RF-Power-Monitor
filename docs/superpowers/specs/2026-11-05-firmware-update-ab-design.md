@@ -41,10 +41,21 @@ No in-field migration from today's layout is needed.
 
   On success the new slot becomes the active one and the old one stays as the fallback. After a rollback
   the old slot stays active, and the device reports that the update was rolled back and why.
+  **Forgetting a failed release** (the user's decision, 2026-11-06, after the final review): after a
+  rollback (crash or unreachable) the firmware that runs again erases the failed slot's header at
+  start-up, so that slot reads Empty, as after a rejected upload. The boot program still never writes
+  flash. A later fallback or a manual switch can then only reach firmware that never failed: without
+  this, a kept firmware's crash loop could fall back to a release known to be unreachable, keep it
+  without a trial, and leave the device unreachable for good. A verified upload whose boot record write
+  fails is erased the same way (it never ran a trial).
 - **Fallback after a version is kept** (the user's decision): if the active, kept firmware later has 3
   crash restarts in a row (for example a bug that shows only after days), the boot program starts the
   other slot, provided its signature verifies. The device reports this like a rollback. The network rule
-  applies only during a trial.
+  applies only during a trial, which is safe because the other slot only ever holds the previous kept
+  release (a rolled-back release is erased, see above), or nothing. One gap remains: a power cut during
+  the 1-2 s signature check at the end of an upload, after the slot header was written and before the
+  boot record names it, leaves a verified image that never ran a trial; a later crash loop could fall
+  back to it. Closing it would need the signature checked before the header page is written.
 - **What counts as a crash** (the user's decision, mechanism *designer's call*): only a watchdog reset that
   the firmware did not ask for. A hang or a crash ends in the watchdog. Power-on resets (a power cut, the
   PoE switch restarting) never count, however many in a row, in trial or kept. That includes the trial,

@@ -47,6 +47,8 @@ The Pico is expected on `COM16` (set in `platformio.ini`; the HIL tests read `RF
 
 `platformio.ini` has `default_envs = pico`, so a bare `pio run`, `pio test` or upload builds `pico` only. The `pico_b` environment (the same firmware linked for slot B) is built by `tools/fw_release.py` with `-e pico_b`, and an upload to it is refused. `pio test -e native` and the CI jobs name their environment and are unaffected.
 
+**RAM limit.** The 50 % rule (`.clinerules`) is checked against PlatformIO's `RAM:` line of `pio run -e pico` (`.data` + `.bss`). Anything a code path allocates from the heap counts on top of it at that path's peak, so large buffers are static; the firmware update allocates nothing (its receiver is a static 632 bytes). The status screen's `RAM used` is a different figure: it also counts both stacks (core 1's 8 KB stack is allocated by the core) and the heap in use.
+
 **Flashing a Pico by hand.** The Pico's flash holds the boot program, slot A and slot B (see the user manual). `pio run -e pico -t upload` and `pio test -e pico` send `firmware_full.uf2` (boot program, boot record and slot A). Copy only that file, or a release's `-usb.uf2`, to a BOOTSEL drive: the plain `firmware.uf2` the platform also writes has no boot program, and a device flashed with it does not start. `pio test -e pico` replaces the firmware with a test program; afterwards `pio run -e pico -t upload` puts the normal firmware back (slot A behind the boot program, kept).
 
 ```powershell
@@ -65,7 +67,7 @@ $pio = "$env:USERPROFILE\.platformio\penv\Scripts\pio.exe"
 
 ### Tool tests (`test/tools`)
 
-Pure Python, no hardware: the firmware signing tools (`tools/fw_keygen.py`, `fwsign`, the `.upd` layout), `scripts/uf2.py` and the linker script generation in `scripts/slot_build.py`. They need a host `g++`/`gcc` (fwsign is built into `.pio/fwsign` on first use) and, for the linker script tests, the Arduino-Pico core (skipped when absent). Key generation is only tested with `--out` into a temp dir, never with the real field key.
+Pure Python, no hardware: the firmware signing tools (`tools/fw_keygen.py`, `fwsign`, the `.upd` layout), `tools/fw_update.py` against a fake device, `scripts/uf2.py` and the linker script generation and flash layout checks in `scripts/slot_build.py` (slot B before LittleFS, the Python constants equal `fw_layout.h`). They need a host `g++`/`gcc` (fwsign is built into `.pio/fwsign` on first use) and, for the linker script tests, the Arduino-Pico core (skipped when absent). Key generation is only tested with `--out` into a temp dir, never with the real field key.
 
 ```powershell
 & "$env:USERPROFILE\.platformio\penv\Scripts\python.exe" -m unittest discover -s test/tools -v
@@ -197,6 +199,7 @@ $env:RFPOWER_WEB_PASSWORD = "..."          # only when the device has its own we
 - The serial port observes and never counts as a request. A poller with the community (LibreNMS) or a web login confirms a trial within seconds, so the tests accept "kept" where a trial may already be confirmed. The `shorttrial` variant never confirms and ends its trial after 60 s of network time, which is how the refusal during a trial and the unreachable rollback are tested (the `noconfirm` variant is not needed: `shorttrial` does not confirm either).
 - Traps: the tests use the receiver of `test_snmp_traps.py` and need the PC to be the device's trap destination. When UDP 162 cannot be bound (LibreNMS's snmptrapd holds it) only the trap assertions are skipped and the run prints a note. Do not stop LibreNMS for it: read what arrived from LibreNMS instead, read-only, e.g. `docker exec lnms-test-db-1 sh -c 'mysql -ulibrenms -p"$MYSQL_PASSWORD" librenms -e "select datetime,type,left(message,120) from eventlog where datetime > \"<start>\" order by event_id"'` (the password comes from the container's own environment). LibreNMS logs only the mains traps as type `trap`; a firmware trap triggers a poll, so look for `State sensor Firmware ...` entries, and `docker logs lnms-test-snmptrapd-1` shows each trap that reached snmptrapd as one handler line.
 - The tests read the community from `RFPOWER_COMMUNITY`; the other HIL files still expect `public` and skip on a device that uses another community.
+- After each rollback (crash and unreachable) the tests check that the other slot reads `empty`: the firmware erases a release that was rolled back. Refusals (409 during a trial, 401 with an expired session) are sent with a full-size body, so they also check that the answer reaches the client instead of a reset connection.
 - `test_power_cycles_during_trial_do_not_roll_back` also needs `RFPOWER_POE_CYCLE=1` and `RFPOWER_LLDP_SWITCH_CONSOLE`: it changes PoE on the device's own switch port (`set poe interface <port> disable`, commit confirmed 5, then `delete poe interface <port>`, four times, about 3 minutes). The port must have no PoE statement of its own (the switch has `interface all;`). With USB attached the Pico stays powered, so it covers PoE and link loss.
 
 ## What is covered
@@ -354,13 +357,16 @@ Uses `test/settings_a.json` and `test/settings_b.json`, never the real settings.
 ### `test/embedded/test_fw_flash`: `src/fw_update_service.cpp` on the real flash
 Writes only the slot that is not running (left erased afterwards) and the two boot record sectors (saved and
 restored). `test_build_src` is off, so the test compiles the service, `boot_info.cpp` and `stack_watch.cpp` in.
-- The slot writer erases and writes sectors of the other slot (read back through XIP)
-- It refuses the running slot, offsets at or past the slot size or inside a sector, and source data in flash
+- The slot writer erases sectors and programs 256-byte pages of the other slot (read back through XIP)
+- It refuses the running slot, offsets at or past the slot size or off a sector (erase) or page (program)
+  boundary, and source data in flash
 - Boot record writes go to the copy that is not the newest, with the sequence + 1
 - The golden dev-signed `.upd` (`test/native/test_fw_receiver/golden_upd.h`) through the upload path in
   512-byte pieces, including the Ed25519 check from flash: verified, recorded as the trial slot, and core 0
   keeps more than 1024 bytes of stack never used (prints the figure; ~5.7 KB)
 - A file with one image byte flipped is rejected with "bad signature", the other slot reads empty, no record
+- After a rollback record the failed release is erased at start-up (the other slot reads empty, no switch,
+  no second erase at the next start); after a kept record the other slot is left alone
 
 ### `test/hil/test_serial_menu.py`: the flashed firmware
 - Menu text, status output with state, lease and MAC, ping from the PC

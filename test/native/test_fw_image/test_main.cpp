@@ -183,6 +183,18 @@ static void test_parse_rejects_bad_magic() {
     TEST_ASSERT_EQUAL_UINT8((uint8_t)SlotCheck::BadMagic, (uint8_t)slotHeaderParse(slot.data(), 256, 0, id, h));
 }
 
+static void test_parse_rejects_other_header_version() {
+    uint8_t pub[32], id[8];
+    trustedKey(pub);
+    fwKeyId(pub, id);
+    auto slot = buildSlot(1, 0, 1000);
+    slot[68] = 2;  // header version 2: a layout this code does not know
+    SlotHeader h;
+    TEST_ASSERT_EQUAL_UINT8((uint8_t)SlotCheck::BadMagic, (uint8_t)slotHeaderParse(slot.data(), 256, 0, id, h));
+    slot[68] = 0;
+    TEST_ASSERT_EQUAL_UINT8((uint8_t)SlotCheck::BadMagic, (uint8_t)slotHeaderParse(slot.data(), 256, 0, id, h));
+}
+
 static void test_parse_rejects_unterminated_or_nonprintable_version() {
     uint8_t pub[32], id[8];
     trustedKey(pub);
@@ -280,6 +292,7 @@ int main() {
     RUN_TEST(test_verify_reports_erased_slot_as_empty);
     RUN_TEST(test_parse_accepts_valid_header_and_fills_fields);
     RUN_TEST(test_parse_rejects_bad_magic);
+    RUN_TEST(test_parse_rejects_other_header_version);
     RUN_TEST(test_parse_rejects_unterminated_or_nonprintable_version);
     RUN_TEST(test_parse_rejects_truncated_header);
     RUN_TEST(test_fingerprint_is_16_lowercase_hex);
