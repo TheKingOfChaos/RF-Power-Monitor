@@ -1,0 +1,20 @@
+{
+    "name": "bench_info",
+    "version": "1.0.0",
+    "description": "Device data block for the bench provisioning tool (pure C++, host testable)",
+    "keywords": "bench, provisioning, label",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/TheKingOfChaos/RF-Power-Monitor.git"
+    },
+    "authors": [
+        {
+            "name": "kenneth Foli Jørgensen",
+            "email": "kenneth@tkoc.dk",
+            "maintainer": true
+        }
+    ],
+    "license": "MIT",
+    "frameworks": "*",
+    "platforms": "*"
+}

@@ -22,6 +22,7 @@ fi
 # suite -> libraries it needs
 declare -A SUITES=(
     [test_netconfig]="netconfig"
+    [test_bench_info]="bench_info"
     [test_settings_codec]="settings_codec netconfig"
     [test_power_debouncer]="power_monitor"
     [test_reset_button]="power_monitor"
