@@ -126,3 +126,37 @@ private:
     size_t _len;
     bool _ok;
 };
+
+/// A streamed body must keep coming: a pause this long without data ends it
+static const uint32_t STREAM_IDLE_TIMEOUT_MS = 30000;
+/// and the whole body must be in within this time (a full update file takes well under a minute)
+static const uint32_t STREAM_TOTAL_TIMEOUT_MS = 5u * 60u * 1000u;
+
+/**
+ * @brief Reading a streamed request body (HttpParse::Streaming) to its end
+ *
+ * Counts the bytes still to come and says when to give up: after
+ * STREAM_IDLE_TIMEOUT_MS without data, or STREAM_TOTAL_TIMEOUT_MS after
+ * begin(), so a client sending a byte now and then cannot hold the single
+ * connection for long. Also used to read and drop the body of a refused
+ * upload, so the client sees the answer instead of a reset connection.
+ * Times are millis() values; wrap-around is handled.
+ */
+class StreamBody {
+public:
+    /// Expect `length` body bytes (Content-Length minus what came with the headers), starting now
+    void begin(uint32_t length, uint32_t nowMs);
+    /// n more bytes were read (never counts below zero)
+    void consumed(uint32_t n, uint32_t nowMs);
+    /// Body bytes not read yet
+    uint32_t left() const { return _left; }
+    /// The whole body was read
+    bool done() const { return _left == 0; }
+    /// Not done and silent too long, or past the total deadline
+    bool expired(uint32_t nowMs) const;
+
+private:
+    uint32_t _left = 0;
+    uint32_t _startMs = 0;
+    uint32_t _lastDataMs = 0;
+};

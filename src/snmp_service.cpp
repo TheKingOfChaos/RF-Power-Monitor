@@ -326,16 +326,19 @@ void snmpPoll() {
         size_t outMax = remote.isV6() ? SNMP_MAX_MESSAGE_IPV6 : sizeof(outBuf);
         size_t len = agent.handle(inBuf, (size_t)n, outBuf, outMax, captureState());
 
+        // A valid request keeps a firmware on trial, but only once its reply has left (below):
+        // a firmware that receives but cannot send is not reachable
+        bool valid = false;
         switch (agent.lastOutcome()) {
         case SnmpOutcome::Responded:
         case SnmpOutcome::NoRoom:
             // Right community: exempt from the shared bucket, so spoofed floods cannot starve it
             limiter.markTrusted(source);
-            fwUpdateNoteValidRequest();  // reachable: a firmware on trial is kept
+            valid = true;
             break;
         case SnmpOutcome::RespondedBulk:
             // A GetBulk with a spoofed source must not give that address the larger trusted budget
-            fwUpdateNoteValidRequest();
+            valid = true;
             break;
         case SnmpOutcome::BadCommunity:
             logAccess(source, AccessEvent::BadCommunity);
@@ -355,7 +358,7 @@ void snmpPoll() {
 
         udp.beginPacket(remote, remotePort);
         udp.write(outBuf, len);
-        udp.endPacket();
+        if (udp.endPacket() == 1 && valid) fwUpdateNoteValidRequest();  // reachable: a trial is kept
     }
 }
 

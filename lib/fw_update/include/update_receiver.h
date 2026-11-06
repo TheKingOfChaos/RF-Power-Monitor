@@ -10,9 +10,12 @@
 //
 // Order of flash writes (an aborted upload leaves the slot reading Empty):
 //   begin(): none. When the file header and the target slot header are in
-//   and valid: erase sector 0. Sectors 1..n are erased and written as they
-//   fill (the last padded with 0xFF). Sector 0 is held in RAM and written
-//   last, by finish(), only when exactly contentLength bytes have arrived.
+//   and valid: erase sector 0. The blob is then programmed one 256-byte flash
+//   page at a time as each page fills (the last one padded with 0xFF); each
+//   sector after sector 0 is erased just before its first page. Page 0 (the
+//   slot header with the signature) is held in RAM and programmed last, by
+//   finish(), only when exactly contentLength bytes have arrived. Until then
+//   the slot header reads erased (Empty), and the boot program never starts it.
 // The Ed25519 signature is checked later by the caller (slotVerify).
 #pragma once
 #include <stddef.h>
@@ -20,14 +23,19 @@
 
 #include "fw_layout.h"
 
+static const uint32_t FW_PAGE_SIZE = 256u;  // flash programming unit
+static_assert(FW_SLOT_HEADER_SIZE == FW_PAGE_SIZE, "the slot header is exactly page 0");
+static_assert(FW_SECTOR_SIZE % FW_PAGE_SIZE == 0, "pages tile a sector");
+
 /// Flash access for one slot. Offsets are from the start of the slot.
 class SlotWriter {
 public:
     virtual ~SlotWriter() {}
     /// Erase the 4 KB sector at offsetInSlot (a multiple of FW_SECTOR_SIZE). False on failure.
     virtual bool eraseSector(uint32_t offsetInSlot) = 0;
-    /// Program the (erased) sector at offsetInSlot with `data`, FW_SECTOR_SIZE bytes. False on failure.
-    virtual bool writeSector(uint32_t offsetInSlot, const uint8_t* data) = 0;
+    /// Program the (erased) page at offsetInSlot (a multiple of FW_PAGE_SIZE) with FW_PAGE_SIZE bytes of `data`.
+    /// False on failure.
+    virtual bool writePage(uint32_t offsetInSlot, const uint8_t* data) = 0;
 };
 
 enum class UpdateError : uint8_t {
@@ -46,7 +54,7 @@ enum class UpdateError : uint8_t {
 
 enum class UpdateStatus : uint8_t { InProgress, Done, Failed };
 
-/// Large (two 4 KB buffers): keep one static instance, never on the stack.
+/// About 600 bytes (two flash pages): keep one static instance, never on the stack.
 class UpdateReceiver {
 public:
     /// Start receiving `contentLength` bytes for `targetSlot` (0 or 1),
@@ -54,7 +62,7 @@ public:
     void begin(uint8_t targetSlot, uint32_t contentLength, const uint8_t keyId[8], SlotWriter& w);
     /// Consume the next bytes. Failed is sticky.
     UpdateStatus feed(const uint8_t* data, size_t len);
-    /// End of data: checks the length and writes sector 0. Done only on success.
+    /// End of data: checks the length and writes page 0 (the slot header). Done only on success.
     UpdateStatus finish();
     UpdateError error() const { return _error; }
     /// Firmware version from the target slot header; "" until it is validated.
@@ -63,12 +71,12 @@ public:
 private:
     bool parseFileHeader();
     bool checkSlotHeader();
-    bool flushSector(uint32_t sectorIndex);
+    bool flushPage(uint32_t offsetInBlob);
     bool fail(UpdateError e);
     bool consume(uint8_t b);
 
-    uint8_t _sector[FW_SECTOR_SIZE];  // sectors 1..n of the blob
-    uint8_t _first[FW_SECTOR_SIZE];   // sector 0, written last
+    uint8_t _page[FW_PAGE_SIZE];    // the page being filled (pages 1..n of the blob)
+    uint8_t _header[FW_PAGE_SIZE];  // page 0: the slot header, written last
     uint8_t _fileHeader[64];
     char _version[17];
     uint8_t _keyId[8];

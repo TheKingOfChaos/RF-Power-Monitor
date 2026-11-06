@@ -1,7 +1,6 @@
 #include "fw_update_service.h"
 
 #include <Arduino.h>
-#include <new>
 #include <hardware/flash.h>
 #include <hardware/structs/watchdog.h>
 #include <boot_decision.h>
@@ -61,8 +60,8 @@ static const uint8_t* xip(uint32_t offset) { return (const uint8_t*)(FW_FLASH_XI
  * @brief SlotWriter on the real flash, for the slot that is not running
  *
  * Refuses on its own (whatever the receiver asks) the running slot, offsets
- * outside the slot or not on a sector boundary, and source data in flash.
- * Each written sector is read back.
+ * outside the slot or not on a sector (erase) or page (program) boundary, and
+ * source data in flash. Each erased sector and each written page is read back.
  */
 class FlashSlotWriter : public SlotWriter {
 public:
@@ -80,22 +79,23 @@ public:
         return true;
     }
 
-    bool writeSector(uint32_t offsetInSlot, const uint8_t* data) override {
-        if (!allowed(offsetInSlot) || data == nullptr || inXip(data)) return false;
+    bool writePage(uint32_t offsetInSlot, const uint8_t* data) override {
+        if (!allowed(offsetInSlot, FW_PAGE_SIZE) || data == nullptr || inXip(data)) return false;
         _touched = true;
         uint32_t at = FW_SLOT_OFFSET[_slot] + offsetInSlot;
-        flashProgram(at, data, FW_SECTOR_SIZE);
-        return memcmp(xip(at), data, FW_SECTOR_SIZE) == 0;
+        flashProgram(at, data, FW_PAGE_SIZE);
+        return memcmp(xip(at), data, FW_PAGE_SIZE) == 0;
     }
 
     /// true once anything was erased or written (the slot no longer holds what it did)
     bool touched() const { return _touched; }
 
 private:
-    bool allowed(uint32_t offsetInSlot) const {
+    /// The other slot, inside it, on a boundary of `unit` bytes (a sector to erase, a page to program)
+    bool allowed(uint32_t offsetInSlot, uint32_t unit = FW_SECTOR_SIZE) const {
         if (_slot > 1 || _slot == RUNNING_SLOT) return false;
         if (bootInfoValid() && _slot == bootInfoSlot()) return false;  // the boot program says it runs
-        return offsetInSlot < FW_SLOT_SIZE && offsetInSlot % FW_SECTOR_SIZE == 0;
+        return offsetInSlot < FW_SLOT_SIZE && offsetInSlot % unit == 0;
     }
 
     uint8_t _slot;
@@ -155,21 +155,16 @@ static SlotCheck otherCheck = SlotCheck::Empty;
 static char otherVersion[17] = "";
 static uint8_t keyId[8];
 static char keyFingerprint[17];
-static char bootNote[96] = "";        // what fwUpdateBegin() did, printed by fwUpdatePrintBoot()
+static char bootNote[160] = "";        // what fwUpdateBegin() did, printed by fwUpdatePrintBoot()
 static char uploadResultText[64] = "";  // this boot's upload outcome (RAM only)
 
-// Two 4 KB sector buffers: allocated only while an upload runs, so they do not
-// count against the static RAM budget (and never go on core 0's stack)
-static UpdateReceiver* receiver = nullptr;
+// The receiver holds two 256-byte flash pages (about 600 bytes): static, never on core 0's stack
+static UpdateReceiver receiver;
 static FlashSlotWriter otherWriter(OTHER_SLOT);
 static bool uploading = false;
 
-/// The upload ended: give the receiver's buffers back
-static void releaseReceiver() {
-    delete receiver;
-    receiver = nullptr;
-    uploading = false;
-}
+/// The upload ended
+static void releaseReceiver() { uploading = false; }
 
 /// Version in a slot's header (signature not checked), or "" when the header is not valid
 static void headerVersion(uint8_t slot, char* out, size_t size) {
@@ -224,6 +219,39 @@ static void recordFallback() {
              ok ? "" : " (boot record NOT written)");
 }
 
+/// True when the other slot's first sector (its header) is erased: the slot reads Empty
+static bool otherHeaderSectorErased() {
+    const uint8_t* p = xip(FW_SLOT_OFFSET[OTHER_SLOT]);
+    for (uint32_t i = 0; i < FW_SECTOR_SIZE; i++) {
+        if (p[i] != 0xFF) return false;
+    }
+    return true;
+}
+
+/// Erase the other slot's header sector, so it reads Empty (cannot be booted, fallen back or switched to)
+static void eraseOtherHeader() {
+    flashErase(FW_SLOT_OFFSET[OTHER_SLOT]);
+    otherState = OtherSlot::Checked;
+    otherCheck = SlotCheck::Empty;
+    otherVersion[0] = '\0';
+}
+
+/**
+ * @brief After a rollback, forget the release that failed: erase the other slot's header
+ *
+ * The record already has this slot active (written by recordFallback() or by the
+ * trial before it restarted), so the boot program never targets the other slot,
+ * and a power cut mid-erase leaves a header it does not boot (checked again at
+ * the next start, since the sector is then not fully erased).
+ */
+static void forgetFailedRelease() {
+    if (!fwRecordForgetOther(haveRecord, record, RUNNING_SLOT, otherHeaderSectorErased())) return;
+    eraseOtherHeader();
+    size_t n = strlen(bootNote);
+    snprintf(bootNote + n, sizeof(bootNote) - n, "%sFirmware: rolled-back release in slot %c erased",
+             n ? "\r\n" : "", 'A' + OTHER_SLOT);
+}
+
 void fwUpdateBegin() {
     fwKeyId(FW_PUBLIC_KEY, keyId);
     fwKeyFingerprint(FW_PUBLIC_KEY, keyFingerprint);
@@ -239,6 +267,7 @@ void fwUpdateBegin() {
         onTrial = true;
         trialMonitor.begin(millis());
     }
+    if (!onTrial && !(bootInfoValid() && bootInfoSlot() != RUNNING_SLOT)) forgetFailedRelease();
 }
 
 void fwUpdatePrintBoot() {
@@ -327,15 +356,9 @@ bool fwUpdateUploadBegin(uint32_t contentLength, const char*& error, FwUploadFau
     else if (contentLength == 0) error = "empty file", fault = FwUploadFault::BadFile;
     else if (contentLength > FW_UPLOAD_MAX) error = "file too large", fault = FwUploadFault::TooLarge;
     if (error) return false;
-    receiver = new (std::nothrow) UpdateReceiver();
-    if (receiver == nullptr) {
-        error = "out of memory";
-        fault = FwUploadFault::NoMemory;
-        return false;
-    }
     fault = FwUploadFault::None;
     otherWriter = FlashSlotWriter(OTHER_SLOT);
-    receiver->begin(OTHER_SLOT, contentLength, keyId, otherWriter);
+    receiver.begin(OTHER_SLOT, contentLength, keyId, otherWriter);
     uploading = true;
     uploadResultText[0] = '\0';
     Serial.printf("\r\nFirmware: receiving %lu bytes for slot %c\r\n", (unsigned long)contentLength, 'A' + OTHER_SLOT);
@@ -344,7 +367,7 @@ bool fwUpdateUploadBegin(uint32_t contentLength, const char*& error, FwUploadFau
 
 bool fwUpdateUploadFeed(const uint8_t* data, size_t len) {
     if (!uploading) return false;
-    return receiver->feed(data, len) != UpdateStatus::Failed;
+    return receiver.feed(data, len) != UpdateStatus::Failed;
 }
 
 bool fwUpdateUploadFinish(char* versionOut, const char*& error, FwUploadFault& fault) {
@@ -352,8 +375,8 @@ bool fwUpdateUploadFinish(char* versionOut, const char*& error, FwUploadFault& f
     error = "no upload";
     fault = FwUploadFault::Busy;
     if (!uploading) return false;
-    if (receiver->finish() != UpdateStatus::Done) {
-        UpdateError e = receiver->error();
+    if (receiver.finish() != UpdateStatus::Done) {
+        UpdateError e = receiver.error();
         error = updateErrorName(e);
         fault = e == UpdateError::WriteFailed ? FwUploadFault::DeviceError
                 : e == UpdateError::WrongKey  ? FwUploadFault::WrongKey
@@ -373,13 +396,11 @@ bool fwUpdateUploadFinish(char* versionOut, const char*& error, FwUploadFault& f
         return false;
     }
     if (!writeRecord(fwRecordTrialOfOther(RUNNING_SLOT, h.version))) {
+        // Never ran: erase its header, so a later fallback cannot start it without a trial
+        eraseOtherHeader();
         error = "boot record not written";
         fault = FwUploadFault::DeviceError;
-        rejectUpload(error, false);
-        // The slot holds the verified image: it can still be switched to
-        otherState = OtherSlot::Checked;
-        otherCheck = SlotCheck::Ok;
-        strlcpy(otherVersion, h.version, sizeof(otherVersion));
+        rejectUpload(error, true);
         return false;
     }
     releaseReceiver();
@@ -397,7 +418,7 @@ bool fwUpdateUploadFinish(char* versionOut, const char*& error, FwUploadFault& f
 
 void fwUpdateUploadAbort() {
     if (!uploading) return;
-    rejectUpload(receiver->error() != UpdateError::None ? updateErrorName(receiver->error()) : "connection lost",
+    rejectUpload(receiver.error() != UpdateError::None ? updateErrorName(receiver.error()) : "connection lost",
                  otherWriter.touched());
 }
 

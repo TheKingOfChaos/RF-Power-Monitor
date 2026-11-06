@@ -36,8 +36,8 @@ const char* updateErrorName(UpdateError e) {
 
 void UpdateReceiver::begin(uint8_t targetSlot, uint32_t contentLength, const uint8_t keyId[8],
                            SlotWriter& w) {
-    memset(_first, 0xFF, sizeof(_first));
-    memset(_sector, 0xFF, sizeof(_sector));
+    memset(_header, 0xFF, sizeof(_header));
+    memset(_page, 0xFF, sizeof(_page));
     memset(_fileHeader, 0, sizeof(_fileHeader));
     _version[0] = 0;
     memcpy(_keyId, keyId, 8);
@@ -85,10 +85,10 @@ bool UpdateReceiver::parseFileHeader() {
     return true;
 }
 
-/// Validate the target slot header (first 256 bytes in _first), then erase sector 0.
+/// Validate the target slot header (page 0, in _header), then erase sector 0.
 bool UpdateReceiver::checkSlotHeader() {
     SlotHeader h;
-    SlotCheck c = slotHeaderParse(_first, FW_SLOT_HEADER_SIZE, _slot, _keyId, h);
+    SlotCheck c = slotHeaderParse(_header, FW_SLOT_HEADER_SIZE, _slot, _keyId, h);
     if (c == SlotCheck::WrongSlot) return fail(UpdateError::WrongSlot);
     if (c == SlotCheck::WrongKey) return fail(UpdateError::WrongKey);
     if (c != SlotCheck::Ok) return fail(UpdateError::BadHeader);
@@ -99,16 +99,17 @@ bool UpdateReceiver::checkSlotHeader() {
     return true;
 }
 
-/// Erase and write one of sectors 1..n from _sector (sector 0 is held back).
-bool UpdateReceiver::flushSector(uint32_t sectorIndex) {
-    uint32_t off = sectorIndex * FW_SECTOR_SIZE;
-    if (!_w->eraseSector(off) || !_w->writeSector(off, _sector)) return fail(UpdateError::WriteFailed);
-    memset(_sector, 0xFF, sizeof(_sector));
+/// Program one of pages 1..n from _page (page 0 is held back); erase its sector first when the
+/// page opens a sector after sector 0 (sector 0 was erased with the header check).
+bool UpdateReceiver::flushPage(uint32_t offsetInBlob) {
+    if (offsetInBlob % FW_SECTOR_SIZE == 0 && !_w->eraseSector(offsetInBlob)) return fail(UpdateError::WriteFailed);
+    if (!_w->writePage(offsetInBlob, _page)) return fail(UpdateError::WriteFailed);
+    memset(_page, 0xFF, sizeof(_page));
     return true;
 }
 
 /// Take one byte of the file: collect the file header, then route the target blob's bytes
-/// into the sector buffers, flushing each sector as it completes. False once failed.
+/// into the page buffers, programming each page as it completes. False once failed.
 bool UpdateReceiver::consume(uint8_t b) {
     uint32_t pos = _pos++;
     if (pos < UPD_HEADER_SIZE) {
@@ -117,12 +118,14 @@ bool UpdateReceiver::consume(uint8_t b) {
     }
     if (!_headerOk || pos < _blobStart || pos - _blobStart >= _blobLen) return true;  // not ours
     uint32_t r = pos - _blobStart;
-    uint32_t sector = r / FW_SECTOR_SIZE;
-    uint32_t inSector = r % FW_SECTOR_SIZE;
-    (sector == 0 ? _first : _sector)[inSector] = b;
-    if (r + 1 == FW_SLOT_HEADER_SIZE && !checkSlotHeader()) return false;
-    // a sector is complete when full or at the blob's last byte
-    if (sector > 0 && (inSector + 1 == FW_SECTOR_SIZE || r + 1 == _blobLen)) return flushSector(sector);
+    uint32_t inPage = r % FW_PAGE_SIZE;
+    if (r < FW_PAGE_SIZE) {
+        _header[inPage] = b;
+        return r + 1 < FW_SLOT_HEADER_SIZE || checkSlotHeader();
+    }
+    _page[inPage] = b;
+    // a page is complete when full or at the blob's last byte
+    if (inPage + 1 == FW_PAGE_SIZE || r + 1 == _blobLen) return flushPage(r - inPage);
     return true;
 }
 
@@ -145,7 +148,7 @@ UpdateStatus UpdateReceiver::finish() {
         fail(UpdateError::Truncated);
         return UpdateStatus::Failed;
     }
-    if (!_w->writeSector(0, _first)) {
+    if (!_w->writePage(0, _header)) {
         fail(UpdateError::WriteFailed);
         return UpdateStatus::Failed;
     }

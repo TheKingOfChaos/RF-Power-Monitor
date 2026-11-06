@@ -20,7 +20,7 @@
  *
  * Uploads write only the slot that is not running. Flash writes idle core 1
  * (mains detection pauses, as for settings saves) and feed the watchdog after
- * each sector. All functions run on core 0 (loop()).
+ * each sector erase and page write. All functions run on core 0 (loop()).
  */
 
 #include <stddef.h>
@@ -63,7 +63,6 @@ enum class FwUploadFault : uint8_t {
     WrongKey,     ///< signed with another key than the one this firmware trusts: 403
     Busy,         ///< not now: on trial, uploading, restart pending: 409
     TooLarge,     ///< larger than FW_UPLOAD_MAX: 413
-    NoMemory,     ///< no RAM for the receiver right now: 503
     DeviceError,  ///< the device failed to write flash or the boot record: 500
 };
 
@@ -79,7 +78,7 @@ bool fwUpdateUploadBegin(uint32_t contentLength, const char*& error, FwUploadFau
 bool fwUpdateUploadFeed(const uint8_t* data, size_t len);
 
 /**
- * @brief All bytes are in: write the slot's first sector and verify the signature from flash
+ * @brief All bytes are in: write the slot header (page 0) and verify the signature from flash
  *
  * On success the boot record is written with the new slot on trial; the
  * caller then restarts the device (a planned restart). On failure the other

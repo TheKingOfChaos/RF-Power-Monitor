@@ -67,7 +67,8 @@ static void test_slot_writer_erases_and_writes_inactive_sector() {
         for (uint32_t i = 0; i < FW_SECTOR_SIZE; i++) sectorData[i] = (uint8_t)(i * 7 + off / FW_SECTOR_SIZE);
         TEST_ASSERT_TRUE(w.eraseSector(off));
         TEST_ASSERT_TRUE(allErased(FW_SLOT_OFFSET[OTHER_SLOT] + off));
-        TEST_ASSERT_TRUE(w.writeSector(off, sectorData));
+        // every page of the sector, one at a time (as the receiver writes them)
+        for (uint32_t p = 0; p < FW_SECTOR_SIZE; p += FW_PAGE_SIZE) TEST_ASSERT_TRUE(w.writePage(off + p, sectorData + p));
         TEST_ASSERT_EQUAL_MEMORY(sectorData, xip(FW_SLOT_OFFSET[OTHER_SLOT] + off), FW_SECTOR_SIZE);
         TEST_ASSERT_TRUE(w.eraseSector(off));  // restore: erased
         TEST_ASSERT_TRUE(allErased(FW_SLOT_OFFSET[OTHER_SLOT] + off));
@@ -83,7 +84,7 @@ static void test_slot_writer_refuses_running_slot() {
     memset(sectorData, 0x5A, sizeof(sectorData));
     FlashSlotWriter w(RUNNING_SLOT);
     TEST_ASSERT_FALSE(w.eraseSector(off));
-    TEST_ASSERT_FALSE(w.writeSector(off, sectorData));
+    TEST_ASSERT_FALSE(w.writePage(off, sectorData));
     TEST_ASSERT_FALSE(w.eraseSector(0));
     TEST_ASSERT_FALSE(w.touched());
     TEST_ASSERT_EQUAL_MEMORY(before, xip(FW_SLOT_OFFSET[RUNNING_SLOT] + off), sizeof(before));
@@ -97,18 +98,18 @@ static void test_slot_writer_refuses_offsets_outside_or_inside_a_sector() {
     memset(sectorData, 0x5A, sizeof(sectorData));
     // FW_SLOT_SIZE past slot B is the unused sector before LittleFS; past slot A it is slot B
     TEST_ASSERT_FALSE(w.eraseSector(FW_SLOT_SIZE));
-    TEST_ASSERT_FALSE(w.writeSector(FW_SLOT_SIZE, sectorData));
+    TEST_ASSERT_FALSE(w.writePage(FW_SLOT_SIZE, sectorData));
     TEST_ASSERT_FALSE(w.eraseSector(0xFFFFF000u));
-    TEST_ASSERT_FALSE(w.eraseSector(FW_SECTOR_SIZE + 256));
-    TEST_ASSERT_FALSE(w.writeSector(FW_SECTOR_SIZE + 256, sectorData));
+    TEST_ASSERT_FALSE(w.eraseSector(FW_SECTOR_SIZE + 256));  // a page boundary, not a sector boundary
+    TEST_ASSERT_FALSE(w.writePage(FW_SECTOR_SIZE + 100, sectorData));
     TEST_ASSERT_FALSE(w.touched());
 }
 
 static void test_slot_writer_refuses_source_data_in_flash() {
     FlashSlotWriter w(OTHER_SLOT);
     // Programming reads the source while XIP is off: a pointer into flash would crash
-    TEST_ASSERT_FALSE(w.writeSector(FW_SECTOR_SIZE, GOLDEN_UPD));
-    TEST_ASSERT_FALSE(w.writeSector(FW_SECTOR_SIZE, nullptr));
+    TEST_ASSERT_FALSE(w.writePage(FW_SECTOR_SIZE, GOLDEN_UPD));
+    TEST_ASSERT_FALSE(w.writePage(FW_SECTOR_SIZE, nullptr));
     TEST_ASSERT_FALSE(w.touched());
 }
 
@@ -238,6 +239,59 @@ static void test_rejected_upload_leaves_other_slot_empty_and_no_record() {
     uploadResultText[0] = '\0';
 }
 
+static void test_rollback_record_erases_the_failed_release() {
+    saveRecordSectors();
+    flashErase(FW_BOOT_RECORD_OFFSET[0]);
+    flashErase(FW_BOOT_RECORD_OFFSET[1]);
+    loadRecord();
+    // A verified image in the other slot, then the record a rolled-back trial leaves
+    uploadGolden();
+    TEST_ASSERT_TRUE_MESSAGE(uploadOk, uploadError ? uploadError : "upload");
+    TEST_ASSERT_TRUE(writeRecord(fwRecordUnreachable(OTHER_SLOT, "3.4.0")));
+    TEST_ASSERT_EQUAL_UINT8(RUNNING_SLOT, record.active);
+    SlotHeader h;
+    TEST_ASSERT_EQUAL(SlotCheck::Ok, slotVerify(xip(FW_SLOT_OFFSET[OTHER_SLOT]), OTHER_SLOT, FW_PUBLIC_KEY, h));
+
+    bootNote[0] = '\0';
+    forgetFailedRelease();
+    TEST_ASSERT_TRUE(allErased(FW_SLOT_OFFSET[OTHER_SLOT]));
+    TEST_ASSERT_EQUAL(SlotCheck::Empty, slotVerify(xip(FW_SLOT_OFFSET[OTHER_SLOT]), OTHER_SLOT, FW_PUBLIC_KEY, h));
+    WebFirmware fw = {};
+    fwUpdateStatus(fw);
+    TEST_ASSERT_EQUAL_STRING("empty", fw.otherProblem);
+    TEST_ASSERT_EQUAL_STRING("", fw.otherVersion);
+    TEST_ASSERT_EQUAL_STRING("rolled back (unreachable) 3.4.0", fw.lastResult);
+    TEST_ASSERT_NOT_NULL(strstr(bootNote, "erased"));
+    TEST_ASSERT_FALSE(fwUpdateSwitchSlot());  // nothing to switch to
+    // Already erased: the next start does not erase again
+    bootNote[0] = '\0';
+    forgetFailedRelease();
+    TEST_ASSERT_EQUAL_STRING("", bootNote);
+
+    eraseOtherSlotStart();
+    restoreRecordSectors();
+    otherState = OtherSlot::Unchecked;
+    uploadResultText[0] = '\0';
+}
+
+static void test_kept_record_keeps_the_other_release() {
+    saveRecordSectors();
+    flashErase(FW_BOOT_RECORD_OFFSET[0]);
+    flashErase(FW_BOOT_RECORD_OFFSET[1]);
+    loadRecord();
+    uploadGolden();
+    TEST_ASSERT_TRUE_MESSAGE(uploadOk, uploadError ? uploadError : "upload");
+    TEST_ASSERT_TRUE(writeRecord(fwRecordConfirmed(RUNNING_SLOT, "3.3.0")));
+    forgetFailedRelease();
+    SlotHeader h;
+    TEST_ASSERT_EQUAL(SlotCheck::Ok, slotVerify(xip(FW_SLOT_OFFSET[OTHER_SLOT]), OTHER_SLOT, FW_PUBLIC_KEY, h));
+
+    eraseOtherSlotStart();
+    restoreRecordSectors();
+    otherState = OtherSlot::Unchecked;
+    uploadResultText[0] = '\0';
+}
+
 void setup() {
     // The boot program starts every image with the watchdog armed (~8.3 s);
     // these tests run longer than that in setup() and do not feed it
@@ -257,6 +311,8 @@ void setup() {
     RUN_TEST(test_record_write_alternates_copies_and_increments_sequence);
     RUN_TEST(test_upload_path_stack_headroom);
     RUN_TEST(test_rejected_upload_leaves_other_slot_empty_and_no_record);
+    RUN_TEST(test_rollback_record_erases_the_failed_release);
+    RUN_TEST(test_kept_record_keeps_the_other_release);
     UNITY_END();
 }
 

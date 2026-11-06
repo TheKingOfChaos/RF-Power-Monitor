@@ -99,9 +99,27 @@ def slot_linker_script(text, slot, subs):
     return header + text
 
 
+def slot_layout_problem(fs_start):
+    """A message when slot B does not end at or before LittleFS (fs_start, an XIP address), else None.
+
+    A larger board_build.filesystem_size moves LittleFS down into slot B; an upload would then
+    erase the settings.
+    """
+    slot_b_end = FLASH_BASE + SLOT_OFFSETS[1] + SLOT_LENGTH
+    if slot_b_end <= fs_start:
+        return None
+    return ("slot B ends at 0x%08X, past the start of LittleFS at 0x%08X: a smaller "
+            "board_build.filesystem_size, or smaller slots (lib/fw_image/include/fw_layout.h)"
+            % (slot_b_end, fs_start))
+
+
 def generate_linker_script(target, source, env):
     """SCons action: write memmap_slot.ld (target) from memmap_default.ld (source[0])."""
     env["__fetch_fs_size"](env)  # FS_START, FS_END, PICO_EEPROM_START (platform main.py)
+    problem = slot_layout_problem(int(env["FS_START"]))
+    if problem:
+        sys.stderr.write("slot_build: %s\n" % problem)
+        return 1
     board = env.BoardConfig()
     subs = {
         "__EEPROM_START__": str(env["PICO_EEPROM_START"]),
@@ -231,6 +249,8 @@ def configure_pre(env):
         ldscript,
         [os.path.join(framework, "lib", "rp2040", "memmap_default.ld"),
          env.Value("slot %d" % slot),
+         # FS_START comes from it: a change regenerates the script and repeats the layout check
+         env.Value("fs %s" % env.GetProjectOption("board_build.filesystem_size", "")),
          os.path.join(SCRIPTS_DIR, "slot_build.py")],
         env.VerboseAction(generate_linker_script, "Generating linker script $TARGET"))
 

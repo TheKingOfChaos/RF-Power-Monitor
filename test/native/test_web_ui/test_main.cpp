@@ -1689,6 +1689,14 @@ static void test_upload_result_texts() {
     TEST_ASSERT_TRUE(r.size() < 400);
 }
 
+static void test_upload_result_server_errors_have_their_reason_phrase() {
+    webSetUp();
+    std::string r = uploadResponse(500, "write failed");
+    TEST_ASSERT_TRUE(r.find("HTTP/1.1 500 Internal Server Error\r\n") == 0);
+    r = uploadResponse(503, "x");
+    TEST_ASSERT_TRUE(r.find("HTTP/1.1 503 Service Unavailable\r\n") == 0);
+}
+
 static void test_firmware_page_needs_login() {
     webSetUp();
     std::string r = get("/firmware");
@@ -2047,9 +2055,88 @@ static void test_failed_ipv6_save_does_not_reboot() {
     TEST_ASSERT_EQUAL(0, fb->reboots);
 }
 
+// ---- StreamBody: reading a streamed body to its end ----
+
+static void test_stream_body_counts_down_to_done() {
+    StreamBody b;
+    b.begin(1000, 5000);
+    TEST_ASSERT_FALSE(b.done());
+    TEST_ASSERT_EQUAL_UINT32(1000, b.left());
+    b.consumed(600, 5100);
+    TEST_ASSERT_EQUAL_UINT32(400, b.left());
+    b.consumed(400, 5200);
+    TEST_ASSERT_TRUE(b.done());
+    TEST_ASSERT_EQUAL_UINT32(0, b.left());
+}
+
+static void test_stream_body_never_goes_below_zero() {
+    StreamBody b;
+    b.begin(10, 0);
+    b.consumed(25, 1);  // a caller bug must not wrap around to 4 GB left
+    TEST_ASSERT_TRUE(b.done());
+    TEST_ASSERT_EQUAL_UINT32(0, b.left());
+}
+
+static void test_stream_body_empty_is_done_at_once() {
+    StreamBody b;
+    b.begin(0, 0);
+    TEST_ASSERT_TRUE(b.done());
+    TEST_ASSERT_FALSE(b.expired(0));
+}
+
+static void test_stream_body_expires_after_idle_timeout() {
+    StreamBody b;
+    b.begin(1000, 1000);
+    TEST_ASSERT_FALSE(b.expired(1000 + STREAM_IDLE_TIMEOUT_MS));
+    TEST_ASSERT_TRUE(b.expired(1000 + STREAM_IDLE_TIMEOUT_MS + 1));
+}
+
+static void test_stream_body_data_restarts_idle_timeout() {
+    StreamBody b;
+    b.begin(1000, 0);
+    b.consumed(1, STREAM_IDLE_TIMEOUT_MS - 10);
+    TEST_ASSERT_FALSE(b.expired(2 * STREAM_IDLE_TIMEOUT_MS - 20));
+    TEST_ASSERT_TRUE(b.expired(2 * STREAM_IDLE_TIMEOUT_MS));
+}
+
+static void test_stream_body_expires_after_total_deadline_despite_trickle() {
+    // One byte every 20 s never trips the idle timeout, but the whole body has a deadline
+    StreamBody b;
+    b.begin(100000, 0);
+    uint32_t t = 0;
+    while (t + 20000 <= STREAM_TOTAL_TIMEOUT_MS) {
+        t += 20000;
+        b.consumed(1, t);
+        TEST_ASSERT_FALSE(b.expired(t));
+    }
+    TEST_ASSERT_TRUE(b.expired(STREAM_TOTAL_TIMEOUT_MS + 1));
+}
+
+static void test_stream_body_timeouts_survive_millis_wrap() {
+    StreamBody b;
+    b.begin(1000, 0xFFFFFF00u);
+    TEST_ASSERT_FALSE(b.expired(0x00000100u));  // 512 ms later, across the wrap
+    TEST_ASSERT_TRUE(b.expired(0xFFFFFF00u + STREAM_IDLE_TIMEOUT_MS + 1));
+}
+
+static void test_stream_body_done_never_expires() {
+    StreamBody b;
+    b.begin(10, 0);
+    b.consumed(10, 1);
+    TEST_ASSERT_FALSE(b.expired(STREAM_TOTAL_TIMEOUT_MS * 2));
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_sha256_known_vectors);
+    RUN_TEST(test_stream_body_counts_down_to_done);
+    RUN_TEST(test_stream_body_never_goes_below_zero);
+    RUN_TEST(test_stream_body_empty_is_done_at_once);
+    RUN_TEST(test_stream_body_expires_after_idle_timeout);
+    RUN_TEST(test_stream_body_data_restarts_idle_timeout);
+    RUN_TEST(test_stream_body_expires_after_total_deadline_despite_trickle);
+    RUN_TEST(test_stream_body_timeouts_survive_millis_wrap);
+    RUN_TEST(test_stream_body_done_never_expires);
     RUN_TEST(test_sha256_million_a);
     RUN_TEST(test_sha256_split_anywhere_equals_one_shot);
     RUN_TEST(test_password_rules);
@@ -2157,6 +2244,7 @@ int main() {
     RUN_TEST(test_second_upload_while_busy_is_refused);
     RUN_TEST(test_upload_result_names_a_different_key);
     RUN_TEST(test_upload_result_texts);
+    RUN_TEST(test_upload_result_server_errors_have_their_reason_phrase);
     RUN_TEST(test_firmware_page_needs_login);
     RUN_TEST(test_firmware_page_shows_slots_and_fingerprint);
     RUN_TEST(test_firmware_page_shows_trial_and_unusable_other_slot);

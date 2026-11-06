@@ -33,14 +33,17 @@ static Settings settingsBackup;  // restored when a save fails; static: too big 
 enum class Conn : uint8_t { Idle, Receiving, Checking, Uploading, Sending };
 
 // Firmware upload (POST /firmware/upload): the body is streamed into the update
-// service, never buffered whole. A pause this long without data ends it
-static const uint32_t UPLOAD_IDLE_TIMEOUT_MS = 30000;
-// Reads per webPoll() pass: one flash sector at most, so SNMP keeps answering
+// service, never buffered whole; StreamBody ends a silent or endless one
+// Reads per webPoll() pass: 4 KB at most, so SNMP keeps answering
 static const int UPLOAD_READS_PER_POLL = 8;
 static uint8_t uploadBuf[512];  // static: kept off core 0's stack
-static uint32_t uploadLeft = 0;     // body bytes not read yet
-static uint32_t uploadLastDataMs = 0;
+static StreamBody uploadBody;   // body bytes still to come, timeouts
 static bool uploadAccepted = false;  // false once the file was refused: the rest is read and dropped
+// Refused before the body (session, CSRF, busy, too large): the body is still read and dropped,
+// then this answer goes out. Closing with unread data would reset the connection, and the
+// client would never see why
+static int refusalCode = 0;  // 0: the update service has the upload
+static const char* refusalText = nullptr;
 
 // A login with an own password needs WEB_HASH_ITERATIONS SHA-256 rounds (~0.45 s).
 // Run them a few at a time (~5 ms per loop pass) so SNMP keeps answering.
@@ -342,7 +345,6 @@ static int uploadStatus(FwUploadFault fault) {
     case FwUploadFault::BadFile:     return 400;
     case FwUploadFault::WrongKey:    return 403;
     case FwUploadFault::TooLarge:    return 413;
-    case FwUploadFault::NoMemory:    return 503;
     case FwUploadFault::DeviceError: return 500;
     case FwUploadFault::Busy:
     case FwUploadFault::None:        break;
@@ -361,41 +363,49 @@ static void respondUpload(int code, const char* text) {
     if (code == 200) rebootRequested = true;  // planned restart into the new slot, on trial
 }
 
-/// The head of POST /firmware/upload is in: check the session, then start feeding the update service
+/// The head of POST /firmware/upload is in: check the session, then start feeding the update service.
+/// A refusal is answered once the body was read (refusalCode)
 static void startUpload() {
-    int code = app.authorizeUpload(request, peer, millis(), backend);
-    if (app.authenticated()) fwUpdateNoteValidRequest();
-    if (code != 0) {
-        respondUpload(code, code == 401 ? "not logged in" : code == 403 ? "bad CSRF token" : "busy or on trial");
-        return;
-    }
     uint32_t length = (uint32_t)request.contentLength();
-    const char* error = nullptr;
-    FwUploadFault fault;
-    if (!fwUpdateUploadBegin(length, error, fault)) {
-        respondUpload(uploadStatus(fault), error);
-        return;
-    }
     size_t prefixLen = 0;
     const uint8_t* prefix = request.bodyPrefix(prefixLen);
     if (prefixLen > length) prefixLen = length;
-    uploadAccepted = prefixLen == 0 || fwUpdateUploadFeed(prefix, prefixLen);
-    uploadLeft = length - (uint32_t)prefixLen;
-    uploadLastDataMs = millis();
+    uploadBody.begin(length - (uint32_t)prefixLen, millis());
+    uploadAccepted = false;
+    refusalCode = 0;
     conn = Conn::Uploading;
+
+    int code = app.authorizeUpload(request, peer, millis(), backend);
+    if (app.authenticated()) fwUpdateNoteValidRequest();
+    if (code != 0) {
+        refusalCode = code;
+        refusalText = code == 401 ? "not logged in" : code == 403 ? "bad CSRF token" : "busy or on trial";
+        return;
+    }
+    const char* error = nullptr;
+    FwUploadFault fault;
+    if (!fwUpdateUploadBegin(length, error, fault)) {
+        refusalCode = uploadStatus(fault);
+        refusalText = error;
+        return;
+    }
+    uploadAccepted = prefixLen == 0 || fwUpdateUploadFeed(prefix, prefixLen);
 }
 
 /// Read the next part of the upload body; answer when all of it is in, give up on a silent client
 static void pollUpload() {
-    for (int i = 0; i < UPLOAD_READS_PER_POLL && uploadLeft > 0 && client.available() > 0; i++) {
-        size_t want = uploadLeft < sizeof(uploadBuf) ? uploadLeft : sizeof(uploadBuf);
+    for (int i = 0; i < UPLOAD_READS_PER_POLL && !uploadBody.done() && client.available() > 0; i++) {
+        size_t want = uploadBody.left() < sizeof(uploadBuf) ? uploadBody.left() : sizeof(uploadBuf);
         int n = client.read(uploadBuf, want);  // never more than the buffer it goes into
         if (n <= 0) break;
-        uploadLeft -= (uint32_t)n;
-        uploadLastDataMs = millis();
+        uploadBody.consumed((uint32_t)n, millis());
         if (uploadAccepted) uploadAccepted = fwUpdateUploadFeed(uploadBuf, (size_t)n);
     }
-    if (uploadLeft == 0) {
+    if (uploadBody.done() && refusalCode != 0) {
+        respondUpload(refusalCode, refusalText);  // refused before the body: now the client listens
+        return;
+    }
+    if (uploadBody.done()) {
         char version[17];
         const char* error = nullptr;
         FwUploadFault fault;
@@ -408,9 +418,9 @@ static void pollUpload() {
         }
         return;
     }
-    if ((!client.connected() && client.available() <= 0) || millis() - uploadLastDataMs > UPLOAD_IDLE_TIMEOUT_MS) {
-        fwUpdateUploadAbort();
-        closeConnection();  // the client is gone or silent: no answer
+    if ((!client.connected() && client.available() <= 0) || uploadBody.expired(millis())) {
+        if (refusalCode == 0) fwUpdateUploadAbort();
+        closeConnection();  // the client is gone, silent or too slow: no answer
     }
 }
 

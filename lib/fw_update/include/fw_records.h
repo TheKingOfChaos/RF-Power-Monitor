@@ -34,6 +34,15 @@ BootRecord fwRecordTrapSent(const BootRecord& rec);
 // the record (if any) has the running slot active and nothing on trial.
 bool fwRecordSettled(bool haveRecord, const BootRecord& rec, uint8_t runningSlot);
 
+// After a rollback the failed release is forgotten (the user's decision): true
+// when the record has the running slot active, nothing on trial, and its last
+// result is RolledBackCrash or RolledBackUnreachable, and the other slot's first
+// sector is not erased yet (otherSectorErased). The caller then erases that
+// sector, so the slot reads Empty: a later crash-loop fallback or a manual
+// switch can only reach firmware that never failed. Not after FallbackCrash:
+// that slot was the kept firmware, and the other slot's only alternative.
+bool fwRecordForgetOther(bool haveRecord, const BootRecord& rec, uint8_t runningSlot, bool otherSectorErased);
+
 // Why the boot program gave up on a slot (boot_decision.h): the crash limit
 // falls back only after a crash and restarts the count, so reset Crash with a
 // crash count of 0 in crashScratch means the crash limit; anything else means

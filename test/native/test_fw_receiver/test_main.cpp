@@ -73,14 +73,17 @@ Bytes buildUpd(const Bytes& a, const Bytes& b) {
     return f;
 }
 
-/// Flash of one slot. Records every operation; writes AND into the flash like NOR.
+/// Flash of one slot. Records every operation; programming ANDs into the flash like NOR,
+/// and a page may be programmed only once after its sector was erased.
 struct FakeSlot : SlotWriter {
     Bytes flash;
     std::vector<uint32_t> erases, writes;
+    std::vector<bool> programmable;  // per page: erased since its last programming
     int failAt = -1;  // fail the Nth operation (erase or write), counting from 0
     int ops = 0;
     bool wroteOutside = false;
-    FakeSlot() : flash(FW_SLOT_SIZE, 0xFF) {}
+    bool programmedTwice = false;  // a page programmed without an erase in between
+    FakeSlot() : flash(FW_SLOT_SIZE, 0xFF), programmable(FW_SLOT_SIZE / FW_PAGE_SIZE, true) {}
     bool eraseSector(uint32_t off) override {
         if (ops++ == failAt) return false;
         if (off % FW_SECTOR_SIZE || off + FW_SECTOR_SIZE > FW_SLOT_SIZE) {
@@ -89,21 +92,27 @@ struct FakeSlot : SlotWriter {
         }
         erases.push_back(off);
         memset(&flash[off], 0xFF, FW_SECTOR_SIZE);
+        for (uint32_t p = 0; p < FW_SECTOR_SIZE / FW_PAGE_SIZE; p++) programmable[off / FW_PAGE_SIZE + p] = true;
         return true;
     }
-    bool writeSector(uint32_t off, const uint8_t* d) override {
+    bool writePage(uint32_t off, const uint8_t* d) override {
         if (ops++ == failAt) return false;
-        if (off % FW_SECTOR_SIZE || off + FW_SECTOR_SIZE > FW_SLOT_SIZE) {
+        if (off % FW_PAGE_SIZE || off + FW_PAGE_SIZE > FW_SLOT_SIZE) {
             wroteOutside = true;
             return true;
         }
+        if (!programmable[off / FW_PAGE_SIZE]) programmedTwice = true;
+        programmable[off / FW_PAGE_SIZE] = false;
         writes.push_back(off);
-        for (uint32_t i = 0; i < FW_SECTOR_SIZE; i++) flash[off + i] &= d[i];
+        for (uint32_t i = 0; i < FW_PAGE_SIZE; i++) flash[off + i] &= d[i];
         return true;
     }
 };
 
-UpdateReceiver rx;  // two 4 KB buffers: static, like the firmware
+/// Pages a blob of n bytes takes
+uint32_t pagesOf(size_t n) { return (uint32_t)((n + FW_PAGE_SIZE - 1) / FW_PAGE_SIZE); }
+
+UpdateReceiver rx;  // static, like the firmware
 
 UpdateStatus feedAll(const Bytes& d, size_t chunk) {
     UpdateStatus s = UpdateStatus::InProgress;
@@ -127,7 +136,7 @@ UpdateStatus receive(FakeSlot& w, const Bytes& upd, uint8_t slot, size_t chunk) 
     return receive(w, upd, slot, chunk, (uint32_t)upd.size());
 }
 
-const size_t CHUNKS[3] = {1, 7, 4096};
+const size_t CHUNKS[] = {1, 7, 255, 256, 257, 4096};
 
 bool slotEmpty(const FakeSlot& w) {
     uint8_t id[8];
@@ -152,8 +161,9 @@ static void test_receiver_writes_target_blob_only() {
             if (w.flash[i] != 0xFF) TEST_FAIL_MESSAGE("byte past the blob was written");
         }
         TEST_ASSERT_FALSE(w.wroteOutside);
-        // 256 + 9000 = 9256 bytes = 3 sectors
-        TEST_ASSERT_EQUAL_UINT32(3, (uint32_t)w.writes.size());
+        TEST_ASSERT_FALSE(w.programmedTwice);
+        // 256 + 9000 = 9256 bytes = 37 pages in 3 sectors
+        TEST_ASSERT_EQUAL_UINT32(37, (uint32_t)w.writes.size());
         TEST_ASSERT_EQUAL_UINT32(3, (uint32_t)w.erases.size());
     }
 }
@@ -323,8 +333,10 @@ static void test_receiver_extra_bytes_fail() {
 
 static void test_receiver_write_failure_stops() {
     Bytes upd = buildUpd(buildBlob(1, 0, 5000, 1), buildBlob(1, 1, 20000, 2));
-    // operations: erase 0, then (erase, write) per sector 1..n; fail each in turn
-    for (int failAt = 0; failAt < 5; failAt++) {
+    // operations: erase 0 (op 0), pages 1..15 of sector 0 (ops 1..15), erase sector 1 (op 16),
+    // its first pages (17, 18), ...; fail each kind in turn
+    const int failAts[] = {0, 1, 2, 15, 16, 17, 18};
+    for (int failAt : failAts) {
         FakeSlot w;
         w.failAt = failAt;
         TEST_ASSERT_EQUAL_UINT8((uint8_t)UpdateStatus::Failed, (uint8_t)receive(w, upd, 1, 4096));
@@ -339,12 +351,18 @@ static void test_receiver_write_failure_stops() {
     }
 }
 
-static void test_receiver_sector_zero_write_failure_in_finish() {
+static void test_receiver_header_page_write_failure_in_finish() {
     Bytes upd = buildUpd(buildBlob(1, 0, 300, 1), buildBlob(1, 1, 300, 2));
     FakeSlot w;
-    w.failAt = 1;  // erase 0 is op 0, the final write of sector 0 is op 1
-    TEST_ASSERT_EQUAL_UINT8((uint8_t)UpdateStatus::Failed, (uint8_t)receive(w, upd, 1, 7));
+    w.failAt = 3;  // erase 0 is op 0, pages 1 and 2 are ops 1 and 2, the final page 0 is op 3
+    uint8_t id[8];
+    trustedKeyId(id);
+    rx.begin(1, (uint32_t)upd.size(), id, w);
+    TEST_ASSERT_EQUAL_UINT8((uint8_t)UpdateStatus::InProgress, (uint8_t)feedAll(upd, 7));
+    TEST_ASSERT_EQUAL_UINT8((uint8_t)UpdateStatus::Failed, (uint8_t)rx.finish());
     TEST_ASSERT_EQUAL_UINT8((uint8_t)UpdateError::WriteFailed, (uint8_t)rx.error());
+    TEST_ASSERT_EQUAL_INT(4, w.ops);
+    TEST_ASSERT_TRUE(slotEmpty(w));
 }
 
 static void test_receiver_header_split_across_feeds() {
@@ -385,7 +403,9 @@ static void test_receiver_exact_slot_size_blob_ok() {
     TEST_ASSERT_EQUAL_UINT8((uint8_t)UpdateStatus::Done, (uint8_t)receive(w, upd, 1, 4096));
     TEST_ASSERT_EQUAL_MEMORY(b.data(), w.flash.data(), b.size());
     TEST_ASSERT_FALSE(w.wroteOutside);
-    TEST_ASSERT_EQUAL_UINT32(FW_SLOT_SIZE / FW_SECTOR_SIZE, (uint32_t)w.writes.size());
+    TEST_ASSERT_EQUAL_UINT32(FW_SLOT_SIZE / FW_PAGE_SIZE, (uint32_t)w.writes.size());
+    TEST_ASSERT_EQUAL_UINT32(FW_SLOT_SIZE / FW_SECTOR_SIZE, (uint32_t)w.erases.size());
+    TEST_ASSERT_FALSE(w.programmedTwice);
 }
 
 static void test_receiver_pads_last_sector_with_ff() {
@@ -402,7 +422,8 @@ static void test_receiver_blob_of_one_sector_only() {
     FakeSlot w;
     TEST_ASSERT_EQUAL_UINT8((uint8_t)UpdateStatus::Done,
                             (uint8_t)receive(w, buildUpd(buildBlob(1, 0, 300, 1), b), 1, 1));
-    TEST_ASSERT_EQUAL_UINT32(1, (uint32_t)w.writes.size());
+    TEST_ASSERT_EQUAL_UINT32(3, (uint32_t)w.writes.size());  // 556 bytes: pages 1, 2, then 0
+    TEST_ASSERT_EQUAL_UINT32(1, (uint32_t)w.erases.size());
     TEST_ASSERT_EQUAL_MEMORY(b.data(), w.flash.data(), b.size());
 }
 
@@ -530,6 +551,85 @@ static void test_receiver_accepts_golden_upd_from_the_real_tool() {
     TEST_ASSERT_EQUAL_UINT32(0, (uint32_t)w.erases.size());
 }
 
+static void test_receiver_page_boundary_chunk_sizes() {
+    // 256 + 9000 bytes: the last page is partial; odd chunk sizes split pages, the header and sectors
+    Bytes a = buildBlob(1, 0, 5000, 1), b = buildBlob(1, 1, 9000, 2);
+    Bytes upd = buildUpd(a, b);
+    const size_t chunks[] = {1, 2, 3, 63, 127, 255, 256, 257, 333, 511, 512, 513, 4095, 4097, 65537};
+    for (size_t chunk : chunks) {
+        FakeSlot w;
+        TEST_ASSERT_EQUAL_UINT8((uint8_t)UpdateStatus::Done, (uint8_t)receive(w, upd, 1, chunk));
+        TEST_ASSERT_EQUAL_MEMORY(b.data(), w.flash.data(), b.size());
+        TEST_ASSERT_FALSE(w.wroteOutside);
+        TEST_ASSERT_FALSE(w.programmedTwice);
+        TEST_ASSERT_EQUAL_UINT32(pagesOf(b.size()), (uint32_t)w.writes.size());
+        TEST_ASSERT_EQUAL_UINT32(3, (uint32_t)w.erases.size());
+        // pages in order, page 0 last
+        for (size_t i = 0; i + 1 < w.writes.size(); i++) {
+            TEST_ASSERT_EQUAL_UINT32((uint32_t)((i + 1) * FW_PAGE_SIZE), w.writes[i]);
+        }
+        TEST_ASSERT_EQUAL_UINT32(0, w.writes.back());
+    }
+}
+
+static void test_receiver_odd_splits_around_the_header_page() {
+    // Two feeds, split at every offset around the end of page 0 (the slot header) and page 1
+    Bytes a = buildBlob(1, 0, 5000, 1), b = buildBlob(1, 1, 9000, 2);
+    Bytes upd = buildUpd(a, b);
+    const size_t blob = 64 + a.size();
+    for (size_t s = blob + 250; s <= blob + 515; s++) {
+        FakeSlot w;
+        uint8_t id[8];
+        trustedKeyId(id);
+        rx.begin(1, (uint32_t)upd.size(), id, w);
+        TEST_ASSERT_EQUAL_UINT8((uint8_t)UpdateStatus::InProgress, (uint8_t)rx.feed(upd.data(), s));
+        // sector 0 is erased only once the whole header page is in
+        TEST_ASSERT_EQUAL_UINT32(s >= blob + 256 ? 1 : 0, (uint32_t)w.erases.size());
+        TEST_ASSERT_EQUAL_UINT8((uint8_t)UpdateStatus::InProgress, (uint8_t)rx.feed(upd.data() + s, upd.size() - s));
+        TEST_ASSERT_EQUAL_UINT8((uint8_t)UpdateStatus::Done, (uint8_t)rx.finish());
+        TEST_ASSERT_EQUAL_MEMORY(b.data(), w.flash.data(), b.size());
+        TEST_ASSERT_FALSE(w.programmedTwice);
+    }
+}
+
+static void test_receiver_partial_last_page_padded_with_ff() {
+    // 256 + 4097 bytes: the last page holds one byte, in sector 1
+    Bytes b = buildBlob(1, 1, 4097, 3);
+    Bytes upd = buildUpd(buildBlob(1, 0, 300, 1), b);
+    FakeSlot w;
+    TEST_ASSERT_EQUAL_UINT8((uint8_t)UpdateStatus::Done, (uint8_t)receive(w, upd, 1, 257));
+    TEST_ASSERT_EQUAL_MEMORY(b.data(), w.flash.data(), b.size());
+    for (size_t i = b.size(); i < 2 * FW_SECTOR_SIZE; i++) TEST_ASSERT_EQUAL_HEX8(0xFF, w.flash[i]);
+    TEST_ASSERT_EQUAL_UINT32(pagesOf(b.size()), (uint32_t)w.writes.size());
+    TEST_ASSERT_EQUAL_UINT32(2, (uint32_t)w.erases.size());
+}
+
+static void test_receiver_abort_at_any_point_leaves_slot_empty() {
+    // Stop after n bytes (cut inside and at the edges of pages and sectors): the slot reads Empty
+    Bytes a = buildBlob(1, 0, 300, 1), b = buildBlob(1, 1, 9000, 2);
+    Bytes upd = buildUpd(a, b);
+    const size_t blob = 64 + a.size();
+    const size_t cuts[] = {blob + 255,  blob + 256,  blob + 257,  blob + 511,     blob + 512,
+                           blob + 4095, blob + 4096, blob + 4097, upd.size() - 1};
+    for (size_t cut : cuts) {
+        FakeSlot w;
+        uint8_t id[8];
+        trustedKeyId(id);
+        rx.begin(1, (uint32_t)upd.size(), id, w);
+        Bytes part(upd.begin(), upd.begin() + (long)cut);
+        TEST_ASSERT_EQUAL_UINT8((uint8_t)UpdateStatus::InProgress, (uint8_t)feedAll(part, 97));
+        TEST_ASSERT_EQUAL_UINT8((uint8_t)UpdateStatus::Failed, (uint8_t)rx.finish());
+        TEST_ASSERT_EQUAL_UINT8((uint8_t)UpdateError::Truncated, (uint8_t)rx.error());
+        for (uint32_t off : w.writes) TEST_ASSERT_NOT_EQUAL_UINT32(0, off);
+        TEST_ASSERT_TRUE(slotEmpty(w));
+    }
+}
+
+static void test_receiver_is_small_enough_to_be_static() {
+    // Two 256-byte pages plus bookkeeping (it was two 4 KB sectors)
+    TEST_ASSERT_LESS_OR_EQUAL_UINT32(640, (uint32_t)sizeof(UpdateReceiver));
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_receiver_writes_target_blob_only);
@@ -549,7 +649,7 @@ int main() {
     RUN_TEST(test_receiver_truncated_body_fails);
     RUN_TEST(test_receiver_extra_bytes_fail);
     RUN_TEST(test_receiver_write_failure_stops);
-    RUN_TEST(test_receiver_sector_zero_write_failure_in_finish);
+    RUN_TEST(test_receiver_header_page_write_failure_in_finish);
     RUN_TEST(test_receiver_header_split_across_feeds);
     RUN_TEST(test_receiver_empty_body_fails);
     RUN_TEST(test_receiver_exact_slot_size_blob_ok);
@@ -562,5 +662,10 @@ int main() {
     RUN_TEST(test_receiver_rejects_oversize_other_blob);
     RUN_TEST(test_receiver_rejects_short_other_blob);
     RUN_TEST(test_receiver_accepts_golden_upd_from_the_real_tool);
+    RUN_TEST(test_receiver_page_boundary_chunk_sizes);
+    RUN_TEST(test_receiver_odd_splits_around_the_header_page);
+    RUN_TEST(test_receiver_partial_last_page_padded_with_ff);
+    RUN_TEST(test_receiver_abort_at_any_point_leaves_slot_empty);
+    RUN_TEST(test_receiver_is_small_enough_to_be_static);
     return UNITY_END();
 }

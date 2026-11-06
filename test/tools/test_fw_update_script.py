@@ -39,19 +39,30 @@ def setUpModule():
 
 
 class FakeDevice:
-    """One device on 127.0.0.1. `after_upload` is "kept", "rolled_back" or "dead"."""
+    """One device on 127.0.0.1, running slot A before the upload; the new firmware runs in slot B.
+
+    `after_upload` is "kept", "rolled_back" (back on slot A), "old_firmware" (back on slot A without
+    a rollback record) or "dead". `restart_after_polls`: status requests answered by the old
+    firmware ("verified ..., restarting on trial") before the restart. `upload_drop`: the upload's
+    reply is lost (connection closed); with `reject_reason` the device refused the file and keeps
+    running (last_result "rejected: <reason>").
+    """
 
     def __init__(self, key=None, after_upload="kept", old_version="3.3.0", upload_status=200,
-                 upload_text="ok 3.4.0"):
+                 upload_text="ok 3.4.0", restart_after_polls=0, upload_drop=False, reject_reason=None):
         self.key = key or KEY_ID
         self.after_upload = after_upload
         self.old_version = old_version
         self.upload_status = upload_status
         self.upload_text = upload_text
+        self.restart_after_polls = restart_after_polls
+        self.upload_drop = upload_drop
+        self.reject_reason = reject_reason
+        self.pending_polls = 0
         self.requests = []          # (method, path)
         self.login_passwords = []
         self.uploads = []           # (body length, csrf header)
-        self.phase = "normal"       # normal -> down -> trial -> kept / rolled_back
+        self.phase = "normal"       # normal -> [pending ->] down -> trial -> kept / rolled_back / old_firmware
         self.down_polls = 0
         self.trial_polls = 0
         self.lock = threading.Lock()
@@ -85,7 +96,7 @@ class FakeDevice:
                     if dev.phase == "down":
                         dev.down_polls += 1
                         if dev.down_polls > 2:
-                            dev.phase = {"kept": "trial", "rolled_back": "rolled_back"}.get(dev.after_upload, "down")
+                            dev.phase = dev.next_phase()
                         return self.drop()
                 if not self.authed():
                     return self.reply(200, '<form action="/login">')
@@ -103,7 +114,7 @@ class FakeDevice:
                     if dev.phase == "down":
                         dev.down_polls += 1
                         if dev.down_polls > 2:
-                            dev.phase = {"kept": "trial", "rolled_back": "rolled_back"}.get(dev.after_upload, "down")
+                            dev.phase = dev.next_phase()
                         return self.drop()
                 if self.path == "/login":
                     form = parse_qs(body.decode())
@@ -116,11 +127,14 @@ class FakeDevice:
                     if not self.authed():
                         return self.reply(401, "login")
                     dev.uploads.append((len(body), self.headers.get("X-CSRF-Token")))
-                    if dev.upload_status == 200:
-                        self.reply(200, dev.upload_text)
+                    if dev.reject_reason:
                         with dev.lock:
-                            dev.phase = "down"
-                        return
+                            dev.phase = "rejected"
+                        return self.drop() if dev.upload_drop else self.reply(400, dev.reject_reason)
+                    if dev.upload_status == 200:
+                        with dev.lock:
+                            dev.phase = "pending" if dev.restart_after_polls else "down"
+                        return self.drop() if dev.upload_drop else self.reply(200, dev.upload_text)
                     return self.reply(dev.upload_status, dev.upload_text)
                 self.reply(404, "")
 
@@ -133,6 +147,11 @@ class FakeDevice:
     def host(self):
         return "127.0.0.1:%d" % self.port
 
+    def next_phase(self):
+        """The phase after the restart."""
+        return {"kept": "trial", "rolled_back": "rolled_back", "old_firmware": "old_firmware"}.get(
+            self.after_upload, "down")
+
     def status_text(self):
         with self.lock:
             phase = self.phase
@@ -140,16 +159,26 @@ class FakeDevice:
                 self.trial_polls += 1
                 if self.trial_polls > 2:
                     self.phase = phase = "kept"
-        if phase in ("kept",):
-            ver, state, last = VERSION, "kept", "installed " + VERSION
+            elif phase == "pending":
+                self.pending_polls += 1
+                if self.pending_polls >= self.restart_after_polls:
+                    self.phase = "down"  # restarts after this answer
+        slot = "A"
+        if phase == "kept":
+            slot, ver, state, last = "B", VERSION, "kept", "installed " + VERSION
         elif phase == "trial":
-            ver, state, last = VERSION, "trial", "installed " + VERSION
+            slot, ver, state, last = "B", VERSION, "trial", "installed " + VERSION
         elif phase == "rolled_back":
             ver, state, last = self.old_version, "kept", "rolled back (crash) " + VERSION
+        elif phase == "pending":
+            ver, state, last = self.old_version, "kept", "verified %s, restarting on trial" % VERSION
+        elif phase == "rejected":
+            ver, state, last = self.old_version, "kept", "rejected: " + self.reject_reason
         else:
             ver, state, last = self.old_version, "kept", "none"
-        return ("running_slot=A\nrunning_version=%s\nstate=%s\nslot_a=%s\nslot_b=\nlast_result=%s\nkey=%s\n"
-                % (ver, state, ver, last, self.key))
+        a, b = (ver, "") if slot == "A" else ("", ver)
+        return ("running_slot=%s\nrunning_version=%s\nstate=%s\nslot_a=%s\nslot_b=%s\nlast_result=%s\nkey=%s\n"
+                % (slot, ver, state, a, b, last, self.key))
 
     def close(self):
         self.server.shutdown()
@@ -224,6 +253,44 @@ class FwUpdateScriptTest(unittest.TestCase):
         code, out = self.run_script([d.host])
         self.assertNotEqual(0, code)
         self.assertIn("%s: rolled back: rolled back (crash) %s" % (d.host, VERSION), out)
+
+    def test_script_same_version_waits_for_the_restart(self):
+        # A rebuilt release of the running version: "kept" with that version holds before the
+        # restart too; only the slot change shows the new firmware runs
+        d = self.device(old_version=VERSION, restart_after_polls=3)
+        code, out = self.run_script([d.host])
+        self.assertEqual(0, code, out)
+        self.assertIn("%s: updated" % d.host, out)
+        self.assertEqual("kept", d.phase)
+        self.assertGreaterEqual(d.pending_polls, 3)
+        self.assertGreaterEqual(d.trial_polls, 3)  # it saw the trial through
+
+    def test_script_waits_while_the_old_firmware_still_runs(self):
+        d = self.device(restart_after_polls=4)
+        code, out = self.run_script([d.host])
+        self.assertEqual(0, code, out)
+        self.assertIn("%s: updated" % d.host, out)
+        self.assertEqual("kept", d.phase)
+
+    def test_script_reports_lost_reply_to_rejected_upload_as_rejected(self):
+        d = self.device(upload_drop=True, reject_reason="bad signature")
+        code, out = self.run_script([d.host])
+        self.assertNotEqual(0, code)
+        self.assertIn("%s: rejected: no reply (bad signature)" % d.host, out)
+        self.assertNotIn("rolled back", out)
+
+    def test_script_lost_reply_to_accepted_upload_still_updates(self):
+        d = self.device(upload_drop=True)
+        code, out = self.run_script([d.host])
+        self.assertEqual(0, code, out)
+        self.assertIn("%s: updated" % d.host, out)
+
+    def test_script_reports_restart_on_old_firmware_without_rollback_as_not_installed(self):
+        d = self.device(after_upload="old_firmware")
+        code, out = self.run_script([d.host])
+        self.assertNotEqual(0, code)
+        self.assertIn("%s: not installed" % d.host, out)
+        self.assertNotIn("updated", out)
 
     def test_script_refuses_key_mismatch_before_upload(self):
         d = self.device(key="0123456789abcdef")

@@ -54,6 +54,11 @@ bool fwRecordSettled(bool haveRecord, const BootRecord& rec, uint8_t runningSlot
     return !haveRecord || (rec.active == runningSlot && rec.trial == FW_NO_SLOT);
 }
 
+bool fwRecordForgetOther(bool haveRecord, const BootRecord& rec, uint8_t runningSlot, bool otherSectorErased) {
+    if (!haveRecord || otherSectorErased || !fwRecordSettled(haveRecord, rec, runningSlot)) return false;
+    return rec.lastResult == FwResult::RolledBackCrash || rec.lastResult == FwResult::RolledBackUnreachable;
+}
+
 bool fwFallbackWasCrashLimit(ResetKind reset, uint32_t crashScratch) {
     uint8_t count = (crashScratch & 0xFFFF0000u) == CRASH_MAGIC ? (uint8_t)(crashScratch & 0xFFu) : 0;
     return reset == ResetKind::Crash && count == 0;

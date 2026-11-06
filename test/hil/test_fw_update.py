@@ -476,14 +476,29 @@ class FirmwareUpdateTest(unittest.TestCase):
         t0 = time.time()
         self.assertIn(self.upload(self.upd["shorttrial"])[0], (200, None))
         self.await_status(lambda s: s["fwSlot"] != before["fwSlot"] and s["fwState"] == "trial", 90)
-        # The shorttrial firmware never confirms: logging in and asking is not a valid request for it
-        code, text = self.upload(self.upd["normal"][:2048])
+        # The shorttrial firmware never confirms: logging in and asking is not a valid request for it.
+        # A full-size body: the refusal comes before the body, which the device reads and drops so
+        # the answer is not lost in a reset connection
+        code, text = self.upload(self.upd["normal"])
         self.assertEqual(409, code, text)
         self.assertEqual("trial", self.status()["fwState"])
         back = self.await_status(lambda s: s["fwSlot"] == before["fwSlot"] and s["fwState"] == "kept",
                                  UNREACHABLE_ROLLBACK_LIMIT_S)
         self.assertEqual(before["fwSlot"], back["fwSlot"])
+        self.assertEqual("empty", self.await_status(lambda s: s["fwOther"] == "empty", 20)["fwOther"])
         print("\nrefused during trial, rolled back after %.0f s" % (time.time() - t0))
+
+    def test_refused_full_size_upload_gets_its_answer(self):
+        # An expired session: refused after the headers while the client still sends 0.8 MB
+        before = self.kept_state()
+        w = self.web()
+        token = self.csrf(w)
+        w.cookie = "sid=" + "0" * 32
+        code, _, text = w.request("POST", "/firmware/upload", self.upd["normal"],
+                                  {"Content-Type": "application/octet-stream", "X-CSRF-Token": token})
+        self.assertEqual(401, code, text)
+        self.assertEqual("not logged in", text.strip())
+        self.assert_unchanged(before)
 
     def test_trial_crash_rolls_back(self):
         before = self.kept_state()
@@ -497,6 +512,8 @@ class FirmwareUpdateTest(unittest.TestCase):
         self.assertLess(took, CRASH_ROLLBACK_LIMIT_S)
         self.assertIn("rolled back (crash)", st["fwLastUpdate"])
         self.assertEqual("kept", st["fwState"])
+        # The release that failed is forgotten: a later fallback can never start it
+        self.assertEqual("empty", st["fwOther"])
         self.assertEqual("2", snmp_value(self.ip, OID_FW + "5.0"), "fwLastResult rolledBackCrash(2)")
         # The rollback boot sends coldStart, and the firmware trap is held until after it
         self.expect_trap("coldStart", 30)
@@ -514,6 +531,7 @@ class FirmwareUpdateTest(unittest.TestCase):
         self.assertLess(took, UNREACHABLE_ROLLBACK_LIMIT_S)
         self.assertIn("rolled back (unreachable)", st["fwLastUpdate"])
         self.assertEqual("kept", st["fwState"])
+        self.assertEqual("empty", self.await_status(lambda s: s["fwOther"] == "empty", 20)["fwOther"])
         self.expect_trap("firmwareRolledBack", 30, last_result=3)
 
     def test_kept_firmware_crash_loop_falls_back(self):

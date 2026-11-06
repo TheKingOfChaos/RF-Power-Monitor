@@ -711,6 +711,8 @@ static const char* reasonPhrase(int code) {
     case 403: return "Forbidden";
     case 409: return "Conflict";
     case 413: return "Payload Too Large";
+    case 500: return "Internal Server Error";
+    case 503: return "Service Unavailable";
     default: return "Error";
     }
 }

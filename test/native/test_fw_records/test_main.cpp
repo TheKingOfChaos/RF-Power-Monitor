@@ -137,6 +137,62 @@ static void test_failed_check_is_any_other_reset_or_a_count() {
     TEST_ASSERT_FALSE(fwFallbackWasCrashLimit(ResetKind::ResetPin, 0));
 }
 
+static void test_forget_other_after_crash_rollback() {
+    // B on trial crashed 3 times, A runs again and has written the rollback record
+    BootRecord r = fwRecordAfterFallback(true, record(0, 1), 0, 1, "3.4.0");
+    TEST_ASSERT_TRUE(fwRecordForgetOther(true, r, 0, false));
+}
+
+static void test_forget_other_after_unreachable_rollback() {
+    // B on trial was not reached and wrote the record that makes A active again; A runs
+    BootRecord r = fwRecordUnreachable(1, "3.4.0");
+    TEST_ASSERT_TRUE(fwRecordForgetOther(true, r, 0, false));
+}
+
+static void test_forget_other_not_when_already_erased() {
+    // Erased at an earlier start: no second erase at every boot
+    BootRecord r = fwRecordUnreachable(1, "3.4.0");
+    TEST_ASSERT_FALSE(fwRecordForgetOther(true, r, 0, true));
+    TEST_ASSERT_FALSE(fwRecordForgetOther(true, fwRecordAfterFallback(true, record(0, 1), 0, 1, "3.4.0"), 0, true));
+}
+
+static void test_forget_other_not_on_the_failed_slot_itself() {
+    // The unreachable trial has just written its record and not restarted yet (it runs slot B)
+    BootRecord r = fwRecordUnreachable(1, "3.4.0");
+    TEST_ASSERT_FALSE(fwRecordForgetOther(true, r, 1, false));
+}
+
+static void test_forget_other_not_after_install_upload_or_fallback() {
+    // Kept firmware: the other slot holds the previous release, the way back
+    TEST_ASSERT_FALSE(fwRecordForgetOther(true, fwRecordConfirmed(0, "3.4.0"), 0, false));
+    // Uploaded, restart pending: the other slot is the new release
+    TEST_ASSERT_FALSE(fwRecordForgetOther(true, fwRecordTrialOfOther(0, "3.4.0"), 0, false));
+    // The kept firmware crashed 3 times: the crashing slot stays, it is the only other bootable one
+    TEST_ASSERT_FALSE(
+        fwRecordForgetOther(true, fwRecordAfterFallback(true, record(1, FW_NO_SLOT), 0, 1, "3.3.1"), 0, false));
+    BootRecord none = {};
+    none.lastResult = FwResult::RolledBackCrash;  // garbage: ignored without a record
+    TEST_ASSERT_FALSE(fwRecordForgetOther(false, none, 0, false));
+}
+
+static void test_forget_other_not_while_a_trial_is_set() {
+    BootRecord r = fwRecordUnreachable(1, "3.4.0");
+    r.trial = 1;  // not a record the firmware writes, but never erase a slot the record still boots
+    TEST_ASSERT_FALSE(fwRecordForgetOther(true, r, 0, false));
+}
+
+static void test_forgotten_slot_is_never_fallen_back_to() {
+    // After the rollback the failed slot is erased (does not verify): when the kept
+    // firmware then reaches the crash limit, the boot program stays on it
+    BootRecord r = fwRecordAfterFallback(true, record(0, 1), 0, 1, "3.4.0");
+    TEST_ASSERT_TRUE(fwRecordForgetOther(true, r, 0, false));
+    const bool ok[2] = {true, false};  // slot B erased
+    uint32_t scratch = 0xC7A50000u | 2;  // slot A, 2 crashes so far
+    BootDecision d = decideBoot(true, r, ok, ResetKind::Crash, scratch);
+    TEST_ASSERT_EQUAL_UINT8(0, d.slot);
+    TEST_ASSERT_EQUAL(BootReason::Normal, d.reason);
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_fallback_from_trial_slot_is_rolled_back_crash);
@@ -153,5 +209,12 @@ int main() {
     RUN_TEST(test_not_settled_while_trial_pending_or_other_slot_active);
     RUN_TEST(test_crash_limit_is_crash_reset_with_count_zero);
     RUN_TEST(test_failed_check_is_any_other_reset_or_a_count);
+    RUN_TEST(test_forget_other_after_crash_rollback);
+    RUN_TEST(test_forget_other_after_unreachable_rollback);
+    RUN_TEST(test_forget_other_not_when_already_erased);
+    RUN_TEST(test_forget_other_not_on_the_failed_slot_itself);
+    RUN_TEST(test_forget_other_not_after_install_upload_or_fallback);
+    RUN_TEST(test_forget_other_not_while_a_trial_is_set);
+    RUN_TEST(test_forgotten_slot_is_never_fallen_back_to);
     return UNITY_END();
 }

@@ -240,3 +240,19 @@ void TextBuffer::addUnsigned(uint32_t value) {
     snprintf(num, sizeof(num), "%lu", (unsigned long)value);
     add(num);
 }
+
+void StreamBody::begin(uint32_t length, uint32_t nowMs) {
+    _left = length;
+    _startMs = nowMs;
+    _lastDataMs = nowMs;
+}
+
+void StreamBody::consumed(uint32_t n, uint32_t nowMs) {
+    _left = n >= _left ? 0 : _left - n;
+    _lastDataMs = nowMs;
+}
+
+bool StreamBody::expired(uint32_t nowMs) const {
+    if (done()) return false;
+    return nowMs - _lastDataMs > STREAM_IDLE_TIMEOUT_MS || nowMs - _startMs > STREAM_TOTAL_TIMEOUT_MS;
+}

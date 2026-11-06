@@ -110,5 +110,47 @@ class VerifyTimeWarningTests(unittest.TestCase):
         self.assertIn("2.3 s", slot_build.verify_time_warning(880640))
 
 
+def _header_text(*parts):
+    with open(os.path.join(ROOT, *parts), encoding="utf-8") as f:
+        return f.read()
+
+
+class LayoutTests(unittest.TestCase):
+    FS_START = 0x101BF000  # the core's FS_START for board_build.filesystem_size = 0.25m (platformio.ini)
+
+    def test_slots_end_before_littlefs(self):
+        self.assertIsNone(slot_build.slot_layout_problem(self.FS_START))
+
+    def test_slot_b_ending_exactly_at_littlefs_is_allowed(self):
+        self.assertIsNone(slot_build.slot_layout_problem(0x10000000 + 0xE7000 + 0xD7000))
+
+    def test_slot_b_overlapping_littlefs_is_refused(self):
+        # A larger file system (e.g. 0.5m) would start inside slot B: an upload would erase the settings
+        problem = slot_build.slot_layout_problem(0x1017F000)
+        self.assertIsNotNone(problem)
+        self.assertIn("LittleFS", problem)
+        self.assertIsNotNone(slot_build.slot_layout_problem(0x10000000 + 0xE7000 + 0xD7000 - 1))
+
+    def test_python_layout_matches_fw_layout_h(self):
+        text = _header_text("lib", "fw_image", "include", "fw_layout.h")
+        slots = re.search(r"FW_SLOT_OFFSET\[2\] = \{(0x[0-9A-Fa-f]+)u, (0x[0-9A-Fa-f]+)u\}", text)
+        records = re.search(r"FW_BOOT_RECORD_OFFSET\[2\] = \{(0x[0-9A-Fa-f]+)u, (0x[0-9A-Fa-f]+)u\}", text)
+        size = re.search(r"FW_SLOT_SIZE = (0x[0-9A-Fa-f]+)u;", text)
+        header = re.search(r"FW_SLOT_HEADER_SIZE = (0x[0-9A-Fa-f]+)u;", text)
+        self.assertTrue(slots and records and size and header, "fw_layout.h changed shape")
+        self.assertEqual({0: int(slots.group(1), 16), 1: int(slots.group(2), 16)}, slot_build.SLOT_OFFSETS)
+        self.assertEqual(int(size.group(1), 16), slot_build.SLOT_LENGTH)
+        self.assertEqual(int(header.group(1), 16), slot_build.HEADER_SIZE)
+        self.assertEqual(int(records.group(1), 16), slot_build.BOOT_RECORD_OFFSET)
+        self.assertEqual(int(records.group(2), 16) + 0x1000,
+                         slot_build.BOOT_RECORD_OFFSET + slot_build.BOOT_RECORD_SIZE)
+
+    def test_http_stream_max_holds_two_slots_and_the_file_header(self):
+        text = _header_text("lib", "web_ui", "include", "http_request.h")
+        m = re.search(r"HTTP_STREAM_MAX = (0x[0-9A-Fa-f]+)u \* 2 \+ 64;", text)
+        self.assertIsNotNone(m, "http_request.h changed shape")
+        self.assertEqual(slot_build.SLOT_LENGTH, int(m.group(1), 16))
+
+
 if __name__ == "__main__":
     unittest.main()

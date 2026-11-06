@@ -7,10 +7,15 @@ RFPOWER_WEB_PASSWORD, or is asked for (getpass). It is never an argument and
 never printed. Per host: log in, read /firmware/status, compare the file's
 signing key id with the device's key (a different key is refused before the
 upload), upload, wait for the restart, log in again and poll until the new
-firmware is "kept" (the device keeps it once it has been reachable on the
-network). One line per host:
+firmware runs in the other slot and is "kept" (the device keeps it once it has
+been reachable on the network). One line per host:
 
-    <host>: updated | rejected: <reason> | rolled back: <last_result> | unreachable | timeout
+    <host>: updated | rejected: <reason> | rolled back: <last_result> | not installed: ...
+            | unreachable | timeout
+
+"rejected: no reply (<reason>)" means the device refused the file but its
+answer was lost; "not installed" that it restarted on its old firmware without
+a rollback (for example a power cut before the new slot was recorded).
 
 The script stops at the first host that is not updated unless --continue is
 given; the exit code is 0 only when every host is updated. Standard library
@@ -148,6 +153,7 @@ def update_host(host, upd, info, password, timeout_s, poll_s, http_timeout, slee
         raise Outcome("rejected: %s" % (text.strip() or "HTTP %d" % code))
 
     # Wait for the restart and the trial. "Went down" = a request failed after the upload.
+    before_slot = before.get("running_slot")
     deadline = time.monotonic() + timeout_s
     went_down = code is None
     while time.monotonic() < deadline:
@@ -166,13 +172,39 @@ def update_host(host, upd, info, password, timeout_s, poll_s, http_timeout, slee
             went_down = True
             dev.cookie = None
             continue
-        last = st.get("last_result", "")
-        if st.get("state") == "kept" and st.get("running_version") == info["version"]:
+        verdict = _judge(st, before_slot, info["version"], went_down)
+        if verdict == "updated":
             return
-        if last.startswith(("rolled back", "fallback")) or (went_down and st.get("state") == "kept"):
-            raise Outcome("rolled back: %s" % last)
+        if verdict is not None:
+            raise Outcome(verdict)
         # still the old firmware before it restarts, or the new one on trial: keep waiting
     raise Outcome("timeout")
+
+
+def _judge(st, before_slot, version, went_down):
+    """What a status read after the upload means: "updated", another outcome line, or None (wait).
+
+    An update always lands in the other slot, so the new firmware runs only once running_slot
+    differs from the slot before the upload (a file of the running version reads "kept" with
+    that version before the restart too).
+    """
+    last = st.get("last_result", "")
+    kept = st.get("state") == "kept"
+    if st.get("running_slot") != before_slot:
+        if kept and st.get("running_version") == version:
+            return "updated"
+        return None  # the new firmware on trial
+    # The slot it ran before the upload
+    if last.startswith("rejected"):
+        # The refusal's own answer was lost; the device holds the reason until it restarts
+        return "rejected: no reply (%s)" % last.partition(":")[2].strip()
+    if last.startswith("verified"):
+        return None  # accepted, the restart is still to come
+    if went_down and kept and last.startswith(("rolled back", "fallback")):
+        return "rolled back: %s" % last
+    if went_down and kept:
+        return "not installed: back on the old firmware (last update: %s)" % (last or "none")
+    return None
 
 
 def read_hosts(args):
