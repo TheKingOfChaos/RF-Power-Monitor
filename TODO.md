@@ -251,8 +251,20 @@ An item is only ticked when it is implemented **and** its tests exist and pass (
 - [ ] Boot verification time: ~2.6 us per byte (943 ms for 359 KB, mostly SHA-512 on the M0+), so the 1.5 s budget runs out near 570 KB of firmware; `scripts/slot_build.py` warns above 550 KB. Speed up SHA-512 (or the verification) before the image gets there
 - [ ] Refused uploads (401/403) drain the body under the 5-minute upload deadline, so one client without a login can hold the single web connection that long; give unauthenticated drains a short deadline or a byte cap (SNMP still confirms trials meanwhile)
 
+## 21. Update site (3.4.0, plan docs/superpowers/plans/2026-11-06-update-server.md)
+- [x] Check-in wire format and keyed BLAKE2b MACs, device and site against shared vectors — native `test_update_protocol`, `update-server/tests/test_protocol.py`, sanitizers
+- [x] URL and HTTP response parsing, `.upd` header version, check-in timing, update settings codec, download decisions — native `test_update_client`, sanitizers
+- [x] DHCP option 225 (text) beside 224 — native `test_dhcp_option`
+- [x] Update settings in their own A/B files, cleared by a factory reset — embedded `test_settings_store`
+- [x] Non-blocking HTTP client on lwIP (2-segment window), update service, trial confirmation by a check-in — HIL `test_update_server.py` (opt-in `RFPOWER_UPDATE_SERVER_TEST=1`), device check with `fetchtest`
+- [x] Serial menu option 10, status line, Firmware page card — native `test_web_ui`, HIL `test_serial_menu.py`
+- [x] Site: store, assignment rules, check-in API, pages, login, Docker — `update-server/tests` (CI), container checked
+- [ ] Site over HTTPS (behind a reverse proxy) if check-ins must not be readable on the network
+- [ ] SNMP objects for the update server state (not asked for yet)
+
 ## Notes
 - SNMP must be v1 and v2c (no v3) and our own code; networking may use libraries
+- RAM after 3.4.0: static 49.6 % (130,040 bytes), about 1 KB below the 50 % limit. The next feature that needs RAM must first make room (e.g. move a rarely used static buffer to the heap while it is used)
 - Memory limits: 70 % flash, 50 % RAM (3.3.0: image 44 % of a slot, 21.3 % of the core's flash figure; static RAM 48.8 %, measured as PlatformIO's RAM line (.data + .bss); an upload allocates nothing more; built with -Os). About 3 KB of RAM is left below the 50 % limit: check the build's RAM line before adding buffers (the web page body and response alone are 22 KB)
 - Version: `include/version.h`; every user-visible change goes into CHANGELOG.md under [Unreleased]
 - Core 0 has an 8 KB stack (core1_separate_stack, since 2.3.0) shared with USB/lwIP/W5500 interrupts: keep big buffers static

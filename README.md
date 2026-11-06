@@ -39,6 +39,7 @@ More diagrams (firmware architecture, SNMP request flow, mains flow, settings, t
 | Ambient temperature (TMP1075 on the carrier board, I2C) | Working |
 | Standard MIBs: SNMPv2-MIB complete, HOST-RESOURCES-MIB (CPU load per core, RAM, LittleFS), ENTITY-MIB (inventory), IP-MIB addresses, MIB-II ip/icmp/tcp/udp counters | Working (3.1.0) |
 | LibreNMS OS definition (mains state, temperature, change counter, CPU, memory, storage, addresses, inventory) | Working, tested with LibreNMS 26.10.2 |
+| Update site ([update-server/](update-server/README.md), Docker): devices check in every 30 minutes; firmware updates for the devices you tick; check-ins authenticated with a shared key; URL by DHCP option 225 | Working (3.4.0), HIL-tested end to end |
 
 See [TODO.md](TODO.md) for the detailed plan.
 
@@ -120,6 +121,7 @@ Connect to the Pico's USB serial port (`COM16` here) at **115200 baud, 8N1**, wi
 7. New default web password
 8. Web interface on/off
 9. Static IPv6
+10. Update server
 ?. Show this menu
 >
 ```
@@ -249,6 +251,8 @@ Each new entry is also printed on the serial port when it happens (`SNMP access:
 **8. Web interface on/off** switches the web page on or off after you confirm with `y`. Off closes TCP port 80, logs every browser out and stops announcing the page over mDNS; SNMP and the serial menu are not affected. The setting is kept across restarts; a factory reset turns the web interface on again. Turning it on takes effect at once; the status screen shows `Web interface: on (TCP port 80)`.
 
 **9. Static IPv6** asks for a static IPv6 address and an optional IPv6 gateway. Enter keeps the value in brackets, `-` removes it. The address is always a /64 and is added next to the link-local and SLAAC addresses; it is independent of DHCP/static IPv4.
+
+**10. Update server** asks for the update site's URL (`http://host[:port][/path]`, `dhcp` for DHCP option 225, or `none`) and the shared key from the site (64 hex characters, typed as `*`, never shown back; `clear` removes it). The device then checks in every 30 minutes and installs the releases the site assigns to it (see [update-server/README.md](update-server/README.md) and the user manual).
 
 ```
 > 9

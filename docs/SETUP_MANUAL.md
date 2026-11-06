@@ -48,6 +48,7 @@ Two LEDs on the carrier show mains directly, without the firmware: **green = mai
 7. New default web password
 8. Web interface on/off
 9. Static IPv6
+10. Update server
 ?. Show this menu
 >
 ```
@@ -152,6 +153,50 @@ Do this once, with the electrician, before you rely on the box:
 
 If something does not behave this way, see Troubleshooting in the [user manual](USER_MANUAL.md#troubleshooting).
 
+## 8. Update site (optional)
+
+The update site lists every device and updates the ones you choose (user manual, [From the update site](USER_MANUAL.md#from-the-update-site)). It runs in Docker, for example on the PC that runs LibreNMS. Set it up once:
+
+1. Set the admin password and start it (from the repository):
+   ```sh
+   cd update-server
+   # compose.override.yml (gitignored):
+   #   services:
+   #     rfupdate:
+   #       environment:
+   #         RFUPDATE_ADMIN_PASSWORD: "a long password"
+   docker compose up -d --build
+   ```
+   It listens on TCP **8071** and keeps its data in the Docker volume `rfupdate-data`.
+2. Let the devices reach it: on Windows, allow inbound TCP 8071 in the Windows firewall, and with WSL in mirrored mode also in the Hyper-V firewall (as for LibreNMS on 8070), as administrator:
+   ```powershell
+   New-NetFirewallRule -DisplayName "RF-Power update site 8071" -Direction Inbound -Protocol TCP -LocalPort 8071 -Action Allow
+   New-NetFirewallHyperVRule -Name RFPOWER-Update-8071 -DisplayName "RF-Power update site 8071" -Direction Inbound -Protocol TCP -LocalPorts 8071 -Action Allow
+   ```
+3. Open `http://<pc>:8071/admin`, log in and press **Generate new key**. Copy the 64 hex characters: the site shows them only once.
+4. On each device: serial menu option `10` (or the web page's **Firmware** page, card *Update server*), URL `http://<pc>:8071` and the key:
+   ```
+   > 10
+   Update server: off (option 10)
+   Press Enter to keep the value in brackets.
+   Update server URL (http://host[:port][/path]), dhcp or none [none]: http://10.132.0.45:8071
+   Shared key (64 hex characters from the update site), Enter keeps, clear removes [not set]: ****************************************************************
+   Update server settings saved
+   ```
+5. Within a minute the device is on the site's Devices page. The status screen shows `Update server: ..., last check-in ... s ago: ok`. `badauth` means the key differs from the site's; a connection error means the device cannot reach the site (firewall, address).
+
+**The URL from DHCP.** Instead of typing the URL on every device, enter `dhcp` in step 4 (the key is still entered on each device; it never comes from DHCP) and let the DHCP server send option **225** as text, for example:
+
+- Kea (`kea-dhcp4.conf`):
+  ```json
+  "option-def": [ { "name": "rfpower-update-url", "code": 225, "type": "string" } ],
+  "option-data": [ { "name": "rfpower-update-url", "data": "http://10.132.0.45:8071" } ]
+  ```
+- ISC dhcpd: `option rfpower-update-url code 225 = text;` and `option rfpower-update-url "http://10.132.0.45:8071";`
+- dnsmasq: `dhcp-option=225,"http://10.132.0.45:8071"`
+
+The device asks for option 225 when it is set to `dhcp` and takes it only from a DHCP answer it accepted for its own lease. A value longer than 127 characters or with other than printable ASCII is ignored.
+
 ## Firmware signing key
 
 Devices accept a firmware update only when it is signed with **your** key (Ed25519). You create the key once, before the first field device is built. The person who builds releases needs a C++ compiler on the PC (g++ and gcc, as for the unit tests; the signing program is built from the same code the device verifies with) and Python 3.
@@ -217,3 +262,4 @@ After that, updates go over the network: see "Updating the firmware" in the [use
 - [ ] 30 s outage: warning, no alert; 90 s outage: alert, then recovery
 - [ ] Firmware key generated once, `secret/fw_signing_key` backed up outside the PC, `include/fw_public_key.h` committed
 - [ ] Field devices installed from the release's `-usb.uf2` (not `firmware.uf2`); the status screen's `Firmware key:` matches the key's fingerprint
+- [ ] Optional: update site running with an admin password, devices set to its URL and key, each on its Devices page

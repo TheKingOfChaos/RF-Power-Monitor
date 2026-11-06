@@ -23,6 +23,7 @@ The project rules are in `.clinerules` and apply to all work here, including its
 | Sanitizers | `wsl -d Ubuntu-24.04 -- bash scripts/sanitize.sh` (after `pio test -e native`) |
 | SNMP vs net-snmp, no hardware | `wsl -d Ubuntu-24.04 -- bash scripts/host_agent_check.sh` |
 | SNMP HIL only | `... python.exe -m unittest discover -s test/hil -p "test_snmp.py" -v` |
+| Update site | tests `python -m unittest discover -s update-server/tests`; run `docker compose up -d --build` in `update-server/` (port 8071); HIL `RFPOWER_UPDATE_SERVER_TEST=1` `test_update_server.py` |
 
 Details and setup are in `docs/TESTING.md`.
 
@@ -62,4 +63,6 @@ Details and setup are in `docs/TESTING.md`.
 - CI: `.github/workflows/tests.yml` runs native tests, sanitizers, net-snmp check and the firmware build
 - `boot/`: our boot program (flash start, own build by `scripts/build_boot.py`): verifies a slot's Ed25519 signature, picks the slot from the boot record, falls back after 3 crashes. `lib/fw_image` (slot header, verification), `lib/fw_update` (boot record, boot decision, update receiver, trial monitor; all pure), `lib/monocypher` (vendored), `src/fw_update_service.cpp` (upload to the other slot, trial, rollback, web/SNMP/serial status). `scripts/slot_build.py` links the firmware for slot A (`pico`, 0x10000) or slot B (`pico_b`, 0xE7000) and builds `firmware_full.uf2`
 - `tools/`: `fw_keygen.py` (field key in `secret/fw_signing_key`, public key `include/fw_public_key.h`; never run it without being asked, never overwrite), `fw_release.py`, `fw_update.py`, `fwtool.py`, `fwsign/` (host signing program built from the device's Monocypher code). `keys/dev/` is the committed development key: normal builds trust it, field builds (`RFPOWER_FW_KEY=field`, `fw_release.py --field`) trust the field key
+- `lib/update_client` (pure): update site check-in format and keyed BLAKE2b MACs, URL and HTTP response parsing, check-in timing, update settings codec, download decisions; `src/http_fetch.cpp` (non-blocking HTTP on lwIP raw TCP, 2-segment window), `src/update_service.cpp` (check-ins, downloads into `fw_update_service`); URL and key in their own A/B files (`lib/settings` `update_settings_store.h`); DHCP option 225 in `src/net_stats.cpp`. Hidden menu commands `checkin`, `fetchtest <url>`
+- `update-server/`: the update site (Python stdlib, Docker, port 8071): device list, admin login, releases, assignments, shared key; `tests/vectors.json` shared with `test/native/test_update_protocol`
 - `test/native`, `test/embedded`, `test/hil`, `test/tools`: the four test layers

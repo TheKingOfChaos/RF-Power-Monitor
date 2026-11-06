@@ -6,6 +6,23 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [3.4.0] - 2026-11-06
+
+An update site: devices check in with it, and it updates the devices you choose.
+
+### Added
+- **Update site** (`update-server/`, Python standard library, Docker on TCP 8071, data in the volume `rfupdate-data`): a device list without login (hostname, serial number, IPv4/IPv6 addresses, firmware and slot, last check-in, online/offline after 65 minutes, update status) and an admin page behind a password (`RFUPDATE_ADMIN_PASSWORD`; 5 wrong passwords a minute lock logins; CSRF tokens): upload a signed `.upd`, tick devices and pick a release, generate the shared key. Releases older than 3.4.0, duplicates and files whose signed firmware has another version than their header are refused. An update ends as done, rolled back, refused, failed (three broken downloads) or lost (no report in 2 hours); it is never retried in a loop.
+- **Check-ins**: with an update server URL and the shared key the device checks in 60 s after its network is up and then every 30 minutes (retry after 5 minutes). Every check-in and every reply carries a keyed BLAKE2b MAC; the reply also covers the check-in's random nonce, and the site refuses a replayed nonce. Without the key the device does not check in. A reply from the site confirms a firmware on trial.
+- **Updates from the site**: a device downloads the release the site named and installs it through the existing path (signature check, other slot, trial, rollback). Both the file header and the signed slot header must name that version. Failures are reported at the next check-in. The download uses a small TCP window so SNMP keeps answering (measured: 184 of 184 requests answered during a 1 MB download, slowest 21 ms; 1 MB in 10 s).
+- Serial menu option **10. Update server** (URL, `dhcp` or `none`; the key typed as `*`, never shown back), a status line `Update server: ...`, and a card *Update server* on the web page's Firmware page. A factory reset removes the URL and the key.
+- **DHCP option 225** (text): the update server URL, used when the URL is set to `dhcp`, only from a DHCP answer the device accepted. The key never comes from DHCP.
+- `tools/fw_release.py --test-version X`: a development-signed build that reports another version (HIL tests). Hidden menu commands `checkin` and `fetchtest <url>` for tests.
+
+### Changed
+- The URL and key are stored in their own A/B files (`data/update_a.json`, `data/update_b.json`), so the main settings file is unchanged and a rollback to 3.3.0 keeps all settings.
+- The serial menu's input line holds 143 characters (was 95), for a 127-character URL.
+- Static RAM 49.6 % (130,040 of 262,144 bytes; 3.3.0: 48.8 %), within the 50 % limit with about 1 KB to spare: check-in and settings work buffers are on the heap only while they are used. Image 421,732 bytes, 23.0 % of the core's flash figure.
+
 ## [3.3.0] - 2026-11-06
 
 Signed A/B firmware updates over the web page, with automatic rollback.

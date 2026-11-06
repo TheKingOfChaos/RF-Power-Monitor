@@ -109,6 +109,7 @@ The serial menu can do everything the device offers. It works even when the netw
 7. New default web password
 8. Web interface on/off
 9. Static IPv6
+10. Update server
 ?. Show this menu
 >
 ```
@@ -243,6 +244,17 @@ Asks for a static IPv6 address and an optional IPv6 gateway. The address is used
 
 If a wrong network setting makes the device unreachable, use option 2 (DHCP) or 1 to see what it uses, or do a factory reset.
 
+### 10. Update server
+
+Connects the device to the update site (see [Updating the firmware](#from-the-update-site)). It asks for two things; Enter keeps the value in brackets:
+
+| Prompt | What to enter |
+|---|---|
+| Update server URL | `http://<pc>:8071` (the site's address), `dhcp` to take it from DHCP option 225, or `none` for no check-ins. Only `http://host[:port][/path]`, at most 127 characters. |
+| Shared key | The 64 hex characters from the site's admin page. Typed as `*` and never shown again (status: `key set`). `clear` removes it. |
+
+The settings are saved at once and the first check-in follows within a minute. The status screen shows them on one line, e.g. `Update server: http://10.132.0.45:8071 (fixed), key set, last check-in 4 min ago: ok`, or `Update server: off (option 10)`. The same settings are on the web page's **Firmware** page (card *Update server*). A factory reset removes the URL and the key.
+
 ## Factory reset
 
 Use this if you can no longer reach the device (wrong static address, unknown community) and have no USB access, or to hand the device on.
@@ -286,6 +298,21 @@ Things to know while updating:
 - **Uploads are refused while the firmware is on trial** (`on trial`), while another upload is running, and while a restart is pending. Wait until the page says *kept*, or until the trial has rolled back.
 - **A rejected upload empties the other slot** until the next good upload: the device starts writing the other slot as soon as the file's header checks out, so a file that then fails (bad signature, truncated, connection lost) leaves that slot unusable. The running firmware is not affected. The page then reads *Other slot: not usable* and *Last update: rejected: ...*, for example `bad signature`, `truncated`, `different key` (signed with a key this device does not trust, HTTP 403) or `on trial`. Upload again with a good file.
 - Update **one device at a time** if you do it by hand: a device on trial that nobody asks for 10 minutes rolls back.
+
+### From the update site
+
+From firmware 3.4.0 a device can check in with the **update site**, a small website in Docker (setup manual, [step 8](SETUP_MANUAL.md#8-update-site-optional)). Every 30 minutes it reports its serial number, hostname, IPv4 and IPv6 addresses and firmware. The site's **Devices** page lists them (no login needed) and shows a device as *offline* after 65 minutes without a check-in.
+
+To update devices from the site:
+
+1. Log in to the site's **Admin** page and upload the release's `rf-power-monitor-<version>.upd`. The site refuses files older than 3.4.0 (they could never report back), a version it already has, and a file whose signed firmware is another version than its header says.
+2. Tick the devices, pick the release and press **Update ticked devices**.
+3. At its next check-in (within 30 minutes) each ticked device downloads the file and installs it exactly as an upload from the web page: the signature is checked, the other slot is written, the device restarts on trial and rolls back if the new firmware does not work. A check-in that the site answers confirms the trial, so no LibreNMS polling or login is needed.
+4. The Devices page follows each update: *waiting*, *told*, *on trial*, then **done**, **rolled back**, **refused** (bad signature, another signing key, on trial...), **failed** (three broken downloads) or **lost** (no report within 2 hours). A failed or refused release is not tried again until you assign it again.
+
+Only the site holding the **shared key** can tell a device to update: every check-in and every answer carries a keyed BLAKE2b code, and a device ignores an answer without the right one. A device without the key does not check in at all. Even with the key, a device installs only firmware signed with your firmware key. Check-ins are not encrypted: the hostname, addresses and versions they carry are readable on the network. There is no "update now": the site can only answer check-ins.
+
+While a device downloads from the site it serves SNMP and the web page as usual (the download is slower than the network allows, on purpose, so SNMP requests are never lost). The flash writes pause the device briefly, as for a web upload.
 
 ### With a script: `tools/fw_update.py`
 

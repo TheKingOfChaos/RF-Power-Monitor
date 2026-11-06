@@ -202,7 +202,41 @@ $env:RFPOWER_WEB_PASSWORD = "..."          # only when the device has its own we
 - After each rollback (crash and unreachable) the tests check that the other slot reads `empty`: the firmware erases a release that was rolled back. Refusals (409 during a trial, 401 with an expired session) are sent with a full-size body, so they also check that the answer reaches the client instead of a reset connection.
 - `test_power_cycles_during_trial_do_not_roll_back` also needs `RFPOWER_POE_CYCLE=1` and `RFPOWER_LLDP_SWITCH_CONSOLE`: it changes PoE on the device's own switch port (`set poe interface <port> disable`, commit confirmed 5, then `delete poe interface <port>`, four times, about 3 minutes). The port must have no PoE statement of its own (the switch has `interface all;`). With USB attached the Pico stays powered, so it covers PoE and link loss.
 
+### Update site tests (`update-server/tests`, `RFPOWER_UPDATE_SERVER_TEST=1`)
+
+The site is standard-library Python, so its tests run anywhere (also in CI), without Docker or hardware:
+
+```powershell
+& "$env:USERPROFILE\.platformio\penv\Scripts\python.exe" -m unittest discover -s update-server/tests -v
+```
+
+They cover the wire format against `update-server/tests/vectors.json` (the same vectors as the firmware's `test/native/test_update_protocol`), the store and the assignment rules (done, rolled back, refused, three download failures, lost after 2 hours, replayed nonces, offline after 65 minutes), and the web pages against a real server on a free port (login, rate limit, CSRF, escaping of device text, upload limits, release downloads).
+
+`test/hil/test_update_server.py` runs the site on this PC (port 8072, a temporary data directory and key), points the device at it and goes end to end: check-in, wrong key (`badauth`), an unreachable site while SNMP keeps answering within 100 ms, a release with broken signatures (refused, the device keeps running), and a real update to a `3.4.1-hil` build and back to the current version through the site, each kept after a check-in confirms its trial. It is opt-in because it updates the device twice (about 75 s with warm builds):
+
+```powershell
+$env:RFPOWER_UPDATE_SERVER_TEST = "1"
+$env:RFPOWER_SNMP_COMMUNITY = "rfit"   # the device's community, default public
+& "$env:USERPROFILE\.platformio\penv\Scripts\python.exe" -m unittest discover -s test/hil -p "test_update_server.py" -v
+```
+
+- The device must run the current version (development key), kept; it ends on that version, kept, with no update server set. A refused test release leaves the other slot `empty`, as any refused upload does.
+- The test builds `.pio/fwtest/3.4.1-hil.upd` and `.pio/fwtest/<current>.upd` once with `tools/fw_release.py --test-version` (delete them after source changes). These builds use other build flags: run `pio run -e pico -t upload` afterwards before flashing anything else.
+- The device must reach this PC on TCP 8072 (Windows firewall; Python was allowed here). `RFPOWER_UPDATE_SERVER_HOST` overrides the address the device is given, `RFPOWER_UPDATE_SERVER_PORT` the port. Nothing else may listen on that port.
+- The hidden menu commands `checkin` (check in now) and `fetchtest <url>` (one GET with the update client, result printed) exist for these tests and for debugging.
+
 ## What is covered
+
+### `test/native/test_update_protocol`, `test/native/test_update_client`: the update site client (`lib/update_client`)
+
+- The check-in body and the reply's keyed BLAKE2b MAC, byte for byte against Python's `hashlib` (`update-server/tests/vectors.json`); a reply is only read after its MAC and the check-in's nonce verify; every truncation, a changed byte, another nonce, CR/NUL, over 512 bytes and unknown status lines are refused.
+- The URL (`http://` only, host, `[IPv6]`, port 1-65535, path, 127 characters), the HTTP response head (status, one Content-Length, no chunked encoding, 1024-byte head limit, every truncation), the `.upd` header version (golden file) and version order.
+- Check-in timing (60 s after the network, 30 min, 5 min retry, 60 s report, millis() wrap-around), the update settings JSON (round trip, worst case, truncations) and how menu and web changes are applied (bad URL or key changes nothing; `clear` wipes the key).
+- A download: the running version is not downloaded again; the file's header and its **signed** slot header must name the version the site asked for; failures are reported once (`<v> download <why>`, `<v> refused <why>`).
+
+### `test/native/test_dhcp_option`: option 225
+
+The update server URL is read as text from an accepted DHCPACK (1-127 printable bytes, never truncated); the captured device requests have room to ask for both 224 and 225.
 
 ### `test/native/test_netconfig`: `lib/netconfig`
 - IPv4 parsing: valid addresses, octet range, octet count, stray characters, signs, whitespace, empty and null input, output left untouched on failure
@@ -350,6 +384,7 @@ Uses `test/settings_a.json` and `test/settings_b.json`, never the real settings.
 - A maximum-size file (every text field at 63/31 characters, fully JSON-escaped) saves and reloads
 - Files left by older firmware (`config.bak`, `config.schema.json`, `data/active_file`) are removed and the settings copies kept
 - Stack use of save + load, measured by painting the stack: must stay within 1536 bytes (it was over 3 KB before the buffers were made static and -Os was restored, which crashed the device)
+- The update server settings (`test/update_a.json`, `test/update_b.json`): newest copy wins, a torn copy falls back, saving them leaves the main settings file byte for byte unchanged, the factory reset's clear removes both copies (the key is not left in flash), and their save + load also stays within 1536 bytes of stack
 
 ### `test/embedded/test_ethernet`: W5500 and lwIP
 - W5500 detected over SPI, link up, DHCP lease with a gateway, gateway answers ping
