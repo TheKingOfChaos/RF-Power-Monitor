@@ -32,7 +32,10 @@ jobs:
       - name: Unit tests (native)
         run: pio test -e native
 
-      - name: Tool tests (signing, UF2, linker script)
+      - name: Bench tool packages
+        run: pip install -r tools/requirements-bench.txt
+
+      - name: Tool tests (signing, UF2, linker script, bench tool)
         run: python -m unittest discover -s test/tools -v
 
       - name: Update site tests
