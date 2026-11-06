@@ -1,0 +1,24 @@
+{
+  "key": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f",
+  "nonce": "00112233445566778899aabbccddeeff",
+  "cases": [
+    {
+      "name": "checkin0",
+      "body": "serial=E6614103E7452D2F\nhostname=rf-power-monitor\nipv4=10.132.0.58\nmac=28:cd:c1:00:00:01\nversion=3.4.0\nslot=A\ntrial=0\nupdate=idle\nfail=\nlast=none\nnonce=00112233445566778899aabbccddeeff\n",
+      "mac": "1fb872a6bd65aebead7d931d1e702af2bd5b6881ed7466704fba5ab56099f134"
+    },
+    {
+      "name": "checkin4",
+      "body": "serial=E6614103E7452D2F\nhostname=rfpm-lab\nipv4=\nipv6=2001:db8::5\nipv6=2001:db8::6\nipv6=fd16:d833:4f0e:3ece::1\nipv6=fe80::2acd:c1ff:fe00:1\nmac=28:cd:c1:00:00:01\nversion=3.4.1-hil\nslot=B\ntrial=1\nupdate=downloading\nfail=3.4.1 download connection closed\nlast=installed 3.4.0\nnonce=ffeeddccbbaa99887766554433221100\n",
+      "mac": "2a5998bd357cd8ab55faeaf25f51d680ed07eeed5bee6f55a6da9ec1b75ea6e2"
+    },
+    {
+      "name": "reply_ok",
+      "reply": "status=ok\nauth=374a87119fe2a56013337b9e2284bdc58273ea9e92c1fd4c34e527cd03a93abc\n"
+    },
+    {
+      "name": "reply_update",
+      "reply": "status=update\nversion=3.4.1\npath=/releases/3.4.1.upd\nauth=281f3161e74d74b2f3c4d043110abf325d03e766142098c22594f46b17da1e3e\n"
+    }
+  ]
+}

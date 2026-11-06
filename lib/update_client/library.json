@@ -1,0 +1,9 @@
+{
+    "name": "update_client",
+    "version": "1.0.0",
+    "description": "Update server client: check-in wire format, keyed BLAKE2b MACs, URL and HTTP response parsing, check-in timing, update settings (pure C++, host testable)",
+    "license": "MIT",
+    "frameworks": "*",
+    "platforms": "*",
+    "dependencies": {"monocypher": "*", "netconfig": "*"}
+}

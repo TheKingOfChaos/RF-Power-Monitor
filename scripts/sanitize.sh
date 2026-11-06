@@ -46,6 +46,7 @@ declare -A SUITES=(
     [test_fw_receiver]="fw_update fw_image monocypher"
     [test_fw_trial]="fw_update fw_image monocypher"
     [test_fw_records]="fw_update fw_image monocypher"
+    [test_update_protocol]="update_client netconfig monocypher"
 )
 
 failed=0
