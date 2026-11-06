@@ -20,6 +20,10 @@
 #include "watchdog.h"
 #include "web_service.h"
 #include <web_auth.h>
+#include <bench_info.h>
+#include "version.h"
+
+extern CountingW5500lwIP eth;  // main.cpp
 
 // Menu state machine
 enum CliState {
@@ -249,6 +253,9 @@ static void printStatus() {
     } else {
         Serial.println("Web login: user admin, own password (option 6)");
     }
+    Serial.println(webDefaultPasswordLocked() ? "Default web password: locked (on the label)"
+                                              : "Default web password: unlocked");
+    if (webDefaultPasswordLost()) Serial.println(WEB_PASSWORD_LOST_TEXT);
     Serial.printf("Core 0 stack: %u bytes never used\r\n", (unsigned)stackWatchNeverUsed());
     {
         const SnmpHostState& h = hostStatsSnapshot();
@@ -308,6 +315,30 @@ static void printStatus() {
     }
     Serial.println("Live interface:");
     printNetworkInfo();
+}
+
+/**
+ * @brief Print the device data block for the bench tool (hidden command benchinfo, lib/bench_info)
+ */
+static void printBenchInfo() {
+    static WebFirmware fw;              // static: not on core 0's small stack
+    static char block[BENCH_INFO_MAX];  // same
+    memset(&fw, 0, sizeof(fw));
+    fwUpdateStatus(fw);
+    BenchInfo info{};
+    info.hostname = hostnameCurrent();
+    eth.macAddress(info.mac);
+    info.serial = hostStatsSnapshot().serialNumber;
+    info.firmware = FIRMWARE_VERSION;
+    info.fwKey = fw.keyFingerprint;
+    info.password = webDefaultPassword();
+    info.locked = webDefaultPasswordLocked();
+    info.passwordLost = webDefaultPasswordLost();
+    if (formatBenchInfo(info, block, sizeof(block)) == 0) {
+        Serial.println("benchinfo: does not fit");
+        return;
+    }
+    Serial.print(block);
 }
 
 /**
@@ -571,9 +602,15 @@ static void handleLine(const char* line) {
                           webUsesDefaultPassword() ? "currently the device default password" : "own password set");
             promptWebPassword();
         } else if (strcmp(line, "7") == 0) {
-            Serial.printf("Replace the device default web password \"%s\" with a new random one? (y/n): ",
-                          webDefaultPassword());
-            state = CLI_WEB_REGENERATE;
+            if (webDefaultPasswordLocked()) {
+                Serial.println("The default web password is locked because it is printed on the device label. "
+                               "Unlock it at the bench first.");
+                printMenu();
+            } else {
+                Serial.printf("Replace the device default web password \"%s\" with a new random one? (y/n): ",
+                              webDefaultPassword());
+                state = CLI_WEB_REGENERATE;
+            }
         } else if (strcmp(line, "8") == 0) {
             Serial.printf(webEnabled() ? "The web interface is on. Turn it off? (y/n): "
                                        : "The web interface is off. Turn it on? (y/n): ");
@@ -608,6 +645,20 @@ static void handleLine(const char* line) {
             updateServiceForceCheckin();
             Serial.printf("checkin: requested (service %s, fetch %s)\r\n", updateServicePhaseName(),
                           httpFetchBusy() ? "busy" : "free");
+            Serial.print("> ");
+        } else if (strcmp(line, "benchinfo") == 0) {
+            // Hidden bench tool command (tools/bench_provision.py): device data for the label
+            printBenchInfo();
+            Serial.print("> ");
+        } else if (strcmp(line, "pwlock") == 0 || strcmp(line, "pwunlock") == 0) {
+            // Hidden bench tool commands: lock the default web password once it is on the label, or unlock it
+            bool lock = line[2] == 'l';
+            bool ok = webSetDefaultPasswordLocked(lock);
+            if (lock) {
+                Serial.println(ok ? "Default web password locked (it is on the device label)" : "Failed to lock");
+            } else {
+                Serial.println(ok ? "Default web password unlocked (option 7 can replace it)" : "Failed to unlock");
+            }
             Serial.print("> ");
         } else if (strcmp(line, "lldpdump") == 0) {
             // Hidden test command (docs/TESTING.md): the switch's last LLDPDU in hex, for test vectors

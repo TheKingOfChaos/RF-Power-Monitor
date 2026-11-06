@@ -260,6 +260,25 @@ class Device:
         self.send("7", expect=r"\(y/n\): $")
         return self.send("y" if confirm else "n", expect=r"(New default web password|Cancelled)[\s\S]*> $")
 
+    def bench_info(self):
+        """Hidden command benchinfo: the device data block for the bench tool, as a dict."""
+        out = self.send("benchinfo", expect=r"BENCHINFO END\r?\n[\s\S]*" + re.escape(PROMPT) + r"$")
+        block = out[out.rindex("BENCHINFO BEGIN"):out.rindex("BENCHINFO END")]
+        info = {}
+        for line in block.splitlines()[1:]:
+            key, sep, value = line.partition("=")
+            if sep:
+                info[key] = value
+        return info
+
+    def lock_web_default_password(self, lock):
+        """Hidden command pwlock or pwunlock; returns the output up to its result line.
+
+        Only the result line is awaited: after a reboot, network messages can follow the prompt.
+        """
+        return self.send("pwlock" if lock else "pwunlock",
+                         expect=r"(Default web password (un)?locked|Failed to (un)?lock).*\r?\n")
+
     def set_web_enabled(self, on):
         """Menu option 8: switch the web interface on or off (no-op if already so). Returns the output."""
         st = self.status()

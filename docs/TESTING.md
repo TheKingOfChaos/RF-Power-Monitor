@@ -127,6 +127,10 @@ $env:RFPOWER_STATIC_IPV6_GATEWAY = "fe80::1"         # optional: gateway for tha
 - **A VPN client (for example Cisco AnyConnect) is connected.** It can take over the routes to the LAN's IPv6 prefix, even link-local, and then `test_ipv6.py` fails: ping6 says "General failure", SNMP and the web page get no answer over IPv6, and `test_zz_device_did_not_restart_during_the_tests` fails as well. Check with `ping -6 <device IPv6 address>` and disconnect the VPN for the run.
 - **Windows' Host Network Service (WSL, Docker Desktop) is running.** It runs its own DHCP server on UDP port 67 (svchost, services SharedAccess and HNS), and Windows then does not let other programs' packets from source port 67 reach the LAN; WSL in mirrored mode cannot bind the port either. `test_dhcp_trap.py`'s `test_forged_dhcp_ack_with_option_224_is_ignored` sends its forged ACK from port 67, so it fails on such a PC (2026-11-02: 0 of 20 datagrams from port 67 reached the device, all from a random port did). The firmware's check of forged ACKs is covered by `test/native/test_dhcp_option`; run this HIL test from a PC without WSL/Docker networking, or with those services stopped.
 
+### Bench tool commands (`test_bench.py`)
+
+`test/hil/test_bench.py` checks the hidden menu commands the bench tool uses: `benchinfo` (its values match the status screen), `pwlock` (option 7 refuses, the lock and the password survive a reboot) and `pwunlock` (option 7 works again). Only the serial port is needed; each test restores the lock state it found. `test_unlock_allows_option_7_again` replaces the device default web password. That the lock and the password survive a factory reset is checked in the manual `test_factory_reset.py` (`RFPOWER_MANUAL_BUTTON=1`).
+
 ### Mains tests with a smart plug
 
 The mains tests switch the device's mains input off and on. They run automatically when the mains detection circuit is fed from an outlet on an IKEA Dirigera hub ([test/hil/mains_switch.py](../test/hil/mains_switch.py)):

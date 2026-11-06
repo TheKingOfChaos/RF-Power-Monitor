@@ -262,6 +262,12 @@ An item is only ticked when it is implemented **and** its tests exist and pass (
 - [ ] Site over HTTPS (behind a reverse proxy) if check-ins must not be readable on the network
 - [ ] SNMP objects for the update server state (not asked for yet)
 
+## 22. Bench setup and device label (3.5.0, plan docs/superpowers/plans/2026-11-06-bench-provisioning.md)
+- [x] Default web password kept twice, used copy chosen and the other repaired at boot; loss while locked reported — `test/native/test_web_ui`
+- [x] `pwlock`/`pwunlock`, option 7 refused while locked, lock survives reboot — HIL `test_bench.py`
+- [x] `benchinfo` block — `test/native/test_bench_info`, HIL `test_bench.py`
+- [ ] Lock survives a factory reset — manual HIL `test_factory_reset.py` (needs the button pressed)
+
 ## Notes
 - SNMP must be v1 and v2c (no v3) and our own code; networking may use libraries
 - RAM after 3.4.0: static 49.6 % (130,040 bytes), about 1 KB below the 50 % limit. The next feature that needs RAM must first make room (e.g. move a rarely used static buffer to the heap while it is used)

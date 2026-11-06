@@ -6,6 +6,7 @@
 #include <mains_input.h>
 #include <settings.h>
 #include <web_app.h>
+#include <default_password.h>
 #include "ambient_temp.h"
 #include "cpu_temp.h"
 #include "dhcp6_service.h"
@@ -23,7 +24,10 @@ static_assert(WEB_UPDATE_URL_MAX == UPDATE_URL_MAX, "the web form and the settin
 
 extern CountingW5500lwIP eth;  // main.cpp
 
+// Default password copy A (the file older firmware reads), copy B, and the bench lock
 static const char DEFAULT_PASSWORD_FILE[] = "data/web_default.txt";
+static const char DEFAULT_PASSWORD_FILE_B[] = "data/web_default_b.txt";
+static const char DEFAULT_PASSWORD_LOCK_FILE[] = "data/web_default.lock";
 static const uint32_t REBOOT_DELAY_MS = 300;  // let the last response leave before rebooting
 
 static WiFiServer server(80);
@@ -31,6 +35,8 @@ static WiFiClient client;
 static HttpRequest request;  // 2 KB, static: keep large buffers off core 0's stack
 static WebApp app;           // response buffers, static for the same reason
 static char defaultPassword[WEB_DEFAULT_PASSWORD_LEN + 1];
+static bool passwordLocked = false;  // the lock file exists (default password on the device label)
+static bool passwordLost = false;    // locked, but no valid copy was found at boot
 static bool started = false;
 static Settings settingsBackup;  // restored when a save fails; static: too big for core 0's stack
 
@@ -264,41 +270,85 @@ public:
 
 static DeviceBackend backend;
 
-/// Read the stored default password, or create and store a new one
-/// Read the stored default password into out; false if missing or invalid
-static bool readDefaultPassword(char* out) {
-    File f = LittleFS.open(DEFAULT_PASSWORD_FILE, "r");
+/// One copy of the default password: false if the file is missing; out holds up to
+/// WEB_DEFAULT_PASSWORD_LEN + 1 characters, so a longer file does not pass as valid
+static bool readPasswordCopy(const char* path, char* out) {
+    File f = LittleFS.open(path, "r");
     if (!f) return false;
-    size_t n = f.readBytes(out, WEB_DEFAULT_PASSWORD_LEN);
-    bool extra = f.available() > 0;
+    size_t n = f.readBytes(out, WEB_DEFAULT_PASSWORD_LEN + 1);
     f.close();
     out[n] = '\0';
-    return n == WEB_DEFAULT_PASSWORD_LEN && !extra && webPasswordIsValid(out);
+    return true;
 }
 
-/// Generate a new random default password, store it and read it back
+/// Write one copy of defaultPassword and read it back
+static bool writePasswordCopy(const char* path) {
+    File f = LittleFS.open(path, "w");
+    bool ok = f && f.write((const uint8_t*)defaultPassword, WEB_DEFAULT_PASSWORD_LEN) == WEB_DEFAULT_PASSWORD_LEN;
+    if (f) f.close();
+    char check[WEB_DEFAULT_PASSWORD_LEN + 2];
+    return ok && readPasswordCopy(path, check) && strcmp(check, defaultPassword) == 0;
+}
+
+/// Write both copies, A first (a valid A is the newer one, see default_password.h)
+static bool writePasswordCopies() {
+    bool a = writePasswordCopy(DEFAULT_PASSWORD_FILE);
+    bool b = writePasswordCopy(DEFAULT_PASSWORD_FILE_B);
+    return a && b;
+}
+
+/// Generate a new random default password and store both copies
 static bool generateDefaultPassword() {
     uint8_t random[WEB_DEFAULT_PASSWORD_LEN + 2];
     backend.random(random, sizeof(random));
     webMakeDefaultPassword(random, defaultPassword);
-    File f = LittleFS.open(DEFAULT_PASSWORD_FILE, "w");
-    bool ok = f && f.write((const uint8_t*)defaultPassword, WEB_DEFAULT_PASSWORD_LEN) == WEB_DEFAULT_PASSWORD_LEN;
-    if (f) f.close();
-    char check[WEB_DEFAULT_PASSWORD_LEN + 1];
-    return ok && readDefaultPassword(check) && strcmp(check, defaultPassword) == 0;
+    return writePasswordCopies();
 }
 
+/// Use a valid copy of the default password and repair the other, or make a new one
 static void loadDefaultPassword() {
-    if (readDefaultPassword(defaultPassword)) return;
-    bool ok = generateDefaultPassword();
-    Serial.printf("Web: new default password generated%s\r\n", ok ? "" : " (NOT saved, will change at reboot)");
+    static char a[WEB_DEFAULT_PASSWORD_LEN + 2], b[WEB_DEFAULT_PASSWORD_LEN + 2];  // static: core 0's stack
+    bool haveA = readPasswordCopy(DEFAULT_PASSWORD_FILE, a);
+    bool haveB = readPasswordCopy(DEFAULT_PASSWORD_FILE_B, b);
+    passwordLocked = LittleFS.exists(DEFAULT_PASSWORD_LOCK_FILE);
+    DefaultPasswordChoice c = chooseDefaultPassword(haveA ? a : nullptr, haveB ? b : nullptr, passwordLocked);
+    passwordLost = c.lostWhileLocked;
+    if (c.source == DefaultPasswordSource::None) {
+        bool ok = generateDefaultPassword();
+        Serial.printf("Web: new default password generated%s\r\n", ok ? "" : " (NOT saved, will change at reboot)");
+        if (passwordLost) Serial.printf("Web: %s\r\n", WEB_PASSWORD_LOST_TEXT);
+        return;
+    }
+    strlcpy(defaultPassword, c.source == DefaultPasswordSource::CopyA ? a : b, sizeof(defaultPassword));
+    bool ok = (!c.writeA || writePasswordCopy(DEFAULT_PASSWORD_FILE)) &&
+              (!c.writeB || writePasswordCopy(DEFAULT_PASSWORD_FILE_B));
+    if (!ok) Serial.println("Web: could not repair a copy of the default password");
 }
 
 bool webRegenerateDefaultPassword() {
+    if (passwordLocked) return false;
     bool ok = generateDefaultPassword();
     // Browsers logged in with the old default must log in again
     if (webUsesDefaultPassword()) app.logoutAll();
     return ok;
+}
+
+bool webDefaultPasswordLocked() { return passwordLocked; }
+
+bool webDefaultPasswordLost() { return passwordLost; }
+
+bool webSetDefaultPasswordLocked(bool locked) {
+    if (locked) {
+        File f = LittleFS.open(DEFAULT_PASSWORD_LOCK_FILE, "w");
+        bool ok = f && f.print("locked\n") == 7;
+        if (f) f.close();
+        if (!ok) LittleFS.remove(DEFAULT_PASSWORD_LOCK_FILE);
+    } else if (LittleFS.exists(DEFAULT_PASSWORD_LOCK_FILE)) {
+        LittleFS.remove(DEFAULT_PASSWORD_LOCK_FILE);
+    }
+    passwordLocked = LittleFS.exists(DEFAULT_PASSWORD_LOCK_FILE);
+    if (locked && passwordLocked) passwordLost = false;  // the label printed now has the password in use
+    return passwordLocked == locked;
 }
 
 void webBegin() {

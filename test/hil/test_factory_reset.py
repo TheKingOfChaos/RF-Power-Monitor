@@ -82,6 +82,10 @@ class FactoryResetTest(unittest.TestCase):
         try:
             # Non-default values so the reset is visible
             d.set_snmp(RESET_COMMUNITY, "hil-before-reset", "x@example.com", "bench")
+            # The default password is on the device label: a reset keeps it and its lock
+            was_locked = d.bench_info()["locked"] == "1"
+            d.lock_web_default_password(True)
+            password = d.bench_info()["password"]
             print("\n>>> Press and HOLD the reset button for 12 seconds; the LED blinks fast at 10 s (40 s)...",
                   flush=True)
             self._wait_log(r"Factory reset button pressed", 40)
@@ -105,6 +109,11 @@ class FactoryResetTest(unittest.TestCase):
             self.assertEqual("", st["trapTarget"])
             self.assertEqual("2c", st["trapVersion"])
             self.assertRegex(st["raw"], r"Stored static IP: 192\.168\.1\.100 / 255\.255\.255\.0, gateway 192\.168\.1\.1")
+            info = d.bench_info()
+            self.assertEqual(password, info["password"])
+            self.assertEqual("1", info["locked"])
+            if not was_locked:
+                d.lock_web_default_password(False)
         finally:
             self._restore()
 

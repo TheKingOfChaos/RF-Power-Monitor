@@ -19,8 +19,9 @@
  *
  * Login: user "admin". Until a password is set with serial menu option 6 the
  * device default password is used: 10 random characters generated once and
- * kept in data/web_default.txt (not touched by a factory reset), shown only
- * on the serial status screen.
+ * kept twice, in data/web_default.txt and data/web_default_b.txt (not touched
+ * by a factory reset), shown only on the serial status screen and to the
+ * bench tool (benchinfo).
  */
 
 #include <Arduino.h>
@@ -56,10 +57,34 @@ const char* webDefaultPassword();
  *
  * For when the default password became known. Logs browsers out if the
  * default is in use. The new password is active even if saving it failed,
- * but then a new one is generated at the next boot.
- * @return true if the new password was saved and read back
+ * but then a new one is generated at the next boot. Refused while the
+ * default password is locked (webDefaultPasswordLocked).
+ * @return true if the new password was saved (both copies) and read back;
+ *         false and nothing changed while locked
  */
 bool webRegenerateDefaultPassword();
+
+/// Shown at boot and on the status screen when webDefaultPasswordLost()
+static const char WEB_PASSWORD_LOST_TEXT[] = "Default web password LOST: label is wrong, relabel at the bench";
+
+/**
+ * @brief true while the default password is locked: it is printed on the
+ *        device label (bench tool, hidden menu commands pwlock/pwunlock)
+ *
+ * The lock is the file data/web_default.lock, kept like the password itself
+ * (data/web_default.txt and data/web_default_b.txt) through factory resets
+ * and firmware updates.
+ */
+bool webDefaultPasswordLocked();
+
+/**
+ * @brief Lock or unlock the default password (hidden menu commands pwlock/pwunlock)
+ * @return true if the lock file now matches `locked`
+ */
+bool webSetDefaultPasswordLocked(bool locked);
+
+/// true when boot found no valid copy of a locked default password: a new one was made, the label is wrong
+bool webDefaultPasswordLost();
 
 /// true while no own password has been set
 bool webUsesDefaultPassword();

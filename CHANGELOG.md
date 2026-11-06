@@ -6,6 +6,18 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [3.5.0] - 2026-11-07
+
+Bench setup of new boards: the default web password can be locked once it is on the device label.
+
+### Added
+- **Default web password lock**: hidden menu commands `pwlock` and `pwunlock` (for the bench tool). While locked, menu option 7 refuses to replace the default password (`The default web password is locked because it is printed on the device label. Unlock it at the bench first.`). The lock is the file `data/web_default.lock`; like the password it survives factory resets and firmware updates. The status screen shows `Default web password: locked (on the label)` or `unlocked`.
+- Hidden menu command `benchinfo`: hostname, MAC, serial number, firmware version, firmware key id, default web password and lock state in a fixed `key=value` block between `BENCHINFO BEGIN` and `BENCHINFO END`, for the bench tool (`lib/bench_info`).
+
+### Changed
+- The default web password is kept twice, `data/web_default.txt` (as before, so older firmware still finds it) and `data/web_default_b.txt`. At boot a valid copy is used and the other one repaired; only when neither is valid is a new password made. If that happens while the password is locked, the boot log and the status screen say `Default web password LOST: label is wrong, relabel at the bench`.
+- Static RAM 49.9 % (130,712 of 262,144 bytes; 3.4.0: 49.6 %), still within the 50 % limit. Image 424,364 bytes, 23.2 % of the core's flash figure.
+
 ## [3.4.0] - 2026-11-06
 
 An update site: devices check in with it, and it updates the devices you choose.
