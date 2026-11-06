@@ -215,6 +215,38 @@ class ProvisionTests(unittest.TestCase):
         self.assertIn("lost", (out + err).lower())
         self.assertTrue(os.path.exists(os.path.join(self.out, "RF-Power-A1B2C3.png")))
 
+    def test_copy_error_as_the_board_restarts_is_not_fatal(self):
+        # Windows may fail closing the file once the board restarts with the whole UF2;
+        # the new serial port is the proof that the flash worked
+        def failing_copy(src, dest):
+            raise OSError(5, "The device is not ready")
+        original = bench_provision.shutil.copyfile
+        bench_provision.shutil.copyfile = failing_copy
+        try:
+            bench_provision.RealIO().copy(self.release(), self.tmp.name)  # the "drive" still exists
+        finally:
+            bench_provision.shutil.copyfile = original
+
+    def test_unexpected_os_error_is_a_refusal_not_a_traceback(self):
+        class FullDisk(FakeIO):
+            def copy(self, src, drive_root):
+                raise OSError(28, "No space left on device")
+        code, _, err = self.run_main(["--uf2", self.release()], FullDisk(FakeBoard()))
+        self.assertEqual(1, code)
+        self.assertIn("No space left", err)
+
+    def test_no_flash_on_firmware_before_3_5_says_so(self):
+        class OldBoard(FakeBoard):
+            def command(self, line, until, timeout=5.0):
+                import re
+                menu = "\r\n=== RF-Power-Monitor Menu ===\r\n1. Show status\r\n?. Show this menu\r\n> "
+                if not re.search(until, menu):
+                    raise bench_device.BenchError("no answer from the device")
+                return menu
+        code, _, err = self.run_main(["--no-flash"], FakeIO(OldBoard(), ports_before=["COM4"]))
+        self.assertEqual(1, code)
+        self.assertIn("3.5.0", err)
+
     def test_default_uf2_is_highest_version(self):
         for v in ("3.9.0", "3.10.0", "3.2.1"):
             write_release(self.tmp.name, name="rf-power-monitor-%s-usb.uf2" % v, version=v)

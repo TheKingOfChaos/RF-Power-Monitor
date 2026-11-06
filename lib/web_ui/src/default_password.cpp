@@ -16,10 +16,10 @@ bool webDefaultPasswordIsValid(const char* text) {
     return len == WEB_DEFAULT_PASSWORD_LEN;
 }
 
-DefaultPasswordChoice chooseDefaultPassword(const char* a, const char* b, bool locked) {
+DefaultPasswordChoice chooseDefaultPassword(const char* a, const char* b, bool locked, bool lostBefore) {
     bool aValid = webDefaultPasswordIsValid(a);
     bool bValid = webDefaultPasswordIsValid(b);
-    DefaultPasswordChoice c{DefaultPasswordSource::None, true, true, false};
+    DefaultPasswordChoice c{DefaultPasswordSource::None, true, true, locked && lostBefore};
     if (aValid) {
         c.source = DefaultPasswordSource::CopyA;
         c.writeA = false;

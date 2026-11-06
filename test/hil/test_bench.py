@@ -69,6 +69,8 @@ class BenchCommandsTest(unittest.TestCase):
         self.assertEqual(new, self.dev.bench_info()["password"])
 
     def test_lock_and_password_survive_reboot(self):
+        if self.dev.status()["mode"] != "DHCP":
+            self.skipTest("reboots with menu option 2 (Use DHCP), which would change a static setup")
         self.dev.lock_web_default_password(True)
         password = self.dev.bench_info()["password"]
         self.dev.send("2", expect=r"\(y/n\): $")  # "Use DHCP" reboots, the device already uses DHCP

@@ -2293,7 +2293,7 @@ static void test_default_password_valid_needs_ten_alphabet_chars() {
 }
 
 static void test_default_password_both_copies_equal_writes_nothing() {
-    DefaultPasswordChoice c = chooseDefaultPassword("k7mq2xr9tp", "k7mq2xr9tp", false);
+    DefaultPasswordChoice c = chooseDefaultPassword("k7mq2xr9tp", "k7mq2xr9tp", false, false);
     TEST_ASSERT_TRUE(c.source == DefaultPasswordSource::CopyA);
     TEST_ASSERT_FALSE(c.writeA);
     TEST_ASSERT_FALSE(c.writeB);
@@ -2301,7 +2301,7 @@ static void test_default_password_both_copies_equal_writes_nothing() {
 }
 
 static void test_default_password_missing_b_is_repaired_from_a() {
-    DefaultPasswordChoice c = chooseDefaultPassword("k7mq2xr9tp", nullptr, true);
+    DefaultPasswordChoice c = chooseDefaultPassword("k7mq2xr9tp", nullptr, true, false);
     TEST_ASSERT_TRUE(c.source == DefaultPasswordSource::CopyA);
     TEST_ASSERT_FALSE(c.writeA);
     TEST_ASSERT_TRUE(c.writeB);
@@ -2309,7 +2309,7 @@ static void test_default_password_missing_b_is_repaired_from_a() {
 }
 
 static void test_default_password_corrupt_a_uses_b_and_repairs_a() {
-    DefaultPasswordChoice c = chooseDefaultPassword("k7mq2x\xff", "k7mq2xr9tp", true);
+    DefaultPasswordChoice c = chooseDefaultPassword("k7mq2x\xff", "k7mq2xr9tp", true, false);
     TEST_ASSERT_TRUE(c.source == DefaultPasswordSource::CopyB);
     TEST_ASSERT_TRUE(c.writeA);
     TEST_ASSERT_FALSE(c.writeB);
@@ -2317,7 +2317,7 @@ static void test_default_password_corrupt_a_uses_b_and_repairs_a() {
 }
 
 static void test_default_password_copies_differ_a_wins() {
-    DefaultPasswordChoice c = chooseDefaultPassword("k7mq2xr9tp", "abcdefghij", false);
+    DefaultPasswordChoice c = chooseDefaultPassword("k7mq2xr9tp", "abcdefghij", false, false);
     TEST_ASSERT_TRUE(c.source == DefaultPasswordSource::CopyA);
     TEST_ASSERT_FALSE(c.writeA);
     TEST_ASSERT_TRUE(c.writeB);
@@ -2325,13 +2325,13 @@ static void test_default_password_copies_differ_a_wins() {
 
 static void test_default_password_old_firmware_single_file_is_copy_a() {
     // A device updated from 3.4.0 has only data/web_default.txt, which is copy A
-    DefaultPasswordChoice c = chooseDefaultPassword("k7mq2xr9tp", nullptr, false);
+    DefaultPasswordChoice c = chooseDefaultPassword("k7mq2xr9tp", nullptr, false, false);
     TEST_ASSERT_TRUE(c.source == DefaultPasswordSource::CopyA);
     TEST_ASSERT_TRUE(c.writeB);
 }
 
 static void test_default_password_none_valid_unlocked_is_not_lost() {
-    DefaultPasswordChoice c = chooseDefaultPassword(nullptr, "", false);
+    DefaultPasswordChoice c = chooseDefaultPassword(nullptr, "", false, false);
     TEST_ASSERT_TRUE(c.source == DefaultPasswordSource::None);
     TEST_ASSERT_TRUE(c.writeA);
     TEST_ASSERT_TRUE(c.writeB);
@@ -2339,11 +2339,24 @@ static void test_default_password_none_valid_unlocked_is_not_lost() {
 }
 
 static void test_default_password_none_valid_locked_is_lost() {
-    DefaultPasswordChoice c = chooseDefaultPassword("garbage", "k7mq2", true);
+    DefaultPasswordChoice c = chooseDefaultPassword("garbage", "k7mq2", true, false);
     TEST_ASSERT_TRUE(c.source == DefaultPasswordSource::None);
     TEST_ASSERT_TRUE(c.writeA);
     TEST_ASSERT_TRUE(c.writeB);
     TEST_ASSERT_TRUE(c.lostWhileLocked);
+}
+
+static void test_default_password_lost_marker_keeps_reporting_after_reboot() {
+    // The boot that found no valid copy wrote new ones; the next boot finds them valid,
+    // but the label still has the old password until the bench locks again
+    DefaultPasswordChoice c = chooseDefaultPassword("k7mq2xr9tp", "k7mq2xr9tp", true, true);
+    TEST_ASSERT_TRUE(c.source == DefaultPasswordSource::CopyA);
+    TEST_ASSERT_TRUE(c.lostWhileLocked);
+}
+
+static void test_default_password_lost_marker_ignored_when_unlocked() {
+    DefaultPasswordChoice c = chooseDefaultPassword("k7mq2xr9tp", "k7mq2xr9tp", false, true);
+    TEST_ASSERT_FALSE(c.lostWhileLocked);
 }
 
 static void test_made_default_password_is_valid() {
@@ -2508,5 +2521,7 @@ int main() {
     RUN_TEST(test_default_password_none_valid_unlocked_is_not_lost);
     RUN_TEST(test_default_password_none_valid_locked_is_lost);
     RUN_TEST(test_made_default_password_is_valid);
+    RUN_TEST(test_default_password_lost_marker_keeps_reporting_after_reboot);
+    RUN_TEST(test_default_password_lost_marker_ignored_when_unlocked);
     return UNITY_END();
 }

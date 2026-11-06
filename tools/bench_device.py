@@ -193,8 +193,15 @@ class BenchSerial:
 
 
 def read_info(ser) -> dict:
-    """Send benchinfo and return the parsed block."""
-    return parse_bench_info(ser.command("benchinfo", r"BENCHINFO END\r?\n"))
+    """Send benchinfo and return the parsed block.
+
+    Firmware before 3.5.0 does not know the command and prints its menu instead.
+    """
+    text = ser.command("benchinfo", r"BENCHINFO END\r?\n|Show this menu[\s\S]*> ")
+    if "BENCHINFO BEGIN" not in text:
+        raise BenchError("the device firmware is older than 3.5.0 (no benchinfo command): update it first "
+                         "(web page Firmware, or tools/fw_update.py), then run again")
+    return parse_bench_info(text)
 
 
 def lock(ser) -> None:

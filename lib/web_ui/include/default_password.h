@@ -36,7 +36,7 @@ struct DefaultPasswordChoice {
     DefaultPasswordSource source;
     bool writeA;           // copy A must be (re)written
     bool writeB;           // copy B must be (re)written
-    bool lostWhileLocked;  // no valid copy although the password was locked: the label is wrong
+    bool lostWhileLocked;  // locked, and no valid copy now or at an earlier boot: the label is wrong
 };
 
 /**
@@ -44,8 +44,12 @@ struct DefaultPasswordChoice {
  *
  * A valid copy A wins; the other copy is rewritten when it is invalid or
  * differs. With no valid copy both are written (with a new password).
- * @param a      Contents of copy A, nullptr if the file is missing
- * @param b      Contents of copy B, nullptr if the file is missing
- * @param locked The lock file exists
+ * A loss is reported until the bench locks the password again: the boot that
+ * made the new password leaves a marker (lostBefore), because the next boot
+ * finds both new copies valid.
+ * @param a          Contents of copy A, nullptr if the file is missing
+ * @param b          Contents of copy B, nullptr if the file is missing
+ * @param locked     The lock file exists
+ * @param lostBefore The lost marker exists (an earlier boot lost the locked password)
  */
-DefaultPasswordChoice chooseDefaultPassword(const char* a, const char* b, bool locked);
+DefaultPasswordChoice chooseDefaultPassword(const char* a, const char* b, bool locked, bool lostBefore);

@@ -28,6 +28,8 @@ extern CountingW5500lwIP eth;  // main.cpp
 static const char DEFAULT_PASSWORD_FILE[] = "data/web_default.txt";
 static const char DEFAULT_PASSWORD_FILE_B[] = "data/web_default_b.txt";
 static const char DEFAULT_PASSWORD_LOCK_FILE[] = "data/web_default.lock";
+// Written by the boot that lost a locked password; removed when the bench locks again
+static const char DEFAULT_PASSWORD_LOST_FILE[] = "data/web_default.lost";
 static const uint32_t REBOOT_DELAY_MS = 300;  // let the last response leave before rebooting
 
 static WiFiServer server(80);
@@ -305,18 +307,26 @@ static bool generateDefaultPassword() {
     return writePasswordCopies();
 }
 
-/// Use a valid copy of the default password and repair the other, or make a new one
-static void loadDefaultPassword() {
+void webLoadDefaultPassword() {
     static char a[WEB_DEFAULT_PASSWORD_LEN + 2], b[WEB_DEFAULT_PASSWORD_LEN + 2];  // static: core 0's stack
     bool haveA = readPasswordCopy(DEFAULT_PASSWORD_FILE, a);
     bool haveB = readPasswordCopy(DEFAULT_PASSWORD_FILE_B, b);
     passwordLocked = LittleFS.exists(DEFAULT_PASSWORD_LOCK_FILE);
-    DefaultPasswordChoice c = chooseDefaultPassword(haveA ? a : nullptr, haveB ? b : nullptr, passwordLocked);
+    bool lostBefore = LittleFS.exists(DEFAULT_PASSWORD_LOST_FILE);
+    DefaultPasswordChoice c = chooseDefaultPassword(haveA ? a : nullptr, haveB ? b : nullptr, passwordLocked, lostBefore);
     passwordLost = c.lostWhileLocked;
+    if (passwordLost && !lostBefore) {
+        // The new copies will be valid at the next boot: keep the loss reported until the bench relabels
+        File f = LittleFS.open(DEFAULT_PASSWORD_LOST_FILE, "w");
+        if (f) {
+            f.print("lost\n");
+            f.close();
+        }
+    }
+    if (passwordLost) Serial.printf("Web: %s\r\n", WEB_PASSWORD_LOST_TEXT);
     if (c.source == DefaultPasswordSource::None) {
         bool ok = generateDefaultPassword();
         Serial.printf("Web: new default password generated%s\r\n", ok ? "" : " (NOT saved, will change at reboot)");
-        if (passwordLost) Serial.printf("Web: %s\r\n", WEB_PASSWORD_LOST_TEXT);
         return;
     }
     strlcpy(defaultPassword, c.source == DefaultPasswordSource::CopyA ? a : b, sizeof(defaultPassword));
@@ -347,12 +357,15 @@ bool webSetDefaultPasswordLocked(bool locked) {
         LittleFS.remove(DEFAULT_PASSWORD_LOCK_FILE);
     }
     passwordLocked = LittleFS.exists(DEFAULT_PASSWORD_LOCK_FILE);
-    if (locked && passwordLocked) passwordLost = false;  // the label printed now has the password in use
+    if (locked && passwordLocked) {
+        // The label printed now has the password in use
+        LittleFS.remove(DEFAULT_PASSWORD_LOST_FILE);
+        passwordLost = false;
+    }
     return passwordLocked == locked;
 }
 
 void webBegin() {
-    loadDefaultPassword();
     request.streamPath("/firmware/upload");  // its body goes to the update service (Conn::Uploading)
     started = true;
     hostnameAdvertiseWeb(currentSettings.webEnabled);  // before mDNS starts with the network

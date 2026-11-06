@@ -61,13 +61,17 @@ class RealIO:
         raise BenchError("no RPI-RP2 drive within %d s: hold BOOTSEL while plugging in the board" % timeout)
 
     def copy(self, src, drive_root):
-        """Copy the UF2 onto the drive; the board restarts when it has the whole file."""
+        """Copy the UF2 onto the drive; the board restarts when it has the whole file.
+
+        Windows may report an error while the board restarts at the end of the copy
+        (the drive goes away): the board's new serial port is the proof that the
+        flash worked, so an error here is only noted.
+        """
         dest = os.path.join(drive_root, os.path.basename(src))
         try:
             shutil.copyfile(src, dest)
-        except OSError:
-            if os.path.exists(drive_root):  # the drive vanishing at the end is the board restarting
-                raise
+        except OSError as e:
+            print("Note: the copy ended with \"%s\" (normal when the board restarts); waiting for the board" % e)
 
     def pico_ports(self):
         """Serial ports of connected RP2040 boards."""
@@ -224,6 +228,9 @@ def main(argv=None, *, io=None) -> int:
             _device_run(args, io or RealIO())
     except BenchError as e:
         print("Refused: %s" % e, file=sys.stderr)
+        return 1
+    except OSError as e:  # a drive, port or file problem: a message, not a traceback
+        print("Failed: %s" % e, file=sys.stderr)
         return 1
     return 0
 

@@ -28,7 +28,14 @@
 
 static const uint32_t WEB_CONNECTION_TIMEOUT_MS = 5000;
 
-/// Load or create the default password and start listening. Call after Ethernet started.
+/**
+ * @brief Load the default password and its lock (repairing a copy, or making a new
+ *        password); call once LittleFS is mounted, whether or not Ethernet starts,
+ *        so the lock and the menu's password are right without a network
+ */
+void webLoadDefaultPassword();
+
+/// Start listening (after webLoadDefaultPassword). Call after Ethernet started.
 void webBegin();
 
 /// Serve the web page; call from loop() on core 0

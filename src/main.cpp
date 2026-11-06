@@ -233,6 +233,7 @@ void setup() {
     // Load settings
     settingsLoaded = loadSettings();
     loadUpdateSettings();  // update server URL and key: own files, defaults (off) when absent
+    webLoadDefaultPassword();  // also without Ethernet: the lock must hold for menu option 7
     updateServiceBegin();
     hostnameBegin();  // before Ethernet, so the first DHCP request carries the name
     watchdogFeed();
