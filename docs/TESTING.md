@@ -177,6 +177,24 @@ $env:RFPOWER_LLDP_SWITCH_CONSOLE = "COM45"
 
 The port is the one the device names over LLDP, used only if the switch also lists the device's MAC on it. Only that port is changed: `disable`, or an input filter `rfpower-test-no-dhcp` that drops UDP to port 67 in place of its own filter (whose policer is off for those minutes). Changes are made under `configure exclusive`, refused if the candidate already holds someone else's uncommitted changes, and committed with `commit confirmed 5`: if a test dies, Junos rolls the change back by itself within 5 minutes. The test restores the port with a plain commit. The device stays powered over USB, so the serial menu works while the port is down. The two tests take about 4 minutes.
 
+### Firmware update tests (`RFPOWER_FW_UPDATE_TEST=1`)
+
+`test/hil/test_fw_update.py` has `BootProgramTest` (always runs, reboots once) and `FirmwareUpdateTest`, which uploads signed `.upd` files over the web page, lets trials roll back and crashes the firmware on purpose. It is slow and replaces the running slot many times, so it is opt-in:
+
+```powershell
+$env:RFPOWER_FW_UPDATE_TEST = "1"
+$env:RFPOWER_COMMUNITY = "rfit"            # the device's SNMP community, default public
+$env:RFPOWER_WEB_PASSWORD = "..."          # only when the device has its own web password; else the default one on the status screen is used
+& "$env:USERPROFILE\.platformio\penv\Scripts\python.exe" -m unittest discover -s test/hil -p "test_fw_update.py" -v
+```
+
+- The device must be in DHCP mode and trust the development key (`keys/dev`, the usual build). The tests never change its settings; every test ends on a development-signed build of the current version, kept, in either slot (the boot program test follows the running slot).
+- `setUpClass` builds the images once into `.pio/fwtest/` (`crash.upd`, `shorttrial.upd` with `tools/fw_release.py --test-variant`, `normal.upd`, and `otherkey.upd` signed with a throw-away key) and reuses them while they are newer than `src/`, `lib/`, `include/`, `boot/`, `scripts/` and `platformio.ini` (`RFPOWER_FW_REBUILD=1` forces it). A cold build takes about 10 minutes, a warm run about 11 minutes: upload to kept 25 s, crash rollback 38 s, unreachable rollback 80 s, crash-loop fallback 2 minutes.
+- The serial port observes and never counts as a request. A poller with the community (LibreNMS) or a web login confirms a trial within seconds, so the tests accept "kept" where a trial may already be confirmed. The `shorttrial` variant never confirms and ends its trial after 60 s of network time, which is how the refusal during a trial and the unreachable rollback are tested (the `noconfirm` variant is not needed: `shorttrial` does not confirm either).
+- Traps: the tests use the receiver of `test_snmp_traps.py` and need the PC to be the device's trap destination. When UDP 162 cannot be bound (LibreNMS's snmptrapd holds it) only the trap assertions are skipped and the run prints a note. Do not stop LibreNMS for it: read what arrived from LibreNMS instead, read-only, e.g. `docker exec lnms-test-db-1 sh -c 'mysql -ulibrenms -p"$MYSQL_PASSWORD" librenms -e "select datetime,type,left(message,120) from eventlog where datetime > \"<start>\" order by event_id"'` (the password comes from the container's own environment). LibreNMS logs only the mains traps as type `trap`; a firmware trap triggers a poll, so look for `State sensor Firmware ...` entries, and `docker logs lnms-test-snmptrapd-1` shows each trap that reached snmptrapd as one handler line.
+- The tests read the community from `RFPOWER_COMMUNITY`; the other HIL files still expect `public` and skip on a device that uses another community.
+- `test_power_cycles_during_trial_do_not_roll_back` also needs `RFPOWER_POE_CYCLE=1` and `RFPOWER_LLDP_SWITCH_CONSOLE`: it changes PoE on the device's own switch port (`set poe interface <port> disable`, commit confirmed 5, then `delete poe interface <port>`, four times, about 3 minutes). The port must have no PoE statement of its own (the switch has `interface all;`). With USB attached the Pico stays powered, so it covers PoE and link loss.
+
 ## What is covered
 
 ### `test/native/test_netconfig`: `lib/netconfig`
