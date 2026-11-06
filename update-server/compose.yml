@@ -1,0 +1,19 @@
+# RF-Power-Monitor update site. Start: docker compose up -d --build (from this folder)
+# Set the admin password in compose.override.yml (gitignored), e.g.
+#   services:
+#     rfupdate:
+#       environment:
+#         RFUPDATE_ADMIN_PASSWORD: "a long password"
+services:
+  rfupdate:
+    build: .
+    image: rfupdate:local
+    container_name: rfupdate
+    ports:
+      - "8071:8071"
+    volumes:
+      - rfupdate-data:/data
+    restart: unless-stopped
+
+volumes:
+  rfupdate-data:

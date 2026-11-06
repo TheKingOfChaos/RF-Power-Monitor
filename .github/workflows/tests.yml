@@ -35,6 +35,9 @@ jobs:
       - name: Tool tests (signing, UF2, linker script)
         run: python -m unittest discover -s test/tools -v
 
+      - name: Update site tests
+        run: python -m unittest discover -s update-server/tests -v
+
       - name: Unit tests under AddressSanitizer + UBSan
         run: bash scripts/sanitize.sh
 
