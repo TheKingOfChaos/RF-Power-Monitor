@@ -1,3 +1,5 @@
 # Shell scripts run in WSL/Linux and break with CRLF line endings
 *.sh text eol=lf
 keys/dev/fw_signing_key binary
+# PHP scripts run inside the LibreNMS containers
+*.php text eol=lf
