@@ -10,6 +10,7 @@
 #include "fw_update_service.h"
 #include "hostname.h"
 #include "http_fetch.h"
+#include "update_service.h"
 #include "lldp_service.h"
 #include "net_stats.h"
 #include "snmp_service.h"
@@ -556,6 +557,11 @@ static void handleLine(const char* line) {
                 Serial.printf("fetchtest: failed: %s\r\n", httpFetchError());
             }
             Serial.print("> ");
+        } else if (strcmp(line, "checkin") == 0) {
+            // Hidden test command (docs/TESTING.md): check in with the update server now
+            updateServiceForceCheckin();
+            Serial.println("checkin: requested");
+            Serial.print("> ");
         } else if (strcmp(line, "lldpdump") == 0) {
             // Hidden test command (docs/TESTING.md): the switch's last LLDPDU in hex, for test vectors
             lldpDump();
@@ -835,7 +841,7 @@ static void handleLine(const char* line) {
 /// Drain a running fetchtest and print its result once it ends
 static void pollFetchTest() {
     if (!fetchTestActive) return;
-    static uint8_t buf[256];
+    uint8_t buf[128];
     FetchState st = httpFetchPoll(millis());
     if (st == FetchState::Body) {
         size_t n;

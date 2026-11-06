@@ -129,3 +129,17 @@ void netStatsRequestDhcpTrapTarget(bool on);
 
 /// Copy of the latest DHCP option 224 information
 DhcpTrapInfo netStatsDhcpTrap();
+
+/**
+ * @brief Ask for option 225 (update server URL) in every DHCP DISCOVER/REQUEST (or stop asking)
+ *
+ * Switching it on renews the lease at once. Like option 224, the value is only
+ * taken from an ACK lwIP accepted.
+ */
+void netStatsRequestDhcpUpdateUrl(bool on);
+
+/**
+ * @brief The update server URL from the latest accepted DHCPACK (option 225)
+ * @return false when no accepted ACK carried a valid one (out is then empty)
+ */
+bool netStatsDhcpUpdateUrl(char* out, size_t size);

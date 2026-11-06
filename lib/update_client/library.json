@@ -5,5 +5,5 @@
     "license": "MIT",
     "frameworks": "*",
     "platforms": "*",
-    "dependencies": {"monocypher": "*", "netconfig": "*", "bblanchon/ArduinoJson": "^6.21.3"}
+    "dependencies": {"monocypher": "*", "netconfig": "*", "fw_update": "*", "bblanchon/ArduinoJson": "^6.21.3"}
 }

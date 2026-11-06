@@ -22,6 +22,7 @@
 #include "pins.h"
 #include "snmp_service.h"
 #include "stack_watch.h"
+#include "update_service.h"
 #include "web_service.h"
 #include "version.h"
 
@@ -232,6 +233,7 @@ void setup() {
     // Load settings
     settingsLoaded = loadSettings();
     loadUpdateSettings();  // update server URL and key: own files, defaults (off) when absent
+    updateServiceBegin();
     hostnameBegin();  // before Ethernet, so the first DHCP request carries the name
     watchdogFeed();
 
@@ -321,6 +323,9 @@ void loop() {
     // Configuration web page (non-blocking)
     DIAG_MARK(6);
     webPoll();
+
+    // Update server check-ins and the downloads they ask for (non-blocking)
+    updateServicePoll(networkReady());
 
     // Serial configuration menu
     DIAG_MARK(7);

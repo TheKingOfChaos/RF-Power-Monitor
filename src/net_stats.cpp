@@ -36,6 +36,9 @@ static netif* statsNetif = nullptr;
 // DHCP option 224 (trap destination): requested in our DHCP messages, read from ACKs to us
 static volatile bool dhcpRequestOn = false;
 static DhcpTrapInfo dhcpTrap = {};
+// DHCP option 225 (update server URL): the same, as text
+static volatile bool dhcpUrlRequestOn = false;
+static char dhcpUpdateUrl[128] = "";
 
 static bool isWaitingForAck(uint8_t state) {
     return state == DHCP_STATE_REQUESTING || state == DHCP_STATE_REBOOTING || state == DHCP_STATE_RENEWING ||
@@ -61,6 +64,8 @@ static err_t inputWithDhcpAck(struct pbuf* p, struct netif* nif) {
     if (candidate && info.hasServerId && !ip_addr_isany_val(dhcp->server_ip_addr)) {
         candidate = memcmp(info.serverId, &ip_2_ip4(&dhcp->server_ip_addr)->addr, 4) == 0;
     }
+    char url[sizeof(dhcpUpdateUrl)];  // read before lwIP owns p
+    bool hasUrl = candidate && dhcpAckText((const uint8_t*)p->payload, p->len, DHCP_OPTION_UPDATE_URL, url, sizeof(url));
     err_t err = originalInput(p, nif);  // lwIP handles the ACK now (p belongs to lwIP afterwards)
     if (!candidate || dhcp->state != DHCP_STATE_BOUND) {
         dhcpTrap.ignored++;
@@ -72,6 +77,12 @@ static err_t inputWithDhcpAck(struct pbuf* p, struct netif* nif) {
     if (dhcpTrap.hasOption) memcpy(dhcpTrap.target, info.value, 4);
     memcpy(dhcpTrap.yiaddr, info.yiaddr, 4);
     dhcpTrap.ackMs = millis();
+    // Every accepted ACK replaces the URL: one without option 225 clears it
+    if (hasUrl) {
+        memcpy(dhcpUpdateUrl, url, sizeof(dhcpUpdateUrl));
+    } else {
+        dhcpUpdateUrl[0] = '\0';
+    }
     return err;
 }
 
@@ -99,6 +110,9 @@ static err_t countingLinkOutput(struct netif* nif, struct pbuf* p) {
     if (dhcpRequestOn && p->next == nullptr &&
         dhcpRequestOption((uint8_t*)p->payload, p->len, DHCP_OPTION_TRAP_TARGET) == DhcpEdit::Added) {
         dhcpTrap.requests++;
+    }
+    if (dhcpUrlRequestOn && p->next == nullptr) {
+        dhcpRequestOption((uint8_t*)p->payload, p->len, DHCP_OPTION_UPDATE_URL);
     }
     err_t err = originalLinkOutput(nif, p);
     if (err == ERR_OK) {
@@ -301,4 +315,20 @@ void netStatsRequestDhcpTrapTarget(bool on) {
 DhcpTrapInfo netStatsDhcpTrap() {
     DriverLock lock;  // written from lwIP context
     return dhcpTrap;
+}
+
+void netStatsRequestDhcpUpdateUrl(bool on) {
+    DriverLock lock;
+    bool changed = dhcpUrlRequestOn != on;
+    dhcpUrlRequestOn = on;
+    if (!changed || !on) return;
+    for (netif* n = netif_list; n != nullptr; n = n->next) {
+        if (dhcp_supplied_address(n)) dhcp_renew(n);  // ask now, not at the next renewal
+    }
+}
+
+bool netStatsDhcpUpdateUrl(char* out, size_t size) {
+    DriverLock lock;  // written from lwIP context
+    snprintf(out, size, "%s", dhcpUpdateUrl);
+    return out[0] != '\0';
 }

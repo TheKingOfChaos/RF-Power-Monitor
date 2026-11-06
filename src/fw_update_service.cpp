@@ -190,6 +190,11 @@ static void checkOtherSlot() {
 
 static void clearCrashCounter() { watchdog_hw->scratch[FW_SCRATCH_CRASH] = 0; }
 
+void fwUpdateLastRecord(FwResult& result, char* version) {
+    result = haveRecord ? record.lastResult : FwResult::None;
+    strlcpy(version, haveRecord ? record.lastVersion : "", 17);
+}
+
 void fwUpdateResultText(FwResult result, const char* version, char* out, size_t size) {
     const char* what = "none";
     switch (result) {

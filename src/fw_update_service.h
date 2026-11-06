@@ -125,5 +125,11 @@ void fwUpdateTrapSent();
 /// Why the device started, from the boot program (Planned -> Reboot, Crash -> Watchdog); Unknown without boot info
 RestartCause fwUpdateRestartCause();
 
+/**
+ * @brief The boot record's last update result and its version (update server check-ins)
+ * @param version 17 bytes, empty when none
+ */
+void fwUpdateLastRecord(FwResult& result, char* version);
+
 /// Short text for a result, e.g. "installed 3.3.0", "rolled back (crash) 3.4.0" or "none"
 void fwUpdateResultText(FwResult result, const char* version, char* out, size_t size);
