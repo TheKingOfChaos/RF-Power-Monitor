@@ -427,6 +427,22 @@ Files from older firmware (without `sequence`, with an `active_file` pointer) ar
 
 The project's `data/` folder is **not** needed: the firmware creates its settings on first boot. Uploading it (`pio run -t uploadfs`) replaces the whole flash filesystem and erases the device's settings.
 
+## Bench setup of a new board
+
+`tools/bench_provision.py` sets up a new board in one run: it flashes the first firmware, reads the device, locks its default web password and makes its label. Install its Python packages once: `python -m pip install -r tools/requirements-bench.txt` (pyserial, Pillow, segno).
+
+1. Build the release files with the field key: `python tools/fw_release.py --field`.
+2. Run `python tools/bench_provision.py`, then hold BOOTSEL and plug in the board. The script takes the newest `release/rf-power-monitor-<version>-usb.uf2` (or `--uf2 FILE`), refuses a `firmware.uf2` and anything signed with the development key, copies the file to the `RPI-RP2` drive and waits for the board's serial port.
+3. It reads the hostname (`RF-Power-<last 6 MAC digits>`), MAC, serial number, firmware version and default web password (hidden menu command `benchinfo`), checks them and locks the password (`pwlock`), so menu option 7 cannot make the label wrong.
+4. It writes, in `bench/` (gitignored): `<hostname>.png` to print, `<hostname>-preview.png`, and a row in `devices.csv`. **`devices.csv` holds the default web passwords**: keep it safe.
+5. Print `<hostname>.png` from the NIIMBOT app on a 40 x 40 mm black label with white ribbon (NIIMBOT M2). The image is black on white because the printer puts ribbon wherever the image is dark; the preview shows the real look, white on black.
+
+The label shows `RF Power Monitor`, the board revision (`--revision`, default `rev 2`), the hostname, MAC, user `admin`, the password, and the serial number, firmware version and date the board was set up, with a QR code (`RFPM;H=<hostname>;M=<MAC>;S=<serial>;FW=<version>`; no password).
+
+- `--no-flash [--port COMx]`: the same for a board that already runs the firmware, e.g. after `pwunlock` and option 7, or an older carrier board. A hostname set by hand is kept on the label. The new `devices.csv` row wins over older rows for that board.
+- `--reprint <hostname|MAC|serial>`: the label again from the newest `devices.csv` row, without the device.
+- `--dev`: accept development-signed firmware, only for testing the tool.
+
 ## Building and flashing
 
 Requirements: VS Code with PlatformIO. On Windows you also need the WinUSB driver on the Pico's boot interface, a one-time step with Zadig described in [docs/TESTING.md](docs/TESTING.md#usb-driver-for-flashing).

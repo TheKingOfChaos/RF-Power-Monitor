@@ -12,6 +12,7 @@ Bench setup of new boards: the default web password can be locked once it is on 
 
 ### Added
 - **Default web password lock**: hidden menu commands `pwlock` and `pwunlock` (for the bench tool). While locked, menu option 7 refuses to replace the default password (`The default web password is locked because it is printed on the device label. Unlock it at the bench first.`). The lock is the file `data/web_default.lock`; like the password it survives factory resets and firmware updates. The status screen shows `Default web password: locked (on the label)` or `unlocked`.
+- **Bench tool** `tools/bench_provision.py`: flashes a new board from the release `-usb.uf2` (field key only, unless `--dev`), reads it, locks its default password and writes its 40 x 40 mm label (`bench/<hostname>.png`, white ribbon on black, NIIMBOT M2) and a row in `bench/devices.csv`; `--no-flash` for boards already running the firmware, `--reprint` from the log. Packages in `tools/requirements-bench.txt`.
 - Hidden menu command `benchinfo`: hostname, MAC, serial number, firmware version, firmware key id, default web password and lock state in a fixed `key=value` block between `BENCHINFO BEGIN` and `BENCHINFO END`, for the bench tool (`lib/bench_info`).
 
 ### Changed

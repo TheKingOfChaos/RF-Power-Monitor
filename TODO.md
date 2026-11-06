@@ -267,6 +267,9 @@ An item is only ticked when it is implemented **and** its tests exist and pass (
 - [x] `pwlock`/`pwunlock`, option 7 refused while locked, lock survives reboot — HIL `test_bench.py`
 - [x] `benchinfo` block — `test/native/test_bench_info`, HIL `test_bench.py`
 - [ ] Lock survives a factory reset — manual HIL `test_factory_reset.py` (needs the button pressed)
+- [x] Bench tool: release UF2 check, label, log, flash/no-flash/reprint — `test/tools/test_bench_*.py`; tried with `--no-flash` on the test device (2026-11-07)
+- [ ] First real rev 2 board through the bench tool, label printed on the NIIMBOT M2
+- [ ] Print straight from the script to the M2 (once the printer is here; NiimBlue does not list the M2_H as tested)
 
 ## Notes
 - SNMP must be v1 and v2c (no v3) and our own code; networking may use libraries
