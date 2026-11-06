@@ -453,6 +453,19 @@ static void test_reset_allows_a_new_request() {
     TEST_ASSERT_EQUAL_STRING("/login", r.path());
 }
 
+static void test_reset_wipes_the_received_bytes() {
+    // Forms carry passwords and the update server key: they must not stay in RAM after the answer
+    static HttpRequest r;
+    const char* req = "POST /updateserver HTTP/1.1\r\nContent-Length: 20\r\n\r\nkey=SECRETSECRETKEY!";
+    TEST_ASSERT_EQUAL(HttpParse::Complete, feedAll(r, req));
+    const char* body = r.body();
+    size_t len = r.bodyLength();
+    TEST_ASSERT_EQUAL_STRING_LEN("key=SECRET", body, 10);
+    const char* raw = body - (strlen(req) - len);  // the start of the buffer
+    r.reset();
+    for (size_t i = 0; i < strlen(req); i++) TEST_ASSERT_EQUAL_CHAR_MESSAGE(0, raw[i], "byte left after reset");
+}
+
 // ---- form, cookie, text helpers ----
 
 static void test_form_values_are_decoded() {
@@ -2306,6 +2319,7 @@ int main() {
     RUN_TEST(test_malformed_requests_are_bad);
     RUN_TEST(test_other_methods_and_long_paths);
     RUN_TEST(test_reset_allows_a_new_request);
+    RUN_TEST(test_reset_wipes_the_received_bytes);
     RUN_TEST(test_form_values_are_decoded);
     RUN_TEST(test_form_value_rejects_bad_escapes_nul_and_overflow);
     RUN_TEST(test_cookie_values);

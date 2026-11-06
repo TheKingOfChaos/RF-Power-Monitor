@@ -52,6 +52,9 @@ void releaseConnection(bool graceful) {
         tcp_recv(pcb, nullptr);
         tcp_sent(pcb, nullptr);
         tcp_err(pcb, nullptr);
+        // tcp_close() sends RST while rcv_wnd is below its maximum (lwIP reads that as
+        // unread data): after a complete body nothing is unread, so restore it first
+        if (graceful && rx == nullptr) pcb->rcv_wnd = TCP_WND_MAX(pcb);
         if (!graceful || tcp_close(pcb) != ERR_OK) tcp_abort(pcb);
         pcb = nullptr;
     }

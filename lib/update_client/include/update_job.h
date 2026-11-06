@@ -44,15 +44,6 @@ public:
      */
     Step head(const uint8_t* first, size_t len);
 
-    /**
-     * @brief Check the version in the signed slot header (once the receiver has validated it)
-     *
-     * The .upd file header is not signed; the slot header is. A file whose outer
-     * header names the wanted version but holds another signed release is refused.
-     * @return Refuse (and record "version mismatch") when it is not the wanted version
-     */
-    Step signedVersion(const char* version);
-
     /// The download broke off (network): record "<v> download <why>" and end the job
     void failDownload(const char* why);
 

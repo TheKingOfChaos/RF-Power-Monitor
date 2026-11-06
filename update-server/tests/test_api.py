@@ -81,10 +81,13 @@ class ApiTest(unittest.TestCase):
         code, reply = handle_checkin(self.store, body, auth, T0 + 5)
         self.assertEqual((409, b"status=replay\n"), (code, reply))
 
-    def test_replayed_nonce_after_24_hours_is_forgotten(self):
+    def test_replayed_nonce_is_refused_for_400_days(self):
+        # A captured check-in replayed later could mark an update done or end one
         body, auth, _ = self.dev.signed()
         handle_checkin(self.store, body, auth, T0)
-        self.assertEqual(200, handle_checkin(self.store, body, auth, T0 + 86400 + 1)[0])
+        self.assertEqual(409, handle_checkin(self.store, body, auth, T0 + 86400 + 1)[0])
+        self.assertEqual(409, handle_checkin(self.store, body, auth, T0 + 399 * 86400)[0])
+        self.assertEqual(200, handle_checkin(self.store, body, auth, T0 + 400 * 86400 + 1)[0])
 
     def test_checkin_without_site_key_is_401(self):
         self.store.set_site_key(None)

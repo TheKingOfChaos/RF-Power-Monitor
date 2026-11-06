@@ -88,3 +88,12 @@ struct CheckinReply {
  */
 ReplyKind parseCheckinReply(const char* body, size_t len, const char* nonce, const uint8_t key[UPDATE_KEY_LEN],
                             CheckinReply& out);
+
+/**
+ * @brief The word after "status=" in an (unauthenticated) error reply, e.g. "badauth"
+ *
+ * Only [a-z0-9-] is kept: the word ends at the first other byte, so nothing from
+ * the network can put control or escape sequences on the serial console.
+ * @param out Receives the word, "" when there is none; cut to size - 1 characters
+ */
+void replyStatusWord(const char* body, size_t len, char* out, size_t size);

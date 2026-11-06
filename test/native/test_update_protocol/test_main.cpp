@@ -259,6 +259,37 @@ static void test_parse_key_hex_rejects_63_and_65_chars_and_non_hex() {
     TEST_ASSERT_FALSE(parseKeyHex(nullptr, key));
 }
 
+static void test_status_word_reads_error_replies() {
+    char w[16];
+    replyStatusWord("status=badauth\n", 15, w, sizeof(w));
+    TEST_ASSERT_EQUAL_STRING("badauth", w);
+    replyStatusWord("status=replay", 13, w, sizeof(w));
+    TEST_ASSERT_EQUAL_STRING("replay", w);
+    replyStatusWord("<html>502 Bad Gateway</html>", 28, w, sizeof(w));
+    TEST_ASSERT_EQUAL_STRING("", w);
+    replyStatusWord("", 0, w, sizeof(w));
+    TEST_ASSERT_EQUAL_STRING("", w);
+}
+
+static void test_status_word_drops_control_and_odd_characters() {
+    // Unauthenticated text must not put terminal escape sequences on the serial console
+    char w[16];
+    const char evil[] = "status=\x1b[2J\x1b]0;pwned\x07x\n";
+    replyStatusWord(evil, sizeof(evil) - 1, w, sizeof(w));
+    TEST_ASSERT_EQUAL_STRING("", w);  // stops at the first character outside [a-z0-9-]
+    replyStatusWord("status=bad-auth2\r\n", 18, w, sizeof(w));
+    TEST_ASSERT_EQUAL_STRING("bad-auth2", w);
+}
+
+static void test_status_word_is_cut_to_the_buffer() {
+    char w[8];
+    replyStatusWord("status=abcdefghijklmnop", 23, w, sizeof(w));
+    TEST_ASSERT_EQUAL_STRING("abcdefg", w);
+    char nul[] = "status=ok\0more";
+    replyStatusWord(nul, sizeof(nul) - 1, w, sizeof(w));
+    TEST_ASSERT_EQUAL_STRING("ok", w);
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_mac_matches_python_vectors);
@@ -283,5 +314,8 @@ int main(int, char**) {
     RUN_TEST(test_parse_reply_rejects_nul_and_cr);
     RUN_TEST(test_parse_key_hex_accepts_64_hex_either_case);
     RUN_TEST(test_parse_key_hex_rejects_63_and_65_chars_and_non_hex);
+    RUN_TEST(test_status_word_reads_error_replies);
+    RUN_TEST(test_status_word_drops_control_and_odd_characters);
+    RUN_TEST(test_status_word_is_cut_to_the_buffer);
     return UNITY_END();
 }

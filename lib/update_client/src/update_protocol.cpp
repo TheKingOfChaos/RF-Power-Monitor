@@ -178,3 +178,22 @@ ReplyKind parseCheckinReply(const char* body, size_t len, const char* nonce, con
     memcpy(out.path, v, vLen);
     return ReplyKind::Update;
 }
+
+void replyStatusWord(const char* body, size_t len, char* out, size_t size) {
+    if (out == nullptr || size == 0) return;
+    out[0] = '\0';
+    if (body == nullptr) return;
+    static const char key[] = "status=";
+    const size_t keyLen = sizeof(key) - 1;
+    for (size_t i = 0; i + keyLen <= len; i++) {
+        if (memcmp(body + i, key, keyLen) != 0) continue;
+        size_t n = 0;
+        for (size_t j = i + keyLen; j < len && n + 1 < size; j++) {
+            char c = body[j];
+            if (!((c >= 'a' && c <= 'z') || (c >= '0' && c <= '9') || c == '-')) break;
+            out[n++] = c;
+        }
+        out[n] = '\0';
+        return;
+    }
+}

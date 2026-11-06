@@ -15,10 +15,10 @@ from . import upd
 
 OFFLINE_AFTER_S = 3900         # two missed 30-minute check-ins (65 min)
 LOST_AFTER_S = 7200            # no report this long after the device was told
-NONCE_KEEP_S = 86400           # a nonce seen in the last 24 h is a replay
+NONCE_KEEP_S = 400 * 86400    # a nonce seen in the last 400 days is a replay (~19,000 rows per device)
 DOWNLOAD_FAILURES_MAX = 3      # then the assignment ends as failed
 
-ACTIVE = ("waiting", "told", "downloading", "on trial")
+ACTIVE = ("waiting", "told", "on trial")  # a device does not check in while it downloads
 _ROLLBACK = re.compile(r"(rolledback-crash|rolledback-unreachable|fallback-crash) (\S+)")
 
 _SCHEMA = """
@@ -147,22 +147,26 @@ class Store:
                  int(f["trial"]), f["update"], f["fail"], f["last"], now, now))
             self._db.commit()
 
-    def assign(self, serials, version: str, now: float):
+    def assign(self, serials, version: str, now: float) -> int:
         """Give these devices this release at their next check-in (replaces earlier assignments).
-        A device that already runs it, kept, is done at once."""
+        A device that already runs it, kept, is done at once. Returns how many known devices
+        were assigned (unknown serial numbers are skipped)."""
         with self._lock:
             if not self.release_path(version):
                 raise ValueError("There is no release %s." % version)
+            count = 0
             for serial in serials:
                 dev = self._db.execute("SELECT * FROM devices WHERE serial=?", (serial,)).fetchone()
                 if dev is None:
                     continue
+                count += 1
                 done = dev["version"] == version and not dev["trial"]
                 self._db.execute(
                     "INSERT OR REPLACE INTO assignments VALUES (?,?,?,?,?,?,?,?,?)",
                     (serial, version, "done" if done else "waiting", "already running it" if done else "",
                      now, None, None, 0, now if done else None))
             self._db.commit()
+            return count
 
     def _end(self, serial, status, detail, now):
         self._db.execute("UPDATE assignments SET status=?, detail=?, ended=? WHERE serial=?",
@@ -170,7 +174,7 @@ class Store:
 
     def _expire(self, now):
         self._db.execute("UPDATE assignments SET status='lost', detail='no report within 2 hours', ended=? "
-                         "WHERE status IN ('told','downloading') AND told < ?", (now, now - LOST_AFTER_S))
+                         "WHERE status = 'told' AND told < ?", (now, now - LOST_AFTER_S))
 
     def advance(self, f: dict, now: float):
         """Move this device's assignment on from what its check-in reported; returns the
@@ -210,8 +214,6 @@ class Store:
                 if a["told"] is None:
                     self._db.execute("UPDATE assignments SET status='told', told=?, last_at_told=? WHERE serial=?",
                                      (now, f["last"], serial))
-                elif f["update"] == "downloading":
-                    self._db.execute("UPDATE assignments SET status='downloading' WHERE serial=?", (serial,))
             self._db.commit()
             return send
 

@@ -50,6 +50,7 @@ enum class UpdateError : uint8_t {
     Truncated,    // fewer bytes than announced
     TooLong,      // more bytes than announced
     WriteFailed,  // the SlotWriter reported failure
+    WrongVersion, // signed slot header holds another version than the caller expected
 };
 
 enum class UpdateStatus : uint8_t { InProgress, Done, Failed };
@@ -59,7 +60,10 @@ class UpdateReceiver {
 public:
     /// Start receiving `contentLength` bytes for `targetSlot` (0 or 1),
     /// accepting only images signed with `keyId`. Does no flash I/O.
-    void begin(uint8_t targetSlot, uint32_t contentLength, const uint8_t keyId[8], SlotWriter& w);
+    /// `expectedVersion` (or nullptr for any): the signed slot header must hold this
+    /// version, checked before anything is erased (update server downloads).
+    void begin(uint8_t targetSlot, uint32_t contentLength, const uint8_t keyId[8], SlotWriter& w,
+               const char* expectedVersion = nullptr);
     /// Consume the next bytes. Failed is sticky.
     UpdateStatus feed(const uint8_t* data, size_t len);
     /// End of data: checks the length and writes page 0 (the slot header). Done only on success.
@@ -79,6 +83,7 @@ private:
     uint8_t _header[FW_PAGE_SIZE];  // page 0: the slot header, written last
     uint8_t _fileHeader[64];
     char _version[17];
+    char _expected[17];         // "" = any version
     uint8_t _keyId[8];
     SlotWriter* _w = nullptr;
     uint32_t _length = 0;       // announced file length

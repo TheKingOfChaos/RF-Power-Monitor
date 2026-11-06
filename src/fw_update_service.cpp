@@ -351,7 +351,8 @@ static void rejectUpload(const char* reason, bool slotErased) {
     Serial.printf("\r\nFirmware: upload %s\r\n", uploadResultText);
 }
 
-bool fwUpdateUploadBegin(uint32_t contentLength, const char*& error, FwUploadFault& fault) {
+bool fwUpdateUploadBegin(uint32_t contentLength, const char*& error, FwUploadFault& fault,
+                         const char* expectedVersion) {
     error = nullptr;
     fault = FwUploadFault::Busy;
     if (uploading) error = "upload in progress";
@@ -363,7 +364,7 @@ bool fwUpdateUploadBegin(uint32_t contentLength, const char*& error, FwUploadFau
     if (error) return false;
     fault = FwUploadFault::None;
     otherWriter = FlashSlotWriter(OTHER_SLOT);
-    receiver.begin(OTHER_SLOT, contentLength, keyId, otherWriter);
+    receiver.begin(OTHER_SLOT, contentLength, keyId, otherWriter, expectedVersion);
     uploading = true;
     uploadResultText[0] = '\0';
     Serial.printf("\r\nFirmware: receiving %lu bytes for slot %c\r\n", (unsigned long)contentLength, 'A' + OTHER_SLOT);
@@ -375,9 +376,6 @@ bool fwUpdateUploadFeed(const uint8_t* data, size_t len) {
     return receiver.feed(data, len) != UpdateStatus::Failed;
 }
 
-const char* fwUpdateUploadVersion() {
-    return uploading ? receiver.version() : "";
-}
 
 bool fwUpdateUploadFinish(char* versionOut, const char*& error, FwUploadFault& fault) {
     versionOut[0] = '\0';

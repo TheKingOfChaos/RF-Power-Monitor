@@ -20,6 +20,7 @@ import html
 import os
 import secrets
 import socket
+import threading
 import time
 from email.parser import BytesParser
 from email.policy import HTTP
@@ -73,36 +74,50 @@ class Site:
         self.clock = clock
         self.sessions = {}  # sid -> (csrf, expires)
         self.failures = {}  # client ip -> [failure times]
+        self._lock = threading.Lock()  # requests run in threads
 
     def new_session(self):
         sid, csrf = secrets.token_hex(32), secrets.token_hex(32)
-        self.sessions[sid] = (csrf, self.clock() + SESSION_S)
+        with self._lock:
+            self.sessions[sid] = (csrf, self.clock() + SESSION_S)
         return sid
 
     def session(self, sid):
         """The CSRF token of a live session, else None."""
-        s = self.sessions.get(sid or "")
-        if s is None or s[1] < self.clock():
+        with self._lock:
+            s = self.sessions.get(sid or "")
+            if s is None or s[1] < self.clock():
+                self.sessions.pop(sid or "", None)
+                return None
+            return s[0]
+
+    def end_session(self, sid):
+        with self._lock:
             self.sessions.pop(sid or "", None)
-            return None
-        return s[0]
 
     def locked(self, ip):
         now = self.clock()
-        recent = [t for t in self.failures.get(ip, []) if now - t < LOGIN_WINDOW_S]
-        self.failures[ip] = recent
-        return len(recent) >= LOGIN_FAILURES_MAX
+        with self._lock:
+            recent = [t for t in self.failures.get(ip, []) if now - t < LOGIN_WINDOW_S]
+            self.failures[ip] = recent
+            return len(recent) >= LOGIN_FAILURES_MAX
 
     def password_ok(self, ip, password):
         ok = bool(self.admin_password) and hmac.compare_digest(password.encode(), self.admin_password.encode())
         if not ok:
-            self.failures.setdefault(ip, []).append(self.clock())
+            with self._lock:
+                self.failures.setdefault(ip, []).append(self.clock())
         return ok
 
 
 class Handler(BaseHTTPRequestHandler):
     server_version = "rfupdate"
     protocol_version = "HTTP/1.1"
+
+    def setup(self):
+        # A client that stops sending (or never starts) is dropped instead of holding a thread
+        self.timeout = self.server.request_timeout
+        super().setup()
 
     @property
     def site(self) -> Site:
@@ -315,7 +330,7 @@ class Handler(BaseHTTPRequestHandler):
             return
         store, now = self.site.store, self.site.clock()
         if path == "/logout":
-            self.site.sessions.pop(self.cookie_sid(), None)
+            self.site.end_session(self.cookie_sid())
             return self.redirect("/", {"Set-Cookie": "sid=; Path=/; Max-Age=0; HttpOnly; SameSite=Strict"})
         if path == "/admin/key/new":
             key = store.new_site_key()
@@ -328,8 +343,8 @@ class Handler(BaseHTTPRequestHandler):
                 serials = fields.get("serial") or []
                 if not serials:
                     raise ValueError("Tick at least one device.")
-                store.assign(serials, version, now)
-                return self.admin_page("%d device(s) get %s at their next check-in." % (len(serials), version))
+                count = store.assign(serials, version, now)
+                return self.admin_page("%d device(s) get %s at their next check-in." % (count, version))
             store.delete_release(version)
             return self.admin_page("Release %s deleted." % version)
         except ValueError as e:
@@ -388,10 +403,12 @@ class SiteServer(ThreadingHTTPServer):
         super().server_bind()
 
 
-def make_server(store, host, port, admin_password, clock=time.time, verbose=False):
-    """A threading HTTP server for the site (call serve_forever())."""
+def make_server(store, host, port, admin_password, clock=time.time, verbose=False, request_timeout=30):
+    """A threading HTTP server for the site (call serve_forever()).
+    request_timeout: seconds a connection may wait for the client's next bytes."""
     server = SiteServer((host, port), Handler)
     server.daemon_threads = True
+    server.request_timeout = request_timeout
     server.site = Site(store, admin_password, clock)
     server.verbose = verbose
     return server

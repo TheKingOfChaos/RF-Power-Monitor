@@ -38,6 +38,8 @@ CheckinScheduler scheduler;
 UpdateJob job;
 UpdateUrl url;
 char urlText[UPDATE_URL_MAX + 1] = "";
+bool urlParsed = false;        // url/urlOk hold the parse of urlText
+bool urlOk = false;
 char nonce[UPDATE_NONCE_HEX + 1] = "";
 uint32_t failSeqSent = 0;       // the job failure the running check-in carries
 char* reply = nullptr;          // heap, while a check-in runs
@@ -51,7 +53,6 @@ uint32_t restartAtMs = 0;
 uint8_t head[UPD_HEAD_SIZE];
 size_t headLen = 0;
 bool uploadStarted = false;
-bool signedVersionChecked = false;  // the signed slot header's version was compared
 uint32_t downloadStartMs = 0;
 
 void setResult(const char* text) {
@@ -145,21 +146,13 @@ void startCheckin(uint32_t now) {
     phase = Phase::Checkin;
 }
 
-/// Word after "status=" in an error reply ("badauth", "replay", "bad"), else "http <code>"
+/// Word after "status=" in an error reply ("badauth", "replay", "bad"), else "http <code>";
+/// only [a-z0-9-] from the (unauthenticated) reply reaches the status line
 void errorResult(int status) {
-    const char* s = strstr(reply, "status=");
-    if (s != nullptr) {
-        char word[16];
-        size_t n = strcspn(s + 7, "\n");
-        if (n >= sizeof(word)) n = sizeof(word) - 1;
-        memcpy(word, s + 7, n);
-        word[n] = '\0';
-        setResult(word);
-    } else {
-        char text[16];
-        snprintf(text, sizeof(text), "http %d", status);
-        setResult(text);
-    }
+    char word[16];
+    replyStatusWord(reply, replyLen, word, sizeof(word));
+    if (word[0] == '\0') snprintf(word, sizeof(word), "http %d", status);
+    setResult(word);
 }
 
 void startDownload(const CheckinReply& r, uint32_t now) {
@@ -167,7 +160,6 @@ void startDownload(const CheckinReply& r, uint32_t now) {
     snprintf(downloadPath, sizeof(downloadPath), "%s%s", url.path, r.path);
     headLen = 0;
     uploadStarted = false;
-    signedVersionChecked = false;
     if (!httpFetchStart(url, "GET", downloadPath, nullptr, nullptr, 0, FW_UPLOAD_MAX, now, 0)) {
         job.failDownload(httpFetchError());
         scheduler.reportSoon(now);
@@ -245,7 +237,6 @@ void pollCheckin(uint32_t now) {
 void endDownload(uint32_t now) {
     if (uploadStarted) fwUpdateUploadAbort();
     uploadStarted = false;
-    signedVersionChecked = false;
     httpFetchAbort();
     phase = Phase::Idle;
     setResult(job.failLine());
@@ -260,7 +251,6 @@ void refusedByReceiver(uint32_t now) {
     FwUploadFault fault;
     fwUpdateUploadFinish(version, error, fault);  // gives the reason; the slot reads empty again
     uploadStarted = false;
-    signedVersionChecked = false;
     job.refused(error);
     endDownload(now);
 }
@@ -303,7 +293,7 @@ void pollDownload(uint32_t now) {
         }
         const char* error = "";
         FwUploadFault fault;
-        if (!fwUpdateUploadBegin(httpFetchContentLength(), error, fault)) {
+        if (!fwUpdateUploadBegin(httpFetchContentLength(), error, fault, job.version())) {
             job.refused(error);
             endDownload(now);
             return;
@@ -322,14 +312,6 @@ void pollDownload(uint32_t now) {
         if (!fwUpdateUploadFeed(chunk, n)) {
             refusedByReceiver(now);
             return;
-        }
-        // Once the signed slot header is validated: it must be the release the site named
-        if (!signedVersionChecked && fwUpdateUploadVersion()[0] != '\0') {
-            signedVersionChecked = true;
-            if (job.signedVersion(fwUpdateUploadVersion()) == UpdateJob::Step::Refuse) {
-                endDownload(now);  // aborts the upload: the other slot reads empty again
-                return;
-            }
         }
     }
 
@@ -363,8 +345,13 @@ void updateServicePoll(bool netReady) {
     uint32_t now = millis();
     netStatsRequestDhcpUpdateUrl(currentUpdateSettings.fromDhcp);  // acts only on a change
 
-    effectiveUrl(urlText, sizeof(urlText));
-    bool urlOk = urlText[0] != '\0' && parseUpdateUrl(urlText, url);
+    char current[UPDATE_URL_MAX + 1];
+    effectiveUrl(current, sizeof(current));
+    if (strcmp(current, urlText) != 0 || !urlParsed) {  // parse only when it changes
+        memcpy(urlText, current, sizeof(urlText));
+        urlOk = urlText[0] != '\0' && parseUpdateUrl(urlText, url);
+        urlParsed = true;
+    }
     bool configured = urlOk && currentUpdateSettings.hasKey;
     if (phase == Phase::Idle && !checkedIn) {
         setResult(urlText[0] == '\0' ? "off" : !urlOk ? "bad url" : !currentUpdateSettings.hasKey ? "no key" : "waiting");
@@ -409,6 +396,14 @@ bool updateServiceSave(const char* url, bool fromDhcp, const char* keyHex, bool 
         return false;
     }
     memset(&before, 0, sizeof(before));
+    // A running check-in was sent with the old URL and key: its answer would be checked
+    // against the new key and read as "not authenticated". End it; a download goes on.
+    if (phase == Phase::Checkin) {
+        httpFetchAbort();
+        delete[] reply;
+        reply = nullptr;
+        phase = Phase::Idle;
+    }
     // Start over with the new settings: first check-in 60 s from the next poll
     scheduler.netReady(false, millis());
     checkedIn = false;

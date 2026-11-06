@@ -519,6 +519,30 @@ static void test_receiver_rejects_short_other_blob() {
     TEST_ASSERT_EQUAL_UINT32(0, (uint32_t)w.erases.size());
 }
 
+static void test_receiver_wrong_expected_version_is_refused_before_any_erase() {
+    // The update site named 3.4.1; the signed slot header says 3.4.0: the other slot stays as it was
+    Bytes upd(GOLDEN_UPD, GOLDEN_UPD + sizeof(GOLDEN_UPD));
+    FakeSlot w;
+    uint8_t id[8];
+    memcpy(id, GOLDEN_KEY_ID, 8);
+    rx.begin(1, (uint32_t)upd.size(), id, w, "3.4.1");
+    TEST_ASSERT_EQUAL_UINT8((uint8_t)UpdateStatus::Failed, (uint8_t)feedAll(upd, 256));
+    TEST_ASSERT_EQUAL_UINT8((uint8_t)UpdateError::WrongVersion, (uint8_t)rx.error());
+    TEST_ASSERT_EQUAL_STRING("version mismatch", updateErrorName(rx.error()));
+    TEST_ASSERT_EQUAL_UINT32(0, (uint32_t)w.erases.size());
+    TEST_ASSERT_EQUAL_UINT32(0, (uint32_t)w.writes.size());
+}
+
+static void test_receiver_matching_expected_version_is_accepted() {
+    Bytes upd(GOLDEN_UPD, GOLDEN_UPD + sizeof(GOLDEN_UPD));
+    FakeSlot w;
+    uint8_t id[8];
+    memcpy(id, GOLDEN_KEY_ID, 8);
+    rx.begin(1, (uint32_t)upd.size(), id, w, "3.4.0");
+    TEST_ASSERT_EQUAL_UINT8((uint8_t)UpdateStatus::InProgress, (uint8_t)feedAll(upd, 256));
+    TEST_ASSERT_EQUAL_UINT8((uint8_t)UpdateStatus::Done, (uint8_t)rx.finish());
+}
+
 static void test_receiver_accepts_golden_upd_from_the_real_tool() {
     // golden_upd.h is made by tools/fw_release.py build_upd with the dev key
     // (test/tools/golden_upd.py; test_fw_tools.py checks it is current)
@@ -626,12 +650,15 @@ static void test_receiver_abort_at_any_point_leaves_slot_empty() {
 }
 
 static void test_receiver_is_small_enough_to_be_static() {
-    // Two 256-byte pages plus bookkeeping (it was two 4 KB sectors)
-    TEST_ASSERT_LESS_OR_EQUAL_UINT32(640, (uint32_t)sizeof(UpdateReceiver));
+    // Two 256-byte pages plus bookkeeping (it was two 4 KB sectors); 3.4.0 added the
+    // 17-byte expected version (update server downloads)
+    TEST_ASSERT_LESS_OR_EQUAL_UINT32(672, (uint32_t)sizeof(UpdateReceiver));
 }
 
 int main() {
     UNITY_BEGIN();
+    RUN_TEST(test_receiver_wrong_expected_version_is_refused_before_any_erase);
+    RUN_TEST(test_receiver_matching_expected_version_is_accepted);
     RUN_TEST(test_receiver_writes_target_blob_only);
     RUN_TEST(test_receiver_writes_slot_a_blob);
     RUN_TEST(test_receiver_writes_first_sector_last);

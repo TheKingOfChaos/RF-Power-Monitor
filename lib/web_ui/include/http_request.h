@@ -39,7 +39,7 @@ class HttpRequest {
 public:
     HttpRequest() { reset(); }
 
-    /// Forget the current request, ready for the next connection (the stream path stays)
+    /// Forget the current request and wipe its bytes, ready for the next connection (the stream path stays)
     void reset();
 
     /**

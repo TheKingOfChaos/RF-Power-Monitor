@@ -70,9 +70,12 @@ enum class FwUploadFault : uint8_t {
  * @brief Start receiving an update file of contentLength bytes into the slot that is not running
  * @param error Set to a short reason on failure ("on trial", "upload in progress", ...)
  * @param fault Set to the kind of failure (None on success)
+ * @param expectedVersion When set (update server downloads), the signed slot header must hold
+ *        this version; another one is refused before anything is erased ("version mismatch")
  * @return false when an upload cannot start now (nothing is written then)
  */
-bool fwUpdateUploadBegin(uint32_t contentLength, const char*& error, FwUploadFault& fault);
+bool fwUpdateUploadBegin(uint32_t contentLength, const char*& error, FwUploadFault& fault,
+                         const char* expectedVersion = nullptr);
 
 /// The next bytes of the file; false once the file was refused (fwUpdateUploadFinish() then gives the reason)
 bool fwUpdateUploadFeed(const uint8_t* data, size_t len);
@@ -88,9 +91,6 @@ bool fwUpdateUploadFeed(const uint8_t* data, size_t len);
  * @param fault The kind of failure (None on success)
  */
 bool fwUpdateUploadFinish(char* versionOut, const char*& error, FwUploadFault& fault);
-
-/// The version in the upload's signed slot header, "" until the receiver has validated that header
-const char* fwUpdateUploadVersion();
 
 /// The connection was lost or timed out: end the upload (the other slot reads as empty if it was written)
 void fwUpdateUploadAbort();

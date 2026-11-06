@@ -643,22 +643,6 @@ static void test_apply_refuses_bad_key_and_changes_nothing() {
     TEST_ASSERT_FALSE(updateSettingsApply(s, "http://a", false, nullptr, false, error));
 }
 
-static void test_signed_slot_version_mismatch_is_refused() {
-    UpdateJob job;
-    job.begin("3.4.2", "3.4.0");
-    // The outer header said 3.4.2, the signed slot header says 3.4.1: a mislabeled file
-    TEST_ASSERT_EQUAL(UpdateJob::Step::Refuse, job.signedVersion("3.4.1"));
-    TEST_ASSERT_FALSE(job.active());
-    TEST_ASSERT_EQUAL_STRING("3.4.2 refused version mismatch", job.failLine());
-}
-
-static void test_signed_slot_version_match_continues() {
-    UpdateJob job;
-    job.begin("3.4.2", "3.4.0");
-    TEST_ASSERT_EQUAL(UpdateJob::Step::Continue, job.signedVersion("3.4.2"));
-    TEST_ASSERT_TRUE(job.active());
-}
-
 static void test_job_refuses_version_older_than_3_4_0() {
     // Older firmware never checks in again: refused on the device too, not only on the site
     UpdateJob job;
@@ -760,8 +744,6 @@ int main(int, char**) {
     RUN_TEST(test_apply_clear_key_wins);
     RUN_TEST(test_apply_refuses_bad_url_and_changes_nothing);
     RUN_TEST(test_apply_refuses_bad_key_and_changes_nothing);
-    RUN_TEST(test_signed_slot_version_mismatch_is_refused);
-    RUN_TEST(test_signed_slot_version_match_continues);
     RUN_TEST(test_job_refuses_version_older_than_3_4_0);
     RUN_TEST(test_download_deadline_scales_with_size);
     RUN_TEST(test_scheduler_force_survives_net_ready_edge);

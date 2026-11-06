@@ -30,16 +30,19 @@ const char* updateErrorName(UpdateError e) {
         case UpdateError::Truncated: return "truncated";
         case UpdateError::TooLong: return "too long";
         case UpdateError::WriteFailed: return "write failed";
+        case UpdateError::WrongVersion: return "version mismatch";
     }
     return "unknown";
 }
 
 void UpdateReceiver::begin(uint8_t targetSlot, uint32_t contentLength, const uint8_t keyId[8],
-                           SlotWriter& w) {
+                           SlotWriter& w, const char* expectedVersion) {
     memset(_header, 0xFF, sizeof(_header));
     memset(_page, 0xFF, sizeof(_page));
     memset(_fileHeader, 0, sizeof(_fileHeader));
     _version[0] = 0;
+    memset(_expected, 0, sizeof(_expected));
+    if (expectedVersion != nullptr) strncpy(_expected, expectedVersion, sizeof(_expected) - 1);
     memcpy(_keyId, keyId, 8);
     _w = &w;
     _length = contentLength;
@@ -93,6 +96,7 @@ bool UpdateReceiver::checkSlotHeader() {
     if (c == SlotCheck::WrongKey) return fail(UpdateError::WrongKey);
     if (c != SlotCheck::Ok) return fail(UpdateError::BadHeader);
     if ((uint64_t)FW_SLOT_HEADER_SIZE + h.imageLength != _blobLen) return fail(UpdateError::BadHeader);
+    if (_expected[0] != '\0' && strcmp(h.version, _expected) != 0) return fail(UpdateError::WrongVersion);
     memcpy(_version, h.version, sizeof(_version));
     _slotHeaderOk = true;
     if (!_w->eraseSector(0)) return fail(UpdateError::WriteFailed);

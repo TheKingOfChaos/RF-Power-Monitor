@@ -4,6 +4,8 @@
 
 #include <new>
 
+#include <monocypher.h>
+
 #include "ab_files.h"
 
 const char* const UPDATE_SETTINGS_FILE_A = "data/update_a.json";
@@ -45,6 +47,7 @@ SettingsSlot UpdateSettingsStore::load(UpdateSettings& out) {
     case SettingsSlot::B: out = w->b; break;
     default:              updateSettingsDefaults(out); break;
     }
+    crypto_wipe(w, sizeof(*w));  // it held the key (not optimized away, unlike memset before delete)
     delete w;
     _activeSequence = out.sequence;
     return _active;
@@ -73,6 +76,7 @@ bool UpdateSettingsStore::save(UpdateSettings& s) {
         _activeSequence = pending.sequence;
         s = pending;
     }
+    crypto_wipe(w, sizeof(*w));  // it held the key (not optimized away, unlike memset before delete)
     delete w;
     return ok;
 }

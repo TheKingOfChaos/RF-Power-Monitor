@@ -14,6 +14,8 @@ static bool equalsNoCase(const char* a, const char* b, size_t len) {
 }
 
 void HttpRequest::reset() {
+    // Wipe what was received: forms carry passwords and the update server key
+    if (_len > 0 && _len <= HTTP_REQUEST_MAX) memset(_buf, 0, _len);
     _len = 0;
     _headEnd = 0;
     _bodyStart = 0;

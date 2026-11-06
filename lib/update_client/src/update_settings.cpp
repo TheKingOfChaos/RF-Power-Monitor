@@ -1,6 +1,7 @@
 #include "update_settings.h"
 
 #include <ArduinoJson.h>
+#include <monocypher.h>
 #include <string.h>
 
 static const size_t JSON_FIELDS = 8;  // 5 used
@@ -28,11 +29,14 @@ size_t updateSettingsToJson(const UpdateSettings& s, char* out, size_t size) {
     doc["url"] = (const char*)s.url;
     doc["fromDhcp"] = s.fromDhcp;
     doc["key"] = (const char*)keyHex;
-    if (measureJson(doc) + 1 > size) {
+    size_t len = 0;
+    if (measureJson(doc) + 1 <= size) {
+        len = serializeJson(doc, out, size);
+    } else {
         out[0] = '\0';
-        return 0;
     }
-    return serializeJson(doc, out, size);
+    crypto_wipe(keyHex, sizeof(keyHex));  // a copy of the key
+    return len;
 }
 
 bool updateSettingsFromJson(const char* json, UpdateSettings& out) {

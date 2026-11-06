@@ -34,14 +34,6 @@ UpdateJob::Step UpdateJob::head(const uint8_t* first, size_t len) {
     return Step::Continue;
 }
 
-UpdateJob::Step UpdateJob::signedVersion(const char* version) {
-    if (version == nullptr || strcmp(version, _version) != 0) {
-        refused("version mismatch");
-        return Step::Refuse;
-    }
-    return Step::Continue;
-}
-
 void UpdateJob::failDownload(const char* why) {
     setFail("download", why);
 }

@@ -349,6 +349,7 @@ static void respond() {
     outPos = 0;
     conn = Conn::Sending;
     if (app.authenticated()) fwUpdateNoteValidRequest();  // reachable: a firmware on trial is kept
+    request.reset();  // answered: wipe it now (passwords, the update server key), not at the next connection
 }
 
 static void closeConnection();

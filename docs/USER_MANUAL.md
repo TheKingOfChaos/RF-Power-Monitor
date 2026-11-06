@@ -253,7 +253,7 @@ Connects the device to the update site (see [Updating the firmware](#from-the-up
 | Update server URL | `http://<pc>:8071` (the site's address), `dhcp` to take it from DHCP option 225, or `none` for no check-ins. Only `http://host[:port][/path]`, at most 127 characters. |
 | Shared key | The 64 hex characters from the site's admin page. Typed as `*` and never shown again (status: `key set`). `clear` removes it. |
 
-The settings are saved at once and the first check-in follows within a minute. The status screen shows them on one line, e.g. `Update server: http://10.132.0.45:8071 (fixed), key set, last check-in 4 min ago: ok`, or `Update server: off (option 10)`. The same settings are on the web page's **Firmware** page (card *Update server*). A factory reset removes the URL and the key.
+The settings are saved at once and the first check-in follows within a minute. The status screen shows them on one line, e.g. `Update server: http://10.132.0.45:8071 (fixed), key set, last check-in 4 min ago: ok`, or `Update server: off (option 10)`. The same settings are on the web page's **Firmware** page (card *Update server*). A factory reset removes the URL and the key. Firmware older than 3.4.0 does not know these settings: a device rolled back to such firmware and factory-reset there gets its old URL and key back after its next update to 3.4.0 or newer. Clear them with option 10 (`none`, then `clear`) if that matters.
 
 ## Factory reset
 

@@ -283,6 +283,52 @@ class UpdateServerTest(unittest.TestCase):
             silent.close()
         self.checkin(r"^ok$")
 
+    def test_settings_save_ends_a_running_checkin(self):
+        # A check-in sent with the old settings would read its answer with the new key
+        # ("reply not authenticated"): saving ends it, and the next one uses the new settings
+        silent = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        silent.bind(("0.0.0.0", PORT + 1))
+        silent.listen(4)
+        try:
+            self.dev.set_update_server(re.sub(r":\d+$", ":%d" % (PORT + 1), self.url), "")
+            self.dev.send("checkin", expect=r"checkin: requested[^\n]*\n")
+            time.sleep(1)
+            busy = self.dev.send("checkin", expect=r"checkin: requested[^\n]*\n")
+            self.assertIn("service checkin, fetch busy", busy)
+            self.dev.set_update_server(self.url, "")
+            after = self.dev.send("checkin", expect=r"checkin: requested[^\n]*\n")
+            self.assertIn("service idle, fetch free", after)
+        finally:
+            silent.close()
+        line = self.checkin(r".")
+        self.assertIn(": ok", line)
+
+    def test_firmware_page_card_sets_url_and_key(self):
+        from test_web import Web
+        st = self.dev.status()
+        password = os.environ.get("RFPOWER_WEB_PASSWORD") or st["webDefaultPassword"]
+        if not password or not st.get("webEnabled", True):
+            self.skipTest("needs the web page and its password (RFPOWER_WEB_PASSWORD or the default one)")
+        web = Web(self.ip)
+        status, page = web.login(password)
+        self.assertEqual(303, status, page)
+        status, _, page = web.request("GET", "/firmware", sid=web.sid)
+        self.assertEqual(200, status)
+        self.assertIn('action="/updateserver"', page)
+        self.assertIn("Shared key</th><td>set</td>", page)
+        self.assertNotIn(self.key.hex(), page)
+        csrf = re.search(r'name="csrf" value="([0-9a-f]{32})"', page).group(1)
+        status, _, page = web.request("POST", "/updateserver", {"csrf": csrf, "url": "https://bad", "key": ""},
+                                      sid=web.sid)
+        self.assertEqual(400, status)
+        # The same URL and key again, through the page: saved, and check-ins keep working
+        status, _, page = web.request("POST", "/updateserver",
+                                      {"csrf": csrf, "url": self.url, "key": self.key.hex()}, sid=web.sid)
+        self.assertEqual(200, status, page)
+        self.assertIn("Update server settings saved.", page)
+        self.assertNotIn(self.key.hex(), page)
+        self.checkin(r"^ok$")
+
     def test_corrupt_release_is_refused_and_device_keeps_running(self):
         version = self.put_release(flip_signatures(self.good))
         self.assertEqual(TEST_VERSION, version)

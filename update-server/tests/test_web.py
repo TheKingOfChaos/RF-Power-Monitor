@@ -9,6 +9,7 @@ import re
 import sys
 import tempfile
 import threading
+import time
 import unittest
 import uuid
 
@@ -221,6 +222,31 @@ class WebTest(unittest.TestCase):
         with self.assertRaises(OSError):
             other = make_server(self.store, "127.0.0.1", self.port, self.password)
             other.server_close()
+
+    def test_assign_message_counts_only_known_devices(self):
+        self.checkin(FakeDevice())
+        self.store.add_release(fake_upd("3.4.1"), now=0)
+        sid, csrf = self.login()
+        status, _, page = self.form("/admin/assign", {"serial": [SERIAL, "UNKNOWN0000000000"], "version": "3.4.1",
+                                                      "csrf": csrf}, sid)
+        self.assertEqual(200, status)
+        self.assertIn(b"1 device(s) get 3.4.1", page)
+
+    def test_silent_client_is_disconnected(self):
+        # A client that connects and sends nothing must not hold a thread for ever
+        quick = make_server(self.store, "127.0.0.1", 0, self.password, request_timeout=1)
+        t = threading.Thread(target=quick.serve_forever, daemon=True)
+        t.start()
+        try:
+            import socket
+            s = socket.create_connection(("127.0.0.1", quick.server_address[1]), timeout=5)
+            start = time.time()
+            self.assertEqual(b"", s.recv(100))  # closed by the server
+            self.assertLess(time.time() - start, 4)
+            s.close()
+        finally:
+            quick.shutdown()
+            quick.server_close()
 
     def test_delete_release(self):
         self.store.add_release(fake_upd("3.4.1"), now=0)
