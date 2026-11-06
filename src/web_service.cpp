@@ -15,7 +15,11 @@
 #include "net_stats.h"
 #include "snmp_service.h"
 #include "source_key.h"
+#include "update_service.h"
 #include "version.h"
+#include <update_settings_store.h>
+
+static_assert(WEB_UPDATE_URL_MAX == UPDATE_URL_MAX, "the web form and the setting take the same URL length");
 
 extern CountingW5500lwIP eth;  // main.cpp
 
@@ -222,7 +226,17 @@ public:
 
     void requestReboot() override { rebootRequested = true; }
 
-    void firmware(WebFirmware& out) override { fwUpdateStatus(out); }
+    void firmware(WebFirmware& out) override {
+        fwUpdateStatus(out);
+        strlcpy(out.updateUrl, currentUpdateSettings.url, sizeof(out.updateUrl));
+        out.updateFromDhcp = currentUpdateSettings.fromDhcp;
+        out.updateHasKey = currentUpdateSettings.hasKey;
+        updateServiceStateText(out.updateState, sizeof(out.updateState));
+    }
+    bool saveUpdateServer(const char* url, bool fromDhcp, const char* keyHex, bool clearKey,
+                          const char*& error) override {
+        return updateServiceSave(url, fromDhcp, keyHex, clearKey, error);
+    }
 
     bool switchSlot() override { return fwUpdateSwitchSlot(); }
 

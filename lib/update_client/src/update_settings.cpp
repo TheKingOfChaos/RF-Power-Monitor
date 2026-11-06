@@ -58,6 +58,32 @@ bool updateSettingsFromJson(const char* json, UpdateSettings& out) {
     return true;
 }
 
+bool updateSettingsApply(UpdateSettings& s, const char* url, bool fromDhcp, const char* keyHex, bool clearKey,
+                         const char*& error) {
+    UpdateUrl parsed;
+    if (url == nullptr || strlen(url) > UPDATE_URL_MAX || (url[0] != '\0' && !parseUpdateUrl(url, parsed))) {
+        error = "The URL must be empty or http://host[:port][/path], at most 127 characters.";
+        return false;
+    }
+    uint8_t key[UPDATE_KEY_LEN];
+    bool newKey = keyHex != nullptr && keyHex[0] != '\0';
+    if (keyHex == nullptr || (newKey && !clearKey && !parseKeyHex(keyHex, key))) {
+        error = "The key must be 64 hex characters from the update site.";
+        return false;
+    }
+    strcpy(s.url, url);
+    s.fromDhcp = fromDhcp;
+    if (clearKey) {
+        memset(s.key, 0, sizeof(s.key));
+        s.hasKey = false;
+    } else if (newKey) {
+        memcpy(s.key, key, sizeof(s.key));
+        s.hasKey = true;
+    }
+    memset(key, 0, sizeof(key));
+    return true;
+}
+
 bool updateSettingsEqual(const UpdateSettings& a, const UpdateSettings& b) {
     if (strcmp(a.url, b.url) != 0 || a.fromDhcp != b.fromDhcp || a.hasKey != b.hasKey) return false;
     return !a.hasKey || memcmp(a.key, b.key, UPDATE_KEY_LEN) == 0;

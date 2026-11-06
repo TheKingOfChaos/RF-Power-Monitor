@@ -675,7 +675,26 @@ const char* WebApp::firmwarePage(int code, const char* reason, size_t slot, WebB
     b.addEscaped(csrf);
     b.add("\"");
     if (fw.trial || fw.uploading) b.add(" disabled");
-    b.add(">Upload</button><p class=\"form-text mt-2 mb-0\" id=\"fw-msg\" role=\"status\"></p></div></div>"
+    b.add(">Upload</button><p class=\"form-text mt-2 mb-0\" id=\"fw-msg\" role=\"status\"></p></div></div>");
+
+    cardStart(b, "Update server", "mt-4");
+    b.add("<table class=\"table table-sm mb-0\"><tbody>");
+    row(b, "Check-ins", fw.updateState);
+    row(b, "Shared key", fw.updateHasKey ? "set" : "not set");
+    b.add("</tbody></table><div class=\"card-body\"><form method=\"post\" action=\"/updateserver\">");
+    csrfField(b, csrf);
+    textInput(b, "URL", "url", fw.updateUrl, WEB_UPDATE_URL_MAX,
+              "http://host[:port][/path] of the update site. Empty: no check-ins.");
+    b.add("<div class=\"form-check mb-3\"><input class=\"form-check-input\" type=\"checkbox\" name=\"fromdhcp\"");
+    if (fw.updateFromDhcp) b.add(" checked");
+    b.add(" id=\"f-fromdhcp\"><label class=\"form-check-label\" for=\"f-fromdhcp\">Use the URL from DHCP option 225 "
+          "instead</label></div><div class=\"mb-3\"><label class=\"form-label\" for=\"f-key\">Shared key</label>"
+          "<input class=\"form-control\" type=\"password\" id=\"f-key\" name=\"key\" maxlength=\"64\" value=\"\" "
+          "autocomplete=\"off\"><div class=\"form-text\">64 hex characters from the update site's admin page. "
+          "Empty keeps the current key.</div></div><div class=\"form-check mb-3\"><input class=\"form-check-input\" "
+          "type=\"checkbox\" name=\"clearkey\" id=\"f-clearkey\"><label class=\"form-check-label\" "
+          "for=\"f-clearkey\">Remove the key</label></div><button class=\"btn btn-primary\" type=\"submit\">Save"
+          "</button><span class=\"form-text ms-2\">Active immediately.</span></form></div></div>"
           "</div></div><script>");
     b.add(UPLOAD_SCRIPT);
     b.add("</script>");
@@ -696,6 +715,25 @@ const char* WebApp::firmwareSwitch(const HttpRequest& req, size_t slot, WebBacke
     backend.requestReboot();
     return notice(200, "OK", "Restarting",
                   "The device restarts now into the other firmware. Log in again in a few seconds.", len);
+}
+
+const char* WebApp::updateServer(const HttpRequest& req, size_t slot, WebBackend& backend, size_t& len) {
+    char url[WEB_UPDATE_URL_MAX + 2], key[66], flag[8];
+    if (!formValue(req.body(), req.bodyLength(), "url", url, sizeof(url)) || strlen(url) > WEB_UPDATE_URL_MAX) {
+        return firmwarePage(400, "Bad Request", slot, backend, "The URL is at most 127 characters.", true, len);
+    }
+    if (!formValue(req.body(), req.bodyLength(), "key", key, sizeof(key))) key[0] = '\0';
+    bool fromDhcp = formValue(req.body(), req.bodyLength(), "fromdhcp", flag, sizeof(flag));
+    bool clearKey = formValue(req.body(), req.bodyLength(), "clearkey", flag, sizeof(flag));
+    const char* error = "Saving failed, nothing changed.";
+    bool ok = backend.saveUpdateServer(url, fromDhcp, key, clearKey, error);
+    memset(key, 0, sizeof(key));
+    if (!ok) {
+        bool saveFailed = strcmp(error, "Saving failed, nothing changed.") == 0;
+        return firmwarePage(saveFailed ? 500 : 400, saveFailed ? "Internal Server Error" : "Bad Request", slot,
+                            backend, error, true, len);
+    }
+    return firmwarePage(200, "OK", slot, backend, "Update server settings saved.", false, len);
 }
 
 /// Add text on one line: control characters become spaces
@@ -867,7 +905,8 @@ const char* WebApp::handle(const HttpRequest& req, const SourceKey& sourceIP, ui
 
     bool action = strcmp(path, "/firmware/switch") == 0 || strcmp(path, "/logout") == 0 || strcmp(path, "/network") == 0 ||
                   strcmp(path, "/community") == 0 || strcmp(path, "/reboot") == 0 ||
-                  strcmp(path, "/hostname") == 0 || strcmp(path, "/disable") == 0 || strcmp(path, "/ipv6") == 0;
+                  strcmp(path, "/hostname") == 0 || strcmp(path, "/disable") == 0 || strcmp(path, "/ipv6") == 0 ||
+                  strcmp(path, "/updateserver") == 0;
     if (!action) return notice(404, "Not Found", "Not found", "There is no such page.", len);
     if (!post) return notice(405, "Method Not Allowed", "Not allowed", "Use the buttons on the start page.", len);
     if (slot < 0) {
@@ -889,6 +928,7 @@ const char* WebApp::handle(const HttpRequest& req, const SourceKey& sourceIP, ui
     if (strcmp(path, "/hostname") == 0) return hostname(req, (size_t)slot, backend, len);
     if (strcmp(path, "/disable") == 0) return disable(req, (size_t)slot, backend, len);
     if (strcmp(path, "/firmware/switch") == 0) return firmwareSwitch(req, (size_t)slot, backend, len);
+    if (strcmp(path, "/updateserver") == 0) return updateServer(req, (size_t)slot, backend, len);
     backend.requestReboot();
     return notice(200, "OK", "Restarting", "The device restarts now. Log in again in a few seconds.", len);
 }

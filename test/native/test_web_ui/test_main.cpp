@@ -608,6 +608,35 @@ public:
         disables++;
         return saveOk;
     }
+    int updateSaves = 0;
+    std::string savedUpdateUrl, savedUpdateKey;
+    bool savedUpdateFromDhcp = false, savedUpdateClearKey = false;
+    bool saveUpdateServer(const char* url, bool fromDhcp, const char* keyHex, bool clearKey,
+                          const char*& error) override {
+        // The firmware checks with lib/update_client; the fake knows two bad inputs
+        if (strncmp(url, "http://", 7) != 0 && url[0] != '\0') {
+            error = "The URL must be http://host[:port][/path] <here>";
+            return false;
+        }
+        if (keyHex[0] != '\0' && strlen(keyHex) != 64) {
+            error = "The key must be 64 hex characters.";
+            return false;
+        }
+        updateSaves++;
+        savedUpdateUrl = url;
+        savedUpdateKey = keyHex;
+        savedUpdateFromDhcp = fromDhcp;
+        savedUpdateClearKey = clearKey;
+        if (!saveOk) {
+            error = "Saving failed, nothing changed.";
+            return false;
+        }
+        strcpy(fw.updateUrl, url);
+        fw.updateFromDhcp = fromDhcp;
+        if (keyHex[0] != '\0') fw.updateHasKey = true;
+        if (clearKey) fw.updateHasKey = false;
+        return true;
+    }
     void requestReboot() override { reboots++; }
     void random(uint8_t* out, size_t len) override {
         for (size_t i = 0; i < len; i++) out[i] = (uint8_t)(seed * 31 + i);
@@ -1697,6 +1726,117 @@ static void test_upload_result_server_errors_have_their_reason_phrase() {
     TEST_ASSERT_TRUE(r.find("HTTP/1.1 503 Service Unavailable\r\n") == 0);
 }
 
+static const std::string TEST_KEY = "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
+
+static void test_update_server_form_needs_login_and_csrf() {
+    webSetUp();
+    std::string body = "url=http%3A%2F%2F10.0.0.1%3A8071&key=" + TEST_KEY;
+    TEST_ASSERT_EQUAL(403, statusCode(post("/updateserver", "csrf=x&" + body)));
+    std::string csrf;
+    std::string token = logIn(csrf);
+    TEST_ASSERT_EQUAL(403, statusCode(post("/updateserver", "csrf=wrong&" + body, token)));
+    TEST_ASSERT_EQUAL(403, statusCode(post("/updateserver", body, token)));
+    TEST_ASSERT_EQUAL(405, statusCode(get("/updateserver", token)));
+    TEST_ASSERT_EQUAL(0, fb->updateSaves);
+}
+
+static void test_update_server_post_saves_url_and_key() {
+    webSetUp();
+    std::string csrf;
+    std::string token = logIn(csrf);
+    std::string resp = post("/updateserver", "csrf=" + csrf + "&url=http%3A%2F%2F10.0.0.1%3A8071&fromdhcp=on&key=" +
+                                                 TEST_KEY, token);
+    TEST_ASSERT_EQUAL_MESSAGE(200, statusCode(resp), resp.c_str());
+    TEST_ASSERT_EQUAL(1, fb->updateSaves);
+    TEST_ASSERT_EQUAL_STRING("http://10.0.0.1:8071", fb->savedUpdateUrl.c_str());
+    TEST_ASSERT_EQUAL_STRING(TEST_KEY.c_str(), fb->savedUpdateKey.c_str());
+    TEST_ASSERT_TRUE(fb->savedUpdateFromDhcp);
+    TEST_ASSERT_FALSE(fb->savedUpdateClearKey);
+    TEST_ASSERT_TRUE(resp.find("Update server settings saved.") != std::string::npos);
+    TEST_ASSERT_EQUAL(0, fb->reboots);
+}
+
+static void test_update_server_post_empty_key_keeps_key() {
+    webSetUp();
+    std::string csrf;
+    std::string token = logIn(csrf);
+    TEST_ASSERT_EQUAL(200, statusCode(post("/updateserver", "csrf=" + csrf + "&url=&key=", token)));
+    TEST_ASSERT_EQUAL_STRING("", fb->savedUpdateKey.c_str());  // the backend keeps the stored key
+    TEST_ASSERT_FALSE(fb->savedUpdateClearKey);
+    TEST_ASSERT_FALSE(fb->savedUpdateFromDhcp);  // an unticked checkbox is not sent
+    TEST_ASSERT_EQUAL(200, statusCode(post("/updateserver", "csrf=" + csrf + "&url=&key=&clearkey=on", token)));
+    TEST_ASSERT_TRUE(fb->savedUpdateClearKey);
+}
+
+static void test_update_server_post_rejects_bad_url() {
+    webSetUp();
+    std::string csrf;
+    std::string token = logIn(csrf);
+    std::string resp = post("/updateserver", "csrf=" + csrf + "&url=https%3A%2F%2Fsite&key=", token);
+    TEST_ASSERT_EQUAL(400, statusCode(resp));
+    TEST_ASSERT_TRUE(resp.find("alert alert-danger") != std::string::npos);
+    TEST_ASSERT_TRUE(resp.find("http://host[:port][/path] &lt;here&gt;") != std::string::npos);  // escaped
+    TEST_ASSERT_EQUAL(0, fb->updateSaves);
+    // A URL longer than 127 characters never reaches the backend
+    std::string longUrl = "http%3A%2F%2F" + std::string(121, 'h');
+    TEST_ASSERT_EQUAL(400, statusCode(post("/updateserver", "csrf=" + csrf + "&url=" + longUrl + "&key=", token)));
+    TEST_ASSERT_EQUAL(0, fb->updateSaves);
+    fb->saveOk = false;
+    TEST_ASSERT_EQUAL(500, statusCode(post("/updateserver", "csrf=" + csrf + "&url=&key=", token)));
+}
+
+static void test_update_server_page_never_shows_key() {
+    webSetUp();
+    std::string csrf;
+    std::string token = logIn(csrf);
+    std::string resp = post("/updateserver", "csrf=" + csrf + "&url=http%3A%2F%2F10.0.0.1&key=" + TEST_KEY, token);
+    TEST_ASSERT_EQUAL(200, statusCode(resp));
+    TEST_ASSERT_TRUE(resp.find(TEST_KEY) == std::string::npos);
+    std::string page = get("/firmware", token);
+    TEST_ASSERT_TRUE(page.find(TEST_KEY) == std::string::npos);
+    TEST_ASSERT_TRUE(page.find("Shared key</th><td>set</td>") != std::string::npos);
+    TEST_ASSERT_TRUE(page.find("type=\"password\" id=\"f-key\" name=\"key\" maxlength=\"64\" value=\"\"") !=
+                     std::string::npos);
+}
+
+static void test_firmware_page_shows_update_server_state() {
+    webSetUp();
+    strcpy(fb->fw.updateUrl, "http://10.0.0.1:8071/<x>");
+    strcpy(fb->fw.updateState, "last check-in 3 min ago: <ok>");
+    std::string csrf;
+    std::string page = get("/firmware", logIn(csrf));
+    TEST_ASSERT_TRUE(page.find("action=\"/updateserver\"") != std::string::npos);
+    TEST_ASSERT_TRUE(page.find("value=\"http://10.0.0.1:8071/&lt;x&gt;\"") != std::string::npos);
+    TEST_ASSERT_TRUE(page.find("Check-ins</th><td>last check-in 3 min ago: &lt;ok&gt;</td>") != std::string::npos);
+    TEST_ASSERT_TRUE(page.find("Shared key</th><td>not set</td>") != std::string::npos);
+    TEST_ASSERT_TRUE(page.find("name=\"fromdhcp\" checked") == std::string::npos);
+    fb->fw.updateFromDhcp = true;
+    page = get("/firmware", logIn(csrf));
+    TEST_ASSERT_TRUE(page.find("name=\"fromdhcp\" checked") != std::string::npos);
+}
+
+static void test_firmware_page_with_longest_update_values_fits() {
+    webSetUp();
+    // Every character escaped (" becomes &quot;), plus an error message on top
+    memset(fb->fw.updateUrl, '"', WEB_UPDATE_URL_MAX);
+    fb->fw.updateUrl[WEB_UPDATE_URL_MAX] = '\0';
+    memset(fb->fw.updateState, '"', sizeof(fb->fw.updateState) - 1);
+    fb->fw.updateState[sizeof(fb->fw.updateState) - 1] = '\0';
+    memset(fb->fw.lastResult, '"', sizeof(fb->fw.lastResult) - 1);
+    fb->fw.lastResult[sizeof(fb->fw.lastResult) - 1] = '\0';
+    memset(fb->fw.otherProblem, '"', sizeof(fb->fw.otherProblem) - 1);
+    fb->fw.otherProblem[sizeof(fb->fw.otherProblem) - 1] = '\0';
+    fb->fw.otherVersion[0] = '\0';
+    std::string csrf;
+    std::string token = logIn(csrf);
+    std::string resp = post("/updateserver", "csrf=" + csrf + "&url=https%3A%2F%2Fsite&key=", token);
+    TEST_ASSERT_EQUAL(400, statusCode(resp));
+    TEST_ASSERT_TRUE(resp.find("</html>") != std::string::npos);
+    char msg[64];
+    snprintf(msg, sizeof(msg), "firmware page %u bytes", (unsigned)resp.size());
+    TEST_MESSAGE(msg);
+}
+
 static void test_firmware_page_needs_login() {
     webSetUp();
     std::string r = get("/firmware");
@@ -2245,6 +2385,13 @@ int main() {
     RUN_TEST(test_upload_result_names_a_different_key);
     RUN_TEST(test_upload_result_texts);
     RUN_TEST(test_upload_result_server_errors_have_their_reason_phrase);
+    RUN_TEST(test_update_server_form_needs_login_and_csrf);
+    RUN_TEST(test_update_server_post_saves_url_and_key);
+    RUN_TEST(test_update_server_post_empty_key_keeps_key);
+    RUN_TEST(test_update_server_post_rejects_bad_url);
+    RUN_TEST(test_update_server_page_never_shows_key);
+    RUN_TEST(test_firmware_page_shows_update_server_state);
+    RUN_TEST(test_firmware_page_with_longest_update_values_fits);
     RUN_TEST(test_firmware_page_needs_login);
     RUN_TEST(test_firmware_page_shows_slots_and_fingerprint);
     RUN_TEST(test_firmware_page_shows_trial_and_unusable_other_slot);

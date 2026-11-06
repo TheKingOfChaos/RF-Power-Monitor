@@ -584,6 +584,65 @@ static void test_checkin_last_text_for_each_result() {
     TEST_ASSERT_EQUAL_STRING("none", out);
 }
 
+// --- applying a change from the menu or the web page ---
+
+static const char* KEY64 = "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f";
+
+static void test_apply_sets_url_and_key() {
+    UpdateSettings s;
+    updateSettingsDefaults(s);
+    const char* error = nullptr;
+    TEST_ASSERT_TRUE(updateSettingsApply(s, "http://10.0.0.1:8071", false, KEY64, false, error));
+    TEST_ASSERT_EQUAL_STRING("http://10.0.0.1:8071", s.url);
+    TEST_ASSERT_TRUE(s.hasKey);
+    TEST_ASSERT_EQUAL_UINT8(0x1f, s.key[31]);
+}
+
+static void test_apply_empty_key_keeps_key() {
+    UpdateSettings s;
+    updateSettingsDefaults(s);
+    const char* error = nullptr;
+    updateSettingsApply(s, "http://a", false, KEY64, false, error);
+    TEST_ASSERT_TRUE(updateSettingsApply(s, "http://b", true, "", false, error));
+    TEST_ASSERT_TRUE(s.hasKey);
+    TEST_ASSERT_EQUAL_UINT8(0x1f, s.key[31]);
+    TEST_ASSERT_TRUE(s.fromDhcp);
+    TEST_ASSERT_EQUAL_STRING("http://b", s.url);
+}
+
+static void test_apply_clear_key_wins() {
+    UpdateSettings s;
+    updateSettingsDefaults(s);
+    const char* error = nullptr;
+    updateSettingsApply(s, "", false, KEY64, false, error);
+    TEST_ASSERT_TRUE(updateSettingsApply(s, "", false, KEY64, true, error));
+    TEST_ASSERT_FALSE(s.hasKey);
+    for (size_t i = 0; i < UPDATE_KEY_LEN; i++) TEST_ASSERT_EQUAL_UINT8(0, s.key[i]);  // wiped, not only flagged
+}
+
+static void test_apply_refuses_bad_url_and_changes_nothing() {
+    UpdateSettings s;
+    updateSettingsDefaults(s);
+    const char* error = nullptr;
+    updateSettingsApply(s, "http://a", false, KEY64, false, error);
+    UpdateSettings before = s;
+    TEST_ASSERT_FALSE(updateSettingsApply(s, "https://b", true, "", true, error));
+    TEST_ASSERT_NOT_NULL(error);
+    TEST_ASSERT_TRUE(updateSettingsEqual(before, s));
+    TEST_ASSERT_EQUAL(before.fromDhcp, s.fromDhcp);
+}
+
+static void test_apply_refuses_bad_key_and_changes_nothing() {
+    UpdateSettings s;
+    updateSettingsDefaults(s);
+    const char* error = nullptr;
+    UpdateSettings before = s;
+    TEST_ASSERT_FALSE(updateSettingsApply(s, "http://a", false, "0011", false, error));
+    TEST_ASSERT_NOT_NULL(error);
+    TEST_ASSERT_TRUE(updateSettingsEqual(before, s));
+    TEST_ASSERT_FALSE(updateSettingsApply(s, "http://a", false, nullptr, false, error));
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_url_accepts_name_port_path);
@@ -642,5 +701,10 @@ int main(int, char**) {
     RUN_TEST(test_job_begin_keeps_fail_line_until_reported);
     RUN_TEST(test_job_long_reason_is_cut_to_fit);
     RUN_TEST(test_checkin_last_text_for_each_result);
+    RUN_TEST(test_apply_sets_url_and_key);
+    RUN_TEST(test_apply_empty_key_keeps_key);
+    RUN_TEST(test_apply_clear_key_wins);
+    RUN_TEST(test_apply_refuses_bad_url_and_changes_nothing);
+    RUN_TEST(test_apply_refuses_bad_key_and_changes_nothing);
     return UNITY_END();
 }

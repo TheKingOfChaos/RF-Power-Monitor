@@ -75,6 +75,9 @@ struct WebStatus {
     char lldpSwitchAddr[46];  ///< Its management address, empty if none
 };
 
+/// Longest update server URL (lib/update_client UPDATE_URL_MAX; src/web_service.cpp checks they match)
+static const size_t WEB_UPDATE_URL_MAX = 127;
+
 /**
  * @brief What the Firmware page shows. Plain text, so this library does not
  *        depend on the update libraries.
@@ -88,6 +91,10 @@ struct WebFirmware {
     char lastResult[64];        ///< result of the last update, e.g. "ok 3.3.0" or an error name, may be empty
     char keyFingerprint[17];    ///< fingerprint of the update signing key
     bool uploading;             ///< an upload is in progress
+    char updateUrl[WEB_UPDATE_URL_MAX + 1];  ///< stored update server URL (form default), may be empty
+    bool updateFromDhcp;        ///< the URL comes from DHCP option 225
+    bool updateHasKey;          ///< a shared key is set (the key itself is never shown)
+    char updateState[96];       ///< check-ins in words, e.g. "last check-in 3 min ago: ok" or "off"
 };
 
 /// Events the backend may log
@@ -113,6 +120,16 @@ public:
     virtual bool saveDeviceName(const char* hostname, const char* contact, const char* location) = 0;
     /// Save webEnabled = false; the server closes port 80 after this response
     virtual bool disableWeb() = 0;
+    /**
+     * @brief Check and save the update server settings (active at once)
+     * @param url Empty (no check-ins) or http://host[:port][/path], at most WEB_UPDATE_URL_MAX characters
+     * @param keyHex 64 hex characters, or empty to keep the stored key
+     * @param clearKey Remove the stored key (wins over keyHex)
+     * @param error On false: why, shown on the page (a bad value, or that saving failed)
+     * @return false when a value is refused or saving failed; nothing changes then
+     */
+    virtual bool saveUpdateServer(const char* url, bool fromDhcp, const char* keyHex, bool clearKey,
+                                  const char*& error) = 0;
     /// Reboot once the response has been sent
     virtual void requestReboot() = 0;
     /// Fill out for the Firmware page (out is zeroed first)
@@ -190,6 +207,7 @@ private:
     const char* firmwarePage(int code, const char* reason, size_t slot, WebBackend& backend, const char* message,
                              bool error, size_t& len);
     const char* firmwareSwitch(const HttpRequest& req, size_t slot, WebBackend& backend, size_t& len);
+    const char* updateServer(const HttpRequest& req, size_t slot, WebBackend& backend, size_t& len);
     const char* firmwareStatus(WebBackend& backend, size_t& len);
     const char* plainResponse(int code, const char* body, size_t& len);
     const char* favicon(size_t& len);

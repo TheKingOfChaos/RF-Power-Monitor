@@ -51,7 +51,8 @@ class SerialMenuTest(unittest.TestCase):
     def test_menu_lists_all_options(self):
         out = self.dev.wait_for_menu()
         for text in ("1. Show status", "2. Use DHCP", "3. Set static IP", "4. SNMP settings",
-                     "5. Access log", "6. Web password", "7. New default web password", "8. Web interface on/off", "?. Show this menu"):
+                     "5. Access log", "6. Web password", "7. New default web password", "8. Web interface on/off",
+                     "9. Static IPv6", "10. Update server", "?. Show this menu"):
             self.assertIn(text, out)
 
     def test_status_reports_dhcp_lease(self):
@@ -159,6 +160,35 @@ class SerialMenuTest(unittest.TestCase):
         self.assertIsNotNone(st["fwLastUpdate"])
         self.assertIsNotNone(st["fwKey"], "Firmware key line missing:\n%s" % st["raw"])
 
+    def test_update_server_menu_sets_url_and_key_and_restores(self):
+        key = "a5" * 32
+        before = self.dev.update_server_line()
+        self.assertTrue(before.startswith("off"), before)  # HIL runs start without an update server
+        try:
+            out = self.dev.set_update_server("http://192.0.2.1:8071/rf", key)
+            self.assertIn("Update server settings saved", out)
+            self.assertNotIn(key, out)  # typed as *, never printed
+            self.assertIn("*" * 64, out)
+            line = self.dev.update_server_line()
+            self.assertTrue(line.startswith("http://192.0.2.1:8071/rf (fixed), key set, "), line)
+            # Enter keeps both
+            self.dev.set_update_server("", "")
+            self.assertTrue(self.dev.update_server_line().startswith("http://192.0.2.1:8071/rf (fixed), key set"))
+            # A bad URL is refused and nothing changes
+            out = self.dev.set_update_server("https://192.0.2.1/", "")
+            self.assertIn("not an http", out)
+        finally:
+            self.dev.set_update_server("none", "clear")
+        self.assertTrue(self.dev.update_server_line().startswith("off"))
+
+    def test_update_server_menu_refuses_short_key(self):
+        try:
+            out = self.dev.set_update_server("http://192.0.2.1:8071", "0011")
+            self.assertIn("The key must be 64 hex characters", out)
+            self.assertTrue(self.dev.update_server_line().startswith("off"))
+        finally:
+            self.dev.set_update_server("none", "clear")
+
     def test_status_shows_snmp_settings(self):
         st = self.dev.status()
         for key in ("community", "sysName", "sysContact", "sysLocation"):
@@ -180,7 +210,7 @@ class SerialMenuTest(unittest.TestCase):
         for bad in ("n" * 33, "ups rack", "ups.local", "-ups", "ups_4"):
             out = d.send(bad, expect=r"\(sysName\) \[.*\]: $")
             self.assertIn("Not a valid hostname", out, bad)
-        out = d.send("x" * 100, expect=r"\(sysName\) \[.*\]: $")      # longer than the input line
+        out = d.send("x" * 150, expect=r"\(sysName\) \[.*\]: $")      # longer than the input line (143)
         self.assertIn("Input too long", out)
         d.send("", expect=r"sysContact \[.*\]: $")                  # Enter keeps sysName
         d.send("-", expect=r"sysLocation \[.*\]: $")                # '-' clears sysContact

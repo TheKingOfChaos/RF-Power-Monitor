@@ -279,6 +279,23 @@ class Device:
         self.send("y", expect=r"Rebooting", timeout=10)
         self.reconnect_after_reboot()
 
+    def set_update_server(self, url, key=""):
+        """Menu option 10: url is a URL, "dhcp", "none" or "" (keep); key is 64 hex, "clear" or "" (keep).
+        Returns the output from the key prompt on."""
+        self.send("10", expect=r"Update server URL .*: $")
+        out = self.send(url, expect=r"(Shared key .*: $|not an http[\s\S]*URL .*: $)")
+        if "not an http" in out:
+            self.send("none", expect=r"Shared key .*: $")
+            self.send("", expect=re.escape(PROMPT) + r"$")
+            return out
+        return self.send(key, expect=r"(saved|failed|must)[\s\S]*" + re.escape(PROMPT) + r"$")
+
+    def update_server_line(self):
+        """The status screen's "Update server: ..." line."""
+        st = self.status()
+        m = re.search(r"^Update server: (.*?)\r?$", st["raw"], re.MULTILINE)
+        return m.group(1) if m else None
+
     def access_log(self):
         """Menu option 5: list of (ip, event, count) tuples, newest first."""
         out = self.send("5", expect=r"Access log: [\s\S]*> $")

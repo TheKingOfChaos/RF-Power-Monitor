@@ -50,5 +50,16 @@ size_t updateSettingsToJson(const UpdateSettings& s, char* out, size_t size);
  */
 bool updateSettingsFromJson(const char* json, UpdateSettings& out);
 
+/**
+ * @brief Apply a change entered in the serial menu or on the web page
+ * @param url Empty (no stored URL) or a URL parseUpdateUrl() accepts
+ * @param keyHex 64 hex characters, or empty to keep the key
+ * @param clearKey Remove the key (wins over keyHex); its bytes are wiped
+ * @param error On false: a sentence for the user
+ * @return false (s unchanged) when the URL or the key is refused
+ */
+bool updateSettingsApply(UpdateSettings& s, const char* url, bool fromDhcp, const char* keyHex, bool clearKey,
+                         const char*& error);
+
 /// Same URL, DHCP flag and key (version and sequence are not compared)
 bool updateSettingsEqual(const UpdateSettings& a, const UpdateSettings& b);

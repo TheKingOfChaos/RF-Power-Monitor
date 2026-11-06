@@ -370,6 +370,37 @@ void updateServiceForceCheckin() {
     scheduler.forceNow(millis());
 }
 
+bool updateServiceSave(const char* url, bool fromDhcp, const char* keyHex, bool clearKey, const char*& error) {
+    UpdateSettings before = currentUpdateSettings;
+    if (!updateSettingsApply(currentUpdateSettings, url, fromDhcp, keyHex, clearKey, error)) return false;
+    if (!saveUpdateSettings()) {
+        currentUpdateSettings = before;
+        memset(&before, 0, sizeof(before));
+        error = "Saving failed, nothing changed.";
+        return false;
+    }
+    memset(&before, 0, sizeof(before));
+    // Start over with the new settings: first check-in 60 s from the next poll
+    scheduler.netReady(false, millis());
+    checkedIn = false;
+    return true;
+}
+
+void updateServiceStateText(char* out, size_t size) {
+    if (phase == Phase::Download) {
+        snprintf(out, size, "downloading %s", job.version());
+    } else if (!checkedIn) {
+        snprintf(out, size, "%s", strcmp(lastResult, "waiting") == 0 ? "waiting for the first check-in" : lastResult);
+    } else {
+        uint32_t ageS = (millis() - lastCheckinMs) / 1000;
+        if (ageS < 60) {
+            snprintf(out, size, "last check-in %lu s ago: %s", (unsigned long)ageS, lastResult);
+        } else {
+            snprintf(out, size, "last check-in %lu min ago: %s", (unsigned long)(ageS / 60), lastResult);
+        }
+    }
+}
+
 void updateServiceStatus(UpdateServiceStatus& out) {
     memset(&out, 0, sizeof(out));
     snprintf(out.urlInUse, sizeof(out.urlInUse), "%s", urlText);

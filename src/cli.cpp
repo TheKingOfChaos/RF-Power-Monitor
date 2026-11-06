@@ -11,6 +11,7 @@
 #include "hostname.h"
 #include "http_fetch.h"
 #include "update_service.h"
+#include <update_settings_store.h>
 #include "lldp_service.h"
 #include "net_stats.h"
 #include "snmp_service.h"
@@ -40,7 +41,9 @@ enum CliState {
     CLI_WEB_TOGGLE,     // Confirming web interface on/off
     CLI_IPV6_ADDRESS,   // Entering the static IPv6 address
     CLI_IPV6_GATEWAY,   // Entering the static IPv6 gateway
-    CLI_IPV6_CONFIRM    // Confirming the IPv6 change, save and reboot
+    CLI_IPV6_CONFIRM,   // Confirming the IPv6 change, save and reboot
+    CLI_UPDATE_URL,     // Entering the update server URL (or dhcp / none)
+    CLI_UPDATE_KEY      // Entering the shared key (echoed as *), then save
 };
 
 static CliState state = CLI_MENU;
@@ -48,6 +51,10 @@ static char lineBuf[144];  // room for a 127-character URL after a command word
 static uint8_t lineLen = 0;
 static bool lineOverflow = false;  // More characters were typed than lineBuf holds
 static Settings settingsBackup;    // restored when a save fails; static: too big for core 0's stack
+
+// Update server values being entered (option 10), saved after the key
+static char newUpdateUrl[UPDATE_URL_MAX + 1];
+static bool newUpdateFromDhcp = false;
 
 // Hidden command fetchtest <url>: a GET in the background, its result printed when it ends
 static bool fetchTestActive = false;
@@ -80,6 +87,37 @@ static const char* trapVersionName(uint8_t v) {
     return v == TRAP_VERSION_V1 ? "1" : "2c";
 }
 
+/// "Update server: <url> (fixed|DHCP option 225), key set|not set, <check-ins>" or "Update server: off"
+static void printUpdateServerLine() {
+    if (!currentUpdateSettings.fromDhcp && currentUpdateSettings.url[0] == '\0') {
+        Serial.println("Update server: off (option 10)");
+        return;
+    }
+    char state[96];
+    updateServiceStateText(state, sizeof(state));
+    UpdateServiceStatus st;
+    updateServiceStatus(st);
+    Serial.printf("Update server: %s (%s), key %s, %s\r\n", st.urlInUse[0] ? st.urlInUse : "none yet",
+                  currentUpdateSettings.fromDhcp ? "DHCP option 225" : "fixed",
+                  currentUpdateSettings.hasKey ? "set" : "not set", state);
+}
+
+/// Ask for the update server URL (option 10)
+static void promptUpdateUrl() {
+    const char* current = currentUpdateSettings.fromDhcp ? "dhcp"
+                          : currentUpdateSettings.url[0] ? currentUpdateSettings.url
+                                                         : "none";
+    Serial.printf("Update server URL (http://host[:port][/path]), dhcp or none [%s]: ", current);
+    state = CLI_UPDATE_URL;
+}
+
+/// Ask for the shared key (option 10, second step)
+static void promptUpdateKey() {
+    Serial.printf("Shared key (64 hex characters from the update site), Enter keeps, clear removes [%s]: ",
+                  currentUpdateSettings.hasKey ? "set" : "not set");
+    state = CLI_UPDATE_KEY;
+}
+
 /**
  * @brief Print the main menu
  */
@@ -95,6 +133,7 @@ static void printMenu() {
     Serial.println("7. New default web password");
     Serial.println("8. Web interface on/off");
     Serial.println("9. Static IPv6");
+    Serial.println("10. Update server");
     Serial.println("?. Show this menu");
     Serial.print("> ");
 }
@@ -239,6 +278,7 @@ static void printStatus() {
         Serial.printf("Last update: %s\r\n", fw.lastResult[0] ? fw.lastResult : "none");
         Serial.printf("Firmware key: %s\r\n", fw.keyFingerprint);
     }
+    printUpdateServerLine();
 
     Serial.printf("Mode: %s\r\n", currentSettings.dhcpEnabled ? "DHCP" : "Static");
     Serial.printf("Stored static IP: %s / %s, gateway %s\r\n",
@@ -538,6 +578,10 @@ static void handleLine(const char* line) {
             Serial.printf(webEnabled() ? "The web interface is on. Turn it off? (y/n): "
                                        : "The web interface is off. Turn it on? (y/n): ");
             state = CLI_WEB_TOGGLE;
+        } else if (strcmp(line, "10") == 0) {
+            printUpdateServerLine();
+            Serial.println("Press Enter to keep the value in brackets.");
+            promptUpdateUrl();
         } else if (strcmp(line, "9") == 0) {
             Serial.println("The address is used as a /64 next to the automatic (SLAAC) address.");
             Serial.println("Press Enter to keep the value in brackets.");
@@ -821,6 +865,45 @@ static void handleLine(const char* line) {
         printMenu();
         break;
 
+    case CLI_UPDATE_URL: {
+        UpdateUrl parsed;
+        if (line[0] == '\0') {
+            strlcpy(newUpdateUrl, currentUpdateSettings.url, sizeof(newUpdateUrl));
+            newUpdateFromDhcp = currentUpdateSettings.fromDhcp;
+        } else if (strcmp(line, "none") == 0) {
+            newUpdateUrl[0] = '\0';
+            newUpdateFromDhcp = false;
+        } else if (strcmp(line, "dhcp") == 0) {
+            strlcpy(newUpdateUrl, currentUpdateSettings.url, sizeof(newUpdateUrl));  // kept for later
+            newUpdateFromDhcp = true;
+        } else if (strlen(line) > UPDATE_URL_MAX || !parseUpdateUrl(line, parsed)) {
+            Serial.printf("'%s': not an http://host[:port][/path] URL of at most %u characters\r\n", line,
+                          (unsigned)UPDATE_URL_MAX);
+            promptUpdateUrl();
+            break;
+        } else {
+            strlcpy(newUpdateUrl, line, sizeof(newUpdateUrl));
+            newUpdateFromDhcp = false;
+        }
+        promptUpdateKey();
+        break;
+    }
+
+    case CLI_UPDATE_KEY: {
+        bool clear = strcmp(line, "clear") == 0;
+        const char* error = "";
+        if (updateServiceSave(newUpdateUrl, newUpdateFromDhcp, clear ? "" : line, clear, error)) {
+            Serial.println("Update server settings saved");
+            printUpdateServerLine();
+        } else {
+            Serial.println(error);
+        }
+        memset(lineBuf, 0, sizeof(lineBuf));  // the key was typed here
+        state = CLI_MENU;
+        printMenu();
+        break;
+    }
+
     case CLI_WEB_TOGGLE:
         if (line[0] == 'y' || line[0] == 'Y') {
             bool on = !webEnabled();
@@ -908,7 +991,7 @@ void cliProcess() {
             if (lineLen < sizeof(lineBuf) - 1) {
                 lineBuf[lineLen++] = c;
                 // Echo, terminals like PuTTY don't echo locally; never echo a password
-                bool secret = state == CLI_WEB_PASSWORD || state == CLI_WEB_REPEAT;
+                bool secret = state == CLI_WEB_PASSWORD || state == CLI_WEB_REPEAT || state == CLI_UPDATE_KEY;
                 Serial.print(secret ? '*' : c);
             } else {
                 lineOverflow = true;

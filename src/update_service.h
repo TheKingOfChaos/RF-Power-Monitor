@@ -16,6 +16,7 @@
  * is reported at the next check-in. Core 0 only; never blocks (src/http_fetch.h).
  */
 
+#include <stddef.h>
 #include <stdint.h>
 #include <update_url.h>
 
@@ -44,3 +45,20 @@ void updateServiceForceCheckin();
 
 /// Fill out for the status screen and web page
 void updateServiceStatus(UpdateServiceStatus& out);
+
+/**
+ * @brief The check-ins in words: "off", "no key", "bad url", "waiting for the first check-in",
+ *        "downloading", or "last check-in 3 min ago: ok"
+ */
+void updateServiceStateText(char* out, size_t size);
+
+/**
+ * @brief Check, apply and save update server settings (serial menu, web page); active at once
+ *
+ * Takes effect at once: the first check-in with the new settings follows 60 s later.
+ * @param keyHex 64 hex characters, or empty to keep the key
+ * @param clearKey Remove the key
+ * @param error On false: a sentence for the user; "Saving failed, nothing changed." when the flash write failed
+ * @return false when a value is refused or saving failed (the settings in use are then unchanged)
+ */
+bool updateServiceSave(const char* url, bool fromDhcp, const char* keyHex, bool clearKey, const char*& error);
