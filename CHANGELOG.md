@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Changed
+- LibreNMS: the *Firmware* state sensor shows **normal** instead of **kept** for a confirmed firmware (`fwState` 1). The device, its web page and the MIB still call it kept.
+- LibreNMS: a rollback or fallback (*Firmware last update* rolledBackCrash, rolledBackUnreachable, fallbackCrash) is critical (red) instead of a warning, so the *State Sensor Critical* rule alerts; it clears with the next successful update.
+
 ## [3.5.0] - 2026-11-07
 
 Bench setup of new boards: the default web password can be locked once it is on the device label.

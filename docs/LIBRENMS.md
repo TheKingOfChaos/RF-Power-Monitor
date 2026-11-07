@@ -15,8 +15,8 @@ The device works in LibreNMS as a plain SNMP device out of the box: it answers S
 | Temperature sensor "CPU (RP2040 die)", warning at 60 °C, critical at 70 °C, low limit −20 °C | `cpuTemperature` / 10 |
 | Temperature sensor "Ambient (TMP1075)", warning at 40 °C, critical at 50 °C, low limit −20 °C; only with the carrier board | `ambientTemperature` / 10 |
 | Count sensor "Mains power changes since boot" | `mainsPowerChanges` |
-| State sensor "Firmware": kept (OK) / trial (warning) | `fwState` (`fwUpdate` group, `63050.7`, firmware 3.3.0) |
-| State sensor "Firmware last update": none, installed (OK); rolled back or fallback (warning) | `fwLastResult` (3.3.0) |
+| State sensor "Firmware": normal (OK, fwState kept) / trial (warning) | `fwState` (`fwUpdate` group, `63050.7`, firmware 3.3.0) |
+| State sensor "Firmware last update": none, installed (OK); rolled back or fallback (critical, alerts) | `fwLastResult` (3.3.0) |
 | Uptime, reboot detection | sysUpTime |
 | Neighbours tab: the switch and port the device is plugged into | LLDP-MIB `lldpRemTable` (firmware 2.7.0) |
 | Location and contact on the device page (and the map, once the location has coordinates) | sysLocation, sysContact: set on the device's web page or menu option 4 |
@@ -130,8 +130,8 @@ The `fwUpdate` group (`63050.7`, see [MIB.md](MIB.md)) describes the two firmwar
 
 | Sensor | Object | States |
 |---|---|---|
-| Firmware | `fwState` (`63050.7.4`) | kept (OK), trial (warning: a new firmware that has not answered a valid request yet) |
-| Firmware last update | `fwLastResult` (`63050.7.5`) | none, installed (OK); rolledBackCrash, rolledBackUnreachable, fallbackCrash (warning) |
+| Firmware | `fwState` (`63050.7.4`) | normal (OK: fwState `kept(1)`, the firmware is confirmed), trial (warning: a new firmware that has not answered a valid request yet) |
+| Firmware last update | `fwLastResult` (`63050.7.5`) | none, installed (OK); rolledBackCrash, rolledBackUnreachable, fallbackCrash (critical: the *State Sensor Critical* rule alerts until the next successful update) |
 
 The running slot (`fwRunningSlot`) and each slot's version (`fwSlotAVersion`, `fwSlotBVersion`) are readable by any SNMP manager but are not sensors.
 

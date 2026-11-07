@@ -27,17 +27,19 @@ modules:
                         - { descr: none, value: 0, generic: 0 }
                         - { descr: lostTooLong, value: 1, generic: 2 }
                 -
-                    # Warning while a new firmware is on trial: it is kept once it answers a valid request
+                    # Warning while a new firmware is on trial; "normal" is fwState kept(1), the firmware
+                    # confirmed once it answered a valid request
                     oid: RF-POWER-MONITOR-MIB::fwState
                     num_oid: '.1.3.6.1.4.1.63050.7.4.{{ $index }}'
                     descr: 'Firmware'
                     index: 'fwState.{{ $index }}'
                     state_name: fwState
                     states:
-                        - { descr: kept, value: 1, generic: 0 }
+                        - { descr: normal, value: 1, generic: 0 }
                         - { descr: trial, value: 2, generic: 1 }
                 -
-                    # Shown on the Overview page with the other sensors; warning after a rollback or fallback
+                    # Shown on the Overview page with the other sensors; critical after a rollback or fallback
+                    # ("State Sensor Critical" alerts), until the next successful update
                     oid: RF-POWER-MONITOR-MIB::fwLastResult
                     num_oid: '.1.3.6.1.4.1.63050.7.5.{{ $index }}'
                     descr: 'Firmware last update'
@@ -46,9 +48,9 @@ modules:
                     states:
                         - { descr: none, value: 0, generic: 0 }
                         - { descr: installed, value: 1, generic: 0 }
-                        - { descr: rolledBackCrash, value: 2, generic: 1 }
-                        - { descr: rolledBackUnreachable, value: 3, generic: 1 }
-                        - { descr: fallbackCrash, value: 4, generic: 1 }
+                        - { descr: rolledBackCrash, value: 2, generic: 2 }
+                        - { descr: rolledBackUnreachable, value: 3, generic: 2 }
+                        - { descr: fallbackCrash, value: 4, generic: 2 }
         temperature:
             data:
                 -
