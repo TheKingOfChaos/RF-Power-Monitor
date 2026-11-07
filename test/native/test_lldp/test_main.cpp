@@ -553,6 +553,25 @@ static void test_schedule_handles_millis_wrap() {
     TEST_ASSERT_TRUE(s.due(up + 31000u, true, false));
 }
 
+static void test_same_neighbour_compares_chassis_and_port() {
+    static LldpNeighbour a, b;
+    memset(&a, 0, sizeof(a));
+    strcpy(a.chassisId, "f8:c0:01:c7:90:c0");
+    strcpy(a.portId, "ge-0/0/9.0");
+    strcpy(a.sysName, "r169");
+    a.ttl = 120;
+    b = a;
+    b.ttl = 90;                  // a refresh: same switch and port
+    strcpy(b.sysName, "r169b");  // a renamed switch is still the same neighbour
+    TEST_ASSERT_TRUE(lldpSameNeighbour(a, b));
+    b = a;
+    strcpy(b.portId, "ge-0/0/10.0");  // moved to another port
+    TEST_ASSERT_FALSE(lldpSameNeighbour(a, b));
+    b = a;
+    strcpy(b.chassisId, "f8:c0:01:c7:90:c1");  // another switch
+    TEST_ASSERT_FALSE(lldpSameNeighbour(a, b));
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_build_frame_matches_expected_bytes);
@@ -596,5 +615,6 @@ int main(int, char**) {
     RUN_TEST(test_changed_content_sends_after_one_second);
     RUN_TEST(test_link_flap_restarts_the_one_second_wait);
     RUN_TEST(test_schedule_handles_millis_wrap);
+    RUN_TEST(test_same_neighbour_compares_chassis_and_port);
     return UNITY_END();
 }

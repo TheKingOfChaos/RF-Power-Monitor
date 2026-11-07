@@ -14,6 +14,7 @@
 #include "hostname.h"
 #include "lldp_service.h"
 #include "net_stats.h"
+#include "syslog_service.h"
 #include "time_service.h"
 #include "source_key.h"
 #include "version.h"
@@ -115,6 +116,7 @@ static void logAccess(const SourceKey& source, AccessEvent event) {
         bool web = event == AccessEvent::WebLoginFailed || event == AccessEvent::WebLoginLocked ||
                    event == AccessEvent::WebUploadRefused;
         Serial.printf("\r\n%s access: %s from %s\r\n", web ? "Web" : "SNMP", accessEventName(event), ip);
+        syslogAccessEvent(source, event);
     }
 }
 
@@ -243,7 +245,10 @@ void snmpPollMainsAlarm() {
     if (!mainsRead(mains)) return;
     bool wasRaised = mainsAlarm.raised();
     mainsAlarm.update(mains.present, mains.changes, mains.lastChangeMs, millis());
-    if (mainsAlarm.raised() && !wasRaised) Serial.println("\r\nMains power lost for 60 s: alarm raised");
+    if (mainsAlarm.raised() && !wasRaised) {
+        Serial.println("\r\nMains power lost for 60 s: alarm raised");
+        syslogEvent(SyslogSeverity::Critical, "MAINS", "mains power lost for 60 s: alarm raised");
+    }
     if (!mainsAlarm.trapPending()) return;
 
     // Held until a trap can actually leave (trapCanLeave). One attempt, as for every trap.
@@ -267,6 +272,14 @@ void snmpPollFirmwareTrap() {
     if (result == FwResult::None) {  // nothing to report (the builders make no trap for it): do not keep asking
         fwUpdateTrapSent();
         return;
+    }
+    static bool syslogged = false;  // once per boot, whether or not a trap can leave
+    if (!syslogged) {
+        syslogged = true;
+        char what[48];
+        fwUpdateResultText(result, result == FwResult::Installed ? FIRMWARE_VERSION : nullptr, what, sizeof(what));
+        syslogEvent(result == FwResult::Installed ? SyslogSeverity::Notice : SyslogSeverity::Error, "FIRMWARE",
+                    "firmware update: %s", what);
     }
     // Held until coldStart is out (lwIP queues one packet per ARP entry) and a trap can leave now (trapCanLeave);
     // it stays pending until a send succeeds and is retried every FW_TRAP_RETRY_MS

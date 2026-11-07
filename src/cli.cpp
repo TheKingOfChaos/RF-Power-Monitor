@@ -24,6 +24,7 @@
 #include <monocypher.h>
 #include <new>
 #include "version.h"
+#include "syslog_service.h"
 #include "time_service.h"
 
 extern CountingW5500lwIP eth;  // main.cpp
@@ -305,6 +306,8 @@ static void printStatus() {
     char timeLine[160];
     timeServiceStatusText(timeLine, sizeof(timeLine));
     Serial.printf("Time: %s\r\n", timeLine);
+    syslogServiceStatusText(timeLine, sizeof(timeLine));
+    Serial.printf("Syslog: %s\r\n", timeLine);
 
     Serial.printf("Mode: %s\r\n", currentSettings.dhcpEnabled ? "DHCP" : "Static");
     Serial.printf("Stored static IP: %s / %s, gateway %s\r\n",
@@ -764,6 +767,9 @@ static void handleLine(const char* line) {
             strlcpy(currentSettings.ipv6Address, newIPv6, sizeof(currentSettings.ipv6Address));
             strlcpy(currentSettings.ipv6Gateway, newIPv6Gateway, sizeof(currentSettings.ipv6Gateway));
             if (saveSettings()) {
+                syslogEvent(SyslogSeverity::Notice, "SETTINGS", "serial menu: static IPv6 set to %s, restarting",
+                            newIPv6[0] ? newIPv6 : "none");
+                syslogServiceFlush();
                 Serial.println("Settings saved. Rebooting...");
                 Serial.flush();
                 delay(200);
@@ -828,6 +834,9 @@ static void handleLine(const char* line) {
             strlcpy(currentSettings.subnetMask, newSubnet, sizeof(currentSettings.subnetMask));
             strlcpy(currentSettings.gateway, newGateway, sizeof(currentSettings.gateway));
             if (saveSettings()) {
+                syslogEvent(SyslogSeverity::Notice, "SETTINGS", "serial menu: network set to %s, restarting",
+                            newDhcp ? "DHCP" : newIP);
+                syslogServiceFlush();
                 Serial.println("Settings saved. Rebooting...");
                 Serial.flush();
                 delay(200);
@@ -914,6 +923,8 @@ static void handleLine(const char* line) {
                 hostnameApply();  // no-op when sysName did not change
                 netStatsRequestDhcpTrapTarget(currentSettings.trapFromDhcp);  // renews when switched on
                 Serial.println("SNMP settings saved and active");
+                syslogEvent(SyslogSeverity::Notice, "SETTINGS", "serial menu: SNMP settings changed%s",
+                            communityChanged ? " (community too)" : "");  // never the community itself
             } else {
                 currentSettings = settingsBackup;
                 Serial.println("Failed to save settings, nothing changed");

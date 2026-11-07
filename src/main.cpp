@@ -23,6 +23,7 @@
 #include "pins.h"
 #include "snmp_service.h"
 #include "stack_watch.h"
+#include "syslog_service.h"
 #include "time_service.h"
 #include "update_service.h"
 #include "web_service.h"
@@ -193,6 +194,14 @@ void setup() {
     Serial.println("\r\nRF-Power-Monitor " FIRMWARE_VERSION " starting...");
     fwUpdatePrintBoot();
     watchdogPrintCause();
+    {
+        FwSnmpState fw;
+        fwUpdateSnmpState(fw);
+        syslogEvent(SyslogSeverity::Notice, "BOOT", "RF-Power-Monitor " FIRMWARE_VERSION " started: %s, slot %c (%s)%s",
+                    restartCauseName(watchdogRestartCause()), 'A' + fw.runningSlot,
+                    bootInfoValid() ? bootReasonName(bootInfoReason()) : "no boot information",
+                    fw.trial ? ", firmware on trial" : "");
+    }
     diagBegin();  // only with -DRFPOWER_DIAG
     cpuTempBegin();
     ambientTempBegin();
@@ -253,6 +262,7 @@ void setup() {
         lldpBegin(eth.getNetIf());
         netStatsRequestDhcpTrapTarget(currentSettings.trapFromDhcp);  // before the first DISCOVER
         timeServiceBegin();  // NTP from DHCP (option 42), typed, or off
+        syslogServiceApply();  // syslog server typed, from DHCP (option 7), or off
         snmpBegin();
         webBegin();
     }
@@ -292,7 +302,9 @@ void loop() {
             printNetworkInfo();
             snmpNetworkUp(eth.localIP());
             hostnameNetworkUp();
+            syslogEvent(SyslogSeverity::Notice, "NETWORK", "IPv4 address %s", eth.localIP().toString().c_str());
         } else {
+            syslogEvent(SyslogSeverity::Warning, "NETWORK", "IPv4 address lost");
             Serial.println("\r\nNetwork down, retrying");
             snmpNetworkDown();
         }
@@ -307,6 +319,11 @@ void loop() {
         Serial.printf("\r\nMains power %s at %lu ms\r\n", mains.present ? "RESTORED" : "LOST",
                       (unsigned long)mains.lastChangeMs);
         snmpNotifyMainsChange();
+        if (mains.present) {
+            syslogEvent(SyslogSeverity::Notice, "MAINS", "mains power restored");
+        } else {
+            syslogEvent(SyslogSeverity::Warning, "MAINS", "mains power lost");
+        }
     }
     snmpPollMainsAlarm();
     snmpPollFirmwareTrap();
@@ -334,6 +351,9 @@ void loop() {
 
     // NTP stays off while set to none (the core restarts it on link changes)
     timeServicePoll();
+
+    // Queued events to the syslog server (non-blocking, one per pass)
+    syslogServicePoll(networkReady());
 
     // Serial configuration menu
     DIAG_MARK(7);

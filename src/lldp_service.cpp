@@ -1,4 +1,5 @@
 #include "lldp_service.h"
+#include "syslog_service.h"
 
 #include <Arduino.h>
 #include <string.h>
@@ -60,6 +61,23 @@ static void localInfo(LldpLocal& l) {
 #endif
 }
 
+/// Syslog when the switch port changes: a new neighbour, another port, or none any more
+static void logNeighbourChange() {
+    static SnmpLldpState now;    // static: ~600 bytes (core 0 only)
+    static LldpNeighbour last;
+    static bool lastPresent = false;
+    if (!lldpServiceSnmpState(now)) return;
+    if (now.present && (!lastPresent || !lldpSameNeighbour(last, now.neighbour))) {
+        syslogEvent(SyslogSeverity::Notice, "LLDP", "switch %s port %s",
+                    now.neighbour.sysName[0] ? now.neighbour.sysName : now.neighbour.chassisId,
+                    now.neighbour.portId);
+        last = now.neighbour;
+    } else if (!now.present && lastPresent) {
+        syslogEvent(SyslogSeverity::Warning, "LLDP", "switch no longer seen");
+    }
+    lastPresent = now.present;
+}
+
 void lldpPoll() {
     static uint32_t lastPoll = 0;
     if (lldpNetif == nullptr || millis() - lastPoll < 100) return;
@@ -71,6 +89,7 @@ void lldpPoll() {
         if (!linkUp && linkWasUp) table.clear();  // plugged into another port or switch, perhaps
     }
     linkWasUp = linkUp;
+    logNeighbourChange();
 
     if (!linkUp) {
         schedule.due(millis(), false, false);

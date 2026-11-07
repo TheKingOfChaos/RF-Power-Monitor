@@ -1,4 +1,5 @@
 #include "net_stats.h"
+#include "syslog_service.h"
 
 #include <LwipEthernet.h>
 #include <SPI.h>
@@ -187,6 +188,12 @@ void netStatsPoll(uint32_t uptimeTicks) {
         if (now.linkUp) Serial.printf(", %s Mbit/s %s duplex", now.speed100 ? "100" : "10",
                                       now.fullDuplex ? "full" : "half");
         Serial.println();
+        if (now.linkUp) {
+            syslogEvent(SyslogSeverity::Notice, "NETWORK", "Ethernet link up, %s Mbit/s %s duplex",
+                        now.speed100 ? "100" : "10", now.fullDuplex ? "full" : "half");
+        } else {
+            syslogEvent(SyslogSeverity::Warning, "NETWORK", "Ethernet link down");
+        }
     }
     phy = now;
 }

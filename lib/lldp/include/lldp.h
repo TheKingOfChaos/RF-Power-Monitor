@@ -74,6 +74,9 @@ struct LldpNeighbour {
     uint16_t capsEnabled;
 };
 
+/// The same switch port: chassis ID and port ID match (TTL, names and descriptions may change)
+bool lldpSameNeighbour(const LldpNeighbour& a, const LldpNeighbour& b);
+
 /**
  * @brief The Port ID as served in LLDP-MIB lldpRemPortId
  *

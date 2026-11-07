@@ -283,3 +283,7 @@ void LldpSchedule::sent(uint32_t nowMs) {
     _sentMs = nowMs;
     _sentSinceLinkUp = true;
 }
+
+bool lldpSameNeighbour(const LldpNeighbour& a, const LldpNeighbour& b) {
+    return strcmp(a.chassisId, b.chassisId) == 0 && strcmp(a.portId, b.portId) == 0;
+}

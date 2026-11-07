@@ -1,3 +1,4 @@
+#include "syslog_service.h"
 #include "web_service.h"
 
 #include <LittleFS.h>
@@ -176,6 +177,7 @@ public:
         strlcpy(currentSettings.gateway, gateway, sizeof(currentSettings.gateway));
         if (saveSettings()) {
             Serial.printf("\r\nWeb: network settings saved (%s), rebooting\r\n", dhcp ? "DHCP" : ip);
+            syslogEvent(SyslogSeverity::Notice, "SETTINGS", "web page: network set to %s, restarting", dhcp ? "DHCP" : ip);
             return true;
         }
         currentSettings = settingsBackup;
@@ -188,6 +190,8 @@ public:
         strlcpy(currentSettings.ipv6Gateway, gateway, sizeof(currentSettings.ipv6Gateway));
         if (saveSettings()) {
             Serial.printf("\r\nWeb: static IPv6 saved (%s), rebooting\r\n", address[0] ? address : "none");
+            syslogEvent(SyslogSeverity::Notice, "SETTINGS", "web page: static IPv6 set to %s, restarting",
+                        address[0] ? address : "none");
             return true;
         }
         currentSettings = settingsBackup;
@@ -200,6 +204,7 @@ public:
         if (saveSettings()) {
             snmpCommunityChanged();
             Serial.println("\r\nWeb: SNMP community changed");
+            syslogEvent(SyslogSeverity::Notice, "SETTINGS", "web page: SNMP community changed");  // never the value
             return true;
         }
         currentSettings = settingsBackup;
@@ -213,6 +218,7 @@ public:
         strlcpy(currentSettings.sysLocation, location, sizeof(currentSettings.sysLocation));
         if (saveSettings()) {
             hostnameApply();
+            syslogEvent(SyslogSeverity::Notice, "SETTINGS", "web page: hostname, contact or location changed");
             return true;
         }
         currentSettings = settingsBackup;
@@ -227,6 +233,7 @@ public:
             return false;
         }
         Serial.println("\r\nWeb: interface turned off from the web page (serial menu option 8 turns it on)");
+        syslogEvent(SyslogSeverity::Notice, "SETTINGS", "web page: web interface turned off");
         stopAfterResponse = true;  // the confirmation page still goes out
         hostnameAdvertiseWeb(false);
         return true;
@@ -266,6 +273,7 @@ public:
             char text[SOURCE_TEXT_MAX];
             formatSource(source, text);
             Serial.printf("\r\nWeb: admin logged in from %s\r\n", text);
+            syslogEvent(SyslogSeverity::Notice, "WEB", "admin logged in from %s", text);
         }
     }
 };
@@ -326,6 +334,7 @@ void webLoadDefaultPassword() {
     if (passwordLost) Serial.printf("Web: %s\r\n", WEB_PASSWORD_LOST_TEXT);
     if (c.source == DefaultPasswordSource::None) {
         bool ok = generateDefaultPassword();
+    if (ok) syslogEvent(SyslogSeverity::Notice, "SETTINGS", "new default web password made");
         Serial.printf("Web: new default password generated%s\r\n", ok ? "" : " (NOT saved, will change at reboot)");
         return;
     }
@@ -388,6 +397,7 @@ bool webSetEnabled(bool on) {
         return false;
     }
     hostnameAdvertiseWeb(on);
+    syslogEvent(SyslogSeverity::Notice, "SETTINGS", "web interface turned %s", on ? "on" : "off");
     if (on) {
         stopAfterResponse = false;
         startListening();
@@ -521,6 +531,7 @@ void webPoll() {
 
     if (rebootRequested && rebootAtMs != 0 && (int32_t)(millis() - rebootAtMs) >= 0) {
         Serial.println("\r\nWeb: rebooting");
+        syslogServiceFlush();  // the change that asked for the restart
         Serial.flush();
         rp2040.reboot();
     }
@@ -620,5 +631,6 @@ bool webSetPassword(const char* password) {
         return false;
     }
     app.logoutAll();
+    syslogEvent(SyslogSeverity::Notice, "SETTINGS", "web password %s", password ? "changed" : "back to the default");
     return true;
 }

@@ -1,3 +1,4 @@
+#include "syslog_service.h"
 #include "update_service.h"
 
 #include <Arduino.h>
@@ -47,6 +48,23 @@ size_t replyLen = 0;
 char lastResult[48] = "off";
 bool checkedIn = false;
 uint32_t lastCheckinMs = 0;
+bool goodCheckin = false;       // a check-in has succeeded since boot
+uint32_t lastGoodCheckinMs = 0;
+uint32_t failedInRow = 0;       // check-ins failed since the last good one
+
+/// A check-in ended: schedule the next, count, and syslog when it starts failing or works again
+void checkinFinished(bool ok, uint32_t now) {
+    scheduler.checkinDone(ok, now);
+    if (ok) {
+        if (failedInRow > 0) syslogEvent(SyslogSeverity::Notice, "UPDATE", "update server check-in works again");
+        goodCheckin = true;
+        lastGoodCheckinMs = now;
+        failedInRow = 0;
+    } else {
+        if (failedInRow == 0) syslogEvent(SyslogSeverity::Warning, "UPDATE", "update server check-in failed: %s", lastResult);
+        failedInRow++;
+    }
+}
 uint32_t restartAtMs = 0;
 
 // Download
@@ -102,7 +120,7 @@ void startCheckin(uint32_t now) {
         delete[] reply;
         reply = nullptr;
         setResult("out of memory");
-        scheduler.checkinDone(false, now);
+        checkinFinished(false, now);
         return;
     }
     CheckinInfo& in = w->info;
@@ -139,7 +157,7 @@ void startCheckin(uint32_t now) {
         setResult(bodyLen == 0 ? "check-in too long" : httpFetchError());
         delete[] reply;
         reply = nullptr;
-        scheduler.checkinDone(false, now);
+        checkinFinished(false, now);
         return;
     }
     replyLen = 0;
@@ -180,20 +198,20 @@ void finishCheckin(uint32_t now) {
     checkedIn = true;
     if (status != 200) {
         errorResult(status);
-        scheduler.checkinDone(false, now);
+        checkinFinished(false, now);
         return;
     }
     CheckinReply r;
     ReplyKind kind = parseCheckinReply(reply, replyLen, nonce, currentUpdateSettings.key, r);
     if (kind == ReplyKind::BadAuth || kind == ReplyKind::Malformed) {
         setResult(kind == ReplyKind::BadAuth ? "reply not authenticated" : "bad reply");
-        scheduler.checkinDone(false, now);
+        checkinFinished(false, now);
         return;
     }
     // Authenticated: the site has the key, so the network works both ways
     fwUpdateNoteValidRequest();
     job.reported(failSeqSent);
-    scheduler.checkinDone(true, now);
+    checkinFinished(true, now);
     FwSnmpState fw;
     fwUpdateSnmpState(fw);
     if (fw.trial) scheduler.reportSoon(now);  // report the kept firmware soon
@@ -225,7 +243,7 @@ void pollCheckin(uint32_t now) {
         phase = Phase::Idle;
         lastCheckinMs = now;
         checkedIn = true;
-        scheduler.checkinDone(false, now);
+        checkinFinished(false, now);
     }
     if (phase != Phase::Checkin) {
         delete[] reply;
@@ -407,6 +425,9 @@ bool updateServiceSave(const char* url, bool fromDhcp, const char* keyHex, bool 
     // Start over with the new settings: first check-in 60 s from the next poll
     scheduler.netReady(false, millis());
     checkedIn = false;
+    syslogEvent(SyslogSeverity::Notice, "SETTINGS", "update server set to %s%s",
+                currentUpdateSettings.fromDhcp ? "dhcp" : currentUpdateSettings.url[0] ? currentUpdateSettings.url : "none",
+                clearKey ? ", key removed" : (keyHex != nullptr && keyHex[0]) ? ", new key" : "");  // never the key
     return true;
 }
 
