@@ -276,6 +276,24 @@ class WebPageTest(unittest.TestCase):
         st = self.dev.status()
         self.assertEqual((contact, location), (st["sysContact"], st["sysLocation"]))
 
+    def test_time_and_syslog_from_web_page_apply(self):
+        self.wait_lockout_over()
+        self.dev.keep_time_syslog(self)
+        web = self.logged_in()
+        status, _, page = web.post("/timelog", ntp="192.0.2.123", syslog=quote_plus("[2001:db8::5]:6514"))
+        self.assertEqual(200, status, page)
+        self.assertIn("Time and syslog settings saved and active.", page)
+        self.assertIn('value="[2001:db8::5]:6514"', page)
+        self.assertEqual(("192.0.2.123", "[2001:db8::5]:6514"), self.dev.time_syslog_setting())
+        st = self.dev.status()
+        self.assertIn("NTP 192.0.2.123", st["time"])
+        self.assertTrue(st["syslog"].startswith("[2001:db8::5]:6514 (typed)"), st["syslog"])
+        # A bad value is refused with the reason, and nothing changes
+        status, _, page = web.post("/timelog", ntp="a..b", syslog="none")
+        self.assertEqual(400, status)
+        self.assertIn("NTP server: an IPv4", page)
+        self.assertEqual(("192.0.2.123", "[2001:db8::5]:6514"), self.dev.time_syslog_setting())
+
     def test_invalid_community_is_rejected(self):
         self.wait_lockout_over()
         web = self.logged_in()

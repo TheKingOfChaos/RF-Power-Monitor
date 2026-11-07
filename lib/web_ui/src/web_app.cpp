@@ -260,6 +260,8 @@ const char* WebApp::mainPage(int code, const char* reason, size_t slot, WebBacke
     nb.addUnsigned(up / 60 % 60);
     nb.add(" min");
     row(b, "Uptime", num);
+    row(b, "Time", st.time);
+    row(b, "Syslog", st.syslog);
     tempRow(b, "CPU temperature", st.cpuTempDeciC);
     if (st.ambientTempValid) {
         tempRow(b, "Ambient temperature", st.ambientTempDeciC);
@@ -390,6 +392,15 @@ const char* WebApp::mainPage(int code, const char* reason, size_t slot, WebBacke
               "1-31 printable characters. Active immediately.");
     b.add("<button class=\"btn btn-primary\" type=\"submit\">Save</button></form></div></div>");
 
+    cardStart(b, "Time and syslog", "mt-4");
+    b.add("<div class=\"card-body\"><form method=\"post\" action=\"/timelog\">");
+    csrfField(b, csrf);
+    textInput(b, "NTP server", "ntp", st.ntpSetting, WEB_SERVER_TEXT_MAX,
+              "Address or name (e.g. pool.ntp.org), dhcp (DHCP option 42) or none.");
+    textInput(b, "Syslog server", "syslog", st.syslogSetting, WEB_SERVER_TEXT_MAX,
+              "Address[:port] (514 if none; IPv6 as [address]:port), dhcp (DHCP option 7) or none.");
+    b.add("<button class=\"btn btn-primary\" type=\"submit\">Save</button></form></div></div>");
+
     b.add("</div></div>");
     pageEnd(b);
     return respond(code, reason, nullptr, len);
@@ -514,6 +525,20 @@ const char* WebApp::community(const HttpRequest& req, size_t slot, WebBackend& b
         return mainPage(500, "Internal Server Error", slot, backend, "Saving failed, nothing changed.", true, len);
     }
     return mainPage(200, "OK", slot, backend, "SNMP community saved and active.", false, len);
+}
+
+const char* WebApp::timeLog(const HttpRequest& req, size_t slot, WebBackend& backend, size_t& len) {
+    char ntp[WEB_SERVER_TEXT_MAX + 2], syslog[WEB_SERVER_TEXT_MAX + 2];
+    if (!formValue(req.body(), req.bodyLength(), "ntp", ntp, sizeof(ntp)) ||
+        !formValue(req.body(), req.bodyLength(), "syslog", syslog, sizeof(syslog)) ||
+        strlen(ntp) > WEB_SERVER_TEXT_MAX || strlen(syslog) > WEB_SERVER_TEXT_MAX) {
+        return mainPage(400, "Bad Request", slot, backend, "Each server is at most 63 characters.", true, len);
+    }
+    const char* error = "Saving failed, nothing changed.";
+    if (!backend.saveTimeLog(ntp, syslog, error)) {
+        return mainPage(400, "Bad Request", slot, backend, error, true, len);
+    }
+    return mainPage(200, "OK", slot, backend, "Time and syslog settings saved and active.", false, len);
 }
 
 const char* WebApp::hostname(const HttpRequest& req, size_t slot, WebBackend& backend, size_t& len) {
@@ -906,7 +931,7 @@ const char* WebApp::handle(const HttpRequest& req, const SourceKey& sourceIP, ui
     bool action = strcmp(path, "/firmware/switch") == 0 || strcmp(path, "/logout") == 0 || strcmp(path, "/network") == 0 ||
                   strcmp(path, "/community") == 0 || strcmp(path, "/reboot") == 0 ||
                   strcmp(path, "/hostname") == 0 || strcmp(path, "/disable") == 0 || strcmp(path, "/ipv6") == 0 ||
-                  strcmp(path, "/updateserver") == 0;
+                  strcmp(path, "/updateserver") == 0 || strcmp(path, "/timelog") == 0;
     if (!action) return notice(404, "Not Found", "Not found", "There is no such page.", len);
     if (!post) return notice(405, "Method Not Allowed", "Not allowed", "Use the buttons on the start page.", len);
     if (slot < 0) {
@@ -926,6 +951,7 @@ const char* WebApp::handle(const HttpRequest& req, const SourceKey& sourceIP, ui
     if (strcmp(path, "/ipv6") == 0) return ipv6(req, (size_t)slot, backend, len);
     if (strcmp(path, "/community") == 0) return community(req, (size_t)slot, backend, len);
     if (strcmp(path, "/hostname") == 0) return hostname(req, (size_t)slot, backend, len);
+    if (strcmp(path, "/timelog") == 0) return timeLog(req, (size_t)slot, backend, len);
     if (strcmp(path, "/disable") == 0) return disable(req, (size_t)slot, backend, len);
     if (strcmp(path, "/firmware/switch") == 0) return firmwareSwitch(req, (size_t)slot, backend, len);
     if (strcmp(path, "/updateserver") == 0) return updateServer(req, (size_t)slot, backend, len);

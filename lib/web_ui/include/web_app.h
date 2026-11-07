@@ -36,6 +36,9 @@
 #include "http_request.h"
 #include "web_auth.h"
 
+/// Longest NTP or syslog server text (lib/syslog LOG_HOST_MAX; src/web_service.cpp checks they match)
+static const size_t WEB_SERVER_TEXT_MAX = 63;
+
 /**
  * @brief What the status part of the page shows
  */
@@ -73,6 +76,10 @@ struct WebStatus {
     char sysLocation[SYS_TEXT_MAX_LENGTH + 1];  ///< SNMP sysLocation, may be empty
     char lldpSwitch[144];     ///< LLDP neighbour, "<name>, port <port>" or "none seen" (lldpSwitchText)
     char lldpSwitchAddr[46];  ///< Its management address, empty if none
+    char time[128];           ///< Status of the clock: local time and NTP source, or "not synced (...)"
+    char syslog[128];         ///< Status of syslog: server, sent and waiting, or "off"
+    char ntpSetting[WEB_SERVER_TEXT_MAX + 1];     ///< Option 11 NTP value: a server, "dhcp" or "none"
+    char syslogSetting[WEB_SERVER_TEXT_MAX + 1];  ///< Option 11 syslog value: a server, "dhcp" or "none"
 };
 
 /// Longest update server URL (lib/update_client UPDATE_URL_MAX; src/web_service.cpp checks they match)
@@ -121,6 +128,13 @@ public:
     /// Save webEnabled = false; the server closes port 80 after this response
     virtual bool disableWeb() = 0;
     /**
+     * @brief Check, save and apply the NTP and syslog servers (as serial menu option 11)
+     * @param ntp, syslog Each "" (keep), "dhcp", "none" or a server, at most WEB_SERVER_TEXT_MAX characters
+     * @param error On false: why, shown on the page
+     * @return false when a value is refused or saving failed; nothing changes then
+     */
+    virtual bool saveTimeLog(const char* ntp, const char* syslog, const char*& error) = 0;
+    /**
      * @brief Check and save the update server settings (active at once)
      * @param url Empty (no check-ins) or http://host[:port][/path], at most WEB_UPDATE_URL_MAX characters
      * @param keyHex 64 hex characters, or empty to keep the stored key
@@ -143,9 +157,10 @@ public:
     virtual void log(const SourceKey& source, WebEvent event) = 0;
 };
 
-/// Largest page; the status page with the longest values is 10857 bytes (test_longest_values_still_fit_the_page),
-/// over 900 of them for a switch name of quotes and 756 for a contact and location of quotes (each escaped to &quot;)
-static const size_t WEB_BODY_MAX = 11264;
+/// Largest page; the status page with the longest values is 12683 bytes (test_longest_values_still_fit_the_page),
+/// over 900 of them for a switch name of quotes, 756 for a contact and location of quotes (each escaped to
+/// &quot;) and ~1.8 KB for the time and syslog rows and card (3.6.0)
+static const size_t WEB_BODY_MAX = 13312;
 /// Longest Cookie header read; browsers send every cookie of the host, not only ours
 static const size_t WEB_COOKIE_HEADER_MAX = 1024;
 static const size_t WEB_RESPONSE_MAX = WEB_BODY_MAX + 768;
@@ -202,6 +217,8 @@ private:
     const char* network(const HttpRequest& req, size_t slot, WebBackend& backend, size_t& len);
     const char* ipv6(const HttpRequest& req, size_t slot, WebBackend& backend, size_t& len);
     const char* community(const HttpRequest& req, size_t slot, WebBackend& backend, size_t& len);
+    /// POST /timelog: NTP and syslog servers (fields ntp and syslog)
+    const char* timeLog(const HttpRequest& req, size_t slot, WebBackend& backend, size_t& len);
     const char* hostname(const HttpRequest& req, size_t slot, WebBackend& backend, size_t& len);
     const char* disable(const HttpRequest& req, size_t slot, WebBackend& backend, size_t& len);
     const char* firmwarePage(int code, const char* reason, size_t slot, WebBackend& backend, const char* message,
@@ -220,7 +237,7 @@ private:
     const char* stylesheet(size_t& len);
 
     WebSessions _sessions;
-    WebStatus _status;  // ~340 bytes: a member, not on core 0's stack
+    WebStatus _status;  // ~1 KB: a member, not on core 0's stack
     WebFirmware _fw;    // ~150 bytes, same
     bool _authenticated = false;  ///< see authenticated()
     bool _scripts = false;  ///< the page being built is the Firmware page: its policy allows its script

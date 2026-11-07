@@ -575,6 +575,10 @@ public:
         strcpy(st.community, "public");
         strcpy(st.hostname, "rf-power-monitor");
         strcpy(st.lldpSwitch, "none seen");
+        strcpy(st.time, "2026-11-07 19:42:10 CET (NTP pool.ntp.org, synced 3 min ago)");
+        strcpy(st.syslog, "10.132.0.45:514 (from DHCP), 12 sent, 0 waiting");
+        strcpy(st.ntpSetting, "pool.ntp.org");
+        strcpy(st.syslogSetting, "dhcp");
     }
     void status(WebStatus& out) override { out = st; }
     void firmware(WebFirmware& out) override { out = fw; }
@@ -621,6 +625,24 @@ public:
     bool disableWeb() override {
         disables++;
         return saveOk;
+    }
+    int timeLogSaves = 0;
+    std::string savedNtp, savedSyslog;
+    bool saveTimeLog(const char* ntp, const char* syslog, const char*& error) override {
+        timeLogSaves++;
+        savedNtp = ntp;
+        savedSyslog = syslog;
+        if (strcmp(ntp, "a..b") == 0) {
+            error = "NTP server: an IPv4 or IPv6 address, a name <x>, dhcp or none";
+            return false;
+        }
+        if (!saveOk) {
+            error = "Saving failed, nothing changed.";
+            return false;
+        }
+        if (ntp[0]) strcpy(st.ntpSetting, ntp);
+        if (syslog[0]) strcpy(st.syslogSetting, syslog);
+        return true;
     }
     int updateSaves = 0;
     std::string savedUpdateUrl, savedUpdateKey;
@@ -974,6 +996,65 @@ static void test_change_community() {
     TEST_ASSERT_TRUE(resp.find("SNMP community saved and active.") != std::string::npos);
     TEST_ASSERT_TRUE(resp.find("value=\"s3cret!\"") != std::string::npos);
     TEST_ASSERT_EQUAL(0, fb->reboots);
+}
+
+// ---- time and syslog ----
+
+static void test_timelog_needs_session_and_csrf() {
+    webSetUp();
+    std::string csrf;
+    std::string token = logIn(csrf);
+    TEST_ASSERT_EQUAL(403, statusCode(post("/timelog", "ntp=dhcp&syslog=none", token)));
+    TEST_ASSERT_NOT_EQUAL(200, statusCode(post("/timelog", "csrf=" + csrf + "&ntp=dhcp&syslog=none", "")));
+    TEST_ASSERT_EQUAL(0, fb->timeLogSaves);
+}
+
+static void test_timelog_saves_through_backend() {
+    webSetUp();
+    std::string csrf;
+    std::string token = logIn(csrf);
+    std::string resp = post("/timelog", "csrf=" + csrf + "&ntp=dk.pool.ntp.org&syslog=10.132.0.45%3A5514", token);
+    TEST_ASSERT_EQUAL(200, statusCode(resp));
+    TEST_ASSERT_EQUAL_STRING("dk.pool.ntp.org", fb->savedNtp.c_str());
+    TEST_ASSERT_EQUAL_STRING("10.132.0.45:5514", fb->savedSyslog.c_str());
+    TEST_ASSERT_TRUE(resp.find("Time and syslog settings saved and active.") != std::string::npos);
+    TEST_ASSERT_TRUE(resp.find("value=\"10.132.0.45:5514\"") != std::string::npos);
+    TEST_ASSERT_EQUAL(0, fb->reboots);
+}
+
+static void test_timelog_bad_value_shows_error_and_saves_nothing() {
+    webSetUp();
+    std::string csrf;
+    std::string token = logIn(csrf);
+    std::string resp = post("/timelog", "csrf=" + csrf + "&ntp=a..b&syslog=none", token);
+    TEST_ASSERT_EQUAL(400, statusCode(resp));
+    TEST_ASSERT_TRUE(resp.find("a name &lt;x&gt;, dhcp or none") != std::string::npos);  // escaped
+    TEST_ASSERT_EQUAL_STRING("pool.ntp.org", fb->st.ntpSetting);
+    TEST_ASSERT_EQUAL_STRING("dhcp", fb->st.syslogSetting);
+}
+
+static void test_timelog_overlong_or_missing_value_is_refused_before_the_backend() {
+    webSetUp();
+    std::string csrf;
+    std::string token = logIn(csrf);
+    std::string longName(WEB_SERVER_TEXT_MAX + 1, 'a');
+    TEST_ASSERT_EQUAL(400, statusCode(post("/timelog", "csrf=" + csrf + "&ntp=" + longName + "&syslog=none", token)));
+    TEST_ASSERT_EQUAL(400, statusCode(post("/timelog", "csrf=" + csrf + "&ntp=dhcp", token)));
+    TEST_ASSERT_EQUAL(0, fb->timeLogSaves);
+}
+
+static void test_main_page_shows_time_rows_and_card() {
+    webSetUp();
+    std::string csrf;
+    std::string page = get("/", logIn(csrf));
+    TEST_ASSERT_TRUE(page.find(">Time</th><td>2026-11-07 19:42:10 CET (NTP pool.ntp.org, synced 3 min ago)</td>") !=
+                     std::string::npos);
+    TEST_ASSERT_TRUE(page.find(">Syslog</th><td>10.132.0.45:514 (from DHCP), 12 sent, 0 waiting</td>") !=
+                     std::string::npos);
+    TEST_ASSERT_TRUE(page.find("action=\"/timelog\"") != std::string::npos);
+    TEST_ASSERT_TRUE(page.find("name=\"ntp\"") != std::string::npos);
+    TEST_ASSERT_TRUE(page.find("value=\"pool.ntp.org\"") != std::string::npos);
+    TEST_ASSERT_TRUE(page.find("name=\"syslog\"") != std::string::npos);
 }
 
 static void test_change_hostname() {
@@ -1404,6 +1485,11 @@ static void test_longest_values_still_fit_the_page() {
     // Text from the switch: printable, so it can be all '"' (escaped to 6 bytes each)
     strcpy(fb->st.lldpSwitch, std::string(sizeof(fb->st.lldpSwitch) - 1, '"').c_str());
     strcpy(fb->st.lldpSwitchAddr, "fd16:d833:4f0e:3ece:ffff:ffff:ffff:fffe");
+    // Server texts are names and addresses (letters, digits, . - : [ ]): full length, nothing escaped
+    strcpy(fb->st.time, std::string(sizeof(fb->st.time) - 1, 'a').c_str());
+    strcpy(fb->st.syslog, std::string(sizeof(fb->st.syslog) - 1, 'a').c_str());
+    strcpy(fb->st.ntpSetting, std::string(WEB_SERVER_TEXT_MAX, 'a').c_str());
+    strcpy(fb->st.syslogSetting, std::string(WEB_SERVER_TEXT_MAX, 'a').c_str());
     std::string csrf;
     std::string page = get("/", logIn(csrf));
     TEST_ASSERT_EQUAL(200, statusCode(page));
@@ -1426,6 +1512,11 @@ static void test_longest_values_with_an_error_message_still_fit_the_page() {
     strcpy(fb->st.dns, "255.255.255.255");
     strcpy(fb->st.lldpSwitch, std::string(sizeof(fb->st.lldpSwitch) - 1, '"').c_str());
     strcpy(fb->st.lldpSwitchAddr, "fd16:d833:4f0e:3ece:ffff:ffff:ffff:fffe");
+    // Server texts are names and addresses (letters, digits, . - : [ ]): full length, nothing escaped
+    strcpy(fb->st.time, std::string(sizeof(fb->st.time) - 1, 'a').c_str());
+    strcpy(fb->st.syslog, std::string(sizeof(fb->st.syslog) - 1, 'a').c_str());
+    strcpy(fb->st.ntpSetting, std::string(WEB_SERVER_TEXT_MAX, 'a').c_str());
+    strcpy(fb->st.syslogSetting, std::string(WEB_SERVER_TEXT_MAX, 'a').c_str());
     std::string csrf;
     std::string token = logIn(csrf);
     const std::string refused[][2] = {
@@ -2486,6 +2577,11 @@ int main() {
     RUN_TEST(test_actions_need_a_session);
     RUN_TEST(test_actions_need_the_session_csrf_token);
     RUN_TEST(test_change_community);
+    RUN_TEST(test_timelog_needs_session_and_csrf);
+    RUN_TEST(test_timelog_saves_through_backend);
+    RUN_TEST(test_timelog_bad_value_shows_error_and_saves_nothing);
+    RUN_TEST(test_timelog_overlong_or_missing_value_is_refused_before_the_backend);
+    RUN_TEST(test_main_page_shows_time_rows_and_card);
     RUN_TEST(test_change_hostname);
     RUN_TEST(test_invalid_hostname_is_not_saved);
     RUN_TEST(test_device_name_form_shows_contact_and_location);

@@ -1,6 +1,8 @@
 #include "syslog_service.h"
+#include "time_service.h"
 #include "web_service.h"
 
+#include <log_settings_store.h>
 #include <LittleFS.h>
 #include <WiFiClient.h>
 #include <WiFiServer.h>
@@ -22,6 +24,7 @@
 #include <update_settings_store.h>
 
 static_assert(WEB_UPDATE_URL_MAX == UPDATE_URL_MAX, "the web form and the setting take the same URL length");
+static_assert(WEB_SERVER_TEXT_MAX == LOG_HOST_MAX, "the web form and the setting take the same server length");
 
 extern CountingW5500lwIP eth;  // main.cpp
 
@@ -160,6 +163,14 @@ public:
         strlcpy(st.sysLocation, currentSettings.sysLocation, sizeof(st.sysLocation));
         lldpServiceSwitchText(st.lldpSwitch, sizeof(st.lldpSwitch));
         lldpServiceSwitchAddress(st.lldpSwitchAddr, sizeof(st.lldpSwitchAddr));
+        timeServiceStatusText(st.time, sizeof(st.time));
+        syslogServiceStatusText(st.syslog, sizeof(st.syslog));
+        const LogSettings& ls = currentLogSettings;
+        snprintf(st.ntpSetting, sizeof(st.ntpSetting), "%s",
+                 ls.ntpMode == ServerMode::Typed ? ls.ntpServer : ls.ntpMode == ServerMode::Dhcp ? "dhcp" : "none");
+        snprintf(st.syslogSetting, sizeof(st.syslogSetting), "%s",
+                 ls.syslogMode == ServerMode::Typed ? ls.syslogServer
+                 : ls.syslogMode == ServerMode::Dhcp ? "dhcp" : "none");
     }
 
     bool checkPassword(const char* password) override {
@@ -237,6 +248,10 @@ public:
         stopAfterResponse = true;  // the confirmation page still goes out
         hostnameAdvertiseWeb(false);
         return true;
+    }
+
+    bool saveTimeLog(const char* ntp, const char* syslog, const char*& error) override {
+        return syslogServiceSaveSettings(ntp, syslog, error);
     }
 
     void requestReboot() override { rebootRequested = true; }
