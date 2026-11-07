@@ -281,6 +281,11 @@ static uint32_t storageBytes(const SnmpHostState& h, uint8_t row, bool used) {
 static SnmpValue getHrSystemUptime(const SnmpDeviceState& s) {
     return s.host ? timeTicks(s.uptimeTicks) : noInstance();
 }
+/// hrSystemDate: the local date and time, only once NTP has set the clock
+static SnmpValue getHrSystemDate(const SnmpDeviceState& s) {
+    if (s.host == nullptr || !s.clockValid) return noInstance();
+    return SnmpValue::makeBytes(s.dateAndTime, sizeof(s.dateAndTime));
+}
 static SnmpValue getHrSystemNumUsers(const SnmpDeviceState& s) { return s.host ? gauge(0) : noInstance(); }
 /// The two core loops are the only "processes"
 static SnmpValue getHrSystemProcesses(const SnmpDeviceState& s) { return s.host ? gauge(2) : noInstance(); }
@@ -662,8 +667,9 @@ static const MibEntry MIB[] = {
     {SNMP_GROUP(31), getSnmpStat<&SnmpStats::silentDrops>},
     {SNMP_GROUP(32), getZeroCounter},  // snmpProxyDrops: no proxy
 
-    // HOST-RESOURCES-MIB; hrSystemDate is left out: the device has no clock
+    // HOST-RESOURCES-MIB; hrSystemDate is absent until NTP has set the clock
     {HR(1, 1), getHrSystemUptime},
+    {HR(1, 2), getHrSystemDate},
     {HR(1, 5), getHrSystemNumUsers},
     {HR(1, 6), getHrSystemProcesses},
     {HR(1, 7), getHrSystemMaxProcesses},

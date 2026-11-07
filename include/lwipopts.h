@@ -28,3 +28,12 @@
 #define IP6_FRAG_STATS 0
 #define MLD6_STATS 0
 #define ND6_STATS 0
+
+// NTP: lwIP's SNTP client sets the core's clock through timeServiceSetTime() (src/time_service.cpp),
+// which also notes when it was last synced. The core's file points this at __setSystemTime directly.
+#undef SNTP_SET_SYSTEM_TIME_US
+#ifdef __cplusplus
+extern "C"
+#endif
+void timeServiceSetTime(unsigned long sec, unsigned long us);
+#define SNTP_SET_SYSTEM_TIME_US(sec, us) timeServiceSetTime((sec), (us))

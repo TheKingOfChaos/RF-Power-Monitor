@@ -195,6 +195,8 @@ struct SnmpDeviceState {
     int32_t cpuTempDeciC;          ///< RP2040 die temperature, tenths of a degree Celsius
     bool ambientTempValid;         ///< TMP1075 answers; false makes ambientTemperature absent
     int32_t ambientTempDeciC;      ///< TMP1075 temperature, tenths of a degree Celsius
+    bool clockValid;               ///< NTP has set the clock; false makes hrSystemDate absent
+    uint8_t dateAndTime[11];       ///< hrSystemDate: DateAndTime of the Danish local time (lib/clock)
     const SnmpLldpState* lldp;     ///< LLDP-MIB data; nullptr: no LLDP-MIB object has an instance
     const SnmpStats* snmp;         ///< The agent's live counters (snmp group); nullptr: all 0
     uint32_t snmpOutTraps;         ///< Traps sent (snmpOutTraps, part of snmpOutPkts)

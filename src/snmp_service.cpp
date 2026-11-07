@@ -14,6 +14,7 @@
 #include "hostname.h"
 #include "lldp_service.h"
 #include "net_stats.h"
+#include "time_service.h"
 #include "source_key.h"
 #include "version.h"
 
@@ -69,6 +70,7 @@ static SnmpDeviceState captureState() {
     s.cpuTempDeciC = cpuTempDeciC();
     s.ambientTempValid = ambientTempValid();
     s.ambientTempDeciC = ambientTempDeciC();
+    s.clockValid = timeServiceDateAndTime(s.dateAndTime);  // hrSystemDate once NTP has set the clock
 
     MainsSnapshot mains;
     if (mainsRead(mains)) {

@@ -51,6 +51,9 @@ void setUp() {
     state.cpuTempDeciC = 287;
     state.ambientTempValid = true;
     state.ambientTempDeciC = 271;
+    state.clockValid = true;  // NTP has set the clock: hrSystemDate present (like the ambient sensor)
+    static const uint8_t DATE[11] = {0x07, 0xEA, 1, 2, 3, 4, 5, 0, '+', 1, 0};
+    memcpy(state.dateAndTime, DATE, sizeof(DATE));
     state.lldp = nullptr;
     state.snmp = nullptr;
     state.snmpOutTraps = 0;
@@ -277,7 +280,7 @@ static void test_mib_contains_expected_objects() {
     }
     // HOST-RESOURCES-MIB: hrSystem, hrMemorySize, hrStorageTable (RAM 1, LittleFS 2),
     // hrDeviceTable and hrProcessorTable (cores 768 and 769)
-    static const int HR_SYSTEM[] = {1, 5, 6, 7};
+    static const int HR_SYSTEM[] = {1, 2, 5, 6, 7};  // 2: hrSystemDate (absent until NTP sets the clock)
     for (int i : HR_SYSTEM) snprintf(expected[n++], 48, "1.3.6.1.2.1.25.1.%d.0", i);
     snprintf(expected[n++], 48, "1.3.6.1.2.1.25.2.2.0");
     for (int c = 1; c <= 7; c++) {
@@ -462,6 +465,32 @@ static void test_hr_system_values() {
     TEST_ASSERT_EQUAL_HEX8(BerTag::Integer, r.tags[3]);    // hrSystemMaxProcesses
     TEST_ASSERT_EQUAL_INT32(2, r.ints[3]);
     TEST_ASSERT_EQUAL_INT32(256, r.ints[4]);               // hrMemorySize in KB
+}
+
+static void test_hr_system_date_served_when_clock_valid() {
+    SnmpAgent agent("public");
+    const uint8_t when[11] = {0x07, 0xEA, 11, 7, 19, 42, 10, 0, '+', 1, 0};  // 2026-11-07 19:42:10 CET
+    state.clockValid = true;
+    memcpy(state.dateAndTime, when, sizeof(when));
+    const char* oids[] = {"1.3.6.1.2.1.25.1.2.0"};
+    Reply r = requestV2c(agent, BerTag::GetRequest, oids, 1);
+    TEST_ASSERT_EQUAL_INT32(0, r.errorStatus);
+    TEST_ASSERT_EQUAL_HEX8(BerTag::OctetString, r.tags[0]);
+    TEST_ASSERT_EQUAL_MEMORY(when, r.strings[0], sizeof(when));
+}
+
+static void test_hr_system_date_absent_without_clock() {
+    SnmpAgent agent("public");
+    state.clockValid = false;
+    const char* oids[] = {"1.3.6.1.2.1.25.1.2.0"};
+    Reply r = requestV2c(agent, BerTag::GetRequest, oids, 1);
+    TEST_ASSERT_EQUAL_HEX8(BerTag::NoSuchInstance, r.tags[0]);
+    const char* before[] = {"1.3.6.1.2.1.25.1.1.0"};
+    r = requestV2c(agent, BerTag::GetNextRequest, before, 1);
+    TEST_ASSERT_EQUAL_STRING("1.3.6.1.2.1.25.1.5.0", str(r.names[0]));  // skipped by a walk
+    state.clockValid = true;
+    r = requestV2c(agent, BerTag::GetNextRequest, before, 1);
+    TEST_ASSERT_EQUAL_STRING("1.3.6.1.2.1.25.1.2.0", str(r.names[0]));
 }
 
 static void test_hr_storage_reports_ram_and_littlefs() {
@@ -1991,6 +2020,8 @@ int main() {
     RUN_TEST(test_snmp_counters_are_zero_without_stats);
     RUN_TEST(test_snmp_set_serial_no_is_zero_and_read_only);
     RUN_TEST(test_hr_system_values);
+    RUN_TEST(test_hr_system_date_served_when_clock_valid);
+    RUN_TEST(test_hr_system_date_absent_without_clock);
     RUN_TEST(test_hr_storage_reports_ram_and_littlefs);
     RUN_TEST(test_hr_storage_used_rounds_up_to_whole_kb);
     RUN_TEST(test_hr_storage_littlefs_row_absent_when_invalid);

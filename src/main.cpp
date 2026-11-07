@@ -23,6 +23,7 @@
 #include "pins.h"
 #include "snmp_service.h"
 #include "stack_watch.h"
+#include "time_service.h"
 #include "update_service.h"
 #include "web_service.h"
 #include "version.h"
@@ -251,6 +252,7 @@ void setup() {
         dhcp6Begin(eth.getNetIf());  // waits for a router advertisement with the M flag
         lldpBegin(eth.getNetIf());
         netStatsRequestDhcpTrapTarget(currentSettings.trapFromDhcp);  // before the first DISCOVER
+        timeServiceBegin();  // NTP from DHCP (option 42), typed, or off
         snmpBegin();
         webBegin();
     }
@@ -329,6 +331,9 @@ void loop() {
 
     // Update server check-ins and the downloads they ask for (non-blocking)
     updateServicePoll(networkReady());
+
+    // NTP stays off while set to none (the core restarts it on link changes)
+    timeServicePoll();
 
     // Serial configuration menu
     DIAG_MARK(7);

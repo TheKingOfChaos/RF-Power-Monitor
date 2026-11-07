@@ -24,6 +24,7 @@
 #include <monocypher.h>
 #include <new>
 #include "version.h"
+#include "time_service.h"
 
 extern CountingW5500lwIP eth;  // main.cpp
 
@@ -301,6 +302,9 @@ static void printStatus() {
     }
     printUpdateServerLine();
     printUpdateDefaultLine();
+    char timeLine[160];
+    timeServiceStatusText(timeLine, sizeof(timeLine));
+    Serial.printf("Time: %s\r\n", timeLine);
 
     Serial.printf("Mode: %s\r\n", currentSettings.dhcpEnabled ? "DHCP" : "Static");
     Serial.printf("Stored static IP: %s / %s, gateway %s\r\n",
