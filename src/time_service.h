@@ -3,7 +3,7 @@
 /**
  * @file time_service.h
  * @brief Real time from NTP: lwIP's SNTP client with the server from DHCP
- *        (option 42, DHCPv6 option 56), typed (address or name) or none.
+ *        (option 42, DHCPv6 option 31), typed (address or name) or none.
  *
  * The core keeps the clock (gettimeofday); lwIP sets it through
  * SNTP_SET_SYSTEM_TIME_US, which include/lwipopts.h points at

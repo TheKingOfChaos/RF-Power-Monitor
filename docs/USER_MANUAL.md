@@ -286,7 +286,7 @@ Sets where the device gets its time and where it sends its events. It asks for t
 
 | Prompt | What to enter |
 |---|---|
-| NTP server | An address or a name (`pool.ntp.org`), `dhcp` to take it from the DHCP server (option 42, or DHCPv6 option 56), or `none`. |
+| NTP server | An address or a name (`pool.ntp.org`), `dhcp` to take it from the DHCP server (option 42, or DHCPv6 option 31), or `none`. |
 | Syslog server | An address with an optional port (`192.0.2.65`, `192.0.2.65:5140`; IPv6 as `[2001:db8::65]:5140`), `dhcp` to take it from the DHCP server (option 7), or `none`. Port 514 unless given; no names. |
 
 ```

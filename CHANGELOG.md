@@ -6,6 +6,20 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [3.6.0] - 2026-11-07
+
+Real time from NTP, events to a syslog server, and the update site's state over SNMP.
+
+### Added
+- **NTP time**: lwIP's SNTP client asks every 15 minutes. The server comes from DHCP option 42 or DHCPv6 option 31 (lwIP's stateless DHCPv6, router advertisements with the O flag), or is typed: an IPv4 or IPv6 address or a name such as `pool.ntp.org`. There is no built-in fallback, so the device contacts no internet server unless told to. Until the first answer the device runs on uptime as before. Times show as Danish local time (CET/CEST, switching automatically) on the status screen, the web page and the access log (menu option 5 adds the time after "last N s ago"). HOST-RESOURCES-MIB `hrSystemDate` is served once the clock is set.
+- **Syslog**: events go to a syslog server as RFC 5424 over UDP (port 514 unless given; facility daemon, APP-NAME `rfpower`, HOSTNAME = the device's hostname, UTC timestamps). The server is typed (IPv4 `a.b.c.d[:port]`, IPv6 `[v6][:port]`) or comes from DHCP option 7. Events: mains lost, restored and the 60 s alarm; each start (restart cause, slot, boot reason); firmware kept, rolled back or fallen back; web logins, failed logins and lockouts; rejected SNMP requests (bad community, bad version, malformed, rate limited, set); settings changes from the web page or the serial menu (never passwords, keys or the community); link up/down, IPv4 address obtained or lost; the LLDP switch port changing; update-site check-ins failing and working again. Events wait in a queue of 16 until there is a server and the time, and are dated from when they happened; without the time after 2 minutes they go out undated with the uptime in the text. Rejected requests are limited to 5 lines a minute plus a count of the rest. Before a planned restart the queue is sent at once.
+- Serial menu option **11. Time and syslog**, status lines `Time:` and `Syslog:`, and a *Time and syslog* card with two status rows on the web page. Both servers default to `dhcp`, also after a factory reset. The settings are in their own A/B files (`data/timelog_a.json`, `data/timelog_b.json`), so the main settings file is unchanged and a rollback to 3.5.1 keeps its settings.
+- **SNMP updateSite group** (`63050.8`): `updCheckinResult` (off, never, ok, failed), `updMinutesSinceGood`, `updFailedInRow`. LibreNMS shows the check-in state and warns after 60 minutes without a good check-in.
+- LibreNMS test setup: a `syslogng` receiver. The image's port 514 source does not parse RFC 5424, so `librenms/test/syslog-ng-rfc5424.conf` adds one on UDP 5140 that keeps the message's hostname (Docker Desktop hides the sender); LibreNMS needs `enable_syslog` on (docs/LIBRENMS.md).
+
+### Changed
+- The RAM limit in the project rules is 60 % (was 50 %). Static RAM 52.8 % (138,540 of 262,144 bytes; the syslog queue is ~1.9 KB, the web page buffer is 13 KB instead of 11 KB for the new card). Image 443,612 bytes, 24.2 % of the core's flash figure; the boot program verifies it in about 0.95 s.
+
 ## [3.5.1] - 2026-11-07
 
 A web upload without a login can no longer hold the web page for minutes, and the boot program verifies the firmware faster.

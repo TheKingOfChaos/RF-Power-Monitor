@@ -204,7 +204,7 @@ The device asks for option 225 when it is set to `dhcp` and takes it only from a
 
 ## 9. Time and syslog (optional)
 
-The device can set its clock by NTP and send its events (mains, restarts, firmware updates, logins, rejected SNMP requests, settings changes, network and switch changes) to a syslog server, for example LibreNMS ([docs/LIBRENMS.md](LIBRENMS.md#syslog)). Both are `dhcp` from new: the device takes the NTP server from DHCP option 42 (or DHCPv6 option 56) and the syslog server from DHCP option 7. If your DHCP server sends neither, nothing happens: the device has no time and sends no syslog, and it never contacts the internet by itself.
+The device can set its clock by NTP and send its events (mains, restarts, firmware updates, logins, rejected SNMP requests, settings changes, network and switch changes) to a syslog server, for example LibreNMS ([docs/LIBRENMS.md](LIBRENMS.md#syslog)). Both are `dhcp` from new: the device takes the NTP server from DHCP option 42 (or DHCPv6 option 31) and the syslog server from DHCP option 7. If your DHCP server sends neither, nothing happens: the device has no time and sends no syslog, and it never contacts the internet by itself.
 
 **From DHCP.** Add the two options to your DHCP server, for example (syslog server 10.132.0.45, NTP server the router 10.132.0.1):
 

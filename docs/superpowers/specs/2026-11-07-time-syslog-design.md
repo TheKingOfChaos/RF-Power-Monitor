@@ -46,7 +46,8 @@ reaching its update site.
 ## Decided (in conversation)
 
 ### Server sources
-- **NTP server:** DHCP option 42 when offered; DHCPv6 option 56 (NTP server)
+- **NTP server:** (Built 2026-11-07: lwIP reads DHCPv6 option 31, SNTP servers, RFC 4075, not 56; see
+  CHANGELOG 3.6.0.) DHCP option 42 when offered; DHCPv6 option 56 (NTP server)
   too. Or typed in by hand: an IPv4/IPv6 address **or a DNS name** such as
   `pool.ntp.org` (the user's choice, for networks whose DHCP offers no NTP
   server). There is no built-in fallback: with `dhcp` and nothing offered, the

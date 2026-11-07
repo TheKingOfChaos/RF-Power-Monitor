@@ -83,7 +83,7 @@ void pushText(SyslogSeverity sev, const char* msgId, const char* text) {
 bool sendOldest(const SyslogTarget& target) {
     static SyslogEntry e;
     static char packet[SYSLOG_PACKET_MAX];
-    if (!queue.peek(e)) return true;
+    if (!queue.peekNext(e, millis())) return true;
     bool dated = timeServiceSynced();
     uint64_t epochMs = dated ? syslogEventEpochMs(e.uptimeMs, millis(), timeServiceEpochMs()) : 0;
     char text[SYSLOG_TEXT_MAX + 24];
@@ -94,13 +94,13 @@ bool sendOldest(const SyslogTarget& target) {
     }
     size_t len = syslogFormat(packet, sizeof(packet), e.severity, dated, epochMs, hostnameCurrent(), e.msgId, text);
     if (len == 0) {
-        queue.pop();  // cannot be formatted: never will be
+        queue.popNext();  // cannot be formatted: never will be
         return true;
     }
     bool ok = sock.beginPacket(toIPAddress(target), target.port) == 1 &&
               sock.write((const uint8_t*)packet, len) == len && sock.endPacket() == 1;
     if (ok) {
-        queue.pop();
+        queue.popNext();
         sent++;
     }
     return ok;
@@ -126,12 +126,8 @@ void syslogServicePoll(bool netReady) {
             pushText(SyslogSeverity::Notice, "SNMP", t);
         }
     }
-    uint32_t dropped = queue.takeDropped();
-    if (dropped > 0) {
-        char t[48];
-        snprintf(t, sizeof(t), "%lu events dropped (queue full)", (unsigned long)dropped);
-        pushText(SyslogSeverity::Notice, "SYSLOG", t);
-    }
+    // A full queue's drop count is sent as its own line ahead of the events (SyslogQueue::peekNext),
+    // never pushed into the queue: that would push out a real event on every pass
 
     SyslogTarget target;
     if (!netReady || !currentTarget(target)) {
@@ -169,7 +165,8 @@ bool syslogServiceSaveSettings(const char* ntpInput, const char* syslogInput, co
 void syslogServiceFlush() {
     SyslogTarget target;
     if (!currentTarget(target)) return;
-    for (uint8_t i = SyslogQueue::CAPACITY; i > 0 && queue.size() > 0; i--) {
+    SyslogEntry next;
+    for (uint8_t i = SyslogQueue::CAPACITY + 1; i > 0 && queue.peekNext(next, millis()); i--) {
         if (!sendOldest(target)) return;
     }
 }

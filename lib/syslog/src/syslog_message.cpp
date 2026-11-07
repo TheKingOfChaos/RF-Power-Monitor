@@ -56,6 +56,25 @@ uint32_t SyslogQueue::takeDropped() {
     return d;
 }
 
+bool SyslogQueue::peekNext(SyslogEntry& out, uint32_t nowMs) const {
+    if (_dropped > 0) {
+        out.uptimeMs = nowMs;
+        out.severity = SyslogSeverity::Notice;
+        snprintf(out.msgId, sizeof(out.msgId), "SYSLOG");
+        snprintf(out.text, sizeof(out.text), "%lu events dropped (queue full)", (unsigned long)_dropped);
+        return true;
+    }
+    return peek(out);
+}
+
+void SyslogQueue::popNext() {
+    if (_dropped > 0) {
+        _dropped = 0;  // the notice went out
+    } else {
+        pop();
+    }
+}
+
 bool SyslogThrottle::allow(uint32_t nowMs) {
     if (!_started || nowMs - _windowStartMs >= _windowMs) {
         _started = true;

@@ -87,6 +87,16 @@ class TimeTest(unittest.TestCase):
         utc_now = datetime.datetime.now(datetime.timezone.utc).replace(tzinfo=None)
         self.assertLess(abs((shown - utc_now).total_seconds()), 5, out)
 
+    def test_switching_typed_to_dhcp_forgets_the_typed_server(self):
+        # lwIP keeps the typed server's resolved address; dhcp must not keep polling it
+        # (this network's DHCP offers no option 42, so nothing may be left)
+        self.dev.set_time_syslog(NTP_SERVER, "")
+        wait_synced(self.dev, 60)
+        self.dev.set_time_syslog("dhcp", "")
+        self.dev.wait_for_menu(timeout=10)
+        line = self.dev.status()["time"]
+        self.assertIn("NTP DHCP, none offered", line)
+
     def test_unresolvable_ntp_name_keeps_running_unsynced(self):
         self.dev.set_time_syslog("no-such-host.invalid", "")
         self.dev.send("2", expect=r"\(y/n\): $")  # restart: forget the time set by earlier tests

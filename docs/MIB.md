@@ -156,7 +156,7 @@ LibreNMS and other managers read CPU load, memory and storage from the standard 
 | `.2.2.0` | hrMemorySize | INTEGER (KB) | 256 |
 | `.1.2.0` | hrSystemDate | DateAndTime | Danish local time (CET/CEST, the offset in the last bytes); only once NTP has set the clock (3.6.0) |
 
-hrSystemDate is absent (skipped by a walk, noSuchInstance in v2c, noSuchName in v1) until NTP has answered (serial menu option 11, NTP from DHCP option 42 or DHCPv6 option 56, or a typed server).
+hrSystemDate is absent (skipped by a walk, noSuchInstance in v2c, noSuchName in v1) until NTP has answered (serial menu option 11, NTP from DHCP option 42 or DHCPv6 option 31, or a typed server).
 
 **hrStorageTable** `1.3.6.1.2.1.25.2.3.1.<column>.<index>`, index 1 = RAM, 2 = LittleFS
 

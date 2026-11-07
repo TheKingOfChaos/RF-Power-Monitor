@@ -279,13 +279,13 @@ An item is only ticked when it is implemented **and** its tests exist and pass (
 - [x] NTP and syslog settings in their own A/B files (`data/timelog_a.json`/`_b.json`), `dhcp` by default and after a factory reset, main settings file untouched (rollback to 3.5.1 keeps its settings) — native `test_syslog` (codec, truncated JSON), embedded `test_settings_store`
 - [x] Syslog messages (RFC 5424, daemon, `rfpower`), queue of 16 (oldest dropped and counted), access events throttled to 5 a minute, events dated from when they happened — native `test_syslog`, sanitizers
 - [x] DHCP option 7 (syslog server): asked for, first address read from our ACKs — native `test_dhcp_option` (several addresses, bad lengths, truncation and corruption)
-- [x] NTP through lwIP's SNTP client (DHCP option 42, DHCPv6 option 56, typed address or name), every 15 minutes; hrSystemDate once synced — native `test_snmp_agent` (`test_hr_system_date_*`), HIL `test_time_syslog.py` `TimeTest` (opt-in `RFPOWER_NTP_SERVER`)
+- [x] NTP through lwIP's SNTP client (DHCP option 42, DHCPv6 option 31, typed address or name), every 15 minutes; hrSystemDate once synced — native `test_snmp_agent` (`test_hr_system_date_*`), HIL `test_time_syslog.py` `TimeTest` (opt-in `RFPOWER_NTP_SERVER`)
 - [x] Syslog events: MAINS, BOOT, FIRMWARE, WEB, SNMP (access log), SETTINGS (no secrets), NETWORK, LLDP, UPDATE; queue sent before a planned restart; undated with `[uptime N s]` after 2 minutes without the time — HIL `test_time_syslog.py` `SyslogTest` (opt-in `RFPOWER_SYSLOG_TEST=1`; settings change without the community, throttled burst, dated BOOT line, mains loss with the mains switch)
 - [x] Serial menu option 11, `Time:` and `Syslog:` status lines, local time in the access log — HIL `test_serial_menu.py` (`test_option_11_*`, `test_access_log_lines_still_parse`)
 - [x] Web page: Time and Syslog rows, card *Time and syslog* (`/timelog`) — native `test_web_ui` (`test_timelog_*`), HIL `test_time_and_syslog_from_web_page_apply`
 - [x] SNMP `updateSite` group (63050.8: updCheckinResult, updMinutesSinceGood, updFailedInRow), LibreNMS sensors "Update site check-in" and "Minutes since update site check-in" (warning above 60) — native `test_snmp_agent` (`test_update_site_group_*`), net-snmp `host_agent_check.sh`, HIL `test_snmp.py` walks
 - [x] LibreNMS syslog receiver in the Docker test setup: `syslogng` sidecar, RFC 5424 source on UDP 5140 (`librenms/test/syslog-ng-rfc5424.conf`), `enable_syslog` — device messages on its Logs → Syslog tab (2026-11-07, docs/LIBRENMS.md)
-- [ ] DHCPv6 option 56 (NTP server) only through lwIP's stateless DHCPv6, i.e. when the router advertisement sets the O flag; a network with only the M flag gives no NTP server over DHCPv6
+- [ ] DHCPv6 option 31 (SNTP servers, RFC 4075) only through lwIP's stateless DHCPv6, i.e. when the router advertisement sets the O flag; a network with only the M flag gives no NTP server over DHCPv6
 
 ## Notes
 - SNMP must be v1 and v2c (no v3) and our own code; networking may use libraries

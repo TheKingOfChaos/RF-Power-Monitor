@@ -41,7 +41,7 @@ More diagrams (firmware architecture, SNMP request flow, mains flow, settings, t
 | LibreNMS OS definition (mains state, temperature, change counter, CPU, memory, storage, addresses, inventory) | Working, tested with LibreNMS 26.10.2 |
 | Update site ([update-server/](update-server/README.md), Docker): devices check in every 30 minutes; firmware updates for the devices you tick; check-ins authenticated with a shared key; URL by DHCP option 225 | Working (3.4.0), HIL-tested end to end |
 | SNMP objects for the update site check-ins (updateSite group), LibreNMS sensors | Working (3.6.0) |
-| Time from NTP (DHCP option 42, DHCPv6 option 56 or a typed server), shown as Danish local time; SNMP hrSystemDate | Working (3.6.0) |
+| Time from NTP (DHCP option 42, DHCPv6 option 31 or a typed server), shown as Danish local time; SNMP hrSystemDate | Working (3.6.0) |
 | Syslog (RFC 5424 over UDP): mains, restarts, firmware updates, logins, rejected SNMP requests, settings, network, LLDP and update site events; server typed or from DHCP option 7 | Working (3.6.0), tested with LibreNMS's syslog receiver |
 
 See [TODO.md](TODO.md) for the detailed plan.
@@ -289,7 +289,7 @@ Time: not synced (NTP pool.ntp.org)
 Syslog: 10.10.6.65:514 (typed), 0 sent, 1 waiting
 ```
 
-- NTP server: an IPv4 or IPv6 address, a DNS name (`pool.ntp.org`), `dhcp` (DHCP option 42, or DHCPv6 option 56) or `none`.
+- NTP server: an IPv4 or IPv6 address, a DNS name (`pool.ntp.org`), `dhcp` (DHCP option 42, or DHCPv6 option 31) or `none`.
 - Syslog server: an IPv4 address with an optional port (`10.10.6.65:5140`), an IPv6 address (`2001:db8::514`, or `[2001:db8::514]:5140` with a port), `dhcp` (DHCP option 7) or `none`. Port 514 unless given. No DNS names.
 - A factory reset sets both back to `dhcp`.
 
@@ -356,7 +356,7 @@ It also reads the LLDP frames the switch sends and shows the switch and the port
 
 ## Time and syslog
 
-**Time.** The device sets its clock from an NTP server (lwIP's SNTP client) and asks again every 15 minutes. The server comes from DHCP option 42, from DHCPv6 option 56 (through lwIP's stateless DHCPv6, so only on networks whose router advertisement sets the O flag), or is typed in menu option 11 or on the web page: an IPv4 or IPv6 address or a DNS name such as `pool.ntp.org`. The default, also after a factory reset, is `dhcp`. There is no built-in server: with `dhcp` and none offered the device has no time, and it never contacts the internet unless you tell it to. Until the first answer the device works as before, on its uptime.
+**Time.** The device sets its clock from an NTP server (lwIP's SNTP client) and asks again every 15 minutes. The server comes from DHCP option 42, from DHCPv6 option 31 (through lwIP's stateless DHCPv6, so only on networks whose router advertisement sets the O flag), or is typed in menu option 11 or on the web page: an IPv4 or IPv6 address or a DNS name such as `pool.ntp.org`. The default, also after a factory reset, is `dhcp`. There is no built-in server: with `dhcp` and none offered the device has no time, and it never contacts the internet unless you tell it to. Until the first answer the device works as before, on its uptime.
 
 Times are shown in Danish local time (CET, and CEST in summer by the EU rule, switched automatically): on the status screen (`Time: 2026-11-07 19:42:10 CET (NTP pool.ntp.org, synced 3 min ago)`, or `Time: not synced (NTP DHCP, none offered)` and `(NTP off)`), in the web page's "Time" row and in the access log (option 5). Over SNMP the device serves `hrSystemDate` (HOST-RESOURCES-MIB, `1.3.6.1.2.1.25.1.2.0`) once it has the time ([docs/MIB.md](docs/MIB.md#host-resources-host-resources-mib-and-inventory-entity-mib)).
 

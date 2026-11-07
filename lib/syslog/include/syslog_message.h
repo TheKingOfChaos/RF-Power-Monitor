@@ -43,6 +43,15 @@ public:
     uint8_t size() const { return _count; }
     /// Events dropped since the last call (and reset the count)
     uint32_t takeDropped();
+    /**
+     * @brief What to send next: "N events dropped (queue full)" (MSGID SYSLOG, dated nowMs) when
+     *        events were dropped, else the oldest event; false when there is nothing
+     *
+     * Never changes the queue, so it can be asked on every pass while nothing can be sent.
+     */
+    bool peekNext(SyslogEntry& out, uint32_t nowMs) const;
+    /// What peekNext() returned went out: clear the drop count, or remove the oldest event
+    void popNext();
 
 private:
     SyslogEntry _entries[CAPACITY];

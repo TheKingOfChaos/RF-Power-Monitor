@@ -39,8 +39,10 @@ static void configure() {
         break;
     case ServerMode::Dhcp:
         serverName[0] = '\0';
-        sntp_setservername(0, nullptr);
-        sntp_servermode_dhcp(1);  // option 42 / DHCPv6 option 56 fill the servers at the next lease
+        // Clear name and address: lwIP keeps a typed server's resolved address, and would keep polling it
+        sntp_setserver(0, nullptr);
+        sntp_setserver(1, nullptr);
+        sntp_servermode_dhcp(1);  // option 42 / DHCPv6 option 31 fill the servers at the next lease
         sntp_init();
         break;
     case ServerMode::None:

@@ -289,6 +289,55 @@ static void test_queue_full_drops_oldest_and_counts() {
     TEST_ASSERT_EQUAL_UINT32(0, q.takeDropped());
 }
 
+static void test_full_queue_keeps_its_events_while_nothing_can_be_sent() {
+    // No server for a long time (the default with no DHCP option 7): looking at what is next,
+    // pass after pass, must not touch the queue; the 16 newest real events are kept
+    static SyslogQueue q;
+    q = SyslogQueue();
+    char t[16];
+    for (int i = 0; i < SyslogQueue::CAPACITY + 4; i++) {
+        snprintf(t, sizeof(t), "e%d", i);
+        q.push(entry((uint32_t)i, t));
+    }
+    SyslogEntry out;
+    for (int pass = 0; pass < 1000; pass++) TEST_ASSERT_TRUE(q.peekNext(out, 5000));
+    TEST_ASSERT_EQUAL(SyslogQueue::CAPACITY, q.size());
+    q.peek(out);
+    TEST_ASSERT_EQUAL_STRING("e4", out.text);
+}
+
+static void test_next_is_the_drop_notice_then_the_events() {
+    static SyslogQueue q;
+    q = SyslogQueue();
+    char t[16];
+    for (int i = 0; i < SyslogQueue::CAPACITY + 4; i++) {
+        snprintf(t, sizeof(t), "e%d", i);
+        q.push(entry((uint32_t)i, t));
+    }
+    SyslogEntry out;
+    TEST_ASSERT_TRUE(q.peekNext(out, 5000));
+    TEST_ASSERT_EQUAL_STRING("4 events dropped (queue full)", out.text);
+    TEST_ASSERT_EQUAL_STRING("SYSLOG", out.msgId);
+    TEST_ASSERT_TRUE(out.severity == SyslogSeverity::Notice);
+    TEST_ASSERT_EQUAL_UINT32(5000, out.uptimeMs);
+    q.popNext();  // the notice went out: the events follow, none lost to it
+    TEST_ASSERT_EQUAL(SyslogQueue::CAPACITY, q.size());
+    TEST_ASSERT_TRUE(q.peekNext(out, 5000));
+    TEST_ASSERT_EQUAL_STRING("e4", out.text);
+    q.popNext();
+    TEST_ASSERT_TRUE(q.peekNext(out, 5000));
+    TEST_ASSERT_EQUAL_STRING("e5", out.text);
+}
+
+static void test_next_on_empty_queue_is_nothing() {
+    static SyslogQueue q;
+    q = SyslogQueue();
+    SyslogEntry out;
+    TEST_ASSERT_FALSE(q.peekNext(out, 0));
+    q.popNext();  // nothing to remove
+    TEST_ASSERT_EQUAL(0, q.size());
+}
+
 static void test_throttle_allows_five_per_minute_then_counts() {
     SyslogThrottle t(5, 60000);
     for (int i = 0; i < 5; i++) TEST_ASSERT_TRUE(t.allow(1000 + i));
@@ -387,6 +436,9 @@ int main() {
     RUN_TEST(test_syslog_format_too_small_buffer_returns_zero);
     RUN_TEST(test_queue_keeps_order);
     RUN_TEST(test_queue_full_drops_oldest_and_counts);
+    RUN_TEST(test_full_queue_keeps_its_events_while_nothing_can_be_sent);
+    RUN_TEST(test_next_is_the_drop_notice_then_the_events);
+    RUN_TEST(test_next_on_empty_queue_is_nothing);
     RUN_TEST(test_throttle_allows_five_per_minute_then_counts);
     RUN_TEST(test_throttle_window_survives_millis_wrap);
     RUN_TEST(test_event_epoch_dated_from_uptime_not_sync_moment);
