@@ -102,9 +102,9 @@ reaching its update site.
   having a server, they go out undated (RFC 5424 `-` timestamp) with the
   uptime in the text. When the queue is full the oldest is dropped and a
   "n events dropped" line is sent. Claude's call, agreed.
-- Events are queued in a compact form (event code and values, ~12 bytes each,
-  ~200 bytes for 16) in static RAM; the text is built only when sent.
-  Claude's call, agreed.
+- Events are queued as text (16 entries of ~105 bytes, ~1.7 KB static RAM).
+  Claude's call: first a compact ~12-byte form was agreed under the 50 % RAM
+  limit; with the limit at 60 % the simpler text queue was chosen in the plan.
 - "Settings changed" is sent for changes from the web page **and** the serial
   menu. Claude's call, agreed.
 - Test destination: LibreNMS here (`librenms/test`, its syslog receiver
