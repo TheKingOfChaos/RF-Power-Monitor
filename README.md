@@ -64,7 +64,7 @@ If upload fails, hold BOOTSEL while plugging in the Pico and copy `.pio\build\pi
 | [docs/LIBRENMS.md](docs/LIBRENMS.md) | Monitoring the device with LibreNMS: install, sensors, alerts, traps, syslog, Docker test setup |
 | [update-server/README.md](update-server/README.md) | The update site (Docker): device list, releases, assignments, shared key |
 | [hardware/pico-poe-mains-carrier/](hardware/pico-poe-mains-carrier/README.md) | Carrier PCB rev 1.1 (KiCad 10): circuit, isolation, mounting, fab files for JLCPCB, 3D models |
-| [hardware/rf-power-monitor-rev2/](hardware/rf-power-monitor-rev2/README.md) | Rev 2 board, RP2040 and W5500 on the board (designed, not built yet): differences from rev 1, pins, isolation, known limits, fab files |
+| [hardware/rf-power-monitor-rev2/](hardware/rf-power-monitor-rev2/README.md) | Rev 2 board, RP2040 and W5500 on the board (ordered 2026-11-07, not built yet): differences from rev 1, pins, isolation, known limits, fab files |
 | [docs/diagrams/](docs/diagrams/README.md) | Excalidraw diagrams (editable) of the system, firmware, SNMP, mains flow, settings, tests and the update site |
 | [CHANGELOG.md](CHANGELOG.md) | What changed in each version |
 | [.clinerules](.clinerules) | Project and test rules |

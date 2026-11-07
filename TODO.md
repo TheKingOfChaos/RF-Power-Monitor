@@ -233,7 +233,8 @@ An item is only ticked when it is implemented **and** its tests exist and pass (
 ## 19. Hardware: rev 2 board (`hardware/rf-power-monitor-rev2`)
 - [x] Design: RP2040 + W5500 on the board, WIZPoE-P1 plug-in PoE module, rev 1 mains detector, TMP1075 and factory reset; same pin map. KiCad 10, 2 layers, 100 x 64 mm; ERC 0, DRC 0 errors (2 silkscreen warnings); JLCPCB Gerbers, BOM and CPL (designed with Adom AI Flow, 2026-11-03)
 - [ ] Human review of schematic, board, BOM and fab files before ordering
-- [ ] Order and assemble; bring-up measurements from `design/tests.json` (rails, crystals, W5500, mains sense, LEDs)
+- [x] Ordered (2026-11-07)
+- [ ] Assemble; bring-up measurements from `design/tests.json` (rails, crystals, W5500, mains sense, LEDs)
 - [ ] Check that the WIZPoE-P1 does not cycle at the board's ~134 mA load (module minimum 150 mA); add a bleed load if it does
 - [ ] Firmware on rev 2: flash over USB-C, then the full native, embedded and HIL suites, incl. mains loss/restore and the factory reset button
 - [ ] `HARDWARE_REVISION` (entPhysicalHardwareRev) for rev 2 boards: the firmware cannot tell the boards apart, so decide on a build flag or a stored setting

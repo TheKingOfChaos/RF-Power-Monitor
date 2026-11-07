@@ -26,7 +26,7 @@ How the carrier and the firmware fit together:
 | Factory reset button | SW1 from GP22 to GND, below the module (board v1.1) | Reads GPIO22 with the internal pull-up, hold 10 s: matches |
 | Mains loss timing | The RC holds the signal about 30-50 ms after mains is lost (bridges zero crossings) | The firmware sees the loss that much later, within the 80 ms [`.clinerules`](../.clinerules) allows from mains to detection |
 
-## Rev 2 board (designed, not built yet)
+## Rev 2 board (ordered 2026-11-07, not built yet)
 
 ![RF-Power-Monitor rev2, 3D render](../hardware/rf-power-monitor-rev2/out/img/board-iso-left.png)
 

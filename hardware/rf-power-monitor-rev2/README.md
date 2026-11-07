@@ -2,7 +2,7 @@
 
 ![RF-Power-Monitor rev2, 3D render from KiCad](out/img/board-top.png)
 
-> **Status: designed, not built.** Every value below is a design limit, a calculation or a simulation. No rev2 board has been ordered, assembled or measured yet. Review the board, BOM and fab files before ordering. The boards in use are still [rev 1.1](../pico-poe-mains-carrier/README.md).
+> **Status: ordered 2026-11-07, not built yet.** Every value below is a design limit, a calculation or a simulation. No rev2 board has been assembled or measured yet. The boards in use are still [rev 1.1](../pico-poe-mains-carrier/README.md).
 
 Rev 1 is a carrier for the WIZnet W5500-EVB-Pico-PoE module. Rev 2 puts everything from that module on one board, except the PoE power stage, which stays the plug-in WIZnet WIZPoE-P1:
 
