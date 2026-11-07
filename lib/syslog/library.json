@@ -1,0 +1,21 @@
+{
+    "name": "syslog",
+    "version": "1.0.0",
+    "description": "NTP and syslog server settings, RFC 5424 syslog messages, event queue and throttle (pure C++, host testable)",
+    "keywords": "syslog, ntp, settings",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/TheKingOfChaos/RF-Power-Monitor.git"
+    },
+    "authors": [
+        {
+            "name": "kenneth Foli Jørgensen",
+            "email": "kenneth@tkoc.dk",
+            "maintainer": true
+        }
+    ],
+    "license": "MIT",
+    "frameworks": "*",
+    "platforms": "*",
+    "dependencies": {"netconfig": "*", "clock": "*", "bblanchon/ArduinoJson": "^6.21.3"}
+}

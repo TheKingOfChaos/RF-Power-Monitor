@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <settings.h>
+#include <log_settings_store.h>
 #include <update_settings_store.h>
 #include <LittleFS.h>
 #include <W5500lwIP.h>
@@ -233,6 +234,7 @@ void setup() {
     // Load settings
     settingsLoaded = loadSettings();
     loadUpdateSettings();  // update server URL and key: own files, defaults (off) when absent
+    loadLogSettings();     // NTP and syslog servers: own files, defaults (DHCP) when absent
     webLoadDefaultPassword();  // also without Ethernet: the lock must hold for menu option 7
     updateServiceBegin();
     hostnameBegin();  // before Ethernet, so the first DHCP request carries the name

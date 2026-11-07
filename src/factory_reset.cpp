@@ -2,6 +2,7 @@
 
 #include <reset_button.h>
 #include <settings.h>
+#include <log_settings_store.h>
 #include <update_settings_store.h>
 #include "pins.h"
 
@@ -74,6 +75,8 @@ void factoryResetPoll() {
     bool saved = saveSettings();
     // Update server URL and shared key: back to the bench defaults (updatedefault), else off
     if (!resetUpdateSettingsToBenchDefaults()) saved = false;
+    // NTP and syslog servers: back to DHCP
+    if (!factoryResetLogSettings()) saved = false;
     Serial.printf("Factory defaults %s in %lu ms, rebooting\r\n", saved ? "saved" : "NOT saved",
                   (unsigned long)(millis() - start));
     Serial.flush();

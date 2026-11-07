@@ -8,6 +8,7 @@
 #include <unity.h>
 #include <settings.h>
 #include <update_settings_store.h>
+#include <log_settings_store.h>
 
 static const char* const PATH_A = "test/settings_a.json";
 static const char* const PATH_B = "test/settings_b.json";
@@ -16,6 +17,8 @@ static const char* const UPDATE_PATH_A = "test/update_a.json";
 static const char* const UPDATE_PATH_B = "test/update_b.json";
 static const char* const UPDATE_DEFAULT_PATH_A = "test/update_default_a.json";
 static const char* const UPDATE_DEFAULT_PATH_B = "test/update_default_b.json";
+static const char* const LOG_PATH_A = "test/timelog_a.json";
+static const char* const LOG_PATH_B = "test/timelog_b.json";
 
 static void removeTestFiles() {
     LittleFS.remove(PATH_A);
@@ -24,6 +27,8 @@ static void removeTestFiles() {
     LittleFS.remove(UPDATE_PATH_B);
     LittleFS.remove(UPDATE_DEFAULT_PATH_A);
     LittleFS.remove(UPDATE_DEFAULT_PATH_B);
+    LittleFS.remove(LOG_PATH_A);
+    LittleFS.remove(LOG_PATH_B);
 }
 
 static void writeRaw(const char* path, const char* content) {
@@ -325,6 +330,88 @@ static void test_update_store_corrupt_copy_falls_back() {
     TEST_ASSERT_EQUAL_STRING("http://10.0.0.1:8071", loaded.url);
 }
 
+// ---- NTP and syslog server settings (LogSettingsStore) ----
+
+static void fillLogSettings(LogSettings& s, const char* ntp, const char* syslog) {
+    logSettingsDefaults(s);
+    s.ntpMode = ServerMode::Typed;
+    strcpy(s.ntpServer, ntp);
+    s.syslogMode = ServerMode::Typed;
+    strcpy(s.syslogServer, syslog);
+}
+
+static void test_log_settings_save_load_round_trip() {
+    static LogSettings s, loaded;
+    LogSettingsStore store(LOG_PATH_A, LOG_PATH_B);
+    TEST_ASSERT_EQUAL(SettingsSlot::None, store.load(s));
+    TEST_ASSERT_TRUE(s.ntpMode == ServerMode::Dhcp);
+    fillLogSettings(s, "pool.ntp.org", "10.132.0.45:5514");
+    TEST_ASSERT_TRUE(store.save(s));
+    fillLogSettings(s, "dk.pool.ntp.org", "[2001:db8::5]");
+    TEST_ASSERT_TRUE(store.save(s));
+
+    LogSettingsStore fresh(LOG_PATH_A, LOG_PATH_B);
+    TEST_ASSERT_EQUAL(SettingsSlot::B, fresh.load(loaded));
+    TEST_ASSERT_EQUAL_STRING("dk.pool.ntp.org", loaded.ntpServer);
+    TEST_ASSERT_EQUAL_STRING("[2001:db8::5]", loaded.syslogServer);
+}
+
+static void test_log_settings_corrupt_copy_uses_other() {
+    static LogSettings s, loaded;
+    LogSettingsStore store(LOG_PATH_A, LOG_PATH_B);
+    store.load(s);
+    fillLogSettings(s, "pool.ntp.org", "10.132.0.45");
+    TEST_ASSERT_TRUE(store.save(s));  // A
+    fillLogSettings(s, "other.ntp.org", "10.132.0.46");
+    TEST_ASSERT_TRUE(store.save(s));  // B, newest
+    writeRaw(LOG_PATH_B, "{\"version\":1,\"sequence\":99,\"ntpMode\":\"ty");  // a torn write
+
+    LogSettingsStore fresh(LOG_PATH_A, LOG_PATH_B);
+    TEST_ASSERT_EQUAL(SettingsSlot::A, fresh.load(loaded));
+    TEST_ASSERT_EQUAL_STRING("pool.ntp.org", loaded.ntpServer);
+}
+
+static void test_factory_reset_sets_log_settings_to_dhcp() {
+    static LogSettings s, loaded;
+    LogSettingsStore store(LOG_PATH_A, LOG_PATH_B);
+    store.load(s);
+    fillLogSettings(s, "pool.ntp.org", "10.132.0.45");
+    TEST_ASSERT_TRUE(store.save(s));
+    TEST_ASSERT_TRUE(resetLogSettings(store, s));
+    TEST_ASSERT_TRUE(s.ntpMode == ServerMode::Dhcp);
+    TEST_ASSERT_TRUE(s.syslogMode == ServerMode::Dhcp);
+    TEST_ASSERT_FALSE(LittleFS.exists(LOG_PATH_A));
+    LogSettingsStore fresh(LOG_PATH_A, LOG_PATH_B);
+    TEST_ASSERT_EQUAL(SettingsSlot::None, fresh.load(loaded));
+    TEST_ASSERT_TRUE(loaded.ntpMode == ServerMode::Dhcp);
+}
+
+static void test_log_settings_leave_main_settings_file_unchanged() {
+    SettingsStore main(PATH_A, PATH_B);
+    static Settings ms;
+    main.load(ms);
+    fillStaticSettings(ms, "192.168.50.78");
+    TEST_ASSERT_TRUE(main.save(ms));
+    static char before[SETTINGS_JSON_MAX], after[SETTINGS_JSON_MAX];
+    File f = LittleFS.open(PATH_A, "r");
+    size_t n1 = f.readBytes(before, sizeof(before));
+    f.close();
+
+    static LogSettings s;
+    LogSettingsStore store(LOG_PATH_A, LOG_PATH_B);
+    store.load(s);
+    fillLogSettings(s, "pool.ntp.org", "10.132.0.45");
+    TEST_ASSERT_TRUE(store.save(s));
+    TEST_ASSERT_TRUE(store.save(s));
+
+    f = LittleFS.open(PATH_A, "r");
+    size_t n2 = f.readBytes(after, sizeof(after));
+    f.close();
+    TEST_ASSERT_EQUAL(n1, n2);
+    TEST_ASSERT_EQUAL_MEMORY(before, after, n1);
+    TEST_ASSERT_FALSE(LittleFS.exists(PATH_B));
+}
+
 static void test_main_settings_file_unchanged_by_update_settings_save() {
     SettingsStore main(PATH_A, PATH_B);
     static Settings ms;
@@ -493,6 +580,10 @@ void setup() {
     RUN_TEST(test_factory_reset_restores_bench_update_defaults);
     RUN_TEST(test_factory_reset_without_bench_defaults_clears_update_settings);
     RUN_TEST(test_bench_update_defaults_survive_factory_reset);
+    RUN_TEST(test_log_settings_save_load_round_trip);
+    RUN_TEST(test_log_settings_corrupt_copy_uses_other);
+    RUN_TEST(test_factory_reset_sets_log_settings_to_dhcp);
+    RUN_TEST(test_log_settings_leave_main_settings_file_unchanged);
 
     LittleFS.rmdir("test");
     UNITY_END();
