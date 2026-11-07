@@ -46,12 +46,13 @@ Open **http://&lt;device address&gt;/** or **http://&lt;hostname&gt;.local/** an
 - **Mains power** (green or red badge) and how often it changed since the device started
 - **Mains alarm**: *none*, or *lost over 60 s*
 - Uptime, CPU and ambient temperature, the Ethernet link
+- **Time**: the local time from NTP, or *not synced*; **Syslog**: where the device sends its events
 - **Switch**: the switch and port the device is plugged into (if the switch speaks LLDP)
 - Name, addresses, MAC address and network mode; the firmware version in the top bar
 
 ![The web page (addresses, MAC and community are example values)](images/web/web-status.png)
 
-From the page you can change the network settings, the name and the SNMP community, update or switch the firmware (the **Firmware** page, see Updating the firmware), restart the device, and log out. A session ends after 15 minutes without use.
+From the page you can change the network settings, the name, the SNMP community and the NTP and syslog servers (card *Time and syslog*), update or switch the firmware (the **Firmware** page, see Updating the firmware), restart the device, and log out. A session ends after 15 minutes without use.
 
 ### The serial menu
 
@@ -62,6 +63,8 @@ Connect a USB cable and open a terminal (PuTTY: Serial, the device's COM port, 1
 The device page shows the sensors *Mains power* (OK / warning), *Mains lost over 60 s* (OK / critical), *CPU* and *Ambient* temperature and *Mains power changes since boot*, the Ethernet port with its traffic, and in the **Switch** box the switch and port the device is plugged into (from LLDP, updated at each discovery; the box needs the RF-Power-Monitor plugin on the LibreNMS server). Since firmware 3.1.0 it also shows the device's location and contact (set them on the web page), the load of both processor cores and the memory in use (overview graphs *CPU* and *Memory*), the settings flash as storage, the IPv4 and IPv6 addresses on the port, the serial number, an **Inventory** entry, and IP/ICMP/TCP/UDP/SNMP traffic graphs under **Graphs → Netstats** (firmware 3.2.0, contact replaced by a placeholder):
 
 ![LibreNMS: the device page](images/librenms/device-overview.png)
+
+From firmware 3.6.0 the sensors *Update site check-in* (ok, failed, never, off) and *Minutes since update site check-in* show whether the device reaches its update site; the second warns after an hour without a good check-in. If the device's syslog server is LibreNMS (option 11, see [docs/LIBRENMS.md](LIBRENMS.md#syslog)), its messages are under **Logs → Syslog**.
 
 Under **Logs → Event Log** you see what happened: the traps the device sent (mains lost and restored, restarts, wrong community), and changes LibreNMS noticed such as a new firmware version:
 
@@ -99,6 +102,7 @@ Everything can be done in the serial menu; most things on the web page too.
 | Web password | 6 (`-` = back to the default) | | at once, logs browsers out |
 | New random default web password | 7 | | at once |
 | Web page on/off | 8 | Turn off… (only the menu turns it on again) | at once |
+| NTP server and syslog server | 11 | Time and syslog | at once |
 
 The device checks every value before it uses it and tells you what is wrong. Nothing changes until you confirm. Settings are kept across restarts, power cuts and firmware updates: they are stored twice, so a power cut while saving cannot lose them.
 
@@ -124,6 +128,7 @@ The serial menu can do everything the device offers. It works even when the netw
 8. Web interface on/off
 9. Static IPv6
 10. Update server
+11. Time and syslog
 ?. Show this menu
 >
 ```
@@ -163,6 +168,8 @@ RAM used: 133444 of 262144 bytes
 LittleFS used: 32768 of 262144 bytes
 Serial number: E6641CB2CF4CA22C
 Last restart: reboot (0 watchdog restarts since power-on)
+Time: 2026-11-07 19:42:10 CET (NTP pool.ntp.org, synced 3 min ago)
+Syslog: 192.0.2.65:514 (typed), 12 sent, 0 waiting
 Mode: DHCP
 Stored static IP: 192.168.1.100 / 255.255.255.0, gateway 192.168.1.1
 Stored static IPv6: none (option 9)
@@ -193,6 +200,8 @@ DNS: 192.0.2.10
 | Web interface, Web login | Whether the web page is on, and its login: the **default password** is shown here until you set your own. |
 | Core 0 stack | A health figure for the firmware; it should stay well above 0. |
 | Last restart | Why the device last started: `power-on`, `reset pin`, `reboot` or `watchdog` (the firmware hung and was restarted), and how many watchdog restarts happened since power was applied. |
+| Time | The local time (CET/CEST) and the NTP server, or `not synced (NTP DHCP, none offered)` when the DHCP server names none, `not synced (NTP off)` when it is off (option 11). |
+| Syslog | The syslog server, `(typed)` or `(from DHCP)`, with messages sent and waiting; `off`; or `DHCP, none offered (N waiting)`. |
 | Mode, Stored static IP, Stored static IPv6 | The configured network mode and the stored static settings (used only in static mode, or when set). |
 | DHCPv6 | `off` unless the IPv6 router asks for DHCPv6; then the leased address. |
 | State | `connected`; `link up, waiting for DHCP lease` (keeps trying); `no Ethernet link, check cable`; or `W5500 not detected, check wiring`. |
@@ -222,7 +231,7 @@ Confirm with `y`. The new settings work at once; no restart.
 
 ### 5. Access log
 
-The latest rejected requests and failed web logins, newest first. A repeat of the newest entry (same source, same reason) is counted on that line instead of adding a new one. Each new entry is also printed when it happens.
+The latest rejected requests and failed web logins, newest first. A repeat of the newest entry (same source, same reason) is counted on that line instead of adding a new one. Each new entry is also printed when it happens, and sent to the syslog server (option 11). Once the device has the time from NTP, each line ends with the local time, e.g. `last 2 s ago (2026-11-07 19:42:08 CET)`.
 
 ```
 Access log: 3 entries, 128 events since boot
@@ -271,13 +280,33 @@ Connects the device to the update site (see [Updating the firmware](#from-the-up
 
 The settings are saved at once and the first check-in follows within a minute. The status screen shows them on one line, e.g. `Update server: http://10.132.0.45:8071 (fixed), key set, last check-in 4 min ago: ok`, or `Update server: off (option 10)`. The same settings are on the web page's **Firmware** page (card *Update server*). A factory reset sets them back to the update site the board got at the bench (status screen `Update server default: <url>, key set (a factory reset restores it)`), or removes them on a board without one. Firmware older than 3.4.0 does not know these settings: a device rolled back to such firmware and factory-reset there gets its old URL and key back after its next update to 3.4.0 or newer. Clear them with option 10 (`none`, then `clear`) if that matters.
 
+### 11. Time and syslog
+
+Sets where the device gets its time and where it sends its events. It asks for two things; Enter keeps the value in brackets, `none` or `-` turns it off:
+
+| Prompt | What to enter |
+|---|---|
+| NTP server | An address or a name (`pool.ntp.org`), `dhcp` to take it from the DHCP server (option 42, or DHCPv6 option 56), or `none`. |
+| Syslog server | An address with an optional port (`192.0.2.65`, `192.0.2.65:5140`; IPv6 as `[2001:db8::65]:5140`), `dhcp` to take it from the DHCP server (option 7), or `none`. Port 514 unless given; no names. |
+
+```
+> 11
+NTP server: address, name, dhcp or none [dhcp]: pool.ntp.org
+Syslog server: address[:port], dhcp or none [dhcp]:
+Time and syslog settings saved and active
+```
+
+A wrong value is explained and asked for again. The settings are saved and work at once; no restart. Both are `dhcp` from new and after a factory reset. The device has no NTP server of its own choosing: with `dhcp` and no server from DHCP it has no time and never contacts the internet. Without the time it works as before; times are then given as "N s ago".
+
+Times are shown in Danish local time (CET, CEST in summer, switched automatically). The device sends to the syslog server: mains lost, restored and the 60 s alarm, each start (with why it restarted), firmware updates kept or rolled back, web logins and failed logins, rejected SNMP requests (at most 5 a minute, the rest counted), settings changes (never passwords, keys or the community), the link and the IPv4 address, the switch from LLDP, and update site check-ins that fail and work again. Ordinary SNMP polls are not logged. Messages wait (up to 16) until the device has a network, a server and the time, and then carry the time they happened. The README's *Time and syslog* section has the details.
+
 ## Factory reset
 
 Use this if you can no longer reach the device (wrong static address, unknown community) and have no USB access, or to hand the device on.
 
 1. Press and hold the button **SW1** on the carrier (under the module). The onboard LED blinks slowly.
 2. Keep holding for **10 seconds**, until the LED blinks fast. Then let go.
-3. The device restarts with the defaults: DHCP, community `public`, name `RF-Power-<last 6 MAC hex digits>`, no contact, location or trap destination, no static IPv6, web page on and back on its default password. The update server goes back to the one set at the bench (or off without one).
+3. The device restarts with the defaults: DHCP, community `public`, name `RF-Power-<last 6 MAC hex digits>`, no contact, location or trap destination, no static IPv6, web page on and back on its default password. The update server goes back to the one set at the bench (or off without one). The NTP and syslog servers go back to `dhcp`.
 
 Letting go before 10 s cancels the reset. The device keeps working while you hold the button. The default web password itself is not changed by a reset; it is still the one on the label and on the status screen. After a reset, set the community, name and trap destination again (setup manual, step 4).
 
@@ -377,6 +406,9 @@ The boot program verifies the active slot at every start, which adds about a sec
 | `Last update:` says `rolled back` | The new firmware crashed or could not be reached, and the device went back by itself. The bad version is erased from the other slot (`Other slot: ..., empty`), so *Switch firmware* is not possible and a fallback cannot reach it. Upload a fixed release. |
 | The BOOTSEL drive took `firmware.uf2` and the device does not start | That file has no boot program. Copy a `-usb.uf2` file to the drive the same way. |
 | No text in PuTTY | PuTTY must be set to Serial, the right COM port, 115200. Press Enter. Only one program can use the COM port at a time. |
+| Status screen `Time: not synced` | `NTP DHCP, none offered`: the DHCP server names no NTP server (option 42); add one there, or type one in option 11. With a typed name: is DNS working (status screen `DNS:`)? |
+| No syslog messages | Status screen `Syslog:` says why: `off`, `DHCP, none offered` (the DHCP server has no option 7), or messages `waiting` (no network or no time yet; after 2 minutes they go out without the time). Check that the server's firewall lets UDP in on the port. |
+| LibreNMS warns *Minutes since update site check-in* | The device has not reached its update site for an hour: status screen `Update server:` shows the last result. |
 | Temperature seems high | The ambient sensor sits on the board and warms with it; a few degrees above the room is normal. |
 
 More detail: the [README](../README.md) (every menu option, the web page, network and IPv6), [docs/MIB.md](MIB.md) (all SNMP objects and traps) and [docs/LIBRENMS.md](LIBRENMS.md).

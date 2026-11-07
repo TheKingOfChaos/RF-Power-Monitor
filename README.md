@@ -2,7 +2,7 @@
 
 A mains power monitor built on a Raspberry Pi Pico with a W5500 Ethernet module. It reports whether mains power is present over SNMP v1 and v2c, including traps, together with standard interface statistics (IF-MIB), the CPU temperature and the ambient temperature (TMP1075 on the carrier board), so it can be monitored by LibreNMS or any other SNMP manager. It is configured through a menu on the USB serial port.
 
-Current version: **3.0.0** (see [CHANGELOG.md](CHANGELOG.md)).
+Current version: **3.6.0** (see [CHANGELOG.md](CHANGELOG.md)).
 
 ## Overview
 
@@ -10,7 +10,7 @@ Current version: **3.0.0** (see [CHANGELOG.md](CHANGELOG.md)).
 
 - **Mains side:** an isolated detector (optocoupler with filtering) turns mains presence into a clean 3.3 V level on GPIO27. In the test setup an IKEA smart plug in front of it lets the tests switch mains off and on.
 - **Board:** the Pico's core 1 samples GPIO27 and the reset button (GPIO22) every millisecond; core 0 runs the network, the SNMP agent and the serial menu. Settings live in the Pico's flash in two copies, and the W5500 provides 10/100 Ethernet over SPI.
-- **Network:** the device gets its address by DHCP (or a static IP), is reachable as `RF-Power-XXXXXX.local` (mDNS; XXXXXX = the last 6 hex digits of its MAC), answers SNMP v1/v2c on UDP 161 for LibreNMS or net-snmp, sends traps on UDP 162, and serves a configuration web page with login on TCP 80 ([Web page](#web-page)).
+- **Network:** the device gets its address by DHCP (or a static IP), is reachable as `RF-Power-XXXXXX.local` (mDNS; XXXXXX = the last 6 hex digits of its MAC), answers SNMP v1/v2c on UDP 161 for LibreNMS or net-snmp, sends traps on UDP 162, and serves a configuration web page with login on TCP 80 ([Web page](#web-page)). It sets its clock by NTP and sends its events to a syslog server, when the network has them ([Time and syslog](#time-and-syslog)).
 - **PC:** the USB serial port carries the configuration menu and the hardware-in-the-loop tests.
 
 More diagrams (firmware architecture, SNMP request flow, mains flow, settings, tests, update site) are in [docs/diagrams/](docs/diagrams/README.md).
@@ -40,6 +40,9 @@ More diagrams (firmware architecture, SNMP request flow, mains flow, settings, t
 | Standard MIBs: SNMPv2-MIB complete, HOST-RESOURCES-MIB (CPU load per core, RAM, LittleFS), ENTITY-MIB (inventory), IP-MIB addresses, MIB-II ip/icmp/tcp/udp counters | Working (3.1.0) |
 | LibreNMS OS definition (mains state, temperature, change counter, CPU, memory, storage, addresses, inventory) | Working, tested with LibreNMS 26.10.2 |
 | Update site ([update-server/](update-server/README.md), Docker): devices check in every 30 minutes; firmware updates for the devices you tick; check-ins authenticated with a shared key; URL by DHCP option 225 | Working (3.4.0), HIL-tested end to end |
+| SNMP objects for the update site check-ins (updateSite group), LibreNMS sensors | Working (3.6.0) |
+| Time from NTP (DHCP option 42, DHCPv6 option 56 or a typed server), shown as Danish local time; SNMP hrSystemDate | Working (3.6.0) |
+| Syslog (RFC 5424 over UDP): mains, restarts, firmware updates, logins, rejected SNMP requests, settings, network, LLDP and update site events; server typed or from DHCP option 7 | Working (3.6.0), tested with LibreNMS's syslog receiver |
 
 See [TODO.md](TODO.md) for the detailed plan.
 
@@ -49,9 +52,9 @@ See [TODO.md](TODO.md) for the detailed plan.
 |---|---|
 | [docs/SETUP_MANUAL.md](docs/SETUP_MANUAL.md) | **Installing a device**: safety, assembly, first configuration, LibreNMS, proving the alarm works, checklist |
 | [docs/USER_MANUAL.md](docs/USER_MANUAL.md) | **Daily use**: LEDs, web page, what to do on an alarm, changing settings, the serial menu (every option and status line), factory reset, firmware update, troubleshooting |
-| This README | Hardware, wiring, serial menu, web page, network, IPv6, mains monitoring, factory reset, settings, building, SNMP overview, troubleshooting |
+| This README | Hardware, wiring, serial menu, web page, network, time and syslog, IPv6, mains monitoring, factory reset, settings, building, SNMP overview, troubleshooting |
 | [docs/MIB.md](docs/MIB.md) | Every SNMP object (SNMPv2-MIB, IF-MIB, IP/ICMP/TCP/UDP, HOST-RESOURCES-MIB, ENTITY-MIB, LLDP-MIB, RF-POWER-MONITOR-MIB), traps, v1/v2c differences, rate limiting, errors, limits |
-| [docs/LIBRENMS.md](docs/LIBRENMS.md) | Monitoring the device with LibreNMS: install, sensors, alerts, traps, Docker test setup |
+| [docs/LIBRENMS.md](docs/LIBRENMS.md) | Monitoring the device with LibreNMS: install, sensors, alerts, traps, syslog, Docker test setup |
 | [docs/TESTING.md](docs/TESTING.md) | Test layers, how to run them, automated mains tests with a smart plug, what each suite covers |
 | [CHANGELOG.md](CHANGELOG.md) | What changed in each version |
 | [hardware/pico-poe-mains-carrier/](hardware/pico-poe-mains-carrier/README.md) | Carrier PCB rev 1.1 (KiCad 10): circuit, isolation, mounting, fab files for JLCPCB, 3D models |
@@ -122,11 +125,12 @@ Connect to the Pico's USB serial port (`COM16` here) at **115200 baud, 8N1**, wi
 8. Web interface on/off
 9. Static IPv6
 10. Update server
+11. Time and syslog
 ?. Show this menu
 >
 ```
 
-**1. Show status** prints the mains power state and mains alarm, the CPU and ambient temperature (`no sensor` without the TMP1075), the Ethernet link speed, traffic and drop counters, the SNMP counters and settings (community, sysName, sysContact, sysLocation), the switch and port the device is plugged into (LLDP), the web interface, core 0 stack headroom, the CPU load of both cores (last minute), RAM and LittleFS use, the serial number (the flash chip's unique ID), the last restart cause and watchdog restarts, the configured network mode, the stored static settings, the DHCPv6 state, and the live interface: state, MAC, IP, subnet, gateway and DNS.
+**1. Show status** prints the mains power state and mains alarm, the CPU and ambient temperature (`no sensor` without the TMP1075), the Ethernet link speed, traffic and drop counters, the SNMP counters and settings (community, sysName, sysContact, sysLocation), the switch and port the device is plugged into (LLDP), the web interface, core 0 stack headroom, the CPU load of both cores (last minute), RAM and LittleFS use, the serial number (the flash chip's unique ID), the last restart cause and watchdog restarts, the time (NTP) and the syslog server, the configured network mode, the stored static settings, the DHCPv6 state, and the live interface: state, MAC, IP, subnet, gateway and DNS.
 
 ```
 > 1
@@ -157,6 +161,8 @@ RAM used: 133444 of 262144 bytes
 LittleFS used: 32768 of 262144 bytes
 Serial number: E6641CB2CF4CA22C
 Last restart: reboot (0 watchdog restarts since power-on)
+Time: 2026-11-07 19:42:10 CET (NTP pool.ntp.org, synced 3 min ago)
+Syslog: 10.10.6.65:514 (typed), 12 sent, 0 waiting
 Mode: DHCP
 Stored static IP: 10.10.6.249 / 255.255.0.0, gateway 10.10.0.1
 Stored static IPv6: fd16:d833:4f0e:3ece::249/64, gateway from router advertisements
@@ -242,7 +248,7 @@ Access log: 3 entries, 128 events since boot
   10.10.6.80      bad community  x23     last 61 s ago
 ```
 
-Each new entry is also printed on the serial port when it happens (`SNMP access: bad community from 10.10.6.80`).
+Each new entry is also printed on the serial port when it happens (`SNMP access: bad community from 10.10.6.80`) and sent to the syslog server (option 11). Once the device has the time from NTP, each line also shows when it was, in local time: `last 2 s ago (2026-11-07 19:42:08 CET)`.
 
 **6. Web password** sets the password for the web page (see [Web page](#web-page)), or `-` returns to the device default password. The password is asked twice and shown as `*` while typing.
 
@@ -272,17 +278,33 @@ Settings saved. Rebooting...
 
 If you lock yourself out with a wrong static address, use the serial menu to switch back to DHCP, or do a factory reset.
 
+**11. Time and syslog** asks for the NTP server and the syslog server (see [Time and syslog](#time-and-syslog)). Enter keeps the value in brackets, `none` or `-` turns it off. A wrong value is refused with the reason and asked for again. Saved and active at once, no restart.
+
+```
+> 11
+NTP server: address, name, dhcp or none [dhcp]: pool.ntp.org
+Syslog server: address[:port], dhcp or none [dhcp]: 10.10.6.65
+Time and syslog settings saved and active
+Time: not synced (NTP pool.ntp.org)
+Syslog: 10.10.6.65:514 (typed), 0 sent, 1 waiting
+```
+
+- NTP server: an IPv4 or IPv6 address, a DNS name (`pool.ntp.org`), `dhcp` (DHCP option 42, or DHCPv6 option 56) or `none`.
+- Syslog server: an IPv4 address with an optional port (`10.10.6.65:5140`), an IPv6 address (`2001:db8::514`, or `[2001:db8::514]:5140` with a port), `dhcp` (DHCP option 7) or `none`. Port 514 unless given. No DNS names.
+- A factory reset sets both back to `dhcp`.
+
 ## Web page
 
-The device serves a small configuration page on **http://&lt;device IP&gt;/** (port 80): log in, see the status, change the network settings (IPv4 and static IPv6), the hostname and the SNMP community, restart the device, or turn the page off. It is also reachable as **http://RF-Power-XXXXXX.local/** (XXXXXX = the last 6 hex digits of the MAC; mDNS, see [Hostname](#hostname)) and over IPv6 as **http://[&lt;IPv6 address&gt;]/**. Everything on the page can also be done in the serial menu.
+The device serves a small configuration page on **http://&lt;device IP&gt;/** (port 80): log in, see the status, change the network settings (IPv4 and static IPv6), the hostname, the SNMP community and the NTP and syslog servers, restart the device, or turn the page off. It is also reachable as **http://RF-Power-XXXXXX.local/** (XXXXXX = the last 6 hex digits of the MAC; mDNS, see [Hostname](#hostname)) and over IPv6 as **http://[&lt;IPv6 address&gt;]/**. Everything on the page can also be done in the serial menu.
 
 - **Login:** user `admin`. Until you set your own password, the password is the device's **default password**: 10 random characters generated on first boot, different for every device, and shown only on the serial status screen (menu option 1): `Web login: user admin, default password "k7wqz3mtd9"`. A factory reset does not change it; menu option 7 replaces it with a new random one, except on a board set up with the bench tool, where it is printed on the label and locked.
 - **Own password:** serial menu option 6 sets one (8-32 characters, no spaces; typed characters are shown as `*`), or `-` goes back to the device default. Changing it logs every browser out. The password is stored as a salted SHA-256 hash (2000 rounds), never as text; checking it takes about half a second, done in small steps so SNMP keeps answering meanwhile. It can only be changed from the serial menu, so someone who learns it cannot lock you out.
-- **Status:** mains power (green or red badge) and change count, mains alarm (none / lost over 60 s), uptime, CPU and ambient temperature, Ethernet link, the switch and port (LLDP), hostname and `.local` name, IP address, IPv6 address and link-local address (when the device has them), MAC address, network mode, static IPv6 address (when set), firmware version (top bar). With DHCP the Network card's boxes show the address, subnet mask and gateway the DHCP server gave (and the DNS server below them); choosing Static and saving keeps that address.
+- **Status:** mains power (green or red badge) and change count, mains alarm (none / lost over 60 s), uptime, time (NTP) and syslog server (the same text as on the status screen), CPU and ambient temperature, Ethernet link, the switch and port (LLDP), hostname and `.local` name, IP address, IPv6 address and link-local address (when the device has them), MAC address, network mode, static IPv6 address (when set), firmware version (top bar). With DHCP the Network card's boxes show the address, subnet mask and gateway the DHCP server gave (and the DNS server below them); choosing Static and saving keeps that address.
 - **Device name:** the hostname (also SNMP sysName and mDNS name), sysContact and sysLocation (0-63 printable characters each, may be empty), active immediately. A page still open from older firmware, without those two fields, leaves them as they are.
 - **Network:** DHCP or static IP (address, mask and gateway are checked as in the serial menu). Saving restarts the device; the page tells you the new address.
 - **IPv6:** static IPv6 address and gateway, checked as in the serial menu (option 9); empty fields remove them. Saving restarts the device.
 - **SNMP community:** active immediately, no restart.
+- **Time and syslog:** the NTP server and the syslog server, the same values as menu option 11; active immediately, no restart.
 - **Restart device** and **Log out** buttons.
 - **Web interface: Turn off…** asks for confirmation, then turns the web page off. Only serial menu option 8 (or a factory reset) turns it on again.
 
@@ -311,6 +333,7 @@ Pages and forms, for scripts (e.g. `curl` with a cookie jar). Every POST except 
 | `/ipv6` | POST | `ipv6`, `ipv6gw` (empty = none) | Saves the static IPv6 address and gateway and restarts |
 | `/hostname` | POST | `hostname` | Saves the hostname (sysName, DHCP, mDNS), active immediately |
 | `/community` | POST | `community` | Saves the SNMP community, active immediately |
+| `/timelog` | POST | `ntp`, `syslog` (as in menu option 11) | Saves the NTP and syslog servers, active immediately |
 | `/reboot` | POST | | Restarts the device |
 | `/disable` | POST | `confirm=yes` (without it: the confirmation page) | Turns the web interface off |
 | `/favicon.svg` | GET | | The logo, no login |
@@ -330,6 +353,35 @@ Responses: `400` with the reason on the page for an invalid value (nothing is sa
 The device announces itself with LLDP (IEEE 802.1AB) every 30 s, 1 s after the Ethernet link comes up and about 1 s after its address or hostname changes, so the switch lists it as a neighbour (`show lldp neighbors` on Junos). It sends its MAC as chassis and port ID, the hostname as system name, the sysDescr text (with the firmware version) as system description, `W5500 10/100 Ethernet` as port description, "station only" as capability, and its IPv4 address and global IPv6 address (when it has them) as management addresses, with a time to live of 120 s. There is no setting; LLDP is always on.
 
 It also reads the LLDP frames the switch sends and shows the switch and the port it is plugged into: `Switch: r169, port ge-0/0/9.0` on the status screen (with the switch's management address in brackets when the switch sends one), and a "Switch" row on the web page. Junos sends the port as a number (its ifIndex) and the interface name as port description; the device shows the name. Without LLDP from the switch it shows `none seen`; the switch is forgotten when its time to live runs out or the link goes down. LLDP frames count as received multicast frames, not as unknown protocol. The same switch and port are in SNMP (LLDP-MIB `lldpRemTable`, see [docs/MIB.md](docs/MIB.md#switch-and-port-lldp-mib)), which LibreNMS shows on the device's Neighbours tab ([docs/LIBRENMS.md](docs/LIBRENMS.md#switch-and-port-lldp)).
+
+## Time and syslog
+
+**Time.** The device sets its clock from an NTP server (lwIP's SNTP client) and asks again every 15 minutes. The server comes from DHCP option 42, from DHCPv6 option 56 (through lwIP's stateless DHCPv6, so only on networks whose router advertisement sets the O flag), or is typed in menu option 11 or on the web page: an IPv4 or IPv6 address or a DNS name such as `pool.ntp.org`. The default, also after a factory reset, is `dhcp`. There is no built-in server: with `dhcp` and none offered the device has no time, and it never contacts the internet unless you tell it to. Until the first answer the device works as before, on its uptime.
+
+Times are shown in Danish local time (CET, and CEST in summer by the EU rule, switched automatically): on the status screen (`Time: 2026-11-07 19:42:10 CET (NTP pool.ntp.org, synced 3 min ago)`, or `Time: not synced (NTP DHCP, none offered)` and `(NTP off)`), in the web page's "Time" row and in the access log (option 5). Over SNMP the device serves `hrSystemDate` (HOST-RESOURCES-MIB, `1.3.6.1.2.1.25.1.2.0`) once it has the time ([docs/MIB.md](docs/MIB.md#host-resources-host-resources-mib-and-inventory-entity-mib)).
+
+**Syslog.** The device sends what happens to a syslog server: RFC 5424 over UDP, facility daemon, APP-NAME `rfpower`, its hostname as HOSTNAME, the time in UTC with milliseconds. The server is typed (an address, port 514 unless given; no DNS names), comes from DHCP option 7 (the first address in it), or is `none`; the default, also after a factory reset, is `dhcp`. The status screen shows `Syslog: 10.10.6.65:514 (typed), 12 sent, 0 waiting` (or `(from DHCP)`, `off`, `DHCP, none offered (N waiting)`), the web page a "Syslog" row.
+
+| MSGID | Event | Severity |
+|---|---|---|
+| `MAINS` | Mains lost / restored / lost over 60 s (the mains alarm) | warning / notice / critical |
+| `BOOT` | Start, with the restart cause, the slot and the boot program's reason | notice |
+| `FIRMWARE` | Update kept / rolled back or fallback, sent after the restart that reports it | notice / error |
+| `WEB` | Admin login / failed logins and lockouts | notice / warning |
+| `SNMP` | Bad community, bad version, malformed, rate limited, set rejected (from the access log) | warning |
+| `SETTINGS` | A change from the web page or the serial menu: what changed, never passwords, keys or the community's value | notice |
+| `NETWORK` | Link up, IPv4 address obtained / link down, IPv4 address lost | notice / warning |
+| `LLDP` | Switch or port changed / switch no longer seen | notice / warning |
+| `UPDATE` | Update site check-ins failing / working again | warning / notice |
+
+Ordinary SNMP polls are not logged. Events wait in a queue of 16 until there is a network, a server and the time from NTP, and are then dated from when they happened. When the queue is full the oldest goes, and a line `N events dropped (queue full)` follows. If the device has no time 2 minutes after the server is known, the waiting events go out undated, with `[uptime N s]` in the text. Access log events are limited to 5 a minute; the rest are counted and reported once a minute (`N more access events not sent`). Before a planned restart (network or IPv6 settings saved, restart from the web page) the queue is sent at once.
+
+DHCP server examples for the two options (here the syslog server is 10.10.6.65 and the NTP server the router, 10.10.0.1):
+
+- ISC dhcpd: `option log-servers 10.10.6.65;` and `option ntp-servers 10.10.0.1;`
+- dnsmasq: `dhcp-option=7,10.10.6.65` and `dhcp-option=42,10.10.0.1`
+
+LibreNMS can receive and show the messages: see [docs/LIBRENMS.md](docs/LIBRENMS.md#syslog).
 
 ## Hostname
 
@@ -387,7 +439,7 @@ After the restart the device sends a coldStart trap as after any start, and the 
 
 1. Press and hold the button on GPIO22. The onboard LED blinks slowly (2 Hz) while it is held, and the serial log prints `Factory reset button pressed`.
 2. After 10 seconds the LED blinks fast, and the log prints `Factory reset after 10000 ms hold`. You can release the button.
-3. Settings return to defaults: DHCP on (stored static IP back to `192.168.1.100`), no static IPv6 address, community `public`, sysName not set (the device uses `RF-Power-<MAC tail>`), empty sysContact and sysLocation, no trap destination (fixed), the web interface on, and the web page back on the device default password (the default password itself stays the same). The update server (option 10) goes back to the URL and key the bench tool set (see [Bench setup of a new board](#bench-setup-of-a-new-board)), or off on a board without them.
+3. Settings return to defaults: DHCP on (stored static IP back to `192.168.1.100`), no static IPv6 address, community `public`, sysName not set (the device uses `RF-Power-<MAC tail>`), empty sysContact and sysLocation, no trap destination (fixed), the web interface on, and the web page back on the device default password (the default password itself stays the same). The update server (option 10) goes back to the URL and key the bench tool set (see [Bench setup of a new board](#bench-setup-of-a-new-board)), or off on a board without them. The NTP and syslog servers (option 11) go back to `dhcp`.
 4. The device reboots, well within 2 seconds of the trigger.
 
 Releasing the button earlier cancels the reset (`released after ... ms, no reset`). The device keeps working normally while the button is held: SNMP answers, the menu responds and mains monitoring continues. A button held down while the device starts is ignored until it has been released once, so a stuck button cannot cause a reset loop.
@@ -424,6 +476,8 @@ Settings are stored as JSON on the Pico's internal flash (LittleFS) in two copie
 Each save writes the copy that is **not** in use, with `sequence` one higher, and reads it back to check it. At boot the valid copy with the highest `sequence` is used. If the device loses power during a save, the half-written copy fails validation and the previous one is loaded, so settings are never lost. If neither copy is valid, factory defaults are saved.
 
 Files from older firmware (without `sequence`, with an `active_file` pointer) are still loaded, and the pointer file is removed.
+
+The update server (option 10) and the NTP and syslog servers (option 11) have their own pairs of files, saved the same way: `data/update_a.json` / `data/update_b.json` and `data/timelog_a.json` / `data/timelog_b.json` (`{"version":1,"sequence":3,"ntpMode":"typed","ntp":"pool.ntp.org","syslogMode":"dhcp","syslog":""}`). They leave the main settings file unchanged, so a rollback to older firmware (3.5.1 for the time and syslog settings) keeps its settings.
 
 The project's `data/` folder is **not** needed: the firmware creates its settings on first boot. Uploading it (`pio run -t uploadfs`) replaces the whole flash filesystem and erases the device's settings.
 
@@ -499,6 +553,8 @@ src/ipv6_static.cpp         Static IPv6 address and gateway (lwIP hook in includ
 src/watchdog.cpp            Hardware watchdog (both cores), restart cause and count
 src/dhcp6_service.cpp       DHCPv6 address: runs lib/dhcp6_client, frames via the netif hooks
 src/lldp_service.cpp        LLDP on the device: sends, reads the switch, LLDP-MIB data
+src/time_service.cpp        NTP (lwIP SNTP), local time for the status screen, hrSystemDate
+src/syslog_service.cpp      Syslog: event queue, sending over UDP, option 11 settings
 src/diag.cpp                Hang diagnosis build (-DRFPOWER_DIAG): crash and panic capture
 lib/netconfig/              IPv4/IPv6 parsing, formatting and validation, hostnames (pure C++)
 lib/settings_codec/         Settings JSON, validation, A/B selection (pure C++)
@@ -514,7 +570,9 @@ lib/snmp_ber/               ASN.1 BER codec and OIDs for SNMP (pure C++)
 lib/snmp_agent/             SNMP v1/v2c messages, MIB, request handling, traps (pure C++)
 lib/if_stats/               Ethernet frame counting and W5500 PHY status decoding (pure C++)
 lib/web_ui/                 Web page: HTTP parser, login, sessions, pages, SHA-256, logo (pure C++)
-lib/dhcp_option/            Ask for and read DHCP option 224 in Ethernet frames (pure C++)
+lib/dhcp_option/            Ask for and read DHCP options 224, 225 and 7 in Ethernet frames (pure C++)
+lib/clock/                  UTC to Danish local time (CET/CEST), DateAndTime (pure C++)
+lib/syslog/                 NTP/syslog settings codec, RFC 5424 messages, queue, throttle (pure C++)
 src/snmp_service.cpp        UDP port 161, device state for the MIB
 src/net_stats.cpp           Counts frames at the lwIP driver, reads the W5500 PHY register
 src/cpu_temp.cpp            RP2040 die temperature, averaged
@@ -570,6 +628,8 @@ An SNMP agent runs on UDP port 161 and answers SNMPv1 and SNMPv2c, each request 
   .4.0  cpuTemperature        Integer32, 0.1 degrees Celsius (RP2040 die)
   .5.0  ambientTemperature    Integer32, 0.1 degrees Celsius (TMP1075, only when present)
   .6.0  mainsPowerAlarm       INTEGER 1 = mains lost for 60 s or more, 0 = none
+  .7    fwUpdate              firmware slots and the last update (3.3.0)
+  .8    updateSite            update site check-ins: result, minutes since a good one, failures in a row (3.6.0)
 ```
 
 The interface counters are kept by the firmware: every Ethernet frame the W5500 receives or sends is counted (octets, unicast, multicast, broadcast), since the W5500 in MAC-raw mode has no counters of its own. Link state and speed come from the W5500 PHY register. The CPU temperature (`cpuTemperature`) is the RP2040's internal sensor, which reads the chip temperature: a few degrees above the air around it.
@@ -605,6 +665,8 @@ Object details, traps, error behaviour, limits and the MIB file: [docs/MIB.md](d
 | Web page says "Too many failed logins" | Five wrong passwords in a row lock the login for 30 s; wait and use the password from the status screen (or your own from option 6) |
 | Web page says "Form expired" or "Not logged in" | The session ended (15 min idle, restart, password change, or a third browser logged in) or the page was old: reload it and log in again |
 | Device restarts after saving on the web page | Network and IPv6 settings need a restart; it is expected. Find the new address on the status screen if it changed |
+| Status screen `Time: not synced (NTP DHCP, none offered)` | The DHCP server sends no NTP server (option 42): add it there, or type a server in option 11 |
+| No syslog messages arrive | Status screen `Syslog:` line: `off`, `DHCP, none offered` (no DHCP option 7), or messages `waiting` (no network or time yet); the receiving PC's firewall must allow inbound UDP on the port (514 or the one you gave) |
 | No traps arrive | Trap destination set (status screen shows it and "N sent"); firewall on the receiving PC must allow inbound UDP 162 |
 | A manager gets no answers after polling hard | Rate limit (50/s per source): check menu option 5 for "rate limited" |
 | No IP address | Menu option 1 shows the state: cable/link, or no DHCP answer (it keeps retrying) |

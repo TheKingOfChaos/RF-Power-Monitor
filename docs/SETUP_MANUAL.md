@@ -51,6 +51,7 @@ A new rev 2 board is first set up at the bench with `tools/bench_provision.py` (
 8. Web interface on/off
 9. Static IPv6
 10. Update server
+11. Time and syslog
 ?. Show this menu
 >
 ```
@@ -201,6 +202,30 @@ The update site lists every device and updates the ones you choose (user manual,
 
 The device asks for option 225 when it is set to `dhcp` and takes it only from a DHCP answer it accepted for its own lease. A value longer than 127 characters or with other than printable ASCII is ignored.
 
+## 9. Time and syslog (optional)
+
+The device can set its clock by NTP and send its events (mains, restarts, firmware updates, logins, rejected SNMP requests, settings changes, network and switch changes) to a syslog server, for example LibreNMS ([docs/LIBRENMS.md](LIBRENMS.md#syslog)). Both are `dhcp` from new: the device takes the NTP server from DHCP option 42 (or DHCPv6 option 56) and the syslog server from DHCP option 7. If your DHCP server sends neither, nothing happens: the device has no time and sends no syslog, and it never contacts the internet by itself.
+
+**From DHCP.** Add the two options to your DHCP server, for example (syslog server 10.132.0.45, NTP server the router 10.132.0.1):
+
+- ISC dhcpd: `option log-servers 10.132.0.45;` and `option ntp-servers 10.132.0.1;`
+- dnsmasq: `dhcp-option=7,10.132.0.45` and `dhcp-option=42,10.132.0.1`
+
+The device uses the first address in option 7, on UDP port 514. For another port, type the server instead.
+
+**Typed.** Menu option `11` (or the web page's card *Time and syslog*):
+
+```
+> 11
+NTP server: address, name, dhcp or none [dhcp]: pool.ntp.org
+Syslog server: address[:port], dhcp or none [dhcp]: 10.132.0.45:5140
+Time and syslog settings saved and active
+```
+
+The NTP server can be an address or a name; the syslog server an address with an optional port (514 unless given; IPv6 as `[address]:port`). `none` turns either off. Saved and active at once; no restart.
+
+Check the status screen: `Time: 2026-11-07 19:42:10 CET (NTP pool.ntp.org, synced 3 min ago)` (within a minute) and `Syslog: 10.132.0.45:5140 (typed), 2 sent, 0 waiting`. The syslog server must accept UDP on that port through its firewall. Times on the device are Danish local time (CET/CEST); syslog messages carry UTC.
+
 ## Firmware signing key
 
 Devices accept a firmware update only when it is signed with **your** key (Ed25519). You create the key once, before the first field device is built. The person who builds releases needs a C++ compiler on the PC (g++ and gcc, as for the unit tests; the signing program is built from the same code the device verifies with) and Python 3.
@@ -267,4 +292,5 @@ After that, updates go over the network: see "Updating the firmware" in the [use
 - [ ] Firmware key generated once, `secret/fw_signing_key` backed up outside the PC, `include/fw_public_key.h` committed
 - [ ] Field devices installed from the release's `-usb.uf2` (not `firmware.uf2`); the status screen's `Firmware key:` matches the key's fingerprint
 - [ ] Optional: update site running with an admin password, devices set to its URL and key, each on its Devices page
+- [ ] Optional: NTP and syslog servers from DHCP or option 11; status screen `Time:` synced and `Syslog:` counting sent messages
 - [ ] Board set up at the bench: label on the enclosure, status screen `Default web password: locked (on the label)`

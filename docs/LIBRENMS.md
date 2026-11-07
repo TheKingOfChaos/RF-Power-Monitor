@@ -17,6 +17,8 @@ The device works in LibreNMS as a plain SNMP device out of the box: it answers S
 | Count sensor "Mains power changes since boot" | `mainsPowerChanges` |
 | State sensor "Firmware": normal (OK, fwState kept) / trial (warning) | `fwState` (`fwUpdate` group, `63050.7`, firmware 3.3.0) |
 | State sensor "Firmware last update": none, installed (OK); rolled back or fallback (critical, alerts) | `fwLastResult` (3.3.0) |
+| State sensor "Update site check-in": off, never, ok, failed (shown only, no alert) | `updCheckinResult` (`updateSite` group, `63050.8`, firmware 3.6.0) |
+| Count sensor "Minutes since update site check-in", warning above 60 | `updMinutesSinceGood` (3.6.0) |
 | Uptime, reboot detection | sysUpTime |
 | Neighbours tab: the switch and port the device is plugged into | LLDP-MIB `lldpRemTable` (firmware 2.7.0) |
 | Location and contact on the device page (and the map, once the location has coordinates) | sysLocation, sysContact: set on the device's web page or menu option 4 |
@@ -27,6 +29,7 @@ The device works in LibreNMS as a plain SNMP device out of the box: it answers S
 | Inventory: model, hardware and firmware revision, manufacturer, serial number; the serial also on the Overview | ENTITY-MIB `entPhysicalTable` (3.1.0), `serial` in the discovery definition |
 | Netstats graphs: IP, ICMP, TCP, UDP, SNMP | MIB-II ip/icmp/tcp/udp groups (lwIP's counters), SNMPv2-MIB snmp group (3.1.0) |
 | Overview graphs: CPU and Memory next to traffic, mains and temperature | `over:` in the detection definition |
+| The device's syslog messages under Logs → Syslog | Syslog from the device (firmware 3.6.0, see [Syslog](#syslog)) |
 
 The temperature sensors set their low limit explicitly to −20 °C (the RP2040's minimum rating): without it LibreNMS sets a low limit 10 °C below the first reading (29.4 °C in the test), which alarms as soon as the room cools down. The CPU sensor keeps the index `boardTemperature.0` from before the MIB object was renamed `cpuTemperature`, so an existing installation keeps its graph after updating the definitions; replace the MIB file in LibreNMS together with the YAML files. The ambient limits suit a room with equipment; change them per device in LibreNMS if the box sits somewhere warmer.
 
@@ -137,14 +140,37 @@ The running slot (`fwRunningSlot`) and each slot's version (`fwSlotAVersion`, `f
 
 Two traps report the outcome: `firmwareUpdateKept` (`63050.0.4`, v1 specific trap 4, once when an update is confirmed) and `firmwareRolledBack` (`63050.0.5`, v1 specific trap 5, after a rollback or a fallback), both with fwRunningSlot, fwSlotAVersion, fwSlotBVersion and fwLastResult. LibreNMS logs them as unhandled traps like the mains traps; the Docker setup's trap script polls the device after them, so the *Firmware* sensors change within seconds (`State sensor Firmware ...` in the event log).
 
+### Update site check-ins (3.6.0)
+
+The `updateSite` group (`63050.8`, see [MIB.md](MIB.md)) says whether the device reaches its update site (serial menu option 10). The discovery definition makes two sensors of it, after the next discovery of a device on 3.6.0 or later (copy the YAML files and the MIB again first):
+
+| Sensor | Object | States or limits |
+|---|---|---|
+| Update site check-in | `updCheckinResult` (`63050.8.1`) | off (no URL or key; unknown), never, ok, failed. Shown only: one failed check-in is retried after 5 minutes, so it does not alert |
+| Minutes since update site check-in | `updMinutesSinceGood` (`63050.8.2`) | warning above 60 minutes (check-ins run every 30 minutes, a failed one is retried after 5) |
+
+`updFailedInRow` (`63050.8.3`, check-ins failed since the last good one) is readable by any SNMP manager but is not a sensor. A device without an update site reads 0 minutes and *off*, so it never warns.
+
 Two things that cost time when you change anything here:
 
 - **snmptrapd reads MIBs only when it starts.** After you copy a changed `RF-POWER-MONITOR-MIB`, restart snmptrapd, or it keeps naming the new traps by their parent (`rfPowerMonitorNotifications.4`). In the Docker setup: `docker restart lnms-test-snmptrapd-1`.
 - **`.php` files must keep LF line endings.** `.gitattributes` has `*.php text eol=lf`. With CRLF the handler `librenms/test/snmptrap-agent-addr.php` fails in the container with `/usr/bin/env: 'php\r': No such file or directory` (the `\r` is the carriage return), and no trap reaches LibreNMS. After a checkout on Windows with an older Git setting, run `git add --renormalize .` or check the file with `file`.
 
+## Syslog
+
+From firmware 3.6.0 the device sends its events to a syslog server (serial menu option 11, the web page's card *Time and syslog*, or DHCP option 7; see the README's *Time and syslog* section): mains lost and restored, the 60 s alarm, restarts, firmware updates, web logins, rejected SNMP requests, settings changes, link, address and switch changes, and update site check-ins that fail. They are RFC 5424 messages over UDP (facility daemon, APP-NAME `rfpower`, the device's hostname as HOSTNAME, UTC time with milliseconds). LibreNMS shows them on the device's **Logs → Syslog** tab and under Overview → Syslog.
+
+On a LibreNMS server, set up syslog as described in the LibreNMS documentation (Syslog support, syslog-ng or rsyslog), then:
+
+- turn syslog on: `./lnms config:set enable_syslog true`; LibreNMS stores nothing without it;
+- make the receiver parse RFC 5424: in syslog-ng a source with `flags(syslog-protocol)` (as in [librenms/test/syslog-ng-rfc5424.conf](../librenms/test/syslog-ng-rfc5424.conf)). A source for the older RFC 3164 format reads the version digit at the start of the message as the program name and loses the hostname;
+- set the device's syslog server to the LibreNMS server, with the port of that source (`<server>:5140` in the Docker setup below; port 514 is used when none is given).
+
+LibreNMS finds the device for a message by the message's host (the HOSTNAME, or the sender's address, depending on the receiver's setup), matched against its devices' hostnames, sysNames and addresses. The device sends its hostname, which is also its sysName.
+
 ## Trying it in Docker
 
-[librenms/test/compose.yml](../librenms/test/compose.yml) starts a throw-away LibreNMS (MariaDB, Redis, LibreNMS, poller, trap receiver) with the definition files, the MIB and the logos mounted in, on http://localhost:8070:
+[librenms/test/compose.yml](../librenms/test/compose.yml) starts a throw-away LibreNMS (MariaDB, Redis, LibreNMS, poller, trap receiver, syslog receiver) with the definition files, the MIB and the logos mounted in, on http://localhost:8070:
 
 ```bash
 cd librenms/test
@@ -176,6 +202,21 @@ Checked on 2026-10-31 with v2c traps: coldStart, authenticationFailure, mainsPow
 
 To keep the setup running, a `compose.override.yml` next to `compose.yml` (loaded by `docker compose` on its own) can add `restart: unless-stopped` to each service and the community; `librenms/test/compose.override.yml` is gitignored for that.
 
+### Syslog in Docker
+
+The `syslogng` service is LibreNMS's syslog-ng sidecar (`SIDECAR_SYSLOGNG`), on UDP and TCP 514 and UDP 5140 of the PC. The image's source on 514 expects RFC 3164 and does not parse the device's RFC 5424 messages, so [librenms/test/syslog-ng-rfc5424.conf](../librenms/test/syslog-ng-rfc5424.conf), mounted into `/data/syslog-ng/`, adds an RFC 5424 source on UDP 5140. Docker Desktop replaces the sender's address with its own, as for traps, so the file also sets `keep_hostname(yes)`: LibreNMS then matches the message's HOSTNAME to the device's sysName.
+
+```bash
+cd librenms/test
+docker compose up -d                     # also starts syslogng
+docker compose exec -u librenms librenms ./lnms config:set enable_syslog true
+docker compose restart syslogng          # the sidecar reads the setting when it starts
+```
+
+Then set the device's syslog server to the PC's address and port 5140 (menu option 11: `10.132.0.45:5140`). The messages appear on the device's Logs → Syslog tab within seconds. Restart `syslogng` again after changing `enable_syslog` or the `.conf` file. Use plain `docker compose up -d` to start it on an existing setup: `docker compose down -v` deletes LibreNMS's data.
+
+Checked on 2026-11-07 with firmware 3.6.0: the device's messages arrived on its Logs → Syslog tab. On this PC (WSL in mirrored mode) UDP 5140 needed no firewall rule; on another PC a Hyper-V firewall rule like the one for traps (UDP 5140 instead of 162) may be needed.
+
 ### IPv6
 
 The compose network has IPv6 (`enable_ipv6`, NATed by Docker), so the containers can poll the device over IPv6 (`./lnms device:add --v2c -c public -t udp6 <device IPv6 address>`). In WSL this needs mirrored networking (`networkingMode=mirrored` under `[wsl2]` in `%USERPROFILE%\.wslconfig`, then `wsl --shutdown`); with the default NAT networking WSL has no IPv6 route to the LAN. WSL stops when no terminal uses it, and the containers do not restart on their own: run `docker compose up -d` again after that.
@@ -189,6 +230,7 @@ The compose network has IPv6 (`enable_ipv6`, NATed by Docker), so the containers
 | [librenms/plugins/RFPowerMonitor/](../librenms/plugins/RFPowerMonitor/) | Optional plugin: the Switch box (LLDP neighbour) on the device's Overview page |
 | [mibs/RF-POWER-MONITOR-MIB.txt](../mibs/RF-POWER-MONITOR-MIB.txt) | Lets LibreNMS resolve the `RF-POWER-MONITOR-MIB::` names |
 | [librenms/test/snmptrap-agent-addr.php](../librenms/test/snmptrap-agent-addr.php) | Docker setup only: matches traps to the device by the address in them (v1 agent-addr, v2c snmpTrapAddress.0), which Docker's port forwarding would otherwise hide, and polls the sensors after a mains trap so the alert follows within seconds |
+| [librenms/test/syslog-ng-rfc5424.conf](../librenms/test/syslog-ng-rfc5424.conf) | Docker setup only: an RFC 5424 syslog source on UDP 5140 for the device's messages, keeping the HOSTNAME from the message, since Docker's port forwarding hides the sender's address |
 | [librenms/images/os/rfpowermonitor.svg](../librenms/images/os/rfpowermonitor.svg), [librenms/images/logos/rfpowermonitor.svg](../librenms/images/logos/rfpowermonitor.svg) | The RF logo (from [logo/](../logo/)): square icon for device lists, wider logo for the device page. Named by `icon:` in the detection file; without them LibreNMS shows the generic icon |
 
 If you change the MIB, keep the object names used in the discovery file. The temperature sensors' divisor (10) matches the MIB's units of 0.1 °C.

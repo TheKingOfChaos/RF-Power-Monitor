@@ -92,7 +92,7 @@ Every native suite must be listed in `scripts/sanitize.sh`; the script fails if 
 wsl -d Ubuntu-24.04 -- bash scripts/host_agent_check.sh
 ```
 
-It needs the `snmp` package in WSL. If `snmp-mibs-downloader` is installed too (it is on this PC), it also validates `mibs/RF-POWER-MONITOR-MIB.txt`: `snmptranslate -PW` must report no warnings in our file, every object must be in the tree, and `snmpget` must show MIB names (`mainsPowerStatus.0 = INTEGER: present(1)`). Without that package the MIB checks are skipped.
+It needs the `snmp` package in WSL. If `snmp-mibs-downloader` is installed too (it is on this PC), it also validates `mibs/RF-POWER-MONITOR-MIB.txt`: `snmptranslate -PW` must report no warnings in our file, every object must be in the tree, and `snmpget` must show MIB names (`mainsPowerStatus.0 = INTEGER: present(1)`). Without that package the MIB checks are skipped. The object counts include the three `updateSite` objects (3.6.0), and a walk of `63050.8` and a GetNext after `updFailedInRow` check that group's order and end.
 
 ### HIL tests
 
@@ -233,6 +233,21 @@ $env:RFPOWER_SNMP_COMMUNITY = "rfit"   # the device's community, default public
 - The device must reach this PC on TCP 8072 (Windows firewall; Python was allowed here). `RFPOWER_UPDATE_SERVER_HOST` overrides the address the device is given, `RFPOWER_UPDATE_SERVER_PORT` the port. Nothing else may listen on that port.
 - The hidden menu commands `checkin` (check in as soon as the network is up; prints the service's phase and whether the one HTTP fetch is busy) and `fetchtest <url>` (one GET with the update client, result printed; refused while a check-in or download runs) exist for these tests and for debugging.
 
+### Time and syslog tests (`RFPOWER_NTP_SERVER`, `RFPOWER_SYSLOG_TEST=1`)
+
+`test/hil/test_time_syslog.py` needs an NTP server the device can reach and a syslog receiver, which not every network has, so both halves are opt-in:
+
+```powershell
+$env:RFPOWER_NTP_SERVER = "pool.ntp.org"   # TimeTest: an NTP server the device can reach (address or name)
+$env:RFPOWER_SYSLOG_TEST = "1"             # SyslogTest: this PC receives the device's syslog
+$env:RFPOWER_SYSLOG_PORT = "5514"          # optional, default 5514
+& "$env:USERPROFILE\.platformio\penv\Scripts\python.exe" -m unittest discover -s test/hil -p "test_time_syslog.py" -v
+```
+
+- The tests set menu option 11 (typed NTP server, this PC as syslog server on `RFPOWER_SYSLOG_PORT`) and put the device's own setting back afterwards (`Device.keep_time_syslog()` in `test/hil/device.py`; `set_time_syslog()` and `time_syslog_setting()` change and read option 11, and the status screen's `Time:` and `Syslog:` lines are the keys `time` and `syslog`).
+- The PC listens on UDP `RFPOWER_SYSLOG_PORT`: Windows Firewall may ask once whether Python may receive network traffic; allow it on the network the Pico is on. The default 5514 keeps clear of a syslog receiver on 514 or LibreNMS's 5140.
+- The mains event test also needs a mains switch (see above), the reboot test restarts the device once.
+
 ## What is covered
 
 ### `test/native/test_update_protocol`, `test/native/test_update_client`: the update site client (`lib/update_client`)
@@ -242,9 +257,27 @@ $env:RFPOWER_SNMP_COMMUNITY = "rfit"   # the device's community, default public
 - Check-in timing (60 s after the network, 30 min, 5 min retry, 60 s report, millis() wrap-around), the update settings JSON (round trip, worst case, truncations) and how menu and web changes are applied (bad URL or key changes nothing; `clear` wipes the key).
 - A download: the running version is not downloaded again; the file's header and its **signed** slot header must name the version the site asked for; failures are reported once (`<v> download <why>`, `<v> refused <why>`).
 
+### `test/native/test_clock`: civil time and local time (`lib/clock`)
+
+- Epoch seconds to date and time for known dates, across midnight and New Year
+- CET/CEST: summer time starts on the last Sunday in March and ends on the last Sunday in October, both at 01:00 UTC; local time around the switch hours
+- Local time text in winter and summer (`CET`/`CEST`), RFC 5424 UTC time with milliseconds and `Z`, SNMP DateAndTime bytes (with the offset from UTC); buffers too small give 0
+
+### `test/native/test_syslog`: settings, messages, queue (`lib/syslog`)
+
+- NTP and syslog settings JSON: `dhcp` by default, round trip, the longest values fit the file, missing fields, bad values, over-long servers and every truncation of the JSON refused
+- Input as typed in option 11 or on the web page: Enter keeps, `dhcp`, `none` and `-`; a bad NTP or syslog value changes nothing
+- Syslog server: `a.b.c.d[:port]`, IPv6 and `[IPv6]:port`, port 514 by default; names, port 0 or over 65535 and malformed text refused. NTP server: addresses and DNS names, bad names refused
+- RFC 5424 layout (PRI, version, UTC time, hostname, `rfpower`, MSGID), `-` when not dated, long text cut, control characters replaced, a buffer too small gives 0
+- Queue of 16: order kept, the oldest dropped when full and counted; access log throttle 5 a minute, the rest counted, across a `millis()` wrap; an event is dated from the uptime it happened at, not the moment of the sync, also across a `millis()` wrap
+
 ### `test/native/test_dhcp_option`: option 225
 
 The update server URL is read as text from an accepted DHCPACK (1-127 printable bytes, never truncated); the captured device requests have room to ask for both 224 and 225.
+
+### `test/native/test_dhcp_option`: option 7 (syslog server)
+
+The first address of option 7 is read from an accepted DHCPACK, also when it lists three; lengths that are not a multiple of 4 or 0 are refused, ACKs for another client are ignored, and every truncation and corruption of the frame is safe. Option 7 is added to the request list once.
 
 ### `test/native/test_netconfig`: `lib/netconfig`
 - IPv4 parsing: valid addresses, octet range, octet count, stray characters, signs, whitespace, empty and null input, output left untouched on failure
@@ -300,6 +333,8 @@ The update server URL is read as text from an accepted DHCPACK (1-127 printable 
 - No response for wrong community (several near-misses), changed community, v3 and unknown versions, response PDUs, malformed packets
 - tooBig when the response does not fit, nothing when even the error does not fit, 16 varbinds fit
 - Statistics, request id echo across the int32 range, every single-byte corruption yields either nothing or a valid response
+- hrSystemDate: served as DateAndTime once the clock is set, absent (skipped by walks) without it
+- updateSite group (`63050.8`): values from the device state, walk order, and GetNext after its last object leaves the enterprise tree
 
 ### v2c in the native suites
 - `test_snmp_message`: net-snmp v2c Get and GetBulk parsed (non-repeaters/max-repetitions), GetBulk refused in v1, Inform/v2-Trap/Report refused, v2c response byte-exact with an exception value, `tryAdd` rollback, every single-byte corruption of a GetBulk request
@@ -319,6 +354,7 @@ The update server URL is read as text from an accepted DHCPACK (1-127 printable 
 - Sessions: token format, idle expiry, millis wrap, replacement of the least recently used, logout/clear; login throttle: lockout after 5 failures for 30 s, reset on success, wrap
 - HTTP parser: GET/POST, every prefix incomplete, byte-by-byte, header lookup, size limits at the boundary, malformed request lines, chunked, NUL bytes, extra bytes; form and cookie decoding; HTML escaping
 - Stylesheet: served without login with gzip and year-long caching headers, body straight from flash; the embedded data is a gzip file whose trailer matches the CSS size; pages link it; the policy allows it and still no scripts; mains and link badges follow the state
+- `/timelog`: needs session and CSRF token, saves through the backend, a bad value shows the error and saves nothing, an over-long or missing value is refused before the backend
 - Page logic with a fake backend: login form, right/wrong login, lockout, status values escaped, every action needs session and CSRF token, community, network and IPv6 validation (IPv6 stored in short form, empty removes it), save failure, reboot, logout, idle expiry, 404/405/400/413, security headers and Content-Length on every response, every single-byte corruption of two real requests gives a well-formed response
 
 ### `test/native/test_snmp_trap`: trap encoding
@@ -392,6 +428,7 @@ Uses `test/settings_a.json` and `test/settings_b.json`, never the real settings.
 - A maximum-size file (every text field at 63/31 characters, fully JSON-escaped) saves and reloads
 - Files left by older firmware (`config.bak`, `config.schema.json`, `data/active_file`) are removed and the settings copies kept
 - Stack use of save + load, measured by painting the stack: must stay within 1536 bytes (it was over 3 KB before the buffers were made static and -Os was restored, which crashed the device)
+- The NTP and syslog settings (log settings A/B store): save and reload, a corrupt copy uses the other one, a factory reset sets both to `dhcp`, and saving them leaves the main settings file unchanged
 - The update server settings (`test/update_a.json`, `test/update_b.json`): newest copy wins, a torn copy falls back, saving them leaves the main settings file byte for byte unchanged, the factory reset's clear removes both copies (the key is not left in flash), and their save + load also stays within 1536 bytes of stack
 
 ### `test/embedded/test_ethernet`: W5500 and lwIP
@@ -427,6 +464,7 @@ restored). `test_build_src` is off, so the test compiles the service, `boot_info
 - Mains power line on the status screen
 - SNMP settings on the status screen; option 4 rejects an empty or 32-character community, invalid hostnames (33 characters, spaces, dots, `_`, a leading `-`) and a line longer than the input buffer; Enter keeps, `-` clears; cancel changes nothing
 - Mains loss and restore reported in the log and status (needs a mains switch, see above)
+- Option 11: bad NTP and syslog values refused and the old ones kept; `dhcp` and `none`; the values survive a reboot; the access log lines still parse with the local time added
 
 ### `test/hil/test_snmp.py`: the SNMP agent on the device
 - `snmpget` of sysDescr, sysObjectID, several varbinds in order; sysUpTime advances ~100 ticks per second
@@ -464,7 +502,12 @@ restored). `test_build_src` is off, so the test compiles the service, `boot_info
 - With an own password set, SNMP stays under 100 ms while a login (right or wrong) hashes the password
 - An upload without a login that trickles its body (a byte every 2 s) is dropped after 20 s, not the upload's 5 minutes, and the next browser is served
 - A client that never finishes its request does not slow SNMP and is dropped after 5 s; 30 page loads keep SNMP under 100 ms and leave > 1 KB of core 0 stack never used; oversized request gets 413
+- Time and syslog from the web page: an NTP address and an `[IPv6]:port` syslog server reach option 11 and the status screen at once; a bad value is refused (400) and nothing changes; restored afterwards
 - Needs the device default web password (the suite skips otherwise)
+
+### `test/hil/test_time_syslog.py`: NTP and syslog on the device (opt-in, see above)
+- `TimeTest` (`RFPOWER_NTP_SERVER`): a typed server syncs within 60 s and the status screen shows the PC's time ±5 s; hrSystemDate matches the PC clock; an unresolvable name leaves the device running, unsynced
+- `SyslogTest` (`RFPOWER_SYSLOG_TEST=1`): a settings change is logged without the community; a burst of alternating bad requests gives at most 5 lines and the count; a reboot sends a BOOT line dated within the NTP time; mains loss is logged as a warning (needs a mains switch)
 
 ### `test/hil/test_ipv6.py`: IPv6 on the device
 - Link-local address from the MAC (EUI-64), SLAAC address from the router's prefix (skipped without an IPv6 router), ping6

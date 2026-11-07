@@ -88,6 +88,24 @@ services:
       # snmptrapd only searches mibs/ and mibs/cisco/, so the trap names need the MIB at the top
       - ${REPO:-../..}/mibs/RF-POWER-MONITOR-MIB.txt:/opt/librenms/mibs/RF-POWER-MONITOR-MIB:ro
 
+  # Syslog receiver (3.6.0): set the device's syslog server (menu option 11) to this host, port
+  # 5140 (10.132.0.45:5140). The device sends RFC 5424, which the image's port 514 source does not
+  # parse; syslog-ng-rfc5424.conf adds a source for it on 5140. Docker Desktop hides the sender's
+  # address, so syslog-ng keeps the HOSTNAME from the message and LibreNMS files it under the
+  # device with that sysName. LibreNMS stores syslog only with enable_syslog on
+  # (lnms config:set enable_syslog true)
+  syslogng:
+    image: librenms/librenms:latest
+    cap_add: [NET_ADMIN, NET_RAW]
+    depends_on: [librenms]
+    ports: ["514:514/udp", "514:514/tcp", "5140:5140/udp"]
+    environment:
+      <<: *env
+      SIDECAR_SYSLOGNG: "1"
+    volumes:
+      - data:/data
+      - ${REPO:-../..}/librenms/test/syslog-ng-rfc5424.conf:/data/syslog-ng/rfc5424.conf:ro
+
 volumes:
   db:
   data:

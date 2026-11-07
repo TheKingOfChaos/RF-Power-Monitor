@@ -14,6 +14,11 @@ static bool ethStarted = false;
 const uint32_t LINK_TIMEOUT_MS = 5000;
 const uint32_t DHCP_TIMEOUT_MS = 20000;
 
+// include/lwipopts.h points lwIP's SNTP client at timeServiceSetTime() (src/time_service.cpp), which this
+// test does not build (test_build_src is off): set the clock as the core would
+extern "C" void __setSystemTime(unsigned long long sec, unsigned long usec);
+extern "C" void timeServiceSetTime(unsigned long sec, unsigned long us) { __setSystemTime(sec, us); }
+
 void setUp() {}
 void tearDown() {}
 

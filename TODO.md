@@ -261,7 +261,7 @@ An item is only ticked when it is implemented **and** its tests exist and pass (
 - [x] Serial menu option 10, status line, Firmware page card — native `test_web_ui`, HIL `test_serial_menu.py`
 - [x] Site: store, assignment rules, check-in API, pages, login, Docker — `update-server/tests` (CI), container checked
 - [ ] Site over HTTPS (behind a reverse proxy) if check-ins must not be readable on the network
-- [ ] SNMP objects for the update server state (not asked for yet)
+- [x] SNMP objects for the update server state: `updateSite` group (63050.8, 3.6.0), see section 23
 
 ## 22. Bench setup and device label (3.5.0, plan docs/superpowers/plans/2026-11-06-bench-provisioning.md)
 - [x] Default web password kept twice, used copy chosen and the other repaired at boot; loss while locked reported — `test/native/test_web_ui`
@@ -274,9 +274,22 @@ An item is only ticked when it is implemented **and** its tests exist and pass (
 - [ ] First real rev 2 board through the bench tool, label printed on the NIIMBOT M2
 - [ ] Print straight from the script to the M2 (once the printer is here; NiimBlue does not list the M2_H as tested)
 
+## 23. Time and syslog (3.6.0, plan docs/superpowers/plans/2026-11-07-time-syslog.md)
+- [x] Clock: civil time from epoch, Danish local time (CET/CEST, EU rule), RFC 5424 UTC stamp, SNMP DateAndTime — native `test_clock`, sanitizers
+- [x] NTP and syslog settings in their own A/B files (`data/timelog_a.json`/`_b.json`), `dhcp` by default and after a factory reset, main settings file untouched (rollback to 3.5.1 keeps its settings) — native `test_syslog` (codec, truncated JSON), embedded `test_settings_store`
+- [x] Syslog messages (RFC 5424, daemon, `rfpower`), queue of 16 (oldest dropped and counted), access events throttled to 5 a minute, events dated from when they happened — native `test_syslog`, sanitizers
+- [x] DHCP option 7 (syslog server): asked for, first address read from our ACKs — native `test_dhcp_option` (several addresses, bad lengths, truncation and corruption)
+- [x] NTP through lwIP's SNTP client (DHCP option 42, DHCPv6 option 56, typed address or name), every 15 minutes; hrSystemDate once synced — native `test_snmp_agent` (`test_hr_system_date_*`), HIL `test_time_syslog.py` `TimeTest` (opt-in `RFPOWER_NTP_SERVER`)
+- [x] Syslog events: MAINS, BOOT, FIRMWARE, WEB, SNMP (access log), SETTINGS (no secrets), NETWORK, LLDP, UPDATE; queue sent before a planned restart; undated with `[uptime N s]` after 2 minutes without the time — HIL `test_time_syslog.py` `SyslogTest` (opt-in `RFPOWER_SYSLOG_TEST=1`; settings change without the community, throttled burst, dated BOOT line, mains loss with the mains switch)
+- [x] Serial menu option 11, `Time:` and `Syslog:` status lines, local time in the access log — HIL `test_serial_menu.py` (`test_option_11_*`, `test_access_log_lines_still_parse`)
+- [x] Web page: Time and Syslog rows, card *Time and syslog* (`/timelog`) — native `test_web_ui` (`test_timelog_*`), HIL `test_time_and_syslog_from_web_page_apply`
+- [x] SNMP `updateSite` group (63050.8: updCheckinResult, updMinutesSinceGood, updFailedInRow), LibreNMS sensors "Update site check-in" and "Minutes since update site check-in" (warning above 60) — native `test_snmp_agent` (`test_update_site_group_*`), net-snmp `host_agent_check.sh`, HIL `test_snmp.py` walks
+- [x] LibreNMS syslog receiver in the Docker test setup: `syslogng` sidecar, RFC 5424 source on UDP 5140 (`librenms/test/syslog-ng-rfc5424.conf`), `enable_syslog` — device messages on its Logs → Syslog tab (2026-11-07, docs/LIBRENMS.md)
+- [ ] DHCPv6 option 56 (NTP server) only through lwIP's stateless DHCPv6, i.e. when the router advertisement sets the O flag; a network with only the M flag gives no NTP server over DHCPv6
+
 ## Notes
 - SNMP must be v1 and v2c (no v3) and our own code; networking may use libraries
-- RAM after 3.4.0: static 49.6 % (130,040 bytes), about 1 KB below the 50 % limit then. The limit was raised to 60 % on 2026-11-07 (about 27 KB of room) for SNTP and syslog
+- RAM after 3.4.0: static 49.6 % (130,040 bytes), about 1 KB below the 50 % limit then. The limit was raised to 60 % on 2026-11-07 (about 27 KB of room) for SNTP and syslog; static RAM with them (3.6.0): 52.8 %
 - Memory limits: 70 % flash, 60 % RAM (50 % until 2026-11-07; 3.3.0: image 44 % of a slot, 21.3 % of the core's flash figure; static RAM 48.8 %, measured as PlatformIO's RAM line (.data + .bss); an upload allocates nothing more; built with -Os). About 3 KB of RAM is left below the 50 % limit: check the build's RAM line before adding buffers (the web page body and response alone are 22 KB)
 - Version: `include/version.h`; every user-visible change goes into CHANGELOG.md under [Unreleased]
 - Core 0 has an 8 KB stack (core1_separate_stack, since 2.3.0) shared with USB/lwIP/W5500 interrupts: keep big buffers static
