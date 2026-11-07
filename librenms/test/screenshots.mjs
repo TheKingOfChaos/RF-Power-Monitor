@@ -41,6 +41,7 @@ const shots = [
   ['device-overview.png', `${base}/device/${device}`],
   ['device-eventlog.png', `${base}/device/${device}/logs/eventlog`],
   ['device-neighbours.png', `${base}/device/${device}/neighbours`],
+  ['device-syslog.png', `${base}/device/${device}/logs/syslog`],
 ];
 for (const [file, url] of shots) {
   // The overview is taller: the sensors sit below the processor and memory graphs

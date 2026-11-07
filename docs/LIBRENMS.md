@@ -162,6 +162,8 @@ Two things that cost time when you change anything here:
 
 From firmware 3.6.0 the device sends its events to a syslog server (serial menu option 11, the web page's card *Time and syslog*, or DHCP option 7; see the reference's [Time and syslog](REFERENCE.md#time-and-syslog) section): mains lost and restored, the 60 s alarm, restarts, firmware updates, web logins, rejected SNMP requests, settings changes, link, address and switch changes, and update site check-ins that fail. They are RFC 5424 messages over UDP (facility daemon, APP-NAME `rfpower`, the device's hostname as HOSTNAME, UTC time with milliseconds). LibreNMS shows them on the device's **Logs → Syslog** tab and under Overview → Syslog.
 
+![The device's syslog tab in LibreNMS](images/librenms/device-syslog.png)
+
 On a LibreNMS server, set up syslog as described in the LibreNMS documentation (Syslog support, syslog-ng or rsyslog), then:
 
 - turn syslog on: `./lnms config:set enable_syslog true`; LibreNMS stores nothing without it;
@@ -186,7 +188,7 @@ docker compose down -v                   # remove everything again
 
 The poller polls every 5 minutes; traffic rates appear after the second poll. The device gets the RF icon at its first poll (LibreNMS stores the icon when it polls), so after updating the definitions on an existing installation the icon changes at the next poll.
 
-**Screenshots for the manuals.** `librenms/test/screenshots.ps1` retakes `docs/images/librenms/device-overview.png`, `device-eventlog.png`, `device-neighbours.png` and `device-inventory.png` from this LibreNMS: it logs in with the account in `secret/librenms.md` (gitignored) inside the Playwright Docker image and replaces the contact address on the page by `ops@example.com`. Docker Desktop must be running. Let LibreNMS poll the device for a few days first, so the graphs have data.
+**Screenshots for the manuals.** `librenms/test/screenshots.ps1` retakes `docs/images/librenms/device-overview.png`, `device-eventlog.png`, `device-neighbours.png`, `device-inventory.png` and `device-syslog.png` from this LibreNMS: it logs in with the account in `secret/librenms.md` (gitignored) inside the Playwright Docker image and replaces the contact address on the page by `ops@example.com`. Docker Desktop must be running. Let LibreNMS poll the device for a few days first, so the graphs have data. The web page screenshots in `docs/images/web` come from `docs/images/web/screenshots.ps1 -Ip <device>` (with `RFPOWER_WEB_PASSWORD` set), which replaces the addresses, MAC, contact, location and community by documentation values.
 
 ### Traps in Docker
 

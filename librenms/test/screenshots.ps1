@@ -19,7 +19,7 @@ docker run --rm --add-host=host.docker.internal:host-gateway -v "${work}:/out" -
     sh -c "npm init -y >/dev/null && npm install --silent playwright@1.48.2 >/dev/null && cp /out/screenshots.mjs . && node screenshots.mjs $Device"
 if ($LASTEXITCODE -ne 0) { throw "screenshots failed" }
 
-foreach ($n in "device-overview", "device-eventlog", "device-neighbours", "device-inventory") {
+foreach ($n in "device-overview", "device-eventlog", "device-neighbours", "device-inventory", "device-syslog") {
     Copy-Item (Join-Path $work "$n.png") (Join-Path $repo "docs\images\librenms\$n.png") -Force
 }
 Remove-Item -Recurse -Force $work
