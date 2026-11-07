@@ -52,7 +52,7 @@ class SerialMenuTest(unittest.TestCase):
         out = self.dev.wait_for_menu()
         for text in ("1. Show status", "2. Use DHCP", "3. Set static IP", "4. SNMP settings",
                      "5. Access log", "6. Web password", "7. New default web password", "8. Web interface on/off",
-                     "9. Static IPv6", "10. Update server", "?. Show this menu"):
+                     "9. Static IPv6", "10. Update server", "11. Time and syslog", "?. Show this menu"):
             self.assertIn(text, out)
 
     def test_status_reports_dhcp_lease(self):
@@ -188,6 +188,47 @@ class SerialMenuTest(unittest.TestCase):
             self.assertTrue(self.dev.update_server_line().startswith("off"))
         finally:
             self.dev.set_update_server("none", "clear")
+
+    # ---- option 11: time and syslog ----
+
+    def test_option_11_rejects_bad_values_and_keeps_old(self):
+        self.dev.keep_time_syslog(self)
+        self.dev.set_time_syslog("192.0.2.123", "192.0.2.124:5514")
+        out = self.dev.set_time_syslog("a..b", "")
+        self.assertIn("NTP server: an IPv4", out)
+        out = self.dev.set_time_syslog("", "192.0.2.124:0")
+        self.assertIn("Syslog server: an IPv4", out)
+        out = self.dev.set_time_syslog("", "syslog.example.com")  # names only for NTP
+        self.assertIn("Syslog server: an IPv4", out)
+        self.assertEqual(("192.0.2.123", "192.0.2.124:5514"), self.dev.time_syslog_setting())
+
+    def test_option_11_dhcp_and_none(self):
+        self.dev.keep_time_syslog(self)
+        self.dev.set_time_syslog("none", "none")
+        st = self.dev.status()
+        self.assertEqual(("none", "none"), self.dev.time_syslog_setting())
+        self.assertIn("NTP off", st["time"])
+        self.assertEqual("off", st["syslog"])
+        self.dev.set_time_syslog("dhcp", "dhcp")
+        self.assertEqual(("dhcp", "dhcp"), self.dev.time_syslog_setting())
+        self.assertNotEqual("off", self.dev.status()["syslog"])
+
+    def test_option_11_values_survive_reboot(self):
+        self.dev.keep_time_syslog(self)
+        self.dev.set_time_syslog("pool.ntp.org", "[2001:db8::5]:6514")
+        self.dev.send("2", expect=r"\(y/n\): $")  # reboot from the menu keeps the settings
+        self.dev.send("y", expect=r"Rebooting", timeout=10)
+        self.dev.reconnect_after_reboot()
+        self.dev.wait_for_menu(timeout=15)
+        self.assertEqual(("pool.ntp.org", "[2001:db8::5]:6514"), self.dev.time_syslog_setting())
+
+    def test_access_log_lines_still_parse(self):
+        # Local time may follow "last N s ago"; the parser must still read the entries
+        out = self.dev.send("5", expect=r"Access log: [\s\S]*> $")
+        entries = re.findall(r"^\s+\S+\s+.+?\s+x\d+\s+last \d+ s ago( \(\d{4}-\d\d-\d\d \d\d:\d\d:\d\d CES?T\))?\r?$",
+                             out, re.MULTILINE)
+        lines = [l for l in out.splitlines() if re.match(r"^\s+\S+\s+.+\s+x\d+", l)]
+        self.assertEqual(len(lines), len(entries), out)
 
     def test_status_shows_snmp_settings(self):
         st = self.dev.status()

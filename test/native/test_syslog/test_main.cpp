@@ -318,6 +318,48 @@ static void test_event_epoch_survives_millis_wrap() {
     TEST_ASSERT_EQUAL_UINT64(E - 0x200, syslogEventEpochMs(0xFFFFFF00u, 0x00000100u, E));
 }
 
+// ---- applying typed input (serial menu, web page) ----
+
+static void test_apply_input_empty_keeps_values() {
+    LogSettings s = typedSettings();
+    const char* error = nullptr;
+    TEST_ASSERT_TRUE(logSettingsApplyInput(s, "", "", error));
+    TEST_ASSERT_TRUE(logSettingsEqual(s, typedSettings()));
+}
+
+static void test_apply_input_sets_modes() {
+    LogSettings s = typedSettings();
+    const char* error = nullptr;
+    TEST_ASSERT_TRUE(logSettingsApplyInput(s, "dhcp", "none", error));
+    TEST_ASSERT_TRUE(s.ntpMode == ServerMode::Dhcp);
+    TEST_ASSERT_TRUE(s.syslogMode == ServerMode::None);
+    TEST_ASSERT_EQUAL_STRING("", s.ntpServer);
+    TEST_ASSERT_EQUAL_STRING("", s.syslogServer);
+    TEST_ASSERT_TRUE(logSettingsApplyInput(s, "10.0.0.1", "10.132.0.45:5514", error));
+    TEST_ASSERT_TRUE(s.ntpMode == ServerMode::Typed);
+    TEST_ASSERT_EQUAL_STRING("10.0.0.1", s.ntpServer);
+    TEST_ASSERT_TRUE(s.syslogMode == ServerMode::Typed);
+    TEST_ASSERT_EQUAL_STRING("10.132.0.45:5514", s.syslogServer);
+}
+
+static void test_apply_input_bad_ntp_changes_nothing() {
+    LogSettings s = typedSettings();
+    const char* error = nullptr;
+    TEST_ASSERT_FALSE(logSettingsApplyInput(s, "a..b", "none", error));
+    TEST_ASSERT_NOT_NULL(error);
+    TEST_ASSERT_TRUE(logSettingsEqual(s, typedSettings()));
+}
+
+static void test_apply_input_bad_syslog_changes_nothing() {
+    LogSettings s = typedSettings();
+    const char* error = nullptr;
+    TEST_ASSERT_FALSE(logSettingsApplyInput(s, "dhcp", "1.2.3.4:0", error));
+    TEST_ASSERT_NOT_NULL(error);
+    TEST_ASSERT_TRUE(logSettingsEqual(s, typedSettings()));
+    TEST_ASSERT_FALSE(logSettingsApplyInput(s, "dhcp", "syslog.example.com", error));  // names: NTP only
+    TEST_ASSERT_FALSE(logSettingsApplyInput(s, nullptr, "none", error));
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_log_settings_defaults_are_dhcp);
@@ -334,6 +376,10 @@ int main() {
     RUN_TEST(test_ntp_server_text_accepts_names_and_addresses);
     RUN_TEST(test_ntp_server_text_rejects_bad_names);
     RUN_TEST(test_classify_server_input);
+    RUN_TEST(test_apply_input_empty_keeps_values);
+    RUN_TEST(test_apply_input_sets_modes);
+    RUN_TEST(test_apply_input_bad_ntp_changes_nothing);
+    RUN_TEST(test_apply_input_bad_syslog_changes_nothing);
     RUN_TEST(test_syslog_format_rfc5424_layout);
     RUN_TEST(test_syslog_format_undated_uses_dash);
     RUN_TEST(test_syslog_format_cuts_long_text);

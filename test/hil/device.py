@@ -205,6 +205,10 @@ class Device:
         info["webEnabled"] = (m.group(1) == "on") if m else None
         m = re.search(r"^Trap destination source: (.*?)\r?$", out, re.MULTILINE)
         info["trapSource"] = m.group(1) if m else None
+        m = re.search(r"^Time: (.*?)\r?$", out, re.MULTILINE)
+        info["time"] = m.group(1) if m else None
+        m = re.search(r"^Syslog: (.*?)\r?$", out, re.MULTILINE)
+        info["syslog"] = m.group(1) if m else None
         m = re.search(r"^Core 0 stack: (\d+) bytes never used", out, re.MULTILINE)
         info["stackNeverUsed"] = int(m.group(1)) if m else None
         m = re.search(r"^MAC: ([0-9A-F:]+)", out, re.MULTILINE)
@@ -312,6 +316,37 @@ class Device:
             self.send("", expect=re.escape(PROMPT) + r"$")
             return out
         return self.send(key, expect=r"(saved|failed|must)[\s\S]*" + re.escape(PROMPT) + r"$")
+
+    def set_time_syslog(self, ntp, syslog):
+        """Menu option 11: each "" (keep), "dhcp", "none" or a server.
+
+        Returns the output from the NTP prompt on. An invalid value is answered with an
+        error and the same prompt again; that prompt is then left with "" (keep).
+        """
+        self.send("11", expect=r"NTP server: [^\n]*\]: ")
+        out = self.send(ntp, expect=r"(Syslog server: [^\n]*\]: |NTP server: [^\n]*\]: )")
+        if "NTP server: an IPv4" in out:
+            out += self.send("", expect=r"Syslog server: [^\n]*\]: ")
+        out2 = self.send(syslog, expect=r"(saved and active[\s\S]*" + re.escape(PROMPT) + r"$|"
+                                        r"Syslog server: [^\n]*\]: )")
+        if "saved and active" not in out2:
+            out2 += self.send("", expect=r"saved and active[\s\S]*" + re.escape(PROMPT) + r"$")
+        return out + out2
+
+    def time_syslog_setting(self):
+        """(ntp, syslog) as option 11 shows them in brackets."""
+        out = self.send("11", expect=r"NTP server: [^\n]*\]: ")
+        # The value is the last bracket: the syslog prompt itself says "address[:port]"
+        ntp = re.search(r"NTP server: .*? or none \[(.*)\]: ", out).group(1)
+        out = self.send("", expect=r"Syslog server: [^\n]*\]: ")
+        syslog = re.search(r"Syslog server: .*? or none \[(.*)\]: ", out).group(1)
+        self.send("", expect=r"saved and active[\s\S]*" + re.escape(PROMPT) + r"$")
+        return ntp, syslog
+
+    def keep_time_syslog(self, testcase):
+        """Put option 11 back to what it is now when the test ends."""
+        saved = self.time_syslog_setting()
+        testcase.addCleanup(self.set_time_syslog, *saved)
 
     def update_server_line(self):
         """The status screen's "Update server: ..." line."""

@@ -149,6 +149,23 @@ void syslogServicePoll(bool netReady) {
     if (failedOnce) lastFailMs = now;
 }
 
+bool syslogServiceSaveSettings(const char* ntpInput, const char* syslogInput, const char*& error) {
+    LogSettings before = currentLogSettings;
+    if (!logSettingsApplyInput(currentLogSettings, ntpInput, syslogInput, error)) return false;
+    if (!saveLogSettings()) {
+        currentLogSettings = before;
+        error = "Saving failed, nothing changed.";
+        return false;
+    }
+    timeServiceApply();
+    syslogServiceApply();
+    const LogSettings& s = currentLogSettings;
+    syslogEvent(SyslogSeverity::Notice, "SETTINGS", "NTP server %s, syslog server %s",
+                s.ntpMode == ServerMode::Typed ? s.ntpServer : s.ntpMode == ServerMode::Dhcp ? "dhcp" : "none",
+                s.syslogMode == ServerMode::Typed ? s.syslogServer : s.syslogMode == ServerMode::Dhcp ? "dhcp" : "none");
+    return true;
+}
+
 void syslogServiceFlush() {
     SyslogTarget target;
     if (!currentTarget(target)) return;

@@ -173,3 +173,41 @@ ServerInput classifyServerInput(const char* line) {
     if (strcmp(line, "none") == 0 || strcmp(line, "-") == 0) return ServerInput::None;
     return ServerInput::Value;
 }
+
+/// One server input into mode/value; false if invalid
+static bool applyOne(const char* input, bool ntp, ServerMode& mode, char* value) {
+    switch (classifyServerInput(input)) {
+    case ServerInput::Keep:
+        return true;
+    case ServerInput::Dhcp:
+        mode = ServerMode::Dhcp;
+        value[0] = '\0';
+        return true;
+    case ServerInput::None:
+        mode = ServerMode::None;
+        value[0] = '\0';
+        return true;
+    case ServerInput::Value:
+        if (!serverFieldValid(ServerMode::Typed, input, ntp)) return false;
+        mode = ServerMode::Typed;
+        strcpy(value, input);  // valid values are at most LOG_HOST_MAX characters
+        return true;
+    case ServerInput::Invalid:
+        break;
+    }
+    return false;
+}
+
+bool logSettingsApplyInput(LogSettings& s, const char* ntpInput, const char* syslogInput, const char*& error) {
+    LogSettings next = s;
+    if (!applyOne(ntpInput, true, next.ntpMode, next.ntpServer)) {
+        error = "NTP server: an IPv4 or IPv6 address, a name (e.g. pool.ntp.org), dhcp or none";
+        return false;
+    }
+    if (!applyOne(syslogInput, false, next.syslogMode, next.syslogServer)) {
+        error = "Syslog server: an IPv4 address[:port] or [IPv6 address][:port], dhcp or none";
+        return false;
+    }
+    s = next;
+    return true;
+}

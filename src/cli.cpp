@@ -11,6 +11,8 @@
 #include "hostname.h"
 #include "http_fetch.h"
 #include "update_service.h"
+#include <clock.h>
+#include <log_settings_store.h>
 #include <update_settings_store.h>
 #include "lldp_service.h"
 #include "net_stats.h"
@@ -51,7 +53,9 @@ enum CliState {
     CLI_IPV6_GATEWAY,   // Entering the static IPv6 gateway
     CLI_IPV6_CONFIRM,   // Confirming the IPv6 change, save and reboot
     CLI_UPDATE_URL,     // Entering the update server URL (or dhcp / none)
-    CLI_UPDATE_KEY      // Entering the shared key (echoed as *), then save
+    CLI_UPDATE_KEY,     // Entering the shared key (echoed as *), then save
+    CLI_NTP_SERVER,     // Entering the NTP server (address, name, dhcp or none)
+    CLI_SYSLOG_SERVER   // Entering the syslog server (address[:port], dhcp or none), then save
 };
 
 static CliState state = CLI_MENU;
@@ -63,6 +67,7 @@ static Settings settingsBackup;    // restored when a save fails; static: too bi
 // Update server values being entered (option 10), saved after the key
 static char newUpdateUrl[UPDATE_URL_MAX + 1];
 static bool newUpdateFromDhcp = false;
+static char newNtpInput[LOG_HOST_MAX + 1];  // option 11: the NTP input, until the syslog one is in
 
 // Hidden command fetchtest <url>: a GET in the background, its result printed when it ends
 static bool fetchTestActive = false;
@@ -131,6 +136,25 @@ static void promptUpdateUrl() {
     state = CLI_UPDATE_URL;
 }
 
+/// "pool.ntp.org", "dhcp" or "none": a server setting as typed in option 11
+static const char* serverSettingText(ServerMode mode, const char* server) {
+    return mode == ServerMode::Typed ? server : mode == ServerMode::Dhcp ? "dhcp" : "none";
+}
+
+/// Ask for the NTP server (option 11)
+static void promptNtpServer() {
+    Serial.printf("NTP server: address, name, dhcp or none [%s]: ",
+                  serverSettingText(currentLogSettings.ntpMode, currentLogSettings.ntpServer));
+    state = CLI_NTP_SERVER;
+}
+
+/// Ask for the syslog server (option 11, second step)
+static void promptSyslogServer() {
+    Serial.printf("Syslog server: address[:port], dhcp or none [%s]: ",
+                  serverSettingText(currentLogSettings.syslogMode, currentLogSettings.syslogServer));
+    state = CLI_SYSLOG_SERVER;
+}
+
 /// Ask for the shared key (option 10, second step)
 static void promptUpdateKey() {
     Serial.printf("Shared key (64 hex characters from the update site), Enter keeps, clear removes [%s]: ",
@@ -154,6 +178,7 @@ static void printMenu() {
     Serial.println("8. Web interface on/off");
     Serial.println("9. Static IPv6");
     Serial.println("10. Update server");
+    Serial.println("11. Time and syslog");
     Serial.println("?. Show this menu");
     Serial.print("> ");
 }
@@ -521,8 +546,14 @@ static void printAccessLog() {
         const AccessLog::Entry& e = log.newest(i);
         char ip[SOURCE_TEXT_MAX];
         formatSource(e.source, ip);
-        Serial.printf("  %-15s %-14s x%-6lu last %lu s ago\r\n", ip, accessEventName(e.event),
-                      (unsigned long)e.count, (unsigned long)((now - e.lastMs) / 1000));
+        uint32_t agoMs = now - e.lastMs;
+        char when[40] = "";
+        char local[32];
+        if (timeServiceSynced() && formatLocalTime((timeServiceEpochMs() - agoMs) / 1000, local, sizeof(local))) {
+            snprintf(when, sizeof(when), " (%s)", local);  // with NTP: also the local time
+        }
+        Serial.printf("  %-15s %-14s x%-6lu last %lu s ago%s\r\n", ip, accessEventName(e.event),
+                      (unsigned long)e.count, (unsigned long)(agoMs / 1000), when);
     }
     Serial.print("> ");
 }
@@ -653,6 +684,9 @@ static void handleLine(const char* line) {
             Serial.printf(webEnabled() ? "The web interface is on. Turn it off? (y/n): "
                                        : "The web interface is off. Turn it on? (y/n): ");
             state = CLI_WEB_TOGGLE;
+        } else if (strcmp(line, "11") == 0) {
+            Serial.println("Press Enter to keep the value in brackets.");
+            promptNtpServer();
         } else if (strcmp(line, "10") == 0) {
             printUpdateServerLine();
             Serial.println("Press Enter to keep the value in brackets.");
@@ -997,6 +1031,37 @@ static void handleLine(const char* line) {
             newUpdateFromDhcp = false;
         }
         promptUpdateKey();
+        break;
+    }
+
+    case CLI_NTP_SERVER: {
+        LogSettings check = currentLogSettings;
+        const char* error = "";
+        if (!logSettingsApplyInput(check, line, "", error)) {
+            Serial.println(error);
+            promptNtpServer();
+            break;
+        }
+        strlcpy(newNtpInput, line, sizeof(newNtpInput));
+        promptSyslogServer();
+        break;
+    }
+
+    case CLI_SYSLOG_SERVER: {
+        const char* error = "";
+        if (!syslogServiceSaveSettings(newNtpInput, line, error)) {
+            Serial.println(error);
+            promptSyslogServer();
+            break;
+        }
+        Serial.println("Time and syslog settings saved and active");
+        char text[160];
+        timeServiceStatusText(text, sizeof(text));
+        Serial.printf("Time: %s\r\n", text);
+        syslogServiceStatusText(text, sizeof(text));
+        Serial.printf("Syslog: %s\r\n", text);
+        state = CLI_MENU;
+        printMenu();
         break;
     }
 

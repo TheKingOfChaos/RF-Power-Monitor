@@ -50,3 +50,12 @@ bool ntpServerTextIsValid(const char* text);
 /// What a line typed for a server setting means: empty keeps the old value
 enum class ServerInput : uint8_t { Keep, Dhcp, None, Value, Invalid };
 ServerInput classifyServerInput(const char* line);
+
+/**
+ * @brief Apply what was typed for the two servers (serial menu option 11, web page)
+ *
+ * Each input: empty keeps the value, "dhcp", "none" (or "-"), or a server
+ * (NTP: address or name; syslog: address with optional port). All or nothing:
+ * with an invalid input, `s` is unchanged and `error` says why.
+ */
+bool logSettingsApplyInput(LogSettings& s, const char* ntpInput, const char* syslogInput, const char*& error);
