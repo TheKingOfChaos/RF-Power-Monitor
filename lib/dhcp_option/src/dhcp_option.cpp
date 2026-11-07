@@ -134,7 +134,9 @@ DhcpEdit dhcpRequestOption(uint8_t* frame, size_t len, uint8_t code) {
     return DhcpEdit::Added;
 }
 
-DhcpAck dhcpReadAck(const uint8_t* frame, size_t len, const uint8_t mac[6], uint8_t code, DhcpAckInfo& info) {
+/// dhcpReadAck() and dhcpReadAckFirstAddress(): the option is 4 bytes, or with `multiple` any 4 * n (n >= 1)
+static DhcpAck readAckAddress(const uint8_t* frame, size_t len, const uint8_t mac[6], uint8_t code, DhcpAckInfo& info,
+                              bool multiple) {
     Udp u;
     if (frame == nullptr || !findUdp(frame, len, u) || u.src != 67 || u.dst != 68) return DhcpAck::NotDhcpReply;
     if (be16(u.payload + 6) != 0 && udpChecksum(u) != 0) return DhcpAck::NotDhcpReply;
@@ -150,9 +152,20 @@ DhcpAck dhcpReadAck(const uint8_t* frame, size_t len, const uint8_t mac[6], uint
     info.xid = (uint32_t)bootp[4] << 24 | (uint32_t)bootp[5] << 16 | (uint32_t)bootp[6] << 8 | bootp[7];
     info.hasServerId = w.serverId != 0 && d[w.serverId + 1] == 4;
     if (info.hasServerId) memcpy(info.serverId, d + w.serverId + 2, 4);
-    if (w.wanted == 0 || d[w.wanted + 1] != 4) return DhcpAck::NoOption;
+    if (w.wanted == 0) return DhcpAck::NoOption;
+    const uint8_t optLen = d[w.wanted + 1];
+    if (multiple ? (optLen == 0 || optLen % 4 != 0) : optLen != 4) return DhcpAck::NoOption;
     memcpy(info.value, d + w.wanted + 2, 4);
     return DhcpAck::Option;
+}
+
+DhcpAck dhcpReadAck(const uint8_t* frame, size_t len, const uint8_t mac[6], uint8_t code, DhcpAckInfo& info) {
+    return readAckAddress(frame, len, mac, code, info, false);
+}
+
+DhcpAck dhcpReadAckFirstAddress(const uint8_t* frame, size_t len, const uint8_t mac[6], uint8_t code,
+                                DhcpAckInfo& info) {
+    return readAckAddress(frame, len, mac, code, info, true);
 }
 
 bool dhcpAckText(const uint8_t* frame, size_t len, uint8_t code, char* out, size_t outSize) {

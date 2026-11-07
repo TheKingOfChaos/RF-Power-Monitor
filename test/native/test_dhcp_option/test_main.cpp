@@ -487,9 +487,78 @@ static void test_one_spare_byte_takes_224_and_refuses_225() {
     TEST_ASSERT_TRUE(std::find(list.begin(), list.end(), DHCP_OPTION_TRAP_TARGET) != list.end());
 }
 
+// ---- option 7 (log server, one or more IPv4 addresses) ----
+
+static DhcpAck readFirst(const Frame& f, const uint8_t* mac, DhcpAckInfo& info) {
+    info = DhcpAckInfo();
+    return dhcpReadAckFirstAddress(f.data(), f.size(), mac, DHCP_OPTION_LOG_SERVER, info);
+}
+
+static void test_read_first_address_single() {
+    const uint8_t v[4] = {10, 132, 0, 45};
+    DhcpAckInfo info;
+    TEST_ASSERT_EQUAL(DhcpAck::Option, readFirst(ackWithOption(DHCP_OPTION_LOG_SERVER, v, 4), DEVICE_MAC, info));
+    TEST_ASSERT_EQUAL_MEMORY(v, info.value, 4);
+}
+
+static void test_read_first_address_of_three() {
+    const uint8_t v[12] = {10, 132, 0, 45, 10, 132, 0, 46, 10, 132, 0, 47};
+    DhcpAckInfo info;
+    TEST_ASSERT_EQUAL(DhcpAck::Option, readFirst(ackWithOption(DHCP_OPTION_LOG_SERVER, v, 12), DEVICE_MAC, info));
+    TEST_ASSERT_EQUAL_MEMORY(v, info.value, 4);
+}
+
+static void test_read_first_address_rejects_bad_lengths() {
+    const uint8_t v[5] = {10, 132, 0, 45, 1};
+    DhcpAckInfo info;
+    TEST_ASSERT_EQUAL(DhcpAck::NoOption, readFirst(ackWithOption(DHCP_OPTION_LOG_SERVER, v, 5), DEVICE_MAC, info));
+    TEST_ASSERT_EQUAL(DhcpAck::NoOption, readFirst(ackWithOption(DHCP_OPTION_LOG_SERVER, v, 3), DEVICE_MAC, info));
+    TEST_ASSERT_EQUAL(DhcpAck::NoOption, readFirst(ackWithOption(DHCP_OPTION_LOG_SERVER, v, 0), DEVICE_MAC, info));
+    TEST_ASSERT_EQUAL(DhcpAck::NoOption, readFirst(frame(KEA_ACK_WITHOUT_224), DEVICE_MAC, info));
+}
+
+static void test_read_first_address_only_from_our_acks() {
+    const uint8_t v[4] = {10, 132, 0, 45};
+    DhcpAckInfo info;
+    Frame f = ackWithOption(DHCP_OPTION_LOG_SERVER, v, 4);
+    TEST_ASSERT_EQUAL(DhcpAck::NotForUs, readFirst(f, OTHER_MAC, info));
+    TEST_ASSERT_EQUAL(DhcpAck::NotAck, readFirst(frame(LAN_OFFER), DEVICE_MAC, info));
+}
+
+static void test_read_first_address_truncated_and_corrupted_frames_are_safe() {
+    const uint8_t v[8] = {10, 132, 0, 45, 10, 132, 0, 46};
+    Frame full = ackWithOption(DHCP_OPTION_LOG_SERVER, v, 8);
+    DhcpAckInfo info;
+    for (size_t cut = 0; cut < full.size(); cut++) {
+        Frame f(full.begin(), full.begin() + (long)cut);
+        DhcpAck r = readFirst(f, DEVICE_MAC, info);
+        TEST_ASSERT_TRUE(r != DhcpAck::Option || cut == full.size());
+    }
+    for (size_t i = 0; i < full.size(); i++) {
+        Frame f = full;
+        f[i] ^= 0xFF;
+        readFirst(f, DEVICE_MAC, info);  // must not read out of bounds (sanitizers)
+    }
+}
+
+static void test_request_option_7_added_once() {
+    Frame f = frame(DEVICE_DISCOVER);
+    TEST_ASSERT_EQUAL(DhcpEdit::Added, dhcpRequestOption(f.data(), f.size(), DHCP_OPTION_LOG_SERVER));
+    TEST_ASSERT_EQUAL(DhcpEdit::AlreadyRequested, dhcpRequestOption(f.data(), f.size(), DHCP_OPTION_LOG_SERVER));
+    Frame list = option(f, 55);
+    TEST_ASSERT_EQUAL(1, std::count(list.begin(), list.end(), DHCP_OPTION_LOG_SERVER));
+    TEST_ASSERT_TRUE(udpChecksumOk(f));
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_one_spare_byte_takes_224_and_refuses_225);
+    RUN_TEST(test_read_first_address_single);
+    RUN_TEST(test_read_first_address_of_three);
+    RUN_TEST(test_read_first_address_rejects_bad_lengths);
+    RUN_TEST(test_read_first_address_only_from_our_acks);
+    RUN_TEST(test_read_first_address_truncated_and_corrupted_frames_are_safe);
+    RUN_TEST(test_request_option_7_added_once);
     RUN_TEST(test_ack_text_reads_url_option);
     RUN_TEST(test_ack_text_accepts_127_and_rejects_too_long);
     RUN_TEST(test_ack_text_rejects_non_printable);

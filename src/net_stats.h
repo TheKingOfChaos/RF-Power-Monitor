@@ -143,3 +143,16 @@ void netStatsRequestDhcpUpdateUrl(bool on);
  * @return false when no accepted ACK carried a valid one (out is then empty)
  */
 bool netStatsDhcpUpdateUrl(char* out, size_t size);
+
+/**
+ * @brief Ask for option 7 (log server) in every DHCP DISCOVER/REQUEST (or stop asking)
+ *
+ * Switching it on renews the lease at once. Taken only from an ACK lwIP accepted.
+ */
+void netStatsRequestDhcpLogServer(bool on);
+
+/**
+ * @brief The first log server address from the latest accepted DHCPACK (option 7)
+ * @return false when no accepted ACK carried one
+ */
+bool netStatsDhcpLogServer(uint8_t out[4]);

@@ -24,6 +24,8 @@ static const uint8_t DHCP_OPTION_TRAP_TARGET = 224;
 
 /// Site-specific option carrying the update server URL (text, see dhcpAckText)
 static const uint8_t DHCP_OPTION_UPDATE_URL = 225;
+/// Log server (RFC 2132): one or more IPv4 addresses; the syslog server when it is set to dhcp
+static const uint8_t DHCP_OPTION_LOG_SERVER = 7;
 
 /// Result of dhcpRequestOption()
 enum class DhcpEdit : uint8_t {
@@ -66,6 +68,15 @@ struct DhcpAckInfo {
  * @param mac This device's MAC; the ACK's chaddr must match
  */
 DhcpAck dhcpReadAck(const uint8_t* frame, size_t len, const uint8_t mac[6], uint8_t code, DhcpAckInfo& info);
+
+/**
+ * @brief dhcpReadAck() for an option holding one or more IPv4 addresses (4 * n bytes)
+ *
+ * info.value receives the first address; a length of 0 or not a multiple of 4
+ * is NoOption.
+ */
+DhcpAck dhcpReadAckFirstAddress(const uint8_t* frame, size_t len, const uint8_t mac[6], uint8_t code,
+                                DhcpAckInfo& info);
 
 /**
  * @brief Read a text option (the update server URL) from a DHCPACK

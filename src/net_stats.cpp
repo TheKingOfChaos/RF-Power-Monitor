@@ -39,6 +39,10 @@ static DhcpTrapInfo dhcpTrap = {};
 // DHCP option 225 (update server URL): the same, as text
 static volatile bool dhcpUrlRequestOn = false;
 static char dhcpUpdateUrl[128] = "";
+// DHCP option 7 (log server): the same, first IPv4 address
+static volatile bool dhcpLogRequestOn = false;
+static bool dhcpHasLogServer = false;
+static uint8_t dhcpLogServer[4] = {0};
 
 static bool isWaitingForAck(uint8_t state) {
     return state == DHCP_STATE_REQUESTING || state == DHCP_STATE_REBOOTING || state == DHCP_STATE_RENEWING ||
@@ -66,6 +70,9 @@ static err_t inputWithDhcpAck(struct pbuf* p, struct netif* nif) {
     }
     char url[sizeof(dhcpUpdateUrl)];  // read before lwIP owns p
     bool hasUrl = candidate && dhcpAckText((const uint8_t*)p->payload, p->len, DHCP_OPTION_UPDATE_URL, url, sizeof(url));
+    DhcpAckInfo logInfo;
+    bool hasLog = candidate && dhcpReadAckFirstAddress((const uint8_t*)p->payload, p->len, mac,
+                                                       DHCP_OPTION_LOG_SERVER, logInfo) == DhcpAck::Option;
     err_t err = originalInput(p, nif);  // lwIP handles the ACK now (p belongs to lwIP afterwards)
     if (!candidate || dhcp->state != DHCP_STATE_BOUND) {
         dhcpTrap.ignored++;
@@ -83,6 +90,9 @@ static err_t inputWithDhcpAck(struct pbuf* p, struct netif* nif) {
     } else {
         dhcpUpdateUrl[0] = '\0';
     }
+    // ... and the log server: one without option 7 clears it
+    dhcpHasLogServer = hasLog;
+    if (hasLog) memcpy(dhcpLogServer, logInfo.value, 4);
     return err;
 }
 
@@ -113,6 +123,9 @@ static err_t countingLinkOutput(struct netif* nif, struct pbuf* p) {
     }
     if (dhcpUrlRequestOn && p->next == nullptr) {
         dhcpRequestOption((uint8_t*)p->payload, p->len, DHCP_OPTION_UPDATE_URL);
+    }
+    if (dhcpLogRequestOn && p->next == nullptr) {
+        dhcpRequestOption((uint8_t*)p->payload, p->len, DHCP_OPTION_LOG_SERVER);
     }
     err_t err = originalLinkOutput(nif, p);
     if (err == ERR_OK) {
@@ -325,6 +338,22 @@ void netStatsRequestDhcpUpdateUrl(bool on) {
     for (netif* n = netif_list; n != nullptr; n = n->next) {
         if (dhcp_supplied_address(n)) dhcp_renew(n);  // ask now, not at the next renewal
     }
+}
+
+void netStatsRequestDhcpLogServer(bool on) {
+    DriverLock lock;
+    bool changed = dhcpLogRequestOn != on;
+    dhcpLogRequestOn = on;
+    if (!changed || !on) return;
+    for (netif* n = netif_list; n != nullptr; n = n->next) {
+        if (dhcp_supplied_address(n)) dhcp_renew(n);  // ask now, not at the next renewal
+    }
+}
+
+bool netStatsDhcpLogServer(uint8_t out[4]) {
+    DriverLock lock;  // written from lwIP context
+    memcpy(out, dhcpLogServer, 4);
+    return dhcpHasLogServer;
 }
 
 bool netStatsDhcpUpdateUrl(char* out, size_t size) {
