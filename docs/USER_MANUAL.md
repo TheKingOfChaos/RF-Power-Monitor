@@ -25,6 +25,20 @@ The RF-Power-Monitor watches one mains supply and tells your monitoring system (
 | Onboard LED blinking steadily, device not answering | The internal flash could not be read at start-up; see Troubleshooting |
 | Onboard LED: 3 short blinks, 1 long, repeating | The boot program found no firmware slot with a good signature; install a `-usb.uf2` over USB (see Updating the firmware) |
 
+### The label
+
+A board set up with the bench tool has a 40 x 40 mm label (white on black):
+
+| On the label | What it is |
+|---|---|
+| Hostname, e.g. `RF-Power-A1B2C3` | The device's name in DHCP, mDNS (`RF-Power-A1B2C3.local`) and SNMP sysName |
+| MAC | The Ethernet address, e.g. for a DHCP reservation |
+| User / PW | The web page login: `admin` and the device's default password |
+| S/N, FW, date | Serial number, the firmware it was shipped with, and when it was set up |
+| QR code | Hostname, MAC, serial number and firmware (not the password), for scanning into an inventory |
+
+The password on the label stays valid: a factory reset and firmware updates keep it, and menu option 7 cannot replace it while it is locked (see option 7). If the status screen ever says `Default web password LOST: label is wrong, relabel at the bench`, the device had to make a new password: the label is wrong until the board is labelled again.
+
 ### The web page
 
 Open **http://&lt;device address&gt;/** or **http://&lt;hostname&gt;.local/** and log in as `admin`. The page shows:
@@ -234,6 +248,8 @@ Sets your own password for the web page: 8-32 characters, no spaces, typed twice
 
 Replaces the default web password with a new random one after `y`, and shows it. Use it if the default password became known; the old one stops working at once. An own password from option 6 stays in use.
 
+On a board with a label the default password is **locked** (status screen `Default web password: locked (on the label)`), and option 7 refuses: `The default web password is locked because it is printed on the device label. Unlock it at the bench first.` If the default password must change on such a board, set your own with option 6 instead, or take it to the bench, where it is unlocked, replaced and labelled again (README, *Bench setup of a new board*).
+
 ### 8. Web interface on/off
 
 Turns the web page off or on after `y`. Off closes the web port and logs every browser out; SNMP and the serial menu keep working. The setting is kept across restarts.
@@ -253,7 +269,7 @@ Connects the device to the update site (see [Updating the firmware](#from-the-up
 | Update server URL | `http://<pc>:8071` (the site's address), `dhcp` to take it from DHCP option 225, or `none` for no check-ins. Only `http://host[:port][/path]`, at most 127 characters. |
 | Shared key | The 64 hex characters from the site's admin page. Typed as `*` and never shown again (status: `key set`). `clear` removes it. |
 
-The settings are saved at once and the first check-in follows within a minute. The status screen shows them on one line, e.g. `Update server: http://10.132.0.45:8071 (fixed), key set, last check-in 4 min ago: ok`, or `Update server: off (option 10)`. The same settings are on the web page's **Firmware** page (card *Update server*). A factory reset removes the URL and the key. Firmware older than 3.4.0 does not know these settings: a device rolled back to such firmware and factory-reset there gets its old URL and key back after its next update to 3.4.0 or newer. Clear them with option 10 (`none`, then `clear`) if that matters.
+The settings are saved at once and the first check-in follows within a minute. The status screen shows them on one line, e.g. `Update server: http://10.132.0.45:8071 (fixed), key set, last check-in 4 min ago: ok`, or `Update server: off (option 10)`. The same settings are on the web page's **Firmware** page (card *Update server*). A factory reset sets them back to the update site the board got at the bench (status screen `Update server default: <url>, key set (a factory reset restores it)`), or removes them on a board without one. Firmware older than 3.4.0 does not know these settings: a device rolled back to such firmware and factory-reset there gets its old URL and key back after its next update to 3.4.0 or newer. Clear them with option 10 (`none`, then `clear`) if that matters.
 
 ## Factory reset
 
@@ -261,9 +277,9 @@ Use this if you can no longer reach the device (wrong static address, unknown co
 
 1. Press and hold the button **SW1** on the carrier (under the module). The onboard LED blinks slowly.
 2. Keep holding for **10 seconds**, until the LED blinks fast. Then let go.
-3. The device restarts with the defaults: DHCP, community `public`, name `RF-Power-<last 6 MAC hex digits>`, no contact, location or trap destination, no static IPv6, web page on and back on its default password.
+3. The device restarts with the defaults: DHCP, community `public`, name `RF-Power-<last 6 MAC hex digits>`, no contact, location or trap destination, no static IPv6, web page on and back on its default password. The update server goes back to the one set at the bench (or off without one).
 
-Letting go before 10 s cancels the reset. The device keeps working while you hold the button. The default web password itself is not changed by a reset; it is still on the status screen. After a reset, set the community, name and trap destination again (setup manual, step 4).
+Letting go before 10 s cancels the reset. The device keeps working while you hold the button. The default web password itself is not changed by a reset; it is still the one on the label and on the status screen. After a reset, set the community, name and trap destination again (setup manual, step 4).
 
 ## Updating the firmware
 
@@ -352,7 +368,8 @@ The boot program verifies the active slot at every start, which adds about a sec
 | Forgot the web password | Serial menu option 6, enter `-`: the default password from the status screen works again. |
 | "Too many failed logins" | Five wrong passwords lock the login for 30 s. Wait, then log in with the right password. |
 | "Form expired" or "Not logged in" | The session ended (15 minutes idle, restart, password change, or a third browser). Reload and log in. |
-| Someone else knows the default web password | Serial menu option 7 makes a new random one; or set your own with option 6. |
+| Someone else knows the default web password | Set your own with option 6. On a board without a label, option 7 makes a new random one; on a labelled board it is locked (take it to the bench to relabel). |
+| Status screen: `Default web password LOST: label is wrong` | The device found its stored password damaged and made a new one (shown on the status screen). Take it to the bench: `--no-flash` locks the new one and prints a new label. |
 | The device restarted by itself | Status screen `Last restart:` says why. `watchdog` means the firmware hung and the 8 s watchdog restarted it; settings are kept. If it repeats, report it. |
 | Onboard LED blinks steadily, no network, no menu | The internal flash could not be read at start-up. Unplug and plug in again; if it stays, reinstall the firmware (see Updating). |
 | LED blinks 3 short, 1 long, no network, no menu | Neither firmware slot has a good signature. Install a `-usb.uf2` over USB (see Updating). |

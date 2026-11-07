@@ -252,7 +252,7 @@ Each new entry is also printed on the serial port when it happens (`SNMP access:
 
 **9. Static IPv6** asks for a static IPv6 address and an optional IPv6 gateway. Enter keeps the value in brackets, `-` removes it. The address is always a /64 and is added next to the link-local and SLAAC addresses; it is independent of DHCP/static IPv4.
 
-**10. Update server** asks for the update site's URL (`http://host[:port][/path]`, `dhcp` for DHCP option 225, or `none`) and the shared key from the site (64 hex characters, typed as `*`, never shown back; `clear` removes it). The device then checks in every 30 minutes and installs the releases the site assigns to it (see [update-server/README.md](update-server/README.md) and the user manual).
+**10. Update server** asks for the update site's URL (`http://host[:port][/path]`, `dhcp` for DHCP option 225, or `none`) and the shared key from the site (64 hex characters, typed as `*`, never shown back; `clear` removes it). The device then checks in every 30 minutes and installs the releases the site assigns to it (see [update-server/README.md](update-server/README.md) and the user manual). A factory reset removes the URL and key, or restores the ones the bench tool set (hidden command `updatedefault`, see [Bench setup of a new board](#bench-setup-of-a-new-board)).
 
 ```
 > 9
@@ -276,7 +276,7 @@ If you lock yourself out with a wrong static address, use the serial menu to swi
 
 The device serves a small configuration page on **http://&lt;device IP&gt;/** (port 80): log in, see the status, change the network settings (IPv4 and static IPv6), the hostname and the SNMP community, restart the device, or turn the page off. It is also reachable as **http://RF-Power-XXXXXX.local/** (XXXXXX = the last 6 hex digits of the MAC; mDNS, see [Hostname](#hostname)) and over IPv6 as **http://[&lt;IPv6 address&gt;]/**. Everything on the page can also be done in the serial menu.
 
-- **Login:** user `admin`. Until you set your own password, the password is the device's **default password**: 10 random characters generated on first boot, different for every device, and shown only on the serial status screen (menu option 1): `Web login: user admin, default password "k7wqz3mtd9"`. A factory reset does not change it; menu option 7 replaces it with a new random one.
+- **Login:** user `admin`. Until you set your own password, the password is the device's **default password**: 10 random characters generated on first boot, different for every device, and shown only on the serial status screen (menu option 1): `Web login: user admin, default password "k7wqz3mtd9"`. A factory reset does not change it; menu option 7 replaces it with a new random one, except on a board set up with the bench tool, where it is printed on the label and locked.
 - **Own password:** serial menu option 6 sets one (8-32 characters, no spaces; typed characters are shown as `*`), or `-` goes back to the device default. Changing it logs every browser out. The password is stored as a salted SHA-256 hash (2000 rounds), never as text; checking it takes about half a second, done in small steps so SNMP keeps answering meanwhile. It can only be changed from the serial menu, so someone who learns it cannot lock you out.
 - **Status:** mains power (green or red badge) and change count, mains alarm (none / lost over 60 s), uptime, CPU and ambient temperature, Ethernet link, the switch and port (LLDP), hostname and `.local` name, IP address, IPv6 address and link-local address (when the device has them), MAC address, network mode, static IPv6 address (when set), firmware version (top bar). With DHCP the Network card's boxes show the address, subnet mask and gateway the DHCP server gave (and the DNS server below them); choosing Static and saving keeps that address.
 - **Device name:** the hostname (also SNMP sysName and mDNS name), sysContact and sysLocation (0-63 printable characters each, may be empty), active immediately. A page still open from older firmware, without those two fields, leaves them as they are.
@@ -596,7 +596,8 @@ Object details, traps, error behaviour, limits and the MIB file: [docs/MIB.md](d
 
 | Problem | What to check |
 |---|---|
-| Someone else knows the default web password | Serial menu option 7 makes a new one; or set your own with option 6 |
+| Someone else knows the default web password | Set your own with option 6; option 7 makes a new one unless the password is locked (labelled board: `pwunlock` at the bench, then relabel) |
+| Status screen `Default web password LOST: label is wrong` | Both stored copies were damaged, or older firmware replaced a locked password: relabel with `tools/bench_provision.py --no-flash` |
 | Web page does not answer at all (connection refused) | The web interface may be off: status screen "Web interface: off", turn it on with menu option 8 |
 | Traps go nowhere with trap destination `dhcp` | Status screen "Trap destination source": the DHCP server must have option 224 configured |
 | Forgot the web password | Serial menu option 6, enter `-` to go back to the device default password shown on the status screen |
