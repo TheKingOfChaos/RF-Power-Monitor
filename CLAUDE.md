@@ -16,7 +16,7 @@ The project rules are in `.clinerules` and apply to all work here, including its
 | Flash firmware | `pio run -e pico -t upload` (sends `firmware_full.uf2`: boot program + slot A) |
 | Release files | `python tools/fw_release.py [--field]` (both slots, signed: `release/*.upd` and `*-usb.uf2`) |
 | Update a device | `python tools/fw_update.py <file.upd> <host>...` (password from `RFPOWER_WEB_PASSWORD`) |
-| Set up a new board | `python tools/bench_provision.py` (BOOTSEL; `--no-flash`, `--reprint`; update site URL and key from `secret/bench.ini`, never print it; README "Bench setup"; output in gitignored `bench/`) |
+| Set up a new board | `python tools/bench_provision.py` (BOOTSEL; `--no-flash`, `--reprint`; update site URL and key from `secret/bench.ini`, never print it; docs/SETUP_MANUAL.md "Bench setup of a new board"; output in gitignored `bench/`) |
 | Firmware tests | `RFPOWER_FW_UPDATE_TEST=1` and the HIL `test_fw_update.py` (docs/TESTING.md), tool tests `python -m unittest discover -s test/tools` |
 | Unit tests (PC) | `pio test -e native` |
 | On-device tests | `pio test -e pico` (replaces the firmware, reflash afterwards) |

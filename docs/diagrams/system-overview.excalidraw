@@ -45,7 +45,7 @@
    "x": 40,
    "y": 80,
    "width": 330,
-   "height": 470,
+   "height": 430,
    "angle": 0,
    "strokeColor": "#868e96",
    "backgroundColor": "#fff5f5",
@@ -73,8 +73,8 @@
    "type": "text",
    "x": 56,
    "y": 90,
-   "width": 394.4,
-   "height": 25.0,
+   "width": 266.79999999999995,
+   "height": 50.0,
    "angle": 0,
    "strokeColor": "#495057",
    "backgroundColor": "transparent",
@@ -94,8 +94,8 @@
    "updated": 1,
    "link": null,
    "locked": false,
-   "text": "Mains side (galvanically isolated)",
-   "originalText": "Mains side (galvanically isolated)",
+   "text": "Mains side\n(galvanically isolated)",
+   "originalText": "Mains side\n(galvanically isolated)",
    "fontSize": 20,
    "fontFamily": 1,
    "textAlign": "left",
@@ -108,9 +108,9 @@
    "id": "mains",
    "type": "rectangle",
    "x": 75,
-   "y": 140,
+   "y": 150,
    "width": 260,
-   "height": 70,
+   "height": 60,
    "angle": 0,
    "strokeColor": "#1e1e1e",
    "backgroundColor": "#ffc9c9",
@@ -146,7 +146,7 @@
    "id": "mains-text",
    "type": "text",
    "x": 123.80000000000001,
-   "y": 162.5,
+   "y": 167.5,
    "width": 162.39999999999998,
    "height": 25.0,
    "angle": 0,
@@ -182,9 +182,9 @@
    "id": "plug",
    "type": "rectangle",
    "x": 75,
-   "y": 260,
+   "y": 255,
    "width": 260,
-   "height": 90,
+   "height": 80,
    "angle": 0,
    "strokeColor": "#1e1e1e",
    "backgroundColor": "#e9ecef",
@@ -224,7 +224,7 @@
    "id": "plug-text",
    "type": "text",
    "x": 84.36000000000001,
-   "y": 285.0,
+   "y": 275.0,
    "width": 241.27999999999997,
    "height": 40.0,
    "angle": 0,
@@ -260,9 +260,9 @@
    "id": "det",
    "type": "rectangle",
    "x": 75,
-   "y": 400,
+   "y": 380,
    "width": 260,
-   "height": 110,
+   "height": 100,
    "angle": 0,
    "strokeColor": "#1e1e1e",
    "backgroundColor": "#ffd8a8",
@@ -291,7 +291,7 @@
     },
     {
      "type": "arrow",
-     "id": "a-det-pico-32"
+     "id": "a-det-pico-34"
     }
    ],
    "updated": 1,
@@ -301,10 +301,10 @@
   {
    "id": "det-text",
    "type": "text",
-   "x": 100.60000000000001,
-   "y": 421.25,
-   "width": 208.79999999999998,
-   "height": 67.5,
+   "x": 112.2,
+   "y": 400.0,
+   "width": 185.6,
+   "height": 60.0,
    "angle": 0,
    "strokeColor": "#1e1e1e",
    "backgroundColor": "transparent",
@@ -326,7 +326,7 @@
    "locked": false,
    "text": "Mains detector\noptocoupler + filter\nclean 3.3 V DC level",
    "originalText": "Mains detector\noptocoupler + filter\nclean 3.3 V DC level",
-   "fontSize": 18,
+   "fontSize": 16,
    "fontFamily": 1,
    "textAlign": "center",
    "verticalAlign": "middle",
@@ -340,7 +340,7 @@
    "x": 205.0,
    "y": 210,
    "width": 0.0,
-   "height": 50,
+   "height": 45,
    "angle": 0,
    "strokeColor": "#1e1e1e",
    "backgroundColor": "transparent",
@@ -351,9 +351,7 @@
    "opacity": 100,
    "groupIds": [],
    "frameId": null,
-   "roundness": {
-    "type": 2
-   },
+   "roundness": null,
    "seed": 725096996,
    "version": 1,
    "versionNonce": 3901421090,
@@ -369,19 +367,19 @@
     ],
     [
      0.0,
-     50
+     45
     ]
    ],
    "lastCommittedPoint": null,
    "startBinding": {
     "elementId": "mains",
     "focus": 0,
-    "gap": 4
+    "gap": 1
    },
    "endBinding": {
     "elementId": "plug",
     "focus": 0,
-    "gap": 4
+    "gap": 1
    },
    "startArrowhead": null,
    "endArrowhead": "arrow",
@@ -391,9 +389,9 @@
    "id": "a-plug-det-10",
    "type": "arrow",
    "x": 205.0,
-   "y": 350,
+   "y": 335,
    "width": 0.0,
-   "height": 50,
+   "height": 45,
    "angle": 0,
    "strokeColor": "#1e1e1e",
    "backgroundColor": "transparent",
@@ -404,9 +402,7 @@
    "opacity": 100,
    "groupIds": [],
    "frameId": null,
-   "roundness": {
-    "type": 2
-   },
+   "roundness": null,
    "seed": 640745714,
    "version": 1,
    "versionNonce": 1366623360,
@@ -422,1009 +418,31 @@
     ],
     [
      0.0,
-     50
+     45
     ]
    ],
    "lastCommittedPoint": null,
    "startBinding": {
     "elementId": "plug",
     "focus": 0,
-    "gap": 4
+    "gap": 1
    },
    "endBinding": {
     "elementId": "det",
     "focus": 0,
-    "gap": 4
+    "gap": 1
    },
    "startArrowhead": null,
    "endArrowhead": "arrow",
    "elbowed": false
-  },
-  {
-   "id": "z-board",
-   "type": "rectangle",
-   "x": 420,
-   "y": 80,
-   "width": 650,
-   "height": 640,
-   "angle": 0,
-   "strokeColor": "#868e96",
-   "backgroundColor": "#e7f5ff",
-   "fillStyle": "solid",
-   "strokeWidth": 2,
-   "strokeStyle": "dashed",
-   "roughness": 1,
-   "opacity": 100,
-   "groupIds": [],
-   "frameId": null,
-   "roundness": {
-    "type": 3
-   },
-   "seed": 521251604,
-   "version": 1,
-   "versionNonce": 3635042662,
-   "isDeleted": false,
-   "boundElements": [],
-   "updated": 1,
-   "link": null,
-   "locked": false
-  },
-  {
-   "id": "t12",
-   "type": "text",
-   "x": 436,
-   "y": 90,
-   "width": 255.2,
-   "height": 25.0,
-   "angle": 0,
-   "strokeColor": "#495057",
-   "backgroundColor": "transparent",
-   "fillStyle": "solid",
-   "strokeWidth": 2,
-   "strokeStyle": "solid",
-   "roughness": 1,
-   "opacity": 100,
-   "groupIds": [],
-   "frameId": null,
-   "roundness": null,
-   "seed": 4173978085,
-   "version": 1,
-   "versionNonce": 443244398,
-   "isDeleted": false,
-   "boundElements": null,
-   "updated": 1,
-   "link": null,
-   "locked": false,
-   "text": "RF-Power-Monitor board",
-   "originalText": "RF-Power-Monitor board",
-   "fontSize": 20,
-   "fontFamily": 1,
-   "textAlign": "left",
-   "verticalAlign": "top",
-   "containerId": null,
-   "lineHeight": 1.25,
-   "autoResize": true
-  },
-  {
-   "id": "flash",
-   "type": "rectangle",
-   "x": 470,
-   "y": 130,
-   "width": 300,
-   "height": 110,
-   "angle": 0,
-   "strokeColor": "#1e1e1e",
-   "backgroundColor": "#b2f2bb",
-   "fillStyle": "solid",
-   "strokeWidth": 2,
-   "strokeStyle": "solid",
-   "roughness": 1,
-   "opacity": 100,
-   "groupIds": [],
-   "frameId": null,
-   "roundness": {
-    "type": 3
-   },
-   "seed": 761952630,
-   "version": 1,
-   "versionNonce": 3395850745,
-   "isDeleted": false,
-   "boundElements": [
-    {
-     "type": "text",
-     "id": "flash-text"
-    },
-    {
-     "type": "arrow",
-     "id": "a-pico-flash-25"
-    }
-   ],
-   "updated": 1,
-   "link": null,
-   "locked": false
-  },
-  {
-   "id": "flash-text",
-   "type": "text",
-   "x": 490.08000000000004,
-   "y": 155.0,
-   "width": 259.84,
-   "height": 60.0,
-   "angle": 0,
-   "strokeColor": "#1e1e1e",
-   "backgroundColor": "transparent",
-   "fillStyle": "solid",
-   "strokeWidth": 2,
-   "strokeStyle": "solid",
-   "roughness": 1,
-   "opacity": 100,
-   "groupIds": [],
-   "frameId": null,
-   "roundness": null,
-   "seed": 2888217432,
-   "version": 1,
-   "versionNonce": 2104016844,
-   "isDeleted": false,
-   "boundElements": null,
-   "updated": 1,
-   "link": null,
-   "locked": false,
-   "text": "Internal flash (LittleFS)\nsettings_a / settings_b.json\nupdate_a / update_b.json",
-   "originalText": "Internal flash (LittleFS)\nsettings_a / settings_b.json\nupdate_a / update_b.json",
-   "fontSize": 16,
-   "fontFamily": 1,
-   "textAlign": "center",
-   "verticalAlign": "middle",
-   "containerId": "flash",
-   "lineHeight": 1.25,
-   "autoResize": true
-  },
-  {
-   "id": "pico",
-   "type": "rectangle",
-   "x": 470,
-   "y": 290,
-   "width": 300,
-   "height": 220,
-   "angle": 0,
-   "strokeColor": "#1e1e1e",
-   "backgroundColor": "#a5d8ff",
-   "fillStyle": "solid",
-   "strokeWidth": 2,
-   "strokeStyle": "solid",
-   "roughness": 1,
-   "opacity": 100,
-   "groupIds": [],
-   "frameId": null,
-   "roundness": {
-    "type": 3
-   },
-   "seed": 61940498,
-   "version": 1,
-   "versionNonce": 4095959685,
-   "isDeleted": false,
-   "boundElements": [
-    {
-     "type": "text",
-     "id": "pico-text"
-    },
-    {
-     "type": "arrow",
-     "id": "a-pico-flash-25"
-    },
-    {
-     "type": "arrow",
-     "id": "a-pico-w5500-26"
-    },
-    {
-     "type": "arrow",
-     "id": "a-pico-tmp-28"
-    },
-    {
-     "type": "arrow",
-     "id": "a-button-pico-30"
-    },
-    {
-     "type": "arrow",
-     "id": "a-pico-led-31"
-    },
-    {
-     "type": "arrow",
-     "id": "a-det-pico-32"
-    },
-    {
-     "type": "arrow",
-     "id": "a-pc-pico-36"
-    }
-   ],
-   "updated": 1,
-   "link": null,
-   "locked": false
-  },
-  {
-   "id": "pico-text",
-   "type": "text",
-   "x": 452.96000000000004,
-   "y": 330.0,
-   "width": 334.08,
-   "height": 140.0,
-   "angle": 0,
-   "strokeColor": "#1e1e1e",
-   "backgroundColor": "transparent",
-   "fillStyle": "solid",
-   "strokeWidth": 2,
-   "strokeStyle": "solid",
-   "roughness": 1,
-   "opacity": 100,
-   "groupIds": [],
-   "frameId": null,
-   "roundness": null,
-   "seed": 4094507883,
-   "version": 1,
-   "versionNonce": 4072392326,
-   "isDeleted": false,
-   "boundElements": null,
-   "updated": 1,
-   "link": null,
-   "locked": false,
-   "text": "Raspberry Pi Pico\n(RP2040)\n\nCore 0: network, SNMP, web page,\nLLDP, menu, temperatures, load,\nwatchdog 8 s (fed while core 1 runs)\nCore 1: GPIO27 + GPIO22, 1 kHz",
-   "originalText": "Raspberry Pi Pico\n(RP2040)\n\nCore 0: network, SNMP, web page,\nLLDP, menu, temperatures, load,\nwatchdog 8 s (fed while core 1 runs)\nCore 1: GPIO27 + GPIO22, 1 kHz",
-   "fontSize": 16,
-   "fontFamily": 1,
-   "textAlign": "center",
-   "verticalAlign": "middle",
-   "containerId": "pico",
-   "lineHeight": 1.25,
-   "autoResize": true
-  },
-  {
-   "id": "w5500",
-   "type": "rectangle",
-   "x": 880,
-   "y": 330,
-   "width": 170,
-   "height": 150,
-   "angle": 0,
-   "strokeColor": "#1e1e1e",
-   "backgroundColor": "#99e9f2",
-   "fillStyle": "solid",
-   "strokeWidth": 2,
-   "strokeStyle": "solid",
-   "roughness": 1,
-   "opacity": 100,
-   "groupIds": [],
-   "frameId": null,
-   "roundness": {
-    "type": 3
-   },
-   "seed": 1287132345,
-   "version": 1,
-   "versionNonce": 3883359256,
-   "isDeleted": false,
-   "boundElements": [
-    {
-     "type": "text",
-     "id": "w5500-text"
-    },
-    {
-     "type": "arrow",
-     "id": "a-pico-w5500-26"
-    },
-    {
-     "type": "arrow",
-     "id": "a-w5500-switch-50"
-    }
-   ],
-   "updated": 1,
-   "link": null,
-   "locked": false
-  },
-  {
-   "id": "w5500-text",
-   "type": "text",
-   "x": 895.4,
-   "y": 365.0,
-   "width": 139.2,
-   "height": 80.0,
-   "angle": 0,
-   "strokeColor": "#1e1e1e",
-   "backgroundColor": "transparent",
-   "fillStyle": "solid",
-   "strokeWidth": 2,
-   "strokeStyle": "solid",
-   "roughness": 1,
-   "opacity": 100,
-   "groupIds": [],
-   "frameId": null,
-   "roundness": null,
-   "seed": 3461904228,
-   "version": 1,
-   "versionNonce": 511009048,
-   "isDeleted": false,
-   "boundElements": null,
-   "updated": 1,
-   "link": null,
-   "locked": false,
-   "text": "W5500\nEthernet\nSPI0: GPIO16-19\nRST 20, INT 21",
-   "originalText": "W5500\nEthernet\nSPI0: GPIO16-19\nRST 20, INT 21",
-   "fontSize": 16,
-   "fontFamily": 1,
-   "textAlign": "center",
-   "verticalAlign": "middle",
-   "containerId": "w5500",
-   "lineHeight": 1.25,
-   "autoResize": true
-  },
-  {
-   "id": "tmp",
-   "type": "rectangle",
-   "x": 880,
-   "y": 540,
-   "width": 170,
-   "height": 100,
-   "angle": 0,
-   "strokeColor": "#1e1e1e",
-   "backgroundColor": "#ffd8a8",
-   "fillStyle": "solid",
-   "strokeWidth": 2,
-   "strokeStyle": "solid",
-   "roughness": 1,
-   "opacity": 100,
-   "groupIds": [],
-   "frameId": null,
-   "roundness": {
-    "type": 3
-   },
-   "seed": 2280102563,
-   "version": 1,
-   "versionNonce": 720721222,
-   "isDeleted": false,
-   "boundElements": [
-    {
-     "type": "text",
-     "id": "tmp-text"
-    },
-    {
-     "type": "arrow",
-     "id": "a-pico-tmp-28"
-    }
-   ],
-   "updated": 1,
-   "link": null,
-   "locked": false
-  },
-  {
-   "id": "tmp-text",
-   "type": "text",
-   "x": 904.6800000000001,
-   "y": 560.0,
-   "width": 120.63999999999999,
-   "height": 60.0,
-   "angle": 0,
-   "strokeColor": "#1e1e1e",
-   "backgroundColor": "transparent",
-   "fillStyle": "solid",
-   "strokeWidth": 2,
-   "strokeStyle": "solid",
-   "roughness": 1,
-   "opacity": 100,
-   "groupIds": [],
-   "frameId": null,
-   "roundness": null,
-   "seed": 3750925432,
-   "version": 1,
-   "versionNonce": 1358061445,
-   "isDeleted": false,
-   "boundElements": null,
-   "updated": 1,
-   "link": null,
-   "locked": false,
-   "text": "TMP1075\nambient temp.\nI2C0, 0x48",
-   "originalText": "TMP1075\nambient temp.\nI2C0, 0x48",
-   "fontSize": 16,
-   "fontFamily": 1,
-   "textAlign": "center",
-   "verticalAlign": "middle",
-   "containerId": "tmp",
-   "lineHeight": 1.25,
-   "autoResize": true
-  },
-  {
-   "id": "button",
-   "type": "rectangle",
-   "x": 470,
-   "y": 590,
-   "width": 140,
-   "height": 90,
-   "angle": 0,
-   "strokeColor": "#1e1e1e",
-   "backgroundColor": "#e9ecef",
-   "fillStyle": "solid",
-   "strokeWidth": 2,
-   "strokeStyle": "solid",
-   "roughness": 1,
-   "opacity": 100,
-   "groupIds": [],
-   "frameId": null,
-   "roundness": {
-    "type": 3
-   },
-   "seed": 4152782114,
-   "version": 1,
-   "versionNonce": 92932776,
-   "isDeleted": false,
-   "boundElements": [
-    {
-     "type": "text",
-     "id": "button-text"
-    },
-    {
-     "type": "arrow",
-     "id": "a-button-pico-30"
-    }
-   ],
-   "updated": 1,
-   "link": null,
-   "locked": false
-  },
-  {
-   "id": "button-text",
-   "type": "text",
-   "x": 479.68,
-   "y": 615.0,
-   "width": 120.63999999999999,
-   "height": 40.0,
-   "angle": 0,
-   "strokeColor": "#1e1e1e",
-   "backgroundColor": "transparent",
-   "fillStyle": "solid",
-   "strokeWidth": 2,
-   "strokeStyle": "solid",
-   "roughness": 1,
-   "opacity": 100,
-   "groupIds": [],
-   "frameId": null,
-   "roundness": null,
-   "seed": 3820115255,
-   "version": 1,
-   "versionNonce": 4079627973,
-   "isDeleted": false,
-   "boundElements": null,
-   "updated": 1,
-   "link": null,
-   "locked": false,
-   "text": "Reset button\nGPIO22 to GND",
-   "originalText": "Reset button\nGPIO22 to GND",
-   "fontSize": 16,
-   "fontFamily": 1,
-   "textAlign": "center",
-   "verticalAlign": "middle",
-   "containerId": "button",
-   "lineHeight": 1.25,
-   "autoResize": true
-  },
-  {
-   "id": "led",
-   "type": "rectangle",
-   "x": 640,
-   "y": 590,
-   "width": 130,
-   "height": 90,
-   "angle": 0,
-   "strokeColor": "#1e1e1e",
-   "backgroundColor": "#ffec99",
-   "fillStyle": "solid",
-   "strokeWidth": 2,
-   "strokeStyle": "solid",
-   "roughness": 1,
-   "opacity": 100,
-   "groupIds": [],
-   "frameId": null,
-   "roundness": {
-    "type": 3
-   },
-   "seed": 463194924,
-   "version": 1,
-   "versionNonce": 620896848,
-   "isDeleted": false,
-   "boundElements": [
-    {
-     "type": "text",
-     "id": "led-text"
-    },
-    {
-     "type": "arrow",
-     "id": "a-pico-led-31"
-    }
-   ],
-   "updated": 1,
-   "link": null,
-   "locked": false
-  },
-  {
-   "id": "led-text",
-   "type": "text",
-   "x": 644.6800000000001,
-   "y": 615.0,
-   "width": 120.63999999999999,
-   "height": 40.0,
-   "angle": 0,
-   "strokeColor": "#1e1e1e",
-   "backgroundColor": "transparent",
-   "fillStyle": "solid",
-   "strokeWidth": 2,
-   "strokeStyle": "solid",
-   "roughness": 1,
-   "opacity": 100,
-   "groupIds": [],
-   "frameId": null,
-   "roundness": null,
-   "seed": 4096995981,
-   "version": 1,
-   "versionNonce": 2854538274,
-   "isDeleted": false,
-   "boundElements": null,
-   "updated": 1,
-   "link": null,
-   "locked": false,
-   "text": "Onboard LED\nstatus, reset",
-   "originalText": "Onboard LED\nstatus, reset",
-   "fontSize": 16,
-   "fontFamily": 1,
-   "textAlign": "center",
-   "verticalAlign": "middle",
-   "containerId": "led",
-   "lineHeight": 1.25,
-   "autoResize": true
-  },
-  {
-   "id": "a-pico-flash-25",
-   "type": "arrow",
-   "x": 620.0,
-   "y": 290,
-   "width": 0.0,
-   "height": 50,
-   "angle": 0,
-   "strokeColor": "#1e1e1e",
-   "backgroundColor": "transparent",
-   "fillStyle": "solid",
-   "strokeWidth": 2,
-   "strokeStyle": "solid",
-   "roughness": 1,
-   "opacity": 100,
-   "groupIds": [],
-   "frameId": null,
-   "roundness": {
-    "type": 2
-   },
-   "seed": 3776122639,
-   "version": 1,
-   "versionNonce": 2335593916,
-   "isDeleted": false,
-   "boundElements": [],
-   "updated": 1,
-   "link": null,
-   "locked": false,
-   "points": [
-    [
-     0.0,
-     0
-    ],
-    [
-     0.0,
-     -50
-    ]
-   ],
-   "lastCommittedPoint": null,
-   "startBinding": {
-    "elementId": "pico",
-    "focus": 0,
-    "gap": 4
-   },
-   "endBinding": {
-    "elementId": "flash",
-    "focus": 0,
-    "gap": 4
-   },
-   "startArrowhead": "arrow",
-   "endArrowhead": "arrow",
-   "elbowed": false
-  },
-  {
-   "id": "a-pico-w5500-26",
-   "type": "arrow",
-   "x": 770,
-   "y": 400.0,
-   "width": 110,
-   "height": 5.0,
-   "angle": 0,
-   "strokeColor": "#1e1e1e",
-   "backgroundColor": "transparent",
-   "fillStyle": "solid",
-   "strokeWidth": 2,
-   "strokeStyle": "solid",
-   "roughness": 1,
-   "opacity": 100,
-   "groupIds": [],
-   "frameId": null,
-   "roundness": {
-    "type": 2
-   },
-   "seed": 39630594,
-   "version": 1,
-   "versionNonce": 3541908183,
-   "isDeleted": false,
-   "boundElements": [
-    {
-     "type": "text",
-     "id": "a-pico-w5500-26-label"
-    }
-   ],
-   "updated": 1,
-   "link": null,
-   "locked": false,
-   "points": [
-    [
-     0,
-     0.0
-    ],
-    [
-     110,
-     5.0
-    ]
-   ],
-   "lastCommittedPoint": null,
-   "startBinding": {
-    "elementId": "pico",
-    "focus": 0,
-    "gap": 4
-   },
-   "endBinding": {
-    "elementId": "w5500",
-    "focus": 0,
-    "gap": 4
-   },
-   "startArrowhead": "arrow",
-   "endArrowhead": "arrow",
-   "elbowed": false
-  },
-  {
-   "id": "a-pico-w5500-26-label",
-   "type": "text",
-   "x": 811.08,
-   "y": 392.5,
-   "width": 27.839999999999996,
-   "height": 20.0,
-   "angle": 0,
-   "strokeColor": "#1e1e1e",
-   "backgroundColor": "transparent",
-   "fillStyle": "solid",
-   "strokeWidth": 2,
-   "strokeStyle": "solid",
-   "roughness": 1,
-   "opacity": 100,
-   "groupIds": [],
-   "frameId": null,
-   "roundness": null,
-   "seed": 3868537687,
-   "version": 1,
-   "versionNonce": 306511133,
-   "isDeleted": false,
-   "boundElements": null,
-   "updated": 1,
-   "link": null,
-   "locked": false,
-   "text": "SPI",
-   "originalText": "SPI",
-   "fontSize": 16,
-   "fontFamily": 1,
-   "textAlign": "center",
-   "verticalAlign": "middle",
-   "containerId": "a-pico-w5500-26",
-   "lineHeight": 1.25,
-   "autoResize": true
-  },
-  {
-   "id": "a-pico-tmp-28",
-   "type": "arrow",
-   "x": 770,
-   "y": 488.0,
-   "width": 110,
-   "height": 102.0,
-   "angle": 0,
-   "strokeColor": "#1e1e1e",
-   "backgroundColor": "transparent",
-   "fillStyle": "solid",
-   "strokeWidth": 2,
-   "strokeStyle": "solid",
-   "roughness": 1,
-   "opacity": 100,
-   "groupIds": [],
-   "frameId": null,
-   "roundness": {
-    "type": 2
-   },
-   "seed": 2650552142,
-   "version": 1,
-   "versionNonce": 3162440484,
-   "isDeleted": false,
-   "boundElements": [
-    {
-     "type": "text",
-     "id": "a-pico-tmp-28-label"
-    }
-   ],
-   "updated": 1,
-   "link": null,
-   "locked": false,
-   "points": [
-    [
-     0,
-     0.0
-    ],
-    [
-     110,
-     102.0
-    ]
-   ],
-   "lastCommittedPoint": null,
-   "startBinding": {
-    "elementId": "pico",
-    "focus": 0,
-    "gap": 4
-   },
-   "endBinding": {
-    "elementId": "tmp",
-    "focus": 0,
-    "gap": 4
-   },
-   "startArrowhead": "arrow",
-   "endArrowhead": "arrow",
-   "elbowed": false
-  },
-  {
-   "id": "a-pico-tmp-28-label",
-   "type": "text",
-   "x": 792.52,
-   "y": 529.0,
-   "width": 64.96,
-   "height": 20.0,
-   "angle": 0,
-   "strokeColor": "#1e1e1e",
-   "backgroundColor": "transparent",
-   "fillStyle": "solid",
-   "strokeWidth": 2,
-   "strokeStyle": "solid",
-   "roughness": 1,
-   "opacity": 100,
-   "groupIds": [],
-   "frameId": null,
-   "roundness": null,
-   "seed": 355462966,
-   "version": 1,
-   "versionNonce": 1613695231,
-   "isDeleted": false,
-   "boundElements": null,
-   "updated": 1,
-   "link": null,
-   "locked": false,
-   "text": "GPIO4/5",
-   "originalText": "GPIO4/5",
-   "fontSize": 16,
-   "fontFamily": 1,
-   "textAlign": "center",
-   "verticalAlign": "middle",
-   "containerId": "a-pico-tmp-28",
-   "lineHeight": 1.25,
-   "autoResize": true
-  },
-  {
-   "id": "a-button-pico-30",
-   "type": "arrow",
-   "x": 540.0,
-   "y": 590,
-   "width": 1.0,
-   "height": 80,
-   "angle": 0,
-   "strokeColor": "#1e1e1e",
-   "backgroundColor": "transparent",
-   "fillStyle": "solid",
-   "strokeWidth": 2,
-   "strokeStyle": "solid",
-   "roughness": 1,
-   "opacity": 100,
-   "groupIds": [],
-   "frameId": null,
-   "roundness": {
-    "type": 2
-   },
-   "seed": 2022583138,
-   "version": 1,
-   "versionNonce": 678808420,
-   "isDeleted": false,
-   "boundElements": [],
-   "updated": 1,
-   "link": null,
-   "locked": false,
-   "points": [
-    [
-     0.0,
-     0
-    ],
-    [
-     -1.0,
-     -80
-    ]
-   ],
-   "lastCommittedPoint": null,
-   "startBinding": {
-    "elementId": "button",
-    "focus": 0,
-    "gap": 4
-   },
-   "endBinding": {
-    "elementId": "pico",
-    "focus": 0,
-    "gap": 4
-   },
-   "startArrowhead": null,
-   "endArrowhead": "arrow",
-   "elbowed": false
-  },
-  {
-   "id": "a-pico-led-31",
-   "type": "arrow",
-   "x": 701.0,
-   "y": 510,
-   "width": 4.0,
-   "height": 80,
-   "angle": 0,
-   "strokeColor": "#1e1e1e",
-   "backgroundColor": "transparent",
-   "fillStyle": "solid",
-   "strokeWidth": 2,
-   "strokeStyle": "solid",
-   "roughness": 1,
-   "opacity": 100,
-   "groupIds": [],
-   "frameId": null,
-   "roundness": {
-    "type": 2
-   },
-   "seed": 3001937946,
-   "version": 1,
-   "versionNonce": 2227561566,
-   "isDeleted": false,
-   "boundElements": [],
-   "updated": 1,
-   "link": null,
-   "locked": false,
-   "points": [
-    [
-     0.0,
-     0
-    ],
-    [
-     4.0,
-     80
-    ]
-   ],
-   "lastCommittedPoint": null,
-   "startBinding": {
-    "elementId": "pico",
-    "focus": 0,
-    "gap": 4
-   },
-   "endBinding": {
-    "elementId": "led",
-    "focus": 0,
-    "gap": 4
-   },
-   "startArrowhead": null,
-   "endArrowhead": "arrow",
-   "elbowed": false
-  },
-  {
-   "id": "a-det-pico-32",
-   "type": "arrow",
-   "x": 335,
-   "y": 444.0,
-   "width": 135,
-   "height": 66.0,
-   "angle": 0,
-   "strokeColor": "#1e1e1e",
-   "backgroundColor": "transparent",
-   "fillStyle": "solid",
-   "strokeWidth": 2,
-   "strokeStyle": "solid",
-   "roughness": 1,
-   "opacity": 100,
-   "groupIds": [],
-   "frameId": null,
-   "roundness": {
-    "type": 2
-   },
-   "seed": 1734794097,
-   "version": 1,
-   "versionNonce": 2950707983,
-   "isDeleted": false,
-   "boundElements": [
-    {
-     "type": "text",
-     "id": "a-det-pico-32-label"
-    }
-   ],
-   "updated": 1,
-   "link": null,
-   "locked": false,
-   "points": [
-    [
-     0,
-     0.0
-    ],
-    [
-     135,
-     -66.0
-    ]
-   ],
-   "lastCommittedPoint": null,
-   "startBinding": {
-    "elementId": "det",
-    "focus": 0,
-    "gap": 4
-   },
-   "endBinding": {
-    "elementId": "pico",
-    "focus": 0,
-    "gap": 4
-   },
-   "startArrowhead": null,
-   "endArrowhead": "arrow",
-   "elbowed": false
-  },
-  {
-   "id": "a-det-pico-32-label",
-   "type": "text",
-   "x": 346.82,
-   "y": 391.0,
-   "width": 111.35999999999999,
-   "height": 40.0,
-   "angle": 0,
-   "strokeColor": "#1e1e1e",
-   "backgroundColor": "transparent",
-   "fillStyle": "solid",
-   "strokeWidth": 2,
-   "strokeStyle": "solid",
-   "roughness": 1,
-   "opacity": 100,
-   "groupIds": [],
-   "frameId": null,
-   "roundness": null,
-   "seed": 2605267638,
-   "version": 1,
-   "versionNonce": 3860253924,
-   "isDeleted": false,
-   "boundElements": null,
-   "updated": 1,
-   "link": null,
-   "locked": false,
-   "text": "GPIO27\nHIGH = mains",
-   "originalText": "GPIO27\nHIGH = mains",
-   "fontSize": 16,
-   "fontFamily": 1,
-   "textAlign": "center",
-   "verticalAlign": "middle",
-   "containerId": "a-det-pico-32",
-   "lineHeight": 1.25,
-   "autoResize": true
   },
   {
    "id": "pc",
    "type": "rectangle",
    "x": 40,
-   "y": 610,
+   "y": 545,
    "width": 330,
-   "height": 100,
+   "height": 90,
    "angle": 0,
    "strokeColor": "#1e1e1e",
    "backgroundColor": "#e9ecef",
@@ -1460,7 +478,7 @@
    "id": "pc-text",
    "type": "text",
    "x": 102.92,
-   "y": 640.0,
+   "y": 570.0,
    "width": 204.16,
    "height": 40.0,
    "angle": 0,
@@ -1493,12 +511,115 @@
    "autoResize": true
   },
   {
-   "id": "a-pc-pico-36",
-   "type": "arrow",
-   "x": 370,
-   "y": 660.0,
-   "width": 100,
-   "height": 183.0,
+   "id": "z-board",
+   "type": "rectangle",
+   "x": 520,
+   "y": 80,
+   "width": 680,
+   "height": 700,
+   "angle": 0,
+   "strokeColor": "#868e96",
+   "backgroundColor": "#e7f5ff",
+   "fillStyle": "solid",
+   "strokeWidth": 2,
+   "strokeStyle": "dashed",
+   "roughness": 1,
+   "opacity": 100,
+   "groupIds": [],
+   "frameId": null,
+   "roundness": {
+    "type": 3
+   },
+   "seed": 521251604,
+   "version": 1,
+   "versionNonce": 3635042662,
+   "isDeleted": false,
+   "boundElements": [],
+   "updated": 1,
+   "link": null,
+   "locked": false
+  },
+  {
+   "id": "t14",
+   "type": "text",
+   "x": 536,
+   "y": 90,
+   "width": 255.2,
+   "height": 25.0,
+   "angle": 0,
+   "strokeColor": "#495057",
+   "backgroundColor": "transparent",
+   "fillStyle": "solid",
+   "strokeWidth": 2,
+   "strokeStyle": "solid",
+   "roughness": 1,
+   "opacity": 100,
+   "groupIds": [],
+   "frameId": null,
+   "roundness": null,
+   "seed": 2172603044,
+   "version": 1,
+   "versionNonce": 3257446823,
+   "isDeleted": false,
+   "boundElements": null,
+   "updated": 1,
+   "link": null,
+   "locked": false,
+   "text": "RF-Power-Monitor board",
+   "originalText": "RF-Power-Monitor board",
+   "fontSize": 20,
+   "fontFamily": 1,
+   "textAlign": "left",
+   "verticalAlign": "top",
+   "containerId": null,
+   "lineHeight": 1.25,
+   "autoResize": true
+  },
+  {
+   "id": "flash",
+   "type": "rectangle",
+   "x": 560,
+   "y": 120,
+   "width": 340,
+   "height": 120,
+   "angle": 0,
+   "strokeColor": "#1e1e1e",
+   "backgroundColor": "#b2f2bb",
+   "fillStyle": "solid",
+   "strokeWidth": 2,
+   "strokeStyle": "solid",
+   "roughness": 1,
+   "opacity": 100,
+   "groupIds": [],
+   "frameId": null,
+   "roundness": {
+    "type": 3
+   },
+   "seed": 761952630,
+   "version": 1,
+   "versionNonce": 3395850745,
+   "isDeleted": false,
+   "boundElements": [
+    {
+     "type": "text",
+     "id": "flash-text"
+    },
+    {
+     "type": "arrow",
+     "id": "a-pico-flash-27"
+    }
+   ],
+   "updated": 1,
+   "link": null,
+   "locked": false
+  },
+  {
+   "id": "flash-text",
+   "type": "text",
+   "x": 614.0,
+   "y": 150.0,
+   "width": 231.99999999999997,
+   "height": 60.0,
    "angle": 0,
    "strokeColor": "#1e1e1e",
    "backgroundColor": "transparent",
@@ -1509,52 +630,532 @@
    "opacity": 100,
    "groupIds": [],
    "frameId": null,
-   "roundness": {
-    "type": 2
-   },
-   "seed": 3732223902,
+   "roundness": null,
+   "seed": 2888217432,
    "version": 1,
-   "versionNonce": 3824055702,
+   "versionNonce": 2104016844,
+   "isDeleted": false,
+   "boundElements": null,
+   "updated": 1,
+   "link": null,
+   "locked": false,
+   "text": "Internal flash (LittleFS)\nsettings_a/b, update_a/b,\ntimelog_a/b.json",
+   "originalText": "Internal flash (LittleFS)\nsettings_a/b, update_a/b,\ntimelog_a/b.json",
+   "fontSize": 16,
+   "fontFamily": 1,
+   "textAlign": "center",
+   "verticalAlign": "middle",
+   "containerId": "flash",
+   "lineHeight": 1.25,
+   "autoResize": true
+  },
+  {
+   "id": "pico",
+   "type": "rectangle",
+   "x": 560,
+   "y": 300,
+   "width": 340,
+   "height": 320,
+   "angle": 0,
+   "strokeColor": "#1e1e1e",
+   "backgroundColor": "#a5d8ff",
+   "fillStyle": "solid",
+   "strokeWidth": 2,
+   "strokeStyle": "solid",
+   "roughness": 1,
+   "opacity": 100,
+   "groupIds": [],
+   "frameId": null,
+   "roundness": {
+    "type": 3
+   },
+   "seed": 61940498,
+   "version": 1,
+   "versionNonce": 4095959685,
    "isDeleted": false,
    "boundElements": [
     {
      "type": "text",
-     "id": "a-pc-pico-36-label"
+     "id": "pico-text"
+    },
+    {
+     "type": "arrow",
+     "id": "a-pico-flash-27"
+    },
+    {
+     "type": "arrow",
+     "id": "a-pico-w5500-28"
+    },
+    {
+     "type": "arrow",
+     "id": "a-pico-tmp-30"
+    },
+    {
+     "type": "arrow",
+     "id": "a-button-pico-32"
+    },
+    {
+     "type": "arrow",
+     "id": "a-pico-led-33"
+    },
+    {
+     "type": "arrow",
+     "id": "a-det-pico-34"
+    },
+    {
+     "type": "arrow",
+     "id": "a-pc-pico-36"
     }
    ],
+   "updated": 1,
+   "link": null,
+   "locked": false
+  },
+  {
+   "id": "pico-text",
+   "type": "text",
+   "x": 581.52,
+   "y": 380.0,
+   "width": 296.96,
+   "height": 160.0,
+   "angle": 0,
+   "strokeColor": "#1e1e1e",
+   "backgroundColor": "transparent",
+   "fillStyle": "solid",
+   "strokeWidth": 2,
+   "strokeStyle": "solid",
+   "roughness": 1,
+   "opacity": 100,
+   "groupIds": [],
+   "frameId": null,
+   "roundness": null,
+   "seed": 4094507883,
+   "version": 1,
+   "versionNonce": 4072392326,
+   "isDeleted": false,
+   "boundElements": null,
+   "updated": 1,
+   "link": null,
+   "locked": false,
+   "text": "Raspberry Pi Pico (RP2040)\n\nCore 0: network, SNMP, web page,\nLLDP, NTP, syslog, menu,\ntemperatures, load, watchdog\n8 s (fed while core 1 runs)\n\nCore 1: GPIO27 + GPIO22, 1 kHz",
+   "originalText": "Raspberry Pi Pico (RP2040)\n\nCore 0: network, SNMP, web page,\nLLDP, NTP, syslog, menu,\ntemperatures, load, watchdog\n8 s (fed while core 1 runs)\n\nCore 1: GPIO27 + GPIO22, 1 kHz",
+   "fontSize": 16,
+   "fontFamily": 1,
+   "textAlign": "center",
+   "verticalAlign": "middle",
+   "containerId": "pico",
+   "lineHeight": 1.25,
+   "autoResize": true
+  },
+  {
+   "id": "w5500",
+   "type": "rectangle",
+   "x": 990,
+   "y": 300,
+   "width": 170,
+   "height": 140,
+   "angle": 0,
+   "strokeColor": "#1e1e1e",
+   "backgroundColor": "#99e9f2",
+   "fillStyle": "solid",
+   "strokeWidth": 2,
+   "strokeStyle": "solid",
+   "roughness": 1,
+   "opacity": 100,
+   "groupIds": [],
+   "frameId": null,
+   "roundness": {
+    "type": 3
+   },
+   "seed": 1287132345,
+   "version": 1,
+   "versionNonce": 3883359256,
+   "isDeleted": false,
+   "boundElements": [
+    {
+     "type": "text",
+     "id": "w5500-text"
+    },
+    {
+     "type": "arrow",
+     "id": "a-pico-w5500-28"
+    },
+    {
+     "type": "arrow",
+     "id": "a-w5500-switch-42"
+    }
+   ],
+   "updated": 1,
+   "link": null,
+   "locked": false
+  },
+  {
+   "id": "w5500-text",
+   "type": "text",
+   "x": 1005.4,
+   "y": 330.0,
+   "width": 139.2,
+   "height": 80.0,
+   "angle": 0,
+   "strokeColor": "#1e1e1e",
+   "backgroundColor": "transparent",
+   "fillStyle": "solid",
+   "strokeWidth": 2,
+   "strokeStyle": "solid",
+   "roughness": 1,
+   "opacity": 100,
+   "groupIds": [],
+   "frameId": null,
+   "roundness": null,
+   "seed": 3461904228,
+   "version": 1,
+   "versionNonce": 511009048,
+   "isDeleted": false,
+   "boundElements": null,
+   "updated": 1,
+   "link": null,
+   "locked": false,
+   "text": "W5500\nEthernet\nSPI0: GPIO16-19\nRST 20, INT 21",
+   "originalText": "W5500\nEthernet\nSPI0: GPIO16-19\nRST 20, INT 21",
+   "fontSize": 16,
+   "fontFamily": 1,
+   "textAlign": "center",
+   "verticalAlign": "middle",
+   "containerId": "w5500",
+   "lineHeight": 1.25,
+   "autoResize": true
+  },
+  {
+   "id": "tmp",
+   "type": "rectangle",
+   "x": 990,
+   "y": 490,
+   "width": 170,
+   "height": 100,
+   "angle": 0,
+   "strokeColor": "#1e1e1e",
+   "backgroundColor": "#ffd8a8",
+   "fillStyle": "solid",
+   "strokeWidth": 2,
+   "strokeStyle": "solid",
+   "roughness": 1,
+   "opacity": 100,
+   "groupIds": [],
+   "frameId": null,
+   "roundness": {
+    "type": 3
+   },
+   "seed": 2280102563,
+   "version": 1,
+   "versionNonce": 720721222,
+   "isDeleted": false,
+   "boundElements": [
+    {
+     "type": "text",
+     "id": "tmp-text"
+    },
+    {
+     "type": "arrow",
+     "id": "a-pico-tmp-30"
+    }
+   ],
+   "updated": 1,
+   "link": null,
+   "locked": false
+  },
+  {
+   "id": "tmp-text",
+   "type": "text",
+   "x": 1014.6800000000001,
+   "y": 500.0,
+   "width": 120.63999999999999,
+   "height": 80.0,
+   "angle": 0,
+   "strokeColor": "#1e1e1e",
+   "backgroundColor": "transparent",
+   "fillStyle": "solid",
+   "strokeWidth": 2,
+   "strokeStyle": "solid",
+   "roughness": 1,
+   "opacity": 100,
+   "groupIds": [],
+   "frameId": null,
+   "roundness": null,
+   "seed": 3750925432,
+   "version": 1,
+   "versionNonce": 1358061445,
+   "isDeleted": false,
+   "boundElements": null,
+   "updated": 1,
+   "link": null,
+   "locked": false,
+   "text": "TMP1075\nambient temp.\nI2C0, 0x48\nGPIO4/5",
+   "originalText": "TMP1075\nambient temp.\nI2C0, 0x48\nGPIO4/5",
+   "fontSize": 16,
+   "fontFamily": 1,
+   "textAlign": "center",
+   "verticalAlign": "middle",
+   "containerId": "tmp",
+   "lineHeight": 1.25,
+   "autoResize": true
+  },
+  {
+   "id": "button",
+   "type": "rectangle",
+   "x": 560,
+   "y": 670,
+   "width": 150,
+   "height": 80,
+   "angle": 0,
+   "strokeColor": "#1e1e1e",
+   "backgroundColor": "#e9ecef",
+   "fillStyle": "solid",
+   "strokeWidth": 2,
+   "strokeStyle": "solid",
+   "roughness": 1,
+   "opacity": 100,
+   "groupIds": [],
+   "frameId": null,
+   "roundness": {
+    "type": 3
+   },
+   "seed": 4152782114,
+   "version": 1,
+   "versionNonce": 92932776,
+   "isDeleted": false,
+   "boundElements": [
+    {
+     "type": "text",
+     "id": "button-text"
+    },
+    {
+     "type": "arrow",
+     "id": "a-button-pico-32"
+    }
+   ],
+   "updated": 1,
+   "link": null,
+   "locked": false
+  },
+  {
+   "id": "button-text",
+   "type": "text",
+   "x": 574.6800000000001,
+   "y": 690.0,
+   "width": 120.63999999999999,
+   "height": 40.0,
+   "angle": 0,
+   "strokeColor": "#1e1e1e",
+   "backgroundColor": "transparent",
+   "fillStyle": "solid",
+   "strokeWidth": 2,
+   "strokeStyle": "solid",
+   "roughness": 1,
+   "opacity": 100,
+   "groupIds": [],
+   "frameId": null,
+   "roundness": null,
+   "seed": 3820115255,
+   "version": 1,
+   "versionNonce": 4079627973,
+   "isDeleted": false,
+   "boundElements": null,
+   "updated": 1,
+   "link": null,
+   "locked": false,
+   "text": "Reset button\nGPIO22 to GND",
+   "originalText": "Reset button\nGPIO22 to GND",
+   "fontSize": 16,
+   "fontFamily": 1,
+   "textAlign": "center",
+   "verticalAlign": "middle",
+   "containerId": "button",
+   "lineHeight": 1.25,
+   "autoResize": true
+  },
+  {
+   "id": "led",
+   "type": "rectangle",
+   "x": 750,
+   "y": 670,
+   "width": 150,
+   "height": 80,
+   "angle": 0,
+   "strokeColor": "#1e1e1e",
+   "backgroundColor": "#ffec99",
+   "fillStyle": "solid",
+   "strokeWidth": 2,
+   "strokeStyle": "solid",
+   "roughness": 1,
+   "opacity": 100,
+   "groupIds": [],
+   "frameId": null,
+   "roundness": {
+    "type": 3
+   },
+   "seed": 463194924,
+   "version": 1,
+   "versionNonce": 620896848,
+   "isDeleted": false,
+   "boundElements": [
+    {
+     "type": "text",
+     "id": "led-text"
+    },
+    {
+     "type": "arrow",
+     "id": "a-pico-led-33"
+    }
+   ],
+   "updated": 1,
+   "link": null,
+   "locked": false
+  },
+  {
+   "id": "led-text",
+   "type": "text",
+   "x": 764.6800000000001,
+   "y": 690.0,
+   "width": 120.63999999999999,
+   "height": 40.0,
+   "angle": 0,
+   "strokeColor": "#1e1e1e",
+   "backgroundColor": "transparent",
+   "fillStyle": "solid",
+   "strokeWidth": 2,
+   "strokeStyle": "solid",
+   "roughness": 1,
+   "opacity": 100,
+   "groupIds": [],
+   "frameId": null,
+   "roundness": null,
+   "seed": 4096995981,
+   "version": 1,
+   "versionNonce": 2854538274,
+   "isDeleted": false,
+   "boundElements": null,
+   "updated": 1,
+   "link": null,
+   "locked": false,
+   "text": "Onboard LED\nstatus, reset",
+   "originalText": "Onboard LED\nstatus, reset",
+   "fontSize": 16,
+   "fontFamily": 1,
+   "textAlign": "center",
+   "verticalAlign": "middle",
+   "containerId": "led",
+   "lineHeight": 1.25,
+   "autoResize": true
+  },
+  {
+   "id": "a-pico-flash-27",
+   "type": "arrow",
+   "x": 730.0,
+   "y": 300,
+   "width": 0.0,
+   "height": 60,
+   "angle": 0,
+   "strokeColor": "#1e1e1e",
+   "backgroundColor": "transparent",
+   "fillStyle": "solid",
+   "strokeWidth": 2,
+   "strokeStyle": "solid",
+   "roughness": 1,
+   "opacity": 100,
+   "groupIds": [],
+   "frameId": null,
+   "roundness": null,
+   "seed": 150036622,
+   "version": 1,
+   "versionNonce": 1721896704,
+   "isDeleted": false,
+   "boundElements": [],
    "updated": 1,
    "link": null,
    "locked": false,
    "points": [
     [
-     0,
-     0.0
+     0.0,
+     0
     ],
     [
-     100,
-     -183.0
+     0.0,
+     -60
     ]
    ],
    "lastCommittedPoint": null,
    "startBinding": {
-    "elementId": "pc",
-    "focus": 0,
-    "gap": 4
-   },
-   "endBinding": {
     "elementId": "pico",
     "focus": 0,
-    "gap": 4
+    "gap": 1
+   },
+   "endBinding": {
+    "elementId": "flash",
+    "focus": 0,
+    "gap": 1
    },
    "startArrowhead": "arrow",
    "endArrowhead": "arrow",
    "elbowed": false
   },
   {
-   "id": "a-pc-pico-36-label",
+   "id": "a-pico-w5500-28",
+   "type": "arrow",
+   "x": 900,
+   "y": 370,
+   "width": 90,
+   "height": 0,
+   "angle": 0,
+   "strokeColor": "#1e1e1e",
+   "backgroundColor": "transparent",
+   "fillStyle": "solid",
+   "strokeWidth": 2,
+   "strokeStyle": "solid",
+   "roughness": 1,
+   "opacity": 100,
+   "groupIds": [
+    "a-pico-w5500-28-g"
+   ],
+   "frameId": null,
+   "roundness": null,
+   "seed": 901515364,
+   "version": 1,
+   "versionNonce": 2191965794,
+   "isDeleted": false,
+   "boundElements": [],
+   "updated": 1,
+   "link": null,
+   "locked": false,
+   "points": [
+    [
+     0,
+     0
+    ],
+    [
+     90,
+     0
+    ]
+   ],
+   "lastCommittedPoint": null,
+   "startBinding": {
+    "elementId": "pico",
+    "focus": 0,
+    "gap": 1
+   },
+   "endBinding": {
+    "elementId": "w5500",
+    "focus": 0,
+    "gap": 1
+   },
+   "startArrowhead": "arrow",
+   "endArrowhead": "arrow",
+   "elbowed": false
+  },
+  {
+   "id": "a-pico-w5500-28-label",
    "type": "text",
-   "x": 406.08,
-   "y": 558.5,
+   "x": 931.08,
+   "y": 340.0,
    "width": 27.839999999999996,
    "height": 20.0,
    "angle": 0,
@@ -1565,7 +1166,384 @@
    "strokeStyle": "solid",
    "roughness": 1,
    "opacity": 100,
+   "groupIds": [
+    "a-pico-w5500-28-g"
+   ],
+   "frameId": null,
+   "roundness": null,
+   "seed": 528293710,
+   "version": 1,
+   "versionNonce": 1486076819,
+   "isDeleted": false,
+   "boundElements": null,
+   "updated": 1,
+   "link": null,
+   "locked": false,
+   "text": "SPI",
+   "originalText": "SPI",
+   "fontSize": 16,
+   "fontFamily": 1,
+   "textAlign": "center",
+   "verticalAlign": "top",
+   "containerId": null,
+   "lineHeight": 1.25,
+   "autoResize": true
+  },
+  {
+   "id": "a-pico-tmp-30",
+   "type": "arrow",
+   "x": 900,
+   "y": 540,
+   "width": 90,
+   "height": 0,
+   "angle": 0,
+   "strokeColor": "#1e1e1e",
+   "backgroundColor": "transparent",
+   "fillStyle": "solid",
+   "strokeWidth": 2,
+   "strokeStyle": "solid",
+   "roughness": 1,
+   "opacity": 100,
+   "groupIds": [
+    "a-pico-tmp-30-g"
+   ],
+   "frameId": null,
+   "roundness": null,
+   "seed": 2491199806,
+   "version": 1,
+   "versionNonce": 3586144030,
+   "isDeleted": false,
+   "boundElements": [],
+   "updated": 1,
+   "link": null,
+   "locked": false,
+   "points": [
+    [
+     0,
+     0
+    ],
+    [
+     90,
+     0
+    ]
+   ],
+   "lastCommittedPoint": null,
+   "startBinding": {
+    "elementId": "pico",
+    "focus": 0,
+    "gap": 1
+   },
+   "endBinding": {
+    "elementId": "tmp",
+    "focus": 0,
+    "gap": 1
+   },
+   "startArrowhead": "arrow",
+   "endArrowhead": "arrow",
+   "elbowed": false
+  },
+  {
+   "id": "a-pico-tmp-30-label",
+   "type": "text",
+   "x": 931.08,
+   "y": 510.0,
+   "width": 27.839999999999996,
+   "height": 20.0,
+   "angle": 0,
+   "strokeColor": "#1e1e1e",
+   "backgroundColor": "transparent",
+   "fillStyle": "solid",
+   "strokeWidth": 2,
+   "strokeStyle": "solid",
+   "roughness": 1,
+   "opacity": 100,
+   "groupIds": [
+    "a-pico-tmp-30-g"
+   ],
+   "frameId": null,
+   "roundness": null,
+   "seed": 102699250,
+   "version": 1,
+   "versionNonce": 635896799,
+   "isDeleted": false,
+   "boundElements": null,
+   "updated": 1,
+   "link": null,
+   "locked": false,
+   "text": "I2C",
+   "originalText": "I2C",
+   "fontSize": 16,
+   "fontFamily": 1,
+   "textAlign": "center",
+   "verticalAlign": "top",
+   "containerId": null,
+   "lineHeight": 1.25,
+   "autoResize": true
+  },
+  {
+   "id": "a-button-pico-32",
+   "type": "arrow",
+   "x": 635,
+   "y": 670,
+   "width": 0,
+   "height": 50,
+   "angle": 0,
+   "strokeColor": "#1e1e1e",
+   "backgroundColor": "transparent",
+   "fillStyle": "solid",
+   "strokeWidth": 2,
+   "strokeStyle": "solid",
+   "roughness": 1,
+   "opacity": 100,
    "groupIds": [],
+   "frameId": null,
+   "roundness": null,
+   "seed": 3741677543,
+   "version": 1,
+   "versionNonce": 810789512,
+   "isDeleted": false,
+   "boundElements": [],
+   "updated": 1,
+   "link": null,
+   "locked": false,
+   "points": [
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     -50
+    ]
+   ],
+   "lastCommittedPoint": null,
+   "startBinding": {
+    "elementId": "button",
+    "focus": 0,
+    "gap": 1
+   },
+   "endBinding": {
+    "elementId": "pico",
+    "focus": 0,
+    "gap": 1
+   },
+   "startArrowhead": null,
+   "endArrowhead": "arrow",
+   "elbowed": false
+  },
+  {
+   "id": "a-pico-led-33",
+   "type": "arrow",
+   "x": 825,
+   "y": 620,
+   "width": 0,
+   "height": 50,
+   "angle": 0,
+   "strokeColor": "#1e1e1e",
+   "backgroundColor": "transparent",
+   "fillStyle": "solid",
+   "strokeWidth": 2,
+   "strokeStyle": "solid",
+   "roughness": 1,
+   "opacity": 100,
+   "groupIds": [],
+   "frameId": null,
+   "roundness": null,
+   "seed": 2645497534,
+   "version": 1,
+   "versionNonce": 3931111863,
+   "isDeleted": false,
+   "boundElements": [],
+   "updated": 1,
+   "link": null,
+   "locked": false,
+   "points": [
+    [
+     0,
+     0
+    ],
+    [
+     0,
+     50
+    ]
+   ],
+   "lastCommittedPoint": null,
+   "startBinding": {
+    "elementId": "pico",
+    "focus": 0,
+    "gap": 1
+   },
+   "endBinding": {
+    "elementId": "led",
+    "focus": 0,
+    "gap": 1
+   },
+   "startArrowhead": null,
+   "endArrowhead": "arrow",
+   "elbowed": false
+  },
+  {
+   "id": "a-det-pico-34",
+   "type": "arrow",
+   "x": 335,
+   "y": 430,
+   "width": 225,
+   "height": 0,
+   "angle": 0,
+   "strokeColor": "#1e1e1e",
+   "backgroundColor": "transparent",
+   "fillStyle": "solid",
+   "strokeWidth": 2,
+   "strokeStyle": "solid",
+   "roughness": 1,
+   "opacity": 100,
+   "groupIds": [
+    "a-det-pico-34-g"
+   ],
+   "frameId": null,
+   "roundness": null,
+   "seed": 2426136124,
+   "version": 1,
+   "versionNonce": 1582059259,
+   "isDeleted": false,
+   "boundElements": [],
+   "updated": 1,
+   "link": null,
+   "locked": false,
+   "points": [
+    [
+     0,
+     0
+    ],
+    [
+     225,
+     0
+    ]
+   ],
+   "lastCommittedPoint": null,
+   "startBinding": {
+    "elementId": "det",
+    "focus": 0,
+    "gap": 1
+   },
+   "endBinding": {
+    "elementId": "pico",
+    "focus": 0,
+    "gap": 1
+   },
+   "startArrowhead": null,
+   "endArrowhead": "arrow",
+   "elbowed": false
+  },
+  {
+   "id": "a-det-pico-34-label",
+   "type": "text",
+   "x": 391.82,
+   "y": 380.0,
+   "width": 111.35999999999999,
+   "height": 40.0,
+   "angle": 0,
+   "strokeColor": "#1e1e1e",
+   "backgroundColor": "transparent",
+   "fillStyle": "solid",
+   "strokeWidth": 2,
+   "strokeStyle": "solid",
+   "roughness": 1,
+   "opacity": 100,
+   "groupIds": [
+    "a-det-pico-34-g"
+   ],
+   "frameId": null,
+   "roundness": null,
+   "seed": 196819713,
+   "version": 1,
+   "versionNonce": 2776861712,
+   "isDeleted": false,
+   "boundElements": null,
+   "updated": 1,
+   "link": null,
+   "locked": false,
+   "text": "GPIO27\nHIGH = mains",
+   "originalText": "GPIO27\nHIGH = mains",
+   "fontSize": 16,
+   "fontFamily": 1,
+   "textAlign": "center",
+   "verticalAlign": "top",
+   "containerId": null,
+   "lineHeight": 1.25,
+   "autoResize": true
+  },
+  {
+   "id": "a-pc-pico-36",
+   "type": "arrow",
+   "x": 370,
+   "y": 590,
+   "width": 190,
+   "height": 0,
+   "angle": 0,
+   "strokeColor": "#1e1e1e",
+   "backgroundColor": "transparent",
+   "fillStyle": "solid",
+   "strokeWidth": 2,
+   "strokeStyle": "solid",
+   "roughness": 1,
+   "opacity": 100,
+   "groupIds": [
+    "a-pc-pico-36-g"
+   ],
+   "frameId": null,
+   "roundness": null,
+   "seed": 3732223902,
+   "version": 1,
+   "versionNonce": 3824055702,
+   "isDeleted": false,
+   "boundElements": [],
+   "updated": 1,
+   "link": null,
+   "locked": false,
+   "points": [
+    [
+     0,
+     0
+    ],
+    [
+     190,
+     0
+    ]
+   ],
+   "lastCommittedPoint": null,
+   "startBinding": {
+    "elementId": "pc",
+    "focus": 0,
+    "gap": 1
+   },
+   "endBinding": {
+    "elementId": "pico",
+    "focus": 0,
+    "gap": 1
+   },
+   "startArrowhead": "arrow",
+   "endArrowhead": "arrow",
+   "elbowed": false
+  },
+  {
+   "id": "a-pc-pico-36-label",
+   "type": "text",
+   "x": 451.08,
+   "y": 560.0,
+   "width": 27.839999999999996,
+   "height": 20.0,
+   "angle": 0,
+   "strokeColor": "#1e1e1e",
+   "backgroundColor": "transparent",
+   "fillStyle": "solid",
+   "strokeWidth": 2,
+   "strokeStyle": "solid",
+   "roughness": 1,
+   "opacity": 100,
+   "groupIds": [
+    "a-pc-pico-36-g"
+   ],
    "frameId": null,
    "roundness": null,
    "seed": 2824149222,
@@ -1581,18 +1559,18 @@
    "fontSize": 16,
    "fontFamily": 1,
    "textAlign": "center",
-   "verticalAlign": "middle",
-   "containerId": "a-pc-pico-36",
+   "verticalAlign": "top",
+   "containerId": null,
    "lineHeight": 1.25,
    "autoResize": true
   },
   {
    "id": "z-net",
    "type": "rectangle",
-   "x": 1150,
+   "x": 1330,
    "y": 80,
-   "width": 380,
-   "height": 830,
+   "width": 640,
+   "height": 800,
    "angle": 0,
    "strokeColor": "#868e96",
    "backgroundColor": "#f8f9fa",
@@ -1618,7 +1596,7 @@
   {
    "id": "t39",
    "type": "text",
-   "x": 1166,
+   "x": 1346,
    "y": 90,
    "width": 81.19999999999999,
    "height": 25.0,
@@ -1652,11 +1630,204 @@
    "autoResize": true
   },
   {
+   "id": "switch",
+   "type": "rectangle",
+   "x": 1370,
+   "y": 130,
+   "width": 120,
+   "height": 720,
+   "angle": 0,
+   "strokeColor": "#1e1e1e",
+   "backgroundColor": "#e9ecef",
+   "fillStyle": "solid",
+   "strokeWidth": 2,
+   "strokeStyle": "solid",
+   "roughness": 1,
+   "opacity": 100,
+   "groupIds": [],
+   "frameId": null,
+   "roundness": {
+    "type": 3
+   },
+   "seed": 244496148,
+   "version": 1,
+   "versionNonce": 2928586534,
+   "isDeleted": false,
+   "boundElements": [
+    {
+     "type": "text",
+     "id": "switch-text"
+    },
+    {
+     "type": "arrow",
+     "id": "a-w5500-switch-42"
+    },
+    {
+     "type": "arrow",
+     "id": "a-switch-dhcp-46"
+    },
+    {
+     "type": "arrow",
+     "id": "a-switch-browser-49"
+    },
+    {
+     "type": "arrow",
+     "id": "a-switch-lnms-52"
+    },
+    {
+     "type": "arrow",
+     "id": "a-switch-traps-55"
+    },
+    {
+     "type": "arrow",
+     "id": "a-switch-ntp-58"
+    },
+    {
+     "type": "arrow",
+     "id": "a-switch-syslog-61"
+    },
+    {
+     "type": "arrow",
+     "id": "a-switch-updsite-64"
+    }
+   ],
+   "updated": 1,
+   "link": null,
+   "locked": false
+  },
+  {
+   "id": "switch-text",
+   "type": "text",
+   "x": 1398.68,
+   "y": 411.25,
+   "width": 62.63999999999999,
+   "height": 157.5,
+   "angle": 0,
+   "strokeColor": "#1e1e1e",
+   "backgroundColor": "transparent",
+   "fillStyle": "solid",
+   "strokeWidth": 2,
+   "strokeStyle": "solid",
+   "roughness": 1,
+   "opacity": 100,
+   "groupIds": [],
+   "frameId": null,
+   "roundness": null,
+   "seed": 2320273349,
+   "version": 1,
+   "versionNonce": 1799505223,
+   "isDeleted": false,
+   "boundElements": null,
+   "updated": 1,
+   "link": null,
+   "locked": false,
+   "text": "LAN\nswitch\n\nIPv4\n+ IPv6\n\nLLDP",
+   "originalText": "LAN\nswitch\n\nIPv4\n+ IPv6\n\nLLDP",
+   "fontSize": 18,
+   "fontFamily": 1,
+   "textAlign": "center",
+   "verticalAlign": "middle",
+   "containerId": "switch",
+   "lineHeight": 1.25,
+   "autoResize": true
+  },
+  {
+   "id": "a-w5500-switch-42",
+   "type": "arrow",
+   "x": 1160,
+   "y": 370,
+   "width": 210,
+   "height": 0,
+   "angle": 0,
+   "strokeColor": "#1e1e1e",
+   "backgroundColor": "transparent",
+   "fillStyle": "solid",
+   "strokeWidth": 2,
+   "strokeStyle": "solid",
+   "roughness": 1,
+   "opacity": 100,
+   "groupIds": [
+    "a-w5500-switch-42-g"
+   ],
+   "frameId": null,
+   "roundness": null,
+   "seed": 341932536,
+   "version": 1,
+   "versionNonce": 4205125034,
+   "isDeleted": false,
+   "boundElements": [],
+   "updated": 1,
+   "link": null,
+   "locked": false,
+   "points": [
+    [
+     0,
+     0
+    ],
+    [
+     210,
+     0
+    ]
+   ],
+   "lastCommittedPoint": null,
+   "startBinding": {
+    "elementId": "w5500",
+    "focus": 0,
+    "gap": 1
+   },
+   "endBinding": {
+    "elementId": "switch",
+    "focus": 0,
+    "gap": 1
+   },
+   "startArrowhead": "arrow",
+   "endArrowhead": "arrow",
+   "elbowed": false
+  },
+  {
+   "id": "a-w5500-switch-42-label",
+   "type": "text",
+   "x": 1218.6,
+   "y": 320.0,
+   "width": 92.8,
+   "height": 40.0,
+   "angle": 0,
+   "strokeColor": "#1e1e1e",
+   "backgroundColor": "transparent",
+   "fillStyle": "solid",
+   "strokeWidth": 2,
+   "strokeStyle": "solid",
+   "roughness": 1,
+   "opacity": 100,
+   "groupIds": [
+    "a-w5500-switch-42-g"
+   ],
+   "frameId": null,
+   "roundness": null,
+   "seed": 1938902577,
+   "version": 1,
+   "versionNonce": 1826016855,
+   "isDeleted": false,
+   "boundElements": null,
+   "updated": 1,
+   "link": null,
+   "locked": false,
+   "text": "100 Mbit/s\nLLDP",
+   "originalText": "100 Mbit/s\nLLDP",
+   "fontSize": 16,
+   "fontFamily": 1,
+   "textAlign": "center",
+   "verticalAlign": "top",
+   "containerId": null,
+   "lineHeight": 1.25,
+   "autoResize": true
+  },
+  {
    "id": "dhcp",
    "type": "rectangle",
-   "x": 1175,
-   "y": 125,
-   "width": 160,
+   "x": 1590,
+   "y": 130,
+   "width": 350,
    "height": 110,
    "angle": 0,
    "strokeColor": "#1e1e1e",
@@ -1682,7 +1853,7 @@
     },
     {
      "type": "arrow",
-     "id": "a-switch-dhcp-52"
+     "id": "a-switch-dhcp-46"
     }
    ],
    "updated": 1,
@@ -1692,9 +1863,9 @@
   {
    "id": "dhcp-text",
    "type": "text",
-   "x": 1185.4,
-   "y": 150.0,
-   "width": 139.2,
+   "x": 1621.16,
+   "y": 155.0,
+   "width": 287.68,
    "height": 60.0,
    "angle": 0,
    "strokeColor": "#1e1e1e",
@@ -1715,8 +1886,8 @@
    "updated": 1,
    "link": null,
    "locked": false,
-   "text": "DHCP server\n224: trap dest.\n225: update URL",
-   "originalText": "DHCP server\n224: trap dest.\n225: update URL",
+   "text": "DHCP server: options 7 syslog,\n42 NTP, 224 trap destination,\n225 update site; DHCPv6 31: NTP",
+   "originalText": "DHCP server: options 7 syslog,\n42 NTP, 224 trap destination,\n225 update site; DHCPv6 31: NTP",
    "fontSize": 16,
    "fontFamily": 1,
    "textAlign": "center",
@@ -1726,12 +1897,63 @@
    "autoResize": true
   },
   {
+   "id": "a-switch-dhcp-46",
+   "type": "arrow",
+   "x": 1490,
+   "y": 185.0,
+   "width": 100,
+   "height": 0.0,
+   "angle": 0,
+   "strokeColor": "#1e1e1e",
+   "backgroundColor": "transparent",
+   "fillStyle": "solid",
+   "strokeWidth": 2,
+   "strokeStyle": "solid",
+   "roughness": 1,
+   "opacity": 100,
+   "groupIds": [],
+   "frameId": null,
+   "roundness": null,
+   "seed": 4214064850,
+   "version": 1,
+   "versionNonce": 3016462565,
+   "isDeleted": false,
+   "boundElements": [],
+   "updated": 1,
+   "link": null,
+   "locked": false,
+   "points": [
+    [
+     0,
+     0.0
+    ],
+    [
+     100,
+     0.0
+    ]
+   ],
+   "lastCommittedPoint": null,
+   "startBinding": {
+    "elementId": "switch",
+    "focus": 0,
+    "gap": 1
+   },
+   "endBinding": {
+    "elementId": "dhcp",
+    "focus": 0,
+    "gap": 1
+   },
+   "startArrowhead": "arrow",
+   "endArrowhead": "arrow",
+   "elbowed": false
+  },
+  {
    "id": "browser",
    "type": "rectangle",
-   "x": 1350,
-   "y": 140,
-   "width": 140,
-   "height": 80,
+   "x": 1590,
+   "y": 265,
+   "width": 350,
+   "height": 70,
    "angle": 0,
    "strokeColor": "#1e1e1e",
    "backgroundColor": "#d0bfff",
@@ -1756,7 +1978,7 @@
     },
     {
      "type": "arrow",
-     "id": "a-switch-browser-53"
+     "id": "a-switch-browser-49"
     }
    ],
    "updated": 1,
@@ -1766,10 +1988,10 @@
   {
    "id": "browser-text",
    "type": "text",
-   "x": 1382.88,
-   "y": 150.0,
-   "width": 74.24,
-   "height": 60.0,
+   "x": 1690.76,
+   "y": 280.0,
+   "width": 148.48,
+   "height": 40.0,
    "angle": 0,
    "strokeColor": "#1e1e1e",
    "backgroundColor": "transparent",
@@ -1789,8 +2011,8 @@
    "updated": 1,
    "link": null,
    "locked": false,
-   "text": "Browser\nweb page\nTCP 80",
-   "originalText": "Browser\nweb page\nTCP 80",
+   "text": "Browser\nweb page, TCP 80",
+   "originalText": "Browser\nweb page, TCP 80",
    "fontSize": 16,
    "fontFamily": 1,
    "textAlign": "center",
@@ -1800,70 +2022,12 @@
    "autoResize": true
   },
   {
-   "id": "switch",
-   "type": "rectangle",
-   "x": 1190,
-   "y": 360,
-   "width": 300,
-   "height": 90,
-   "angle": 0,
-   "strokeColor": "#1e1e1e",
-   "backgroundColor": "#e9ecef",
-   "fillStyle": "solid",
-   "strokeWidth": 2,
-   "strokeStyle": "solid",
-   "roughness": 1,
-   "opacity": 100,
-   "groupIds": [],
-   "frameId": null,
-   "roundness": {
-    "type": 3
-   },
-   "seed": 244496148,
-   "version": 1,
-   "versionNonce": 2928586534,
-   "isDeleted": false,
-   "boundElements": [
-    {
-     "type": "text",
-     "id": "switch-text"
-    },
-    {
-     "type": "arrow",
-     "id": "a-w5500-switch-50"
-    },
-    {
-     "type": "arrow",
-     "id": "a-switch-dhcp-52"
-    },
-    {
-     "type": "arrow",
-     "id": "a-switch-browser-53"
-    },
-    {
-     "type": "arrow",
-     "id": "a-switch-lnms-54"
-    },
-    {
-     "type": "arrow",
-     "id": "a-switch-traps-55"
-    },
-    {
-     "type": "arrow",
-     "id": "a-switch-updsite-59"
-    }
-   ],
-   "updated": 1,
-   "link": null,
-   "locked": false
-  },
-  {
-   "id": "switch-text",
-   "type": "text",
-   "x": 1251.26,
-   "y": 382.5,
-   "width": 177.48,
-   "height": 45.0,
+   "id": "a-switch-browser-49",
+   "type": "arrow",
+   "x": 1490,
+   "y": 300.0,
+   "width": 100,
+   "height": 0.0,
    "angle": 0,
    "strokeColor": "#1e1e1e",
    "backgroundColor": "transparent",
@@ -1875,31 +2039,46 @@
    "groupIds": [],
    "frameId": null,
    "roundness": null,
-   "seed": 2320273349,
+   "seed": 3812597360,
    "version": 1,
-   "versionNonce": 1799505223,
+   "versionNonce": 3303367906,
    "isDeleted": false,
-   "boundElements": null,
+   "boundElements": [],
    "updated": 1,
    "link": null,
    "locked": false,
-   "text": "LAN switch\nIPv4 + IPv6, LLDP",
-   "originalText": "LAN switch\nIPv4 + IPv6, LLDP",
-   "fontSize": 18,
-   "fontFamily": 1,
-   "textAlign": "center",
-   "verticalAlign": "middle",
-   "containerId": "switch",
-   "lineHeight": 1.25,
-   "autoResize": true
+   "points": [
+    [
+     0,
+     0.0
+    ],
+    [
+     100,
+     0.0
+    ]
+   ],
+   "lastCommittedPoint": null,
+   "startBinding": {
+    "elementId": "switch",
+    "focus": 0,
+    "gap": 1
+   },
+   "endBinding": {
+    "elementId": "browser",
+    "focus": 0,
+    "gap": 1
+   },
+   "startArrowhead": "arrow",
+   "endArrowhead": "arrow",
+   "elbowed": false
   },
   {
    "id": "lnms",
    "type": "rectangle",
-   "x": 1190,
-   "y": 520,
-   "width": 300,
-   "height": 110,
+   "x": 1590,
+   "y": 360,
+   "width": 350,
+   "height": 80,
    "angle": 0,
    "strokeColor": "#1e1e1e",
    "backgroundColor": "#d0bfff",
@@ -1924,7 +2103,7 @@
     },
     {
      "type": "arrow",
-     "id": "a-switch-lnms-54"
+     "id": "a-switch-lnms-52"
     }
    ],
    "updated": 1,
@@ -1934,10 +2113,10 @@
   {
    "id": "lnms-text",
    "type": "text",
-   "x": 1219.3600000000001,
-   "y": 545.0,
-   "width": 241.27999999999997,
-   "height": 60.0,
+   "x": 1649.0,
+   "y": 380.0,
+   "width": 231.99999999999997,
+   "height": 40.0,
    "angle": 0,
    "strokeColor": "#1e1e1e",
    "backgroundColor": "transparent",
@@ -1957,8 +2136,8 @@
    "updated": 1,
    "link": null,
    "locked": false,
-   "text": "SNMP manager\nLibreNMS / net-snmp\nUDP 161, v1/v2c, IPv4/IPv6",
-   "originalText": "SNMP manager\nLibreNMS / net-snmp\nUDP 161, v1/v2c, IPv4/IPv6",
+   "text": "SNMP manager: LibreNMS,\nnet-snmp; UDP 161, v1/v2c",
+   "originalText": "SNMP manager: LibreNMS,\nnet-snmp; UDP 161, v1/v2c",
    "fontSize": 16,
    "fontFamily": 1,
    "textAlign": "center",
@@ -1968,12 +2147,63 @@
    "autoResize": true
   },
   {
+   "id": "a-switch-lnms-52",
+   "type": "arrow",
+   "x": 1490,
+   "y": 400.0,
+   "width": 100,
+   "height": 0.0,
+   "angle": 0,
+   "strokeColor": "#1e1e1e",
+   "backgroundColor": "transparent",
+   "fillStyle": "solid",
+   "strokeWidth": 2,
+   "strokeStyle": "solid",
+   "roughness": 1,
+   "opacity": 100,
+   "groupIds": [],
+   "frameId": null,
+   "roundness": null,
+   "seed": 1847014204,
+   "version": 1,
+   "versionNonce": 3306832225,
+   "isDeleted": false,
+   "boundElements": [],
+   "updated": 1,
+   "link": null,
+   "locked": false,
+   "points": [
+    [
+     0,
+     0.0
+    ],
+    [
+     100,
+     0.0
+    ]
+   ],
+   "lastCommittedPoint": null,
+   "startBinding": {
+    "elementId": "switch",
+    "focus": 0,
+    "gap": 1
+   },
+   "endBinding": {
+    "elementId": "lnms",
+    "focus": 0,
+    "gap": 1
+   },
+   "startArrowhead": "arrow",
+   "endArrowhead": "arrow",
+   "elbowed": false
+  },
+  {
    "id": "traps",
    "type": "rectangle",
-   "x": 1190,
-   "y": 660,
-   "width": 300,
-   "height": 100,
+   "x": 1590,
+   "y": 465,
+   "width": 350,
+   "height": 70,
    "angle": 0,
    "strokeColor": "#1e1e1e",
    "backgroundColor": "#d0bfff",
@@ -2008,10 +2238,10 @@
   {
    "id": "traps-text",
    "type": "text",
-   "x": 1242.56,
-   "y": 680.0,
-   "width": 194.88,
-   "height": 60.0,
+   "x": 1676.84,
+   "y": 480.0,
+   "width": 176.32,
+   "height": 40.0,
    "angle": 0,
    "strokeColor": "#1e1e1e",
    "backgroundColor": "transparent",
@@ -2031,8 +2261,8 @@
    "updated": 1,
    "link": null,
    "locked": false,
-   "text": "Trap receiver\nUDP 162 (v1 or v2c)\nfixed IP or from DHCP",
-   "originalText": "Trap receiver\nUDP 162 (v1 or v2c)\nfixed IP or from DHCP",
+   "text": "Trap receiver\nUDP 162 (v1 or v2c)",
+   "originalText": "Trap receiver\nUDP 162 (v1 or v2c)",
    "fontSize": 16,
    "fontFamily": 1,
    "textAlign": "center",
@@ -2042,265 +2272,12 @@
    "autoResize": true
   },
   {
-   "id": "a-w5500-switch-50",
-   "type": "arrow",
-   "x": 1050,
-   "y": 405.0,
-   "width": 140,
-   "height": 0.0,
-   "angle": 0,
-   "strokeColor": "#1e1e1e",
-   "backgroundColor": "transparent",
-   "fillStyle": "solid",
-   "strokeWidth": 2,
-   "strokeStyle": "solid",
-   "roughness": 1,
-   "opacity": 100,
-   "groupIds": [],
-   "frameId": null,
-   "roundness": {
-    "type": 2
-   },
-   "seed": 2072300172,
-   "version": 1,
-   "versionNonce": 1243448704,
-   "isDeleted": false,
-   "boundElements": [
-    {
-     "type": "text",
-     "id": "a-w5500-switch-50-label"
-    }
-   ],
-   "updated": 1,
-   "link": null,
-   "locked": false,
-   "points": [
-    [
-     0,
-     0.0
-    ],
-    [
-     140,
-     0.0
-    ]
-   ],
-   "lastCommittedPoint": null,
-   "startBinding": {
-    "elementId": "w5500",
-    "focus": 0,
-    "gap": 4
-   },
-   "endBinding": {
-    "elementId": "switch",
-    "focus": 0,
-    "gap": 4
-   },
-   "startArrowhead": "arrow",
-   "endArrowhead": "arrow",
-   "elbowed": false
-  },
-  {
-   "id": "a-w5500-switch-50-label",
-   "type": "text",
-   "x": 1073.6,
-   "y": 385.0,
-   "width": 92.8,
-   "height": 40.0,
-   "angle": 0,
-   "strokeColor": "#1e1e1e",
-   "backgroundColor": "transparent",
-   "fillStyle": "solid",
-   "strokeWidth": 2,
-   "strokeStyle": "solid",
-   "roughness": 1,
-   "opacity": 100,
-   "groupIds": [],
-   "frameId": null,
-   "roundness": null,
-   "seed": 2156224382,
-   "version": 1,
-   "versionNonce": 2375416240,
-   "isDeleted": false,
-   "boundElements": null,
-   "updated": 1,
-   "link": null,
-   "locked": false,
-   "text": "100 Mbit/s\nLLDP",
-   "originalText": "100 Mbit/s\nLLDP",
-   "fontSize": 16,
-   "fontFamily": 1,
-   "textAlign": "center",
-   "verticalAlign": "middle",
-   "containerId": "a-w5500-switch-50",
-   "lineHeight": 1.25,
-   "autoResize": true
-  },
-  {
-   "id": "a-switch-dhcp-52",
-   "type": "arrow",
-   "x": 1259.0,
-   "y": 360,
-   "width": 4.0,
-   "height": 125,
-   "angle": 0,
-   "strokeColor": "#1e1e1e",
-   "backgroundColor": "transparent",
-   "fillStyle": "solid",
-   "strokeWidth": 2,
-   "strokeStyle": "solid",
-   "roughness": 1,
-   "opacity": 100,
-   "groupIds": [],
-   "frameId": null,
-   "roundness": {
-    "type": 2
-   },
-   "seed": 3302145622,
-   "version": 1,
-   "versionNonce": 3382992826,
-   "isDeleted": false,
-   "boundElements": [],
-   "updated": 1,
-   "link": null,
-   "locked": false,
-   "points": [
-    [
-     0.0,
-     0
-    ],
-    [
-     -4.0,
-     -125
-    ]
-   ],
-   "lastCommittedPoint": null,
-   "startBinding": {
-    "elementId": "switch",
-    "focus": 0,
-    "gap": 4
-   },
-   "endBinding": {
-    "elementId": "dhcp",
-    "focus": 0,
-    "gap": 4
-   },
-   "startArrowhead": "arrow",
-   "endArrowhead": "arrow",
-   "elbowed": false
-  },
-  {
-   "id": "a-switch-browser-53",
-   "type": "arrow",
-   "x": 1421.0,
-   "y": 360,
-   "width": 1.0,
-   "height": 140,
-   "angle": 0,
-   "strokeColor": "#1e1e1e",
-   "backgroundColor": "transparent",
-   "fillStyle": "solid",
-   "strokeWidth": 2,
-   "strokeStyle": "solid",
-   "roughness": 1,
-   "opacity": 100,
-   "groupIds": [],
-   "frameId": null,
-   "roundness": {
-    "type": 2
-   },
-   "seed": 2546350179,
-   "version": 1,
-   "versionNonce": 2059196943,
-   "isDeleted": false,
-   "boundElements": [],
-   "updated": 1,
-   "link": null,
-   "locked": false,
-   "points": [
-    [
-     0.0,
-     0
-    ],
-    [
-     -1.0,
-     -140
-    ]
-   ],
-   "lastCommittedPoint": null,
-   "startBinding": {
-    "elementId": "switch",
-    "focus": 0,
-    "gap": 4
-   },
-   "endBinding": {
-    "elementId": "browser",
-    "focus": 0,
-    "gap": 4
-   },
-   "startArrowhead": "arrow",
-   "endArrowhead": "arrow",
-   "elbowed": false
-  },
-  {
-   "id": "a-switch-lnms-54",
-   "type": "arrow",
-   "x": 1340.0,
-   "y": 450,
-   "width": 0.0,
-   "height": 70,
-   "angle": 0,
-   "strokeColor": "#1e1e1e",
-   "backgroundColor": "transparent",
-   "fillStyle": "solid",
-   "strokeWidth": 2,
-   "strokeStyle": "solid",
-   "roughness": 1,
-   "opacity": 100,
-   "groupIds": [],
-   "frameId": null,
-   "roundness": {
-    "type": 2
-   },
-   "seed": 2901186268,
-   "version": 1,
-   "versionNonce": 2291702586,
-   "isDeleted": false,
-   "boundElements": [],
-   "updated": 1,
-   "link": null,
-   "locked": false,
-   "points": [
-    [
-     0.0,
-     0
-    ],
-    [
-     0.0,
-     70
-    ]
-   ],
-   "lastCommittedPoint": null,
-   "startBinding": {
-    "elementId": "switch",
-    "focus": 0,
-    "gap": 4
-   },
-   "endBinding": {
-    "elementId": "lnms",
-    "focus": 0,
-    "gap": 4
-   },
-   "startArrowhead": "arrow",
-   "endArrowhead": "arrow",
-   "elbowed": false
-  },
-  {
    "id": "a-switch-traps-55",
    "type": "arrow",
    "x": 1490,
-   "y": 405.0,
-   "width": 25,
-   "height": 305.0,
+   "y": 500.0,
+   "width": 100,
+   "height": 0.0,
    "angle": 0,
    "strokeColor": "#1e1e1e",
    "backgroundColor": "transparent",
@@ -2316,12 +2293,7 @@
    "version": 1,
    "versionNonce": 2809939832,
    "isDeleted": false,
-   "boundElements": [
-    {
-     "type": "text",
-     "id": "a-switch-traps-55-label"
-    }
-   ],
+   "boundElements": [],
    "updated": 1,
    "link": null,
    "locked": false,
@@ -2331,40 +2303,70 @@
      0.0
     ],
     [
-     25,
+     100,
      0.0
-    ],
-    [
-     25,
-     305.0
-    ],
-    [
-     0,
-     305.0
     ]
    ],
    "lastCommittedPoint": null,
    "startBinding": {
     "elementId": "switch",
     "focus": 0,
-    "gap": 4
+    "gap": 1
    },
    "endBinding": {
     "elementId": "traps",
     "focus": 0,
-    "gap": 4
+    "gap": 1
    },
    "startArrowhead": null,
    "endArrowhead": "arrow",
    "elbowed": false
   },
   {
-   "id": "a-switch-traps-55-label",
+   "id": "ntp",
+   "type": "rectangle",
+   "x": 1590,
+   "y": 560,
+   "width": 350,
+   "height": 70,
+   "angle": 0,
+   "strokeColor": "#1e1e1e",
+   "backgroundColor": "#d0bfff",
+   "fillStyle": "solid",
+   "strokeWidth": 2,
+   "strokeStyle": "solid",
+   "roughness": 1,
+   "opacity": 100,
+   "groupIds": [],
+   "frameId": null,
+   "roundness": {
+    "type": 3
+   },
+   "seed": 1304302524,
+   "version": 1,
+   "versionNonce": 3978590739,
+   "isDeleted": false,
+   "boundElements": [
+    {
+     "type": "text",
+     "id": "ntp-text"
+    },
+    {
+     "type": "arrow",
+     "id": "a-switch-ntp-58"
+    }
+   ],
+   "updated": 1,
+   "link": null,
+   "locked": false
+  },
+  {
+   "id": "ntp-text",
    "type": "text",
-   "x": 1491.8,
-   "y": 547.5,
-   "width": 46.4,
-   "height": 20.0,
+   "x": 1667.56,
+   "y": 575.0,
+   "width": 194.88,
+   "height": 40.0,
    "angle": 0,
    "strokeColor": "#1e1e1e",
    "backgroundColor": "transparent",
@@ -2376,30 +2378,206 @@
    "groupIds": [],
    "frameId": null,
    "roundness": null,
-   "seed": 1758470211,
+   "seed": 1273572146,
    "version": 1,
-   "versionNonce": 1403425333,
+   "versionNonce": 778416633,
    "isDeleted": false,
    "boundElements": null,
    "updated": 1,
    "link": null,
    "locked": false,
-   "text": "traps",
-   "originalText": "traps",
+   "text": "NTP server\nUDP 123, every 15 min",
+   "originalText": "NTP server\nUDP 123, every 15 min",
    "fontSize": 16,
    "fontFamily": 1,
    "textAlign": "center",
    "verticalAlign": "middle",
-   "containerId": "a-switch-traps-55",
+   "containerId": "ntp",
    "lineHeight": 1.25,
    "autoResize": true
   },
   {
+   "id": "a-switch-ntp-58",
+   "type": "arrow",
+   "x": 1490,
+   "y": 595.0,
+   "width": 100,
+   "height": 0.0,
+   "angle": 0,
+   "strokeColor": "#1e1e1e",
+   "backgroundColor": "transparent",
+   "fillStyle": "solid",
+   "strokeWidth": 2,
+   "strokeStyle": "solid",
+   "roughness": 1,
+   "opacity": 100,
+   "groupIds": [],
+   "frameId": null,
+   "roundness": null,
+   "seed": 3175664303,
+   "version": 1,
+   "versionNonce": 2289238131,
+   "isDeleted": false,
+   "boundElements": [],
+   "updated": 1,
+   "link": null,
+   "locked": false,
+   "points": [
+    [
+     0,
+     0.0
+    ],
+    [
+     100,
+     0.0
+    ]
+   ],
+   "lastCommittedPoint": null,
+   "startBinding": {
+    "elementId": "switch",
+    "focus": 0,
+    "gap": 1
+   },
+   "endBinding": {
+    "elementId": "ntp",
+    "focus": 0,
+    "gap": 1
+   },
+   "startArrowhead": "arrow",
+   "endArrowhead": "arrow",
+   "elbowed": false
+  },
+  {
+   "id": "syslog",
+   "type": "rectangle",
+   "x": 1590,
+   "y": 655,
+   "width": 350,
+   "height": 70,
+   "angle": 0,
+   "strokeColor": "#1e1e1e",
+   "backgroundColor": "#d0bfff",
+   "fillStyle": "solid",
+   "strokeWidth": 2,
+   "strokeStyle": "solid",
+   "roughness": 1,
+   "opacity": 100,
+   "groupIds": [],
+   "frameId": null,
+   "roundness": {
+    "type": 3
+   },
+   "seed": 1483601562,
+   "version": 1,
+   "versionNonce": 2963731919,
+   "isDeleted": false,
+   "boundElements": [
+    {
+     "type": "text",
+     "id": "syslog-text"
+    },
+    {
+     "type": "arrow",
+     "id": "a-switch-syslog-61"
+    }
+   ],
+   "updated": 1,
+   "link": null,
+   "locked": false
+  },
+  {
+   "id": "syslog-text",
+   "type": "text",
+   "x": 1649.0,
+   "y": 670.0,
+   "width": 231.99999999999997,
+   "height": 40.0,
+   "angle": 0,
+   "strokeColor": "#1e1e1e",
+   "backgroundColor": "transparent",
+   "fillStyle": "solid",
+   "strokeWidth": 2,
+   "strokeStyle": "solid",
+   "roughness": 1,
+   "opacity": 100,
+   "groupIds": [],
+   "frameId": null,
+   "roundness": null,
+   "seed": 3429646749,
+   "version": 1,
+   "versionNonce": 2468975134,
+   "isDeleted": false,
+   "boundElements": null,
+   "updated": 1,
+   "link": null,
+   "locked": false,
+   "text": "Syslog server, UDP 514\n(LibreNMS test: UDP 5140)",
+   "originalText": "Syslog server, UDP 514\n(LibreNMS test: UDP 5140)",
+   "fontSize": 16,
+   "fontFamily": 1,
+   "textAlign": "center",
+   "verticalAlign": "middle",
+   "containerId": "syslog",
+   "lineHeight": 1.25,
+   "autoResize": true
+  },
+  {
+   "id": "a-switch-syslog-61",
+   "type": "arrow",
+   "x": 1490,
+   "y": 690.0,
+   "width": 100,
+   "height": 0.0,
+   "angle": 0,
+   "strokeColor": "#1e1e1e",
+   "backgroundColor": "transparent",
+   "fillStyle": "solid",
+   "strokeWidth": 2,
+   "strokeStyle": "solid",
+   "roughness": 1,
+   "opacity": 100,
+   "groupIds": [],
+   "frameId": null,
+   "roundness": null,
+   "seed": 2868815751,
+   "version": 1,
+   "versionNonce": 3540026457,
+   "isDeleted": false,
+   "boundElements": [],
+   "updated": 1,
+   "link": null,
+   "locked": false,
+   "points": [
+    [
+     0,
+     0.0
+    ],
+    [
+     100,
+     0.0
+    ]
+   ],
+   "lastCommittedPoint": null,
+   "startBinding": {
+    "elementId": "switch",
+    "focus": 0,
+    "gap": 1
+   },
+   "endBinding": {
+    "elementId": "syslog",
+    "focus": 0,
+    "gap": 1
+   },
+   "startArrowhead": null,
+   "endArrowhead": "arrow",
+   "elbowed": false
+  },
+  {
    "id": "updsite",
    "type": "rectangle",
-   "x": 1190,
-   "y": 790,
-   "width": 300,
+   "x": 1590,
+   "y": 750,
+   "width": 350,
    "height": 100,
    "angle": 0,
    "strokeColor": "#1e1e1e",
@@ -2425,7 +2603,7 @@
     },
     {
      "type": "arrow",
-     "id": "a-switch-updsite-59"
+     "id": "a-switch-updsite-64"
     }
    ],
    "updated": 1,
@@ -2435,8 +2613,8 @@
   {
    "id": "updsite-text",
    "type": "text",
-   "x": 1224.0,
-   "y": 810.0,
+   "x": 1649.0,
+   "y": 770.0,
    "width": 231.99999999999997,
    "height": 60.0,
    "angle": 0,
@@ -2469,12 +2647,12 @@
    "autoResize": true
   },
   {
-   "id": "a-switch-updsite-59",
+   "id": "a-switch-updsite-64",
    "type": "arrow",
-   "x": 1190,
-   "y": 432.0,
-   "width": 20,
-   "height": 408.0,
+   "x": 1490,
+   "y": 800.0,
+   "width": 100,
+   "height": 0.0,
    "angle": 0,
    "strokeColor": "#1e1e1e",
    "backgroundColor": "transparent",
@@ -2486,9 +2664,9 @@
    "groupIds": [],
    "frameId": null,
    "roundness": null,
-   "seed": 3656280820,
+   "seed": 2581355681,
    "version": 1,
-   "versionNonce": 3861540135,
+   "versionNonce": 1176661165,
    "isDeleted": false,
    "boundElements": [],
    "updated": 1,
@@ -2500,28 +2678,20 @@
      0.0
     ],
     [
-     -20,
+     100,
      0.0
-    ],
-    [
-     -20,
-     408.0
-    ],
-    [
-     0,
-     408.0
     ]
    ],
    "lastCommittedPoint": null,
    "startBinding": {
     "elementId": "switch",
     "focus": 0,
-    "gap": 4
+    "gap": 1
    },
    "endBinding": {
     "elementId": "updsite",
     "focus": 0,
-    "gap": 4
+    "gap": 1
    },
    "startArrowhead": "arrow",
    "endArrowhead": "arrow",

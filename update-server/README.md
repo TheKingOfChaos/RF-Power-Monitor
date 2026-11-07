@@ -55,6 +55,11 @@ An update ends as **done** (the device runs it, kept), **rolled back** (the devi
 went back to its old firmware), **refused** (bad signature, wrong key, on trial...),
 **failed** (three broken downloads) or **lost** (no report within 2 hours).
 
+From firmware 3.6.0 a device also reports over SNMP whether it reaches the site (the
+`updateSite` group, `63050.8`, see [docs/MIB.md](../docs/MIB.md)); LibreNMS warns after 60
+minutes without a good check-in ([docs/LIBRENMS.md](../docs/LIBRENMS.md#update-site-check-ins-360)), and failing
+and working-again check-ins go to its syslog server.
+
 ## Without Docker
 
 ```sh

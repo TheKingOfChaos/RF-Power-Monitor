@@ -31,7 +31,7 @@ The carrier board has a mains side: 230 V AC on the screw terminal J1, the fuse 
 
 Two LEDs on the carrier show mains directly, without the firmware: **green = mains on, red = mains off**. Check them once mains is connected.
 
-A new rev 2 board is first set up at the bench with `tools/bench_provision.py` (README, *Bench setup of a new board*): it gets its firmware, its label with hostname, MAC and web password, and the update site's URL and key. The steps below then take it to a working installation.
+A new rev 2 board is first set up at the bench with `tools/bench_provision.py` ([Bench setup of a new board](#bench-setup-of-a-new-board)): it gets its firmware, its label with hostname, MAC and web password, and the update site's URL and key. The steps below then take it to a working installation.
 
 ## 2. Power on and connect to the serial menu
 
@@ -83,7 +83,7 @@ New mode: Static 10.10.6.250 / 255.255.0.0, gateway 10.10.0.1
 Save and reboot? (y/n): y
 ```
 
-IPv6 works by itself on a network with an IPv6 router (SLAAC, and DHCPv6 if the router asks for it). A fixed IPv6 address can be added with option `9`. See the README's [IPv6 section](../README.md#ipv6).
+IPv6 works by itself on a network with an IPv6 router (SLAAC, and DHCPv6 if the router asks for it). A fixed IPv6 address can be added with option `9`. See the reference's [IPv6 section](REFERENCE.md#ipv6).
 
 ## 4. Name, SNMP and traps
 
@@ -99,6 +99,7 @@ Menu option `4` asks for these in turn. Press Enter to keep the value in bracket
 
 ```
 > 4
+Press Enter to keep the value in brackets, '-' to clear it.
 Community [public]: s3cret
 Hostname (sysName) [RF-Power-4EA22C]: power-serverroom
 sysContact []: ops@example.com
@@ -117,7 +118,7 @@ Open **http://&lt;device address&gt;/** (or **http://&lt;hostname&gt;.local/**) 
 
 ![The login page](images/web/web-login.png)
 
-The page shows the status and lets you change the network, the name and the community, and restart the device. (In the pictures in this manual, the addresses, MAC and community are example values.)
+The page shows the status and lets you change the network, the static IPv6 address, the name, the community and the NTP and syslog servers, update the firmware (the **Firmware** page) and restart the device. (In the pictures in this manual, the addresses, MAC and community are example values.)
 
 ![The status and settings page](images/web/web-status.png)
 
@@ -132,7 +133,7 @@ If you don't want the web page at all, turn it off with menu option `8`.
 
    ![LibreNMS: Add Device](images/librenms/add-device.png)
 
-   LibreNMS detects it as **RF-Power-Monitor** and creates its sensors: *Mains power*, *Mains lost over 60 s*, *CPU* and *Ambient* temperature, and *Mains power changes since boot*; with firmware 3.1.0 and later also the two processor cores, memory, the settings flash as storage, the addresses, the serial number and the location you set. The device page then looks like this (contact replaced by a placeholder):
+   LibreNMS detects it as **RF-Power-Monitor** and creates its sensors: *Mains power*, *Mains lost over 60 s*, *CPU* and *Ambient* temperature, and *Mains power changes since boot*; with firmware 3.1.0 and later also the two processor cores, memory, the settings flash as storage, the addresses, the serial number and the location you set; with 3.3.0 and later the *Firmware* and *Firmware last update* sensors, and with 3.6.0 and later the two update site sensors (see [docs/LIBRENMS.md](LIBRENMS.md#what-you-get)). The device page then looks like this (contact replaced by a placeholder):
 
    ![LibreNMS: the device page with its sensors](images/librenms/device-overview.png)
 
@@ -217,6 +218,7 @@ The device uses the first address in option 7, on UDP port 514. For another port
 
 ```
 > 11
+Press Enter to keep the value in brackets.
 NTP server: address, name, dhcp or none [dhcp]: pool.ntp.org
 Syslog server: address[:port], dhcp or none [dhcp]: 10.132.0.45:5140
 Time and syslog settings saved and active
@@ -224,7 +226,35 @@ Time and syslog settings saved and active
 
 The NTP server can be an address or a name; the syslog server an address with an optional port (514 unless given; IPv6 as `[address]:port`). `none` turns either off. Saved and active at once; no restart.
 
-Check the status screen: `Time: 2026-11-07 19:42:10 CET (NTP pool.ntp.org, synced 3 min ago)` (within a minute) and `Syslog: 10.132.0.45:5140 (typed), 2 sent, 0 waiting`. The syslog server must accept UDP on that port through its firewall. Times on the device are Danish local time (CET/CEST); syslog messages carry UTC.
+Check the status screen: `Time: 2026-11-07 19:42:10 CET (NTP pool.ntp.org, synced 3 min ago)` (within a minute) and `Syslog: 10.132.0.45:5140 (typed), 2 sent, 0 waiting`. The syslog server must accept UDP on that port through its firewall. Times on the device are Danish local time (CET/CEST); syslog messages carry UTC. Which events are sent, and how: [reference](REFERENCE.md#time-and-syslog).
+
+## Bench setup of a new board
+
+![Setting up a new board: signature check, flash over BOOTSEL, read benchinfo, lock the password, set the update server default, write the label](diagrams/bench-setup.svg)
+
+`tools/bench_provision.py` sets up a new board in one run: it flashes the first firmware, reads the device, locks its default web password and makes its label. Install its Python packages once: `python -m pip install -r tools/requirements-bench.txt` (pyserial, Pillow, segno).
+
+1. Build the release files with the field key: `python tools/fw_release.py --field` (see [Firmware signing key](#firmware-signing-key)).
+2. Run `python tools/bench_provision.py`, then hold BOOTSEL and plug in the board. The script takes the newest `release/rf-power-monitor-<version>-usb.uf2` (or `--uf2 FILE`), refuses a `firmware.uf2` and anything signed with the development key, checks the file's signature with the boot program's own check, copies it to the `RPI-RP2` drive and waits for the board's serial port (one board at a time).
+3. It reads the hostname (`RF-Power-<last 6 MAC digits>`), MAC, serial number, firmware version and default web password (hidden menu command `benchinfo`), checks them and locks the password (`pwlock`), so menu option 7 cannot make the label wrong.
+4. With `secret/bench.ini` (gitignored; `--settings` names another file) it also sets the update site: menu option 10 gets the file's URL and key, and the hidden command `updatedefault` keeps them as the board's bench default, which a factory reset restores. The status screen then shows `Update server default: <url>, key set (a factory reset restores it)`. Without the file the update server is left off. The file:
+
+   ```ini
+   [update]
+   url = http://10.132.0.45:8071
+   key = <the site's 64 hex character shared key>
+   ```
+
+5. It writes, in `bench/` (gitignored): `<hostname>.png` to print, `<hostname>-preview.png`, and a row in `devices.csv` (with the update server URL, never the key). **`devices.csv` holds the default web passwords**: keep it safe. The script checks it can write `devices.csv` before it touches the board.
+6. Print `<hostname>.png` from the NIIMBOT app on a 40 x 40 mm black label with white ribbon (NIIMBOT M2). The image is black on white because the printer puts ribbon wherever the image is dark; the preview shows the real look, white on black.
+
+The label shows `RF Power Monitor`, the board revision (`--revision`, default `rev 2`), the hostname, MAC, user `admin`, the password, and the serial number, firmware version and date the board was set up, with a QR code (`RFPM;H=<hostname>;M=<MAC>;S=<serial>;FW=<version>`; no password). What each field means for the user: [user manual, The label](USER_MANUAL.md#the-label).
+
+- `--no-flash [--port COMx]`: the same for a board that already runs firmware 3.5.0 or later, e.g. after `pwunlock` and option 7, or an older carrier board. A hostname set by hand is kept on the label. The new `devices.csv` row wins over older rows for that board.
+- `--reprint <hostname|MAC|serial>`: the label again from the newest `devices.csv` row, without the device.
+- `--dev`: accept development-signed firmware, only for testing the tool.
+
+To change the default password of a labelled board: unlock it with the hidden command `pwunlock`, make a new one with menu option 7, then run `--no-flash` to lock it and print a new label.
 
 ## Firmware signing key
 

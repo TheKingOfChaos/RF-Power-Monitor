@@ -2,7 +2,7 @@
 
 The device runs an SNMP agent on UDP port 161 and sends traps. Every object is read-only.
 
-- **Transport:** UDP port 161 over IPv4 and IPv6 (see the README, IPv6).
+- **Transport:** UDP port 161 over IPv4 and IPv6 (see [IPv6](REFERENCE.md#ipv6) in the reference).
 - **Versions:** SNMPv1 and SNMPv2c. Each request is answered in the version it was sent in. SNMPv3 requests get no response.
 - **Community:** from the settings, default `public`, changed with menu option 4 (active immediately). A request with the wrong community gets no response; it is counted on the status screen.
 - **sysName, sysContact, sysLocation:** set with menu option 4 or on the web page (Device name); read-only over SNMP. sysName is the device hostname, also used for DHCP and mDNS (`<sysName>.local`).
@@ -10,12 +10,40 @@ The device runs an SNMP agent on UDP port 161 and sends traps. Every object is r
 - **Operations:** GetRequest, GetNextRequest (and so `snmpwalk`), and in v2c GetBulkRequest (`snmpbulkwalk`, `snmpbulkget`). SetRequest is rejected (v1 `noSuchName`, v2c `notWritable`/`noCreation`).
 - **Enterprise number:** 63050 (`1.3.6.1.4.1.63050`), assigned to this project.
 - **MIB file:** [mibs/RF-POWER-MONITOR-MIB.txt](../mibs/RF-POWER-MONITOR-MIB.txt) (SMIv2).
+- **Status screen:** menu option 1 shows the SNMP counters, rate-limited requests and traps sent.
+- **LibreNMS:** see [LIBRENMS.md](LIBRENMS.md) to monitor the device with it.
+
+In short, the OID tree:
+
+```
+.1.0.8802.1.1.2.1.3.7.1  LLDP-MIB lldpLocPortTable: our port (subtype, MAC, description), row 1
+.1.0.8802.1.1.2.1.4.1.1  LLDP-MIB lldpRemTable: the switch, row 0.1.1, only while one is heard
+.1.3.6.1.2.1.1          system group
+  .1.0  sysDescr        .2.0  sysObjectID     .3.0  sysUpTime
+  .4.0  sysContact      .5.0  sysName         .6.0  sysLocation
+  .7.0  sysServices
+.1.3.6.1.2.1.2          IF-MIB interfaces: ifNumber and ifTable for the Ethernet port (index 1)
+.1.3.6.1.2.1.31.1.1     IF-MIB ifXTable: ifName, 64-bit ifHC* counters (v2c only), ifHighSpeed
+.1.3.6.1.4.1.63050      RF-POWER-MONITOR-MIB (enterprise 63050)
+  .1.0  mainsPowerStatus      INTEGER 1 = present, 0 = lost
+  .2.0  mainsPowerChanges     Counter32
+  .3.0  mainsPowerLastChange  TimeTicks
+  .4.0  cpuTemperature        Integer32, 0.1 degrees Celsius (RP2040 die)
+  .5.0  ambientTemperature    Integer32, 0.1 degrees Celsius (TMP1075, only when present)
+  .6.0  mainsPowerAlarm       INTEGER 1 = mains lost for 60 s or more, 0 = none
+  .7    fwUpdate              firmware slots and the last update (3.3.0)
+  .8    updateSite            update site check-ins: result, minutes since a good one, failures in a row (3.6.0)
+```
+
+The standard MIB-II, IP-MIB, HOST-RESOURCES-MIB and ENTITY-MIB objects are in their sections below.
+
+![SNMP request handling: size check, rate limiter, parsing, version and community, MIB, response](diagrams/snmp-request-flow.svg)
 
 ## Objects
 
 | OID | Name | Type | Value |
 |---|---|---|---|
-| `1.3.6.1.2.1.1.1.0` | sysDescr | OCTET STRING | `RF-Power-Monitor 3.1.0 mains power monitor (RP2040, W5500)` (with the firmware version) |
+| `1.3.6.1.2.1.1.1.0` | sysDescr | OCTET STRING | `RF-Power-Monitor 3.6.0 mains power monitor (RP2040, W5500)` (with the firmware version) |
 | `1.3.6.1.2.1.1.2.0` | sysObjectID | OBJECT IDENTIFIER | `1.3.6.1.4.1.63050` |
 | `1.3.6.1.2.1.1.3.0` | sysUpTime | TimeTicks | Hundredths of a second since boot |
 | `1.3.6.1.2.1.1.4.0` | sysContact | OCTET STRING | From the settings (menu option 4 or web page), default empty |
@@ -150,11 +178,11 @@ LibreNMS and other managers read CPU load, memory and storage from the standard 
 | OID | Name | Type | Value |
 |---|---|---|---|
 | `.1.1.0` | hrSystemUptime | TimeTicks | Same as sysUpTime |
+| `.1.2.0` | hrSystemDate | DateAndTime | Danish local time (CET/CEST, the offset in the last bytes); only once NTP has set the clock (3.6.0) |
 | `.1.5.0` | hrSystemNumUsers | Gauge32 | 0 |
 | `.1.6.0` | hrSystemProcesses | Gauge32 | 2: the loops of core 0 and core 1 |
 | `.1.7.0` | hrSystemMaxProcesses | INTEGER | 2 |
 | `.2.2.0` | hrMemorySize | INTEGER (KB) | 256 |
-| `.1.2.0` | hrSystemDate | DateAndTime | Danish local time (CET/CEST, the offset in the last bytes); only once NTP has set the clock (3.6.0) |
 
 hrSystemDate is absent (skipped by a walk, noSuchInstance in v2c, noSuchName in v1) until NTP has answered (serial menu option 11, NTP from DHCP option 42 or DHCPv6 option 31, or a typed server).
 
@@ -260,7 +288,7 @@ What the counters cannot see: the W5500 itself silently drops frames with a bad 
 
 The counters are 64-bit internally and start at 0 at boot. Link state and speed are read from the W5500 PHY register (`PHYCFGR`) every 500 ms; a link change is logged on the serial port.
 
-SNMPv1 has no Counter64 type, so a v1 request does not see the eight `ifHC*` columns at all (RFC 3584): a v1 Get of one is `noSuchName` and a v1 walk skips them. Without the LLDP-MIB objects and the address rows a v1 walk returns 221 objects, a v2c walk 229 (with them, see below). Each address adds 9 rows to ipAddressTable, the IPv4 address 5 more to ipAddrTable.
+SNMPv1 has no Counter64 type, so a v1 request does not see the eight `ifHC*` columns at all (RFC 3584): a v1 Get of one is `noSuchName` and a v1 walk skips them. Without the LLDP-MIB objects and the address rows a v1 walk returns 229 objects, a v2c walk 237 (one more each once NTP has set the clock: hrSystemDate; the LLDP-MIB objects, see below, add 3, and 9 more while a switch is heard). Each address adds 9 rows to ipAddressTable, the IPv4 address 5 more to ipAddrTable.
 
 ## Switch and port (LLDP-MIB)
 
@@ -281,7 +309,7 @@ The device answers part of the standard LLDP-MIB (IEEE 802.1AB-2005 Annex F), so
 | 1.0.8802.1.1.2.1.4.1.1.11.0.1.1 | lldpRemSysCapSupported | BITS (2 bytes) | as sent, in BITS order (bit 0 = top bit of the first byte; the TLV counts from the bottom bit): bridge + router = `28 00` |
 | 1.0.8802.1.1.2.1.4.1.1.12.0.1.1 | lldpRemSysCapEnabled | BITS (2 bytes) | as sent |
 
-There is one remote row, index lldpRemTimeMark 0, lldpRemLocalPortNum 1, lldpRemIndex 1, and only while the device holds a neighbour (the status screen's `Switch:` line); otherwise v1 answers noSuchName and v2c noSuchInstance, and walks skip it. Text from the switch is cut to 64 characters (128 for the description) with non-printable bytes replaced by `?`. Not served: lldpRemManAddrTable (the management address; its index holds the address), lldpLocalSystemData, lldpStatistics and LLDP-V2-MIB. A v1 walk from the root returns 233 objects with a neighbour (224 without), a v2c walk 241 (232), plus the address rows (with one IPv4 and two IPv6 addresses: 5 + 3 x 9 = 32).
+There is one remote row, index lldpRemTimeMark 0, lldpRemLocalPortNum 1, lldpRemIndex 1, and only while the device holds a neighbour (the status screen's `Switch:` line); otherwise v1 answers noSuchName and v2c noSuchInstance, and walks skip it. Text from the switch is cut to 64 characters (128 for the description) with non-printable bytes replaced by `?`. Not served: lldpRemManAddrTable (the management address; its index holds the address), lldpLocalSystemData, lldpStatistics and LLDP-V2-MIB. A v1 walk from the root returns 241 objects with a neighbour (232 without), a v2c walk 249 (240), one more once NTP has set the clock (hrSystemDate), plus the address rows (with one IPv4 and two IPv6 addresses: 5 + 3 x 9 = 32).
 
 ## v1 and v2c differences
 
@@ -372,7 +400,7 @@ Trust is deliberately bounded, because the community is only a weak secret: the 
 
 Anyone who knows the community is treated like a manager; that is a limit of SNMPv1. **Change the community from `public`** to keep this protection meaningful. The limiter keeps working after any idle period, including gaps of more than 24.8 days (the point where `millis()` differences turn negative when read as signed values).
 
-Rejected requests are recorded in the access log (menu option 5): wrong community, SNMPv3 (and unknown versions), malformed or oversized packets, rate-limited requests and SetRequests, plus failed web logins and lockouts, with the source address. The newest 16 entries are kept; a repeat of the newest entry (same source and event) is folded into it with a count.
+Rejected requests are recorded in the access log (menu option 5): wrong community, SNMPv3 (and unknown versions), malformed or oversized packets, rate-limited requests and SetRequests, plus failed web logins, lockouts and refused firmware uploads, with the source address. The newest 16 entries are kept; a repeat of the newest entry (same source and event) is folded into it with a count.
 
 ## Examples
 
@@ -416,7 +444,7 @@ This needs the standard IETF MIBs, which Debian/Ubuntu ship separately: `sudo ap
 
 ## Limits
 
-- Up to 16 variable bindings per request and at most 16 in a GetBulk response. A larger GetBulk reply would let a small request with a faked source address make the device send a much larger packet to a victim (reflection); a bulk walk simply takes more requests (at least 16 for the 241 objects of a walk from the root). A GetBulk request also does not make its source trusted for the rate limiter.
+- Up to 16 variable bindings per request and at most 16 in a GetBulk response. A larger GetBulk reply would let a small request with a faked source address make the device send a much larger packet to a victim (reflection); a bulk walk simply takes more requests (at least 15 for the 240 or more objects of a v2c walk from the root). A GetBulk request also does not make its source trusted for the rate limiter.
 - Requests up to 1472 bytes (one Ethernet frame); larger packets are dropped. Replies over IPv6 are at most 1452 bytes (the IPv6 header is 20 bytes longer; the device does not fragment); GetBulk replies are shortened to fit.
 - The network stack queues up to 5 UDP packets. Requests sent in a burst beyond that are dropped; SNMP managers retry, and normal polling or `snmpwalk` sends one request at a time.
 - If the device has not talked to a manager for a few minutes, it first has to look up the manager's MAC address (ARP). lwIP holds one reply during that lookup, so only one request of a burst arriving at that moment is answered.
@@ -439,6 +467,8 @@ This needs the standard IETF MIBs, which Debian/Ubuntu ship separately: `sudo ap
 | IP, ICMP, TCP, UDP counters | lwIP `MIB2_STATS` (`include/lwipopts.h`), `src/net_stats.cpp` | `test/native/test_snmp_agent`, `test/hil/test_snmp.py` |
 | CPU load (one-minute average per core) | `lib/cpu_load`, `src/host_stats.cpp` | `test/native/test_cpu_load`, `test/hil/test_host_resources.py` |
 | HOST-RESOURCES-MIB, ENTITY-MIB values | `lib/snmp_agent/snmp_mib`, `src/host_stats.cpp` | `test/native/test_snmp_agent`, `test/hil/test_host_resources.py` |
+| hrSystemDate (DateAndTime from NTP) | `lib/clock`, `src/time_service.cpp` | `test/native/test_clock`, `test/native/test_snmp_agent`, `test/hil/test_time_syslog.py` |
+| fwUpdate and updateSite groups | `lib/snmp_agent/snmp_mib`, `src/fw_update_service.cpp`, `src/update_service.cpp` | `test/native/test_snmp_agent`, `test/hil/test_snmp.py` |
 | Traps on the device | `src/snmp_service.cpp` | `test/hil/test_snmp_traps.py` |
 | Against real net-snmp, without hardware | `test/host/host_agent.cpp` | `scripts/host_agent_check.sh` |
 | UDP port 161 on the device | `src/snmp_service.cpp` | `test/hil/test_snmp.py` |

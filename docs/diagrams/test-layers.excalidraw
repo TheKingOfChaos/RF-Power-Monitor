@@ -80,10 +80,10 @@
   {
    "id": "lnms-text",
    "type": "text",
-   "x": 96.74000000000001,
-   "y": 138.75,
-   "width": 866.52,
-   "height": 22.5,
+   "x": 195.92000000000002,
+   "y": 127.5,
+   "width": 668.16,
+   "height": 45.0,
    "angle": 0,
    "strokeColor": "#1e1e1e",
    "backgroundColor": "transparent",
@@ -103,8 +103,8 @@
    "updated": 1,
    "link": null,
    "locked": false,
-   "text": "LibreNMS in Docker: definitions, sensors, LLDP neighbour, alert on a real mains cut",
-   "originalText": "LibreNMS in Docker: definitions, sensors, LLDP neighbour, alert on a real mains cut",
+   "text": "LibreNMS in Docker: definitions, sensors, LLDP neighbour, syslog\nreceiver, alert on a real mains cut",
+   "originalText": "LibreNMS in Docker: definitions, sensors, LLDP neighbour, syslog\nreceiver, alert on a real mains cut",
    "fontSize": 18,
    "fontFamily": 1,
    "textAlign": "center",
@@ -228,9 +228,9 @@
   {
    "id": "hil-text",
    "type": "text",
-   "x": 195.92000000000002,
+   "x": 169.82000000000005,
    "y": 327.5,
-   "width": 668.16,
+   "width": 720.3599999999999,
    "height": 45.0,
    "angle": 0,
    "strokeColor": "#1e1e1e",
@@ -251,8 +251,8 @@
    "updated": 1,
    "link": null,
    "locked": false,
-   "text": "HIL (Python): menu, SNMP, traps, web, IPv6, DHCP opt. 224, LLDP,\nwatchdog, firmware updates, update site end to end",
-   "originalText": "HIL (Python): menu, SNMP, traps, web, IPv6, DHCP opt. 224, LLDP,\nwatchdog, firmware updates, update site end to end",
+   "text": "HIL (Python): menu, SNMP, traps, web, IPv6, DHCP options, DHCPv6 test\nnetwork, LLDP, NTP, syslog, watchdog, firmware updates, update site",
+   "originalText": "HIL (Python): menu, SNMP, traps, web, IPv6, DHCP options, DHCPv6 test\nnetwork, LLDP, NTP, syslog, watchdog, firmware updates, update site",
    "fontSize": 18,
    "fontFamily": 1,
    "textAlign": "center",
@@ -302,10 +302,10 @@
   {
    "id": "emb-text",
    "type": "text",
-   "x": 248.12,
-   "y": 438.75,
-   "width": 563.76,
-   "height": 22.5,
+   "x": 190.70000000000005,
+   "y": 427.5,
+   "width": 678.5999999999999,
+   "height": 45.0,
    "angle": 0,
    "strokeColor": "#1e1e1e",
    "backgroundColor": "transparent",
@@ -325,8 +325,8 @@
    "updated": 1,
    "link": null,
    "locked": false,
-   "text": "On-device Unity tests: LittleFS, W5500, GPIO27 sampler",
-   "originalText": "On-device Unity tests: LittleFS, W5500, GPIO27 sampler",
+   "text": "On-device Unity tests: LittleFS, settings, W5500, GPIO27 sampler,\nfirmware SHA-512 and flash writes",
+   "originalText": "On-device Unity tests: LittleFS, settings, W5500, GPIO27 sampler,\nfirmware SHA-512 and flash writes",
    "fontSize": 18,
    "fontFamily": 1,
    "textAlign": "center",
@@ -376,9 +376,9 @@
   {
    "id": "host-text",
    "type": "text",
-   "x": 164.60000000000002,
+   "x": 154.16000000000003,
    "y": 538.75,
-   "width": 730.8,
+   "width": 751.68,
    "height": 22.5,
    "angle": 0,
    "strokeColor": "#1e1e1e",
@@ -399,8 +399,8 @@
    "updated": 1,
    "link": null,
    "locked": false,
-   "text": "Host agent vs real net-snmp (WSL): 92 checks, all MIBs, MIB validation",
-   "originalText": "Host agent vs real net-snmp (WSL): 92 checks, all MIBs, MIB validation",
+   "text": "Host agent vs real net-snmp (WSL): 100+ checks, all MIBs, MIB validation",
+   "originalText": "Host agent vs real net-snmp (WSL): 100+ checks, all MIBs, MIB validation",
    "fontSize": 18,
    "fontFamily": 1,
    "textAlign": "center",
@@ -524,9 +524,9 @@
   {
    "id": "native-text",
    "type": "text",
-   "x": 180.26000000000005,
+   "x": 201.14000000000004,
    "y": 727.5,
-   "width": 699.4799999999999,
+   "width": 657.7199999999999,
    "height": 45.0,
    "angle": 0,
    "strokeColor": "#1e1e1e",
@@ -547,8 +547,8 @@
    "updated": 1,
    "link": null,
    "locked": false,
-   "text": "Native unit tests: about 970 tests of lib/, frames from the device,\nKea, Junos and net-snmp; update site tests (Python)",
-   "originalText": "Native unit tests: about 970 tests of lib/, frames from the device,\nKea, Junos and net-snmp; update site tests (Python)",
+   "text": "Native unit tests: 1000+ tests of lib/, frames from the device,\nKea, Junos and net-snmp; update site and tool tests (Python)",
+   "originalText": "Native unit tests: 1000+ tests of lib/, frames from the device,\nKea, Junos and net-snmp; update site and tool tests (Python)",
    "fontSize": 18,
    "fontFamily": 1,
    "textAlign": "center",
@@ -574,9 +574,7 @@
    "opacity": 100,
    "groupIds": [],
    "frameId": null,
-   "roundness": {
-    "type": 2
-   },
+   "roundness": null,
    "seed": 183191568,
    "version": 1,
    "versionNonce": 2148447366,
@@ -677,7 +675,7 @@
   {
    "id": "pc",
    "type": "rectangle",
-   "x": 1010,
+   "x": 1040,
    "y": 110,
    "width": 330,
    "height": 380,
@@ -727,7 +725,7 @@
   {
    "id": "pc-text",
    "type": "text",
-   "x": 1039.28,
+   "x": 1069.28,
    "y": 221.25,
    "width": 271.44,
    "height": 157.5,
@@ -763,7 +761,7 @@
   {
    "id": "ci",
    "type": "rectangle",
-   "x": 1010,
+   "x": 1040,
    "y": 510,
    "width": 330,
    "height": 280,
@@ -809,7 +807,7 @@
   {
    "id": "ci-text",
    "type": "text",
-   "x": 1065.38,
+   "x": 1095.38,
    "y": 560.0,
    "width": 219.23999999999998,
    "height": 180.0,
@@ -846,9 +844,9 @@
    "id": "a-lnms-pc-22",
    "type": "arrow",
    "x": 940,
-   "y": 150.0,
-   "width": 70,
-   "height": 5.599999999999994,
+   "y": 150,
+   "width": 100,
+   "height": 0,
    "angle": 0,
    "strokeColor": "#1e1e1e",
    "backgroundColor": "transparent",
@@ -859,9 +857,7 @@
    "opacity": 100,
    "groupIds": [],
    "frameId": null,
-   "roundness": {
-    "type": 2
-   },
+   "roundness": null,
    "seed": 2620358383,
    "version": 1,
    "versionNonce": 238346864,
@@ -873,23 +869,23 @@
    "points": [
     [
      0,
-     0.0
+     0
     ],
     [
-     70,
-     5.599999999999994
+     100,
+     0
     ]
    ],
    "lastCommittedPoint": null,
    "startBinding": {
     "elementId": "lnms",
     "focus": 0,
-    "gap": 4
+    "gap": 1
    },
    "endBinding": {
     "elementId": "pc",
     "focus": 0,
-    "gap": 4
+    "gap": 1
    },
    "startArrowhead": null,
    "endArrowhead": "arrow",
@@ -899,9 +895,9 @@
    "id": "a-mains-pc-23",
    "type": "arrow",
    "x": 940,
-   "y": 250.0,
-   "width": 70,
-   "height": 4.400000000000006,
+   "y": 250,
+   "width": 100,
+   "height": 0,
    "angle": 0,
    "strokeColor": "#1e1e1e",
    "backgroundColor": "transparent",
@@ -912,9 +908,7 @@
    "opacity": 100,
    "groupIds": [],
    "frameId": null,
-   "roundness": {
-    "type": 2
-   },
+   "roundness": null,
    "seed": 2829319411,
    "version": 1,
    "versionNonce": 30338519,
@@ -926,23 +920,23 @@
    "points": [
     [
      0,
-     0.0
+     0
     ],
     [
-     70,
-     4.400000000000006
+     100,
+     0
     ]
    ],
    "lastCommittedPoint": null,
    "startBinding": {
     "elementId": "mains",
     "focus": 0,
-    "gap": 4
+    "gap": 1
    },
    "endBinding": {
     "elementId": "pc",
     "focus": 0,
-    "gap": 4
+    "gap": 1
    },
    "startArrowhead": null,
    "endArrowhead": "arrow",
@@ -952,9 +946,9 @@
    "id": "a-hil-pc-24",
    "type": "arrow",
    "x": 940,
-   "y": 350.0,
-   "width": 70,
-   "height": 3.2000000000000455,
+   "y": 350,
+   "width": 100,
+   "height": 0,
    "angle": 0,
    "strokeColor": "#1e1e1e",
    "backgroundColor": "transparent",
@@ -965,9 +959,7 @@
    "opacity": 100,
    "groupIds": [],
    "frameId": null,
-   "roundness": {
-    "type": 2
-   },
+   "roundness": null,
    "seed": 2780677567,
    "version": 1,
    "versionNonce": 2208791973,
@@ -979,23 +971,23 @@
    "points": [
     [
      0,
-     0.0
+     0
     ],
     [
-     70,
-     3.2000000000000455
+     100,
+     0
     ]
    ],
    "lastCommittedPoint": null,
    "startBinding": {
     "elementId": "hil",
     "focus": 0,
-    "gap": 4
+    "gap": 1
    },
    "endBinding": {
     "elementId": "pc",
     "focus": 0,
-    "gap": 4
+    "gap": 1
    },
    "startArrowhead": null,
    "endArrowhead": "arrow",
@@ -1005,9 +997,9 @@
    "id": "a-emb-pc-25",
    "type": "arrow",
    "x": 940,
-   "y": 450.0,
-   "width": 70,
-   "height": 2.0,
+   "y": 450,
+   "width": 100,
+   "height": 0,
    "angle": 0,
    "strokeColor": "#1e1e1e",
    "backgroundColor": "transparent",
@@ -1018,9 +1010,7 @@
    "opacity": 100,
    "groupIds": [],
    "frameId": null,
-   "roundness": {
-    "type": 2
-   },
+   "roundness": null,
    "seed": 1816983234,
    "version": 1,
    "versionNonce": 1715959425,
@@ -1032,23 +1022,23 @@
    "points": [
     [
      0,
-     0.0
+     0
     ],
     [
-     70,
-     2.0
+     100,
+     0
     ]
    ],
    "lastCommittedPoint": null,
    "startBinding": {
     "elementId": "emb",
     "focus": 0,
-    "gap": 4
+    "gap": 1
    },
    "endBinding": {
     "elementId": "pc",
     "focus": 0,
-    "gap": 4
+    "gap": 1
    },
    "startArrowhead": null,
    "endArrowhead": "arrow",
@@ -1058,9 +1048,9 @@
    "id": "a-host-ci-26",
    "type": "arrow",
    "x": 940,
-   "y": 550.0,
-   "width": 70,
-   "height": 10.399999999999977,
+   "y": 550,
+   "width": 100,
+   "height": 0,
    "angle": 0,
    "strokeColor": "#1e1e1e",
    "backgroundColor": "transparent",
@@ -1071,9 +1061,7 @@
    "opacity": 100,
    "groupIds": [],
    "frameId": null,
-   "roundness": {
-    "type": 2
-   },
+   "roundness": null,
    "seed": 2705633152,
    "version": 1,
    "versionNonce": 794635748,
@@ -1085,23 +1073,23 @@
    "points": [
     [
      0,
-     0.0
+     0
     ],
     [
-     70,
-     10.399999999999977
+     100,
+     0
     ]
    ],
    "lastCommittedPoint": null,
    "startBinding": {
     "elementId": "host",
     "focus": 0,
-    "gap": 4
+    "gap": 1
    },
    "endBinding": {
     "elementId": "ci",
     "focus": 0,
-    "gap": 4
+    "gap": 1
    },
    "startArrowhead": null,
    "endArrowhead": "arrow",
@@ -1111,9 +1099,9 @@
    "id": "a-san-ci-27",
    "type": "arrow",
    "x": 940,
-   "y": 650.0,
-   "width": 70,
-   "height": 0.0,
+   "y": 650,
+   "width": 100,
+   "height": 0,
    "angle": 0,
    "strokeColor": "#1e1e1e",
    "backgroundColor": "transparent",
@@ -1124,9 +1112,7 @@
    "opacity": 100,
    "groupIds": [],
    "frameId": null,
-   "roundness": {
-    "type": 2
-   },
+   "roundness": null,
    "seed": 1197151867,
    "version": 1,
    "versionNonce": 1906882450,
@@ -1138,23 +1124,23 @@
    "points": [
     [
      0,
-     0.0
+     0
     ],
     [
-     70,
-     0.0
+     100,
+     0
     ]
    ],
    "lastCommittedPoint": null,
    "startBinding": {
     "elementId": "san",
     "focus": 0,
-    "gap": 4
+    "gap": 1
    },
    "endBinding": {
     "elementId": "ci",
     "focus": 0,
-    "gap": 4
+    "gap": 1
    },
    "startArrowhead": null,
    "endArrowhead": "arrow",
@@ -1164,9 +1150,9 @@
    "id": "a-native-ci-28",
    "type": "arrow",
    "x": 940,
-   "y": 750.0,
-   "width": 70,
-   "height": 10.399999999999977,
+   "y": 750,
+   "width": 100,
+   "height": 0,
    "angle": 0,
    "strokeColor": "#1e1e1e",
    "backgroundColor": "transparent",
@@ -1177,9 +1163,7 @@
    "opacity": 100,
    "groupIds": [],
    "frameId": null,
-   "roundness": {
-    "type": 2
-   },
+   "roundness": null,
    "seed": 182817180,
    "version": 1,
    "versionNonce": 2290008777,
@@ -1191,23 +1175,23 @@
    "points": [
     [
      0,
-     0.0
+     0
     ],
     [
-     70,
-     -10.399999999999977
+     100,
+     0
     ]
    ],
    "lastCommittedPoint": null,
    "startBinding": {
     "elementId": "native",
     "focus": 0,
-    "gap": 4
+    "gap": 1
    },
    "endBinding": {
     "elementId": "ci",
     "focus": 0,
-    "gap": 4
+    "gap": 1
    },
    "startArrowhead": null,
    "endArrowhead": "arrow",

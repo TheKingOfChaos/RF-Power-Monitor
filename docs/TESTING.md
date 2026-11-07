@@ -1,12 +1,13 @@
 # Testing
 
-The project has three test layers. Each one tests what the layer below cannot.
+The project has three test layers for the firmware, each testing what the layer below cannot, and tests for the Python tools.
 
 | Layer | Folder | Runs on | Framework | Command | Time |
 |---|---|---|---|---|---|
 | Unit | `test/native/` | Your PC | Unity | `pio test -e native` | ~5 s |
 | On-device | `test/embedded/` | The Pico | Unity | `pio test -e pico` | ~55 s |
 | Hardware-in-the-loop (HIL) | `test/hil/` | PC talking to flashed Pico | Python `unittest` | see below | several minutes (longer with mains tests) |
+| Tools | `test/tools/` | Your PC | Python `unittest` | see [Tool tests](#tool-tests-testtools) | |
 
 The rules for writing tests are in [.clinerules](../.clinerules), section *Testing Requirements → Test Rules*.
 
@@ -47,7 +48,7 @@ The Pico is expected on `COM16` (set in `platformio.ini`; the HIL tests read `RF
 
 `platformio.ini` has `default_envs = pico`, so a bare `pio run`, `pio test` or upload builds `pico` only. The `pico_b` environment (the same firmware linked for slot B) is built by `tools/fw_release.py` with `-e pico_b`, and an upload to it is refused. `pio test -e native` and the CI jobs name their environment and are unaffected.
 
-**RAM limit.** The 60 % rule (`.clinerules`; 50 % until 2026-11-07) is checked against PlatformIO's `RAM:` line of `pio run -e pico` (`.data` + `.bss`). Anything a code path allocates from the heap counts on top of it at that path's peak, so large buffers are static; the firmware update allocates nothing (its receiver is a static 632 bytes). The status screen's `RAM used` is a different figure: it also counts both stacks (core 1's 8 KB stack is allocated by the core) and the heap in use.
+**RAM limit.** The 60 % rule (`.clinerules`; 50 % until 2026-11-07) is checked against PlatformIO's `RAM:` line of `pio run -e pico` (`.data` + `.bss`; 3.6.0: 52.8 %, 138,540 of 262,144 bytes, with a 443,612-byte image). Anything a code path allocates from the heap counts on top of it at that path's peak, so large buffers are static; the firmware update allocates nothing (its receiver is a static 632 bytes). The status screen's `RAM used` is a different figure: it also counts both stacks (core 1's 8 KB stack is allocated by the core) and the heap in use.
 
 **Flashing a Pico by hand.** The Pico's flash holds the boot program, slot A and slot B (see the user manual). `pio run -e pico -t upload` and `pio test -e pico` send `firmware_full.uf2` (boot program, boot record and slot A). Copy only that file, or a release's `-usb.uf2`, to a BOOTSEL drive: the plain `firmware.uf2` the platform also writes has no boot program, and a device flashed with it does not start. `pio test -e pico` replaces the firmware with a test program; afterwards `pio run -e pico -t upload` puts the normal firmware back (slot A behind the boot program, kept).
 
@@ -470,7 +471,8 @@ restored). `test_build_src` is off, so the test compiles the service, `boot_info
 ### `test/hil/test_snmp.py`: the SNMP agent on the device
 - `snmpget` of sysDescr, sysObjectID, several varbinds in order; sysUpTime advances ~100 ticks per second
 - Mains objects present and consistent with the serial status screen
-- `snmpwalk` of everything from `.1` (v1: 224 objects in order, 233 while the device has an LLDP neighbour, LLDP-MIB first; End of MIB; v1 does not see the eight Counter64 columns), the system group (7) and the enterprise subtree (6; 5 with `RFPOWER_NO_TMP1075`)
+- `snmpwalk` of everything from `.1` (v1: 232 objects in order, 241 while the device has an LLDP neighbour, one more each once NTP has set the clock (hrSystemDate), LLDP-MIB first; End of MIB; v1 does not see the eight Counter64 columns), the system group (7) and the enterprise subtree (14 with fwUpdate and updateSite; 13 with `RFPOWER_NO_TMP1075`)
+- fwUpdate group (`63050.7`, v1 and v2c): 5 objects in order, the running slot's version equals sysDescr's, the other slot a version or empty
 - IF-MIB: ifDescr, ifType, ifMtu, admin/oper status, ifName; ifSpeed, ifHighSpeed and ifPhysAddress match the status screen; 20 requests raise the 64-bit packet and octet counters; ifInOctets is the low half of ifHCInOctets; the receive drop counters match the status screen; Counter64 is noSuchName in v1
 - cpuTemperature between 10 and 85 °C and within 2 °C of the status screen
 - ambientTemperature between 5 and 50 °C, within 0.5 °C of the status screen and below the CPU temperature (skipped with `RFPOWER_NO_TMP1075=1`, for a module without the carrier board)
@@ -481,7 +483,7 @@ restored). `test_build_src` is off, so the test compiles the service, `boot_info
 - Access log lists bad community and bad version from this PC, newest first; SetRequests are logged
 - The device must use community `public` for this suite
 
-- v2c: get, exceptions instead of errors, walk of all 232 objects (241 with an LLDP neighbour) plus the IP address rows, which the walk tests leave out and `test_snmp_ip_addresses_match_status_screen` / `test_ipv6.py` `test_snmp_ipv6_addresses_match_status_screen` check against the status screen ending with endOfMibView, `snmpbulkwalk` returns the same objects as `snmpwalk`, `snmpbulkget -Cn1 -Cr3`, `-Cr1000` capped at 16 varbinds and reaching endOfMibView, Set notWritable, wrong community; SNMPv3 gets no reply and is counted; v1/v2c counters
+- v2c: get, exceptions instead of errors, walk of all 240 objects (249 with an LLDP neighbour, one more with hrSystemDate) plus the IP address rows, which the walk tests leave out and `test_snmp_ip_addresses_match_status_screen` / `test_ipv6.py` `test_snmp_ipv6_addresses_match_status_screen` check against the status screen ending with endOfMibView, `snmpbulkwalk` returns the same objects as `snmpwalk`, `snmpbulkget -Cn1 -Cr3`, `-Cr1000` capped at 16 varbinds and reaching endOfMibView, Set notWritable, wrong community; SNMPv3 gets no reply and is counted; v1/v2c counters
 
 - 30 requests: every reply echoes its request id, worst case under 100 ms
 - 300 malformed packets in bursts: agent keeps answering; oversized packet ignored; 5 simultaneous requests all answered

@@ -2,13 +2,15 @@
 
 The device works in LibreNMS as a plain SNMP device out of the box: it answers SNMPv2c, has the system group and the standard IF-MIB, so LibreNMS discovers it, graphs the Ethernet port's traffic and shows its uptime. To also get the mains power state and the CPU and ambient temperature as sensors, and the device recognised as an RF-Power-Monitor with the RF logo, add the definitions in [librenms/](../librenms/) to your LibreNMS installation.
 
-> **Status:** tested with LibreNMS 26.9.1 (Docker, [librenms/test/compose.yml](../librenms/test/compose.yml)) against the real device running firmware 1.0.1: OS, version and hardware detected, all three sensors created with the right values and limits, the port polled with traffic rates, and a mains trap logged. The RF logo as device icon and device page logo was checked with LibreNMS (Docker, `latest`) on 2026-10-31 against the device. The definition files also validate against LibreNMS's JSON schemas. Re-checked on 2026-11-01 after the rename (3.0.0 definitions, Pico with the renamed firmware): detected as RF-Power-Monitor (`rfpowermonitor`) with version and hardware, all five sensors, the LLDP neighbour, an authenticationFailure trap in the event log, and snmptrapd resolving the `RF-POWER-MONITOR-MIB` trap names.
+> **Status:** tested with LibreNMS 26.9.1 (Docker, [librenms/test/compose.yml](../librenms/test/compose.yml)) against the real device running firmware 1.0.1: OS, version and hardware detected, all three sensors created with the right values and limits, the port polled with traffic rates, and a mains trap logged. The RF logo as device icon and device page logo was checked with LibreNMS (Docker, `latest`) on 2026-10-31 against the device. The definition files also validate against LibreNMS's JSON schemas. Re-checked on 2026-11-01 after the rename (3.0.0 definitions, Pico with the renamed firmware): detected as RF-Power-Monitor (`rfpowermonitor`) with version and hardware, all five sensors, the LLDP neighbour, an authenticationFailure trap in the event log, and snmptrapd resolving the `RF-POWER-MONITOR-MIB` trap names. Re-checked on 2026-11-07 with firmware 3.6.0: the two update-site sensors discovered (warning limit 60 minutes), and the device's syslog messages stored under the device through the syslog-ng sidecar on UDP 5140.
 
 ## What you get
 
+![How LibreNMS sees the device: SNMP polls every 5 minutes, traps through the snmptrapd sidecar, syslog through the syslog-ng sidecar, sensors and alert rules](diagrams/librenms-integration.svg)
+
 | In LibreNMS | From |
 |---|---|
-| OS "RF-Power-Monitor", type power, version (e.g. `1.0.2`) and hardware (`RP2040, W5500`) | sysObjectID `1.3.6.1.4.1.63050`, sysDescr |
+| OS "RF-Power-Monitor", type power, version (e.g. `3.6.0`) and hardware (`RP2040, W5500`) | sysObjectID `1.3.6.1.4.1.63050`, sysDescr |
 | Port `eth0` with traffic, packets, speed and status | IF-MIB (64-bit counters over v2c) |
 | State sensor "Mains power": present (OK) / lost (warning) | `mainsPowerStatus` |
 | State sensor "Mains lost over 60 s": none (OK) / lostTooLong (critical) | `mainsPowerAlarm` (firmware after 2.5.1) |
@@ -93,7 +95,7 @@ LibreNMS's daily update and `validate.php` may complain about these extra files,
 
 ### IPv6
 
-The device answers SNMP over IPv6 too (see the README's IPv6 section). To poll it over IPv6, add it with the IPv6 transport:
+The device answers SNMP over IPv6 too (see [IPv6](REFERENCE.md#ipv6) in the reference). To poll it over IPv6, add it with the IPv6 transport:
 
 ```bash
 ./lnms device:add --v2c -c <community> -t udp6 <device IPv6 address>
@@ -158,7 +160,7 @@ Two things that cost time when you change anything here:
 
 ## Syslog
 
-From firmware 3.6.0 the device sends its events to a syslog server (serial menu option 11, the web page's card *Time and syslog*, or DHCP option 7; see the README's *Time and syslog* section): mains lost and restored, the 60 s alarm, restarts, firmware updates, web logins, rejected SNMP requests, settings changes, link, address and switch changes, and update site check-ins that fail. They are RFC 5424 messages over UDP (facility daemon, APP-NAME `rfpower`, the device's hostname as HOSTNAME, UTC time with milliseconds). LibreNMS shows them on the device's **Logs → Syslog** tab and under Overview → Syslog.
+From firmware 3.6.0 the device sends its events to a syslog server (serial menu option 11, the web page's card *Time and syslog*, or DHCP option 7; see the reference's [Time and syslog](REFERENCE.md#time-and-syslog) section): mains lost and restored, the 60 s alarm, restarts, firmware updates, web logins, rejected SNMP requests, settings changes, link, address and switch changes, and update site check-ins that fail. They are RFC 5424 messages over UDP (facility daemon, APP-NAME `rfpower`, the device's hostname as HOSTNAME, UTC time with milliseconds). LibreNMS shows them on the device's **Logs → Syslog** tab and under Overview → Syslog.
 
 On a LibreNMS server, set up syslog as described in the LibreNMS documentation (Syslog support, syslog-ng or rsyslog), then:
 
