@@ -35,6 +35,9 @@ The device runs an SNMP agent on UDP port 161 and sends traps. Every object is r
 | `1.3.6.1.4.1.63050.7.3.0` | fwSlotBVersion | DisplayString | Firmware version in slot B; empty = no valid image |
 | `1.3.6.1.4.1.63050.7.4.0` | fwState | INTEGER | `1` = kept, `2` = trial (the running firmware is new and not yet confirmed) |
 | `1.3.6.1.4.1.63050.7.5.0` | fwLastResult | INTEGER | Last update: `0` none, `1` installed, `2` rolledBackCrash, `3` rolledBackUnreachable, `4` fallbackCrash |
+| `1.3.6.1.4.1.63050.8.1.0` | updCheckinResult | INTEGER | Update site check-ins: `0` off (no URL or key), `1` never (none succeeded yet), `2` ok, `3` failed |
+| `1.3.6.1.4.1.63050.8.2.0` | updMinutesSinceGood | Gauge32 | Minutes since the last good check-in (or since the network came up when none yet); `0` while off |
+| `1.3.6.1.4.1.63050.8.3.0` | updFailedInRow | Gauge32 | Check-ins failed since the last good one |
 
 `cpuTemperature` comes from the RP2040's internal sensor. It measures the chip, which runs a few degrees above the air around it, and the sensor is only accurate to a few degrees: use it to spot an overheating chip, not as a room thermometer. It was named `boardTemperature` before; the OID and value are unchanged, only the name in the MIB file.
 
@@ -45,6 +48,8 @@ The device runs an SNMP agent on UDP port 161 and sends traps. Every object is r
 `mainsPowerAlarm` becomes `1` once mains has been lost for 60 s without a break, counted from the debounced loss (from start-up if the device starts without mains), and goes back to `0` when mains returns. A loss that is restored, even briefly, starts a new 60 s. Alert on this object rather than on `mainsPowerStatus` to ignore short outages; when it becomes `1` the device sends one `mainsPowerLostTooLong` trap (below). The 60 s is fixed.
 
 The **fwUpdate** group (`63050.7`) describes the two firmware slots (see the Firmware page of the web interface for updates). `fwState` is `trial(2)` from the first start of an uploaded firmware until it has answered a valid management request (SNMP with the right community, or an authenticated web request); it then becomes `kept(1)`. If the new firmware crashes or nobody reaches it in time, the device goes back to the previous slot, `fwLastResult` says why and the old slot's `fwState` is `kept(1)`. `fwLastResult` is stored with the boot record, so it survives restarts; `fallbackCrash(4)` means a running slot crashed three times and the other slot took over. A slot version that is empty has no image that verifies (after a failed upload, for instance). The group sorts after `mainsPowerAlarm`; it has no gaps, and v1 behaviour of the other objects is unchanged.
+
+The **updateSite** group (`63050.8`, 3.6.0) tells a manager whether the device reaches its update site. The device checks in every 30 minutes (retry after 5 minutes), so `updMinutesSinceGood` over 60 means check-ins are failing; LibreNMS warns at that point. The values start again when the update server settings change. The group follows fwUpdate; snmpSetSerialNo still sorts last.
 
 ## SNMPv2-MIB: sysORTable, snmp group, snmpSetSerialNo
 
@@ -149,8 +154,9 @@ LibreNMS and other managers read CPU load, memory and storage from the standard 
 | `.1.6.0` | hrSystemProcesses | Gauge32 | 2: the loops of core 0 and core 1 |
 | `.1.7.0` | hrSystemMaxProcesses | INTEGER | 2 |
 | `.2.2.0` | hrMemorySize | INTEGER (KB) | 256 |
+| `.1.2.0` | hrSystemDate | DateAndTime | Danish local time (CET/CEST, the offset in the last bytes); only once NTP has set the clock (3.6.0) |
 
-hrSystemDate is not served: the device has no clock.
+hrSystemDate is absent (skipped by a walk, noSuchInstance in v2c, noSuchName in v1) until NTP has answered (serial menu option 11, NTP from DHCP option 42 or DHCPv6 option 56, or a typed server).
 
 **hrStorageTable** `1.3.6.1.2.1.25.2.3.1.<column>.<index>`, index 1 = RAM, 2 = LittleFS
 

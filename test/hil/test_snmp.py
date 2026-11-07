@@ -42,17 +42,20 @@ ENTERPRISE_OBJECTS = [n for n in range(1, 7) if not (NO_TMP1075 and n == 5)]
 LAST_ENTERPRISE = ENTERPRISE_OBJECTS[-1]
 # fwUpdate group (63050.7): fwRunningSlot, fwSlotAVersion, fwSlotBVersion, fwState, fwLastResult
 FW_OBJECTS = list(range(1, 6))
+# updateSite group (63050.8): updCheckinResult, updMinutesSinceGood, updFailedInRow
+UPDATE_SITE_OBJECTS = list(range(1, 4))
 # The object that sorts last: snmpSetSerialNo (SNMPv2-MIB)
 LAST_OID = ".1.3.6.1.6.3.1.1.6.1.0"
 # snmp group (SNMPv2-MIB): 1.3.6.1.2.1.11.1-32, 7 and 23 were never assigned
 SNMP_GROUP = [n for n in range(1, 33) if n not in (7, 23)]
 
 
-def all_oids(v1, neighbour):
+def all_oids(v1, neighbour, clock):
     """Every object of the MIB in walk order; v1 does not see the eight Counter64 ifHC* columns.
 
     LLDP-MIB comes first (1.0.8802 sorts before 1.3.6.1): our port always, the switch's row only
-    while the device holds a neighbour (status screen "Switch:").
+    while the device holds a neighbour (status screen "Switch:"). hrSystemDate only once NTP has
+    set the clock (status screen "Time:").
     """
     lldp = ".1.0.8802.1.1.2.1"
     oids = [lldp + ".3.7.1.%d.1" % i for i in range(2, 5)]
@@ -70,7 +73,7 @@ def all_oids(v1, neighbour):
     oids += [".1.3.6.1.2.1.11.%d.0" % i for i in SNMP_GROUP]
     # HOST-RESOURCES-MIB: hrSystem, hrMemorySize, hrStorage (RAM, LittleFS), hrDevice and hrProcessor (2 cores)
     hr = ".1.3.6.1.2.1.25"
-    oids += [hr + ".1.%d.0" % i for i in (1, 5, 6, 7)] + [hr + ".2.2.0"]
+    oids += [hr + ".1.%d.0" % i for i in ((1, 2, 5, 6, 7) if clock else (1, 5, 6, 7))] + [hr + ".2.2.0"]
     oids += [hr + ".2.3.1.%d.%d" % (c, r) for c in range(1, 8) for r in (1, 2)]
     oids += [hr + ".3.2.1.%d.%d" % (c, r) for c in range(1, 7) for r in (768, 769)]
     oids += [hr + ".3.3.1.%d.%d" % (c, r) for c in range(1, 3) for r in (768, 769)]
@@ -79,6 +82,7 @@ def all_oids(v1, neighbour):
     oids += [".1.3.6.1.2.1.47.1.1.1.1.%d.1" % i for i in range(2, 17)] + [".1.3.6.1.2.1.47.1.4.1.0"]
     oids += ["." + ENTERPRISE + ".%d.0" % i for i in ENTERPRISE_OBJECTS]
     oids += ["." + ENTERPRISE + ".7.%d.0" % i for i in FW_OBJECTS]
+    oids += ["." + ENTERPRISE + ".8.%d.0" % i for i in UPDATE_SITE_OBJECTS]
     oids += [LAST_OID]
     return oids
 
@@ -120,6 +124,11 @@ class SnmpAgentTest(unittest.TestCase):
 
     def snmp(self, tool, *args, **kw):
         return net_snmp(tool, self.ip, *args, **kw)
+
+    def has_clock(self):
+        """NTP has set the clock, so hrSystemDate has its instance"""
+        self.dev.wait_for_menu(timeout=10)
+        return not (self.dev.status()["time"] or "not synced").startswith("not synced")
 
     def has_neighbour(self):
         """The device holds an LLDP neighbour, so lldpRemTable has its row"""
@@ -189,12 +198,12 @@ class SnmpAgentTest(unittest.TestCase):
         rc, out = self.snmp("snmpwalk", ".1")
         self.assertEqual(0, rc, out)
         oids = static_oids([l.split(" = ")[0] for l in out.splitlines() if " = " in l])
-        self.assertEqual(all_oids(v1=True, neighbour=self.has_neighbour()), oids)
+        self.assertEqual(all_oids(v1=True, neighbour=self.has_neighbour(), clock=self.has_clock()), oids)
         self.assertIn("End of MIB", out)
 
     def test_walk_enterprise_subtree(self):
         rc, out = self.snmp("snmpwalk", ENTERPRISE)
-        self.assertEqual(len(ENTERPRISE_OBJECTS) + len(FW_OBJECTS), sum(1 for l in out.splitlines() if " = " in l), out)
+        self.assertEqual(len(ENTERPRISE_OBJECTS) + len(FW_OBJECTS) + len(UPDATE_SITE_OBJECTS), sum(1 for l in out.splitlines() if " = " in l), out)
 
     def test_walk_includes_fw_group(self):
         rc, out = self.snmp("snmpwalk", ENTERPRISE + ".7", version="2c")
@@ -360,7 +369,7 @@ class SnmpAgentTest(unittest.TestCase):
         rc, out = self.snmp("snmpwalk", ".1", version="2c")
         self.assertEqual(0, rc, out)
         oids = static_oids([l.split(" = ")[0] for l in out.splitlines() if " = " in l and "No more variables" not in l])
-        self.assertEqual(all_oids(v1=False, neighbour=self.has_neighbour()), oids)
+        self.assertEqual(all_oids(v1=False, neighbour=self.has_neighbour(), clock=self.has_clock()), oids)
         self.assertIn("No more variables left in this MIB View", out)
 
     def test_bulkwalk_returns_the_same_objects_as_walk(self):
@@ -374,7 +383,7 @@ class SnmpAgentTest(unittest.TestCase):
             return [(l.split(" = ")[0], l.split(" = ")[1].split(":")[0]) for l in text.splitlines()
                     if " = " in l and "No more" not in l]
         self.assertEqual(oids(walk), oids(bulk))
-        self.assertEqual(len(all_oids(v1=False, neighbour=self.has_neighbour())), len(static_oids([o for o, _ in oids(bulk)])))
+        self.assertEqual(len(all_oids(v1=False, neighbour=self.has_neighbour(), clock=self.has_clock())), len(static_oids([o for o, _ in oids(bulk)])))
         # 232 or more objects at most 16 per GetBulk: at least 15 requests
         self.assertGreaterEqual(self.dev.status()["getBulkRequests"] - before, 15)
 
@@ -396,7 +405,7 @@ class SnmpAgentTest(unittest.TestCase):
         self.assertEqual(0, rc, out)
         self.assertIn("No more variables left in this MIB View", out)
         # The enterprise objects, then snmpSetSerialNo, then the end
-        self.assertEqual(len(ENTERPRISE_OBJECTS) + len(FW_OBJECTS) + 1,
+        self.assertEqual(len(ENTERPRISE_OBJECTS) + len(FW_OBJECTS) + len(UPDATE_SITE_OBJECTS) + 1,
                          sum(1 for l in out.splitlines() if " = " in l and "No more" not in l))
 
     # ---- IF-MIB ----

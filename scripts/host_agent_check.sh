@@ -62,10 +62,10 @@ check "get 2nd unknown names it" "${NO_SUCH}\.1\.3\.6\.1\.9\.0" \
       snmpget $SNMP_OPTS $TARGET 1.3.6.1.2.1.1.1.0 1.3.6.1.9.0
 check "getnext enterprise"      '63050\.1\.0 = INTEGER: 1' snmpgetnext $SNMP_OPTS $TARGET 1.3.6.1.4.1.63050
 check "getnext past end"        "${NO_SUCH}\.1\.3\.6\.1\.6\.3\.1\.1\.6\.1\.0" snmpgetnext $SNMP_OPTS $TARGET 1.3.6.1.6.3.1.1.6.1.0
-check "v1 walk all, 261 objects" '^261$' bash -c "snmpwalk $SNMP_OPTS $TARGET .1 | grep -c ' = '"
+check "v1 walk all, 264 objects" '^264$' bash -c "snmpwalk $SNMP_OPTS $TARGET .1 | grep -c ' = '"
 check "walk order"              '1\.1\.0.*1\.2\.0.*1\.3\.0.*1\.4\.0.*1\.5\.0.*1\.6\.0.*1\.7\.0.*63050\.1\.0.*63050\.2\.0.*63050\.3\.0' \
       bash -c "snmpwalk $SNMP_OPTS $TARGET .1 | cut -d' ' -f1 | tr '\n' ' '"
-check "walk enterprise, 11 objects" '^11$' bash -c "snmpwalk $SNMP_OPTS $TARGET 1.3.6.1.4.1.63050 | grep -c ' = '"
+check "walk enterprise, 14 objects" '^14$' bash -c "snmpwalk $SNMP_OPTS $TARGET 1.3.6.1.4.1.63050 | grep -c ' = '"
 check "set is rejected"         "${NO_SUCH}\.1\.3\.6\.1\.2\.1\.1\.5\.0" \
       snmpset $SNMP_OPTS $TARGET 1.3.6.1.2.1.1.5.0 s newname
 check "sysName unchanged"       'STRING: "host-agent"' snmpget $SNMP_OPTS $TARGET 1.3.6.1.2.1.1.5.0
@@ -80,11 +80,11 @@ check "v2c mixed get, no error" '1\.5\.0 = STRING: "host-agent".*1\.99\.0 = No S
       snmpget $V2 $TARGET 1.3.6.1.2.1.1.5.0 1.3.6.1.2.1.1.99.0
 check "v2c getnext past end"    '1\.1\.6\.1\.0 = No more variables left in this MIB View' \
       snmpgetnext $V2 $TARGET 1.3.6.1.6.3.1.1.6.1.0
-check "v2c walk all, 269 objects" '^269$' bash -c "snmpwalk $V2 $TARGET .1 | grep ' = ' | grep -vc 'No more variables'"
+check "v2c walk all, 272 objects" '^272$' bash -c "snmpwalk $V2 $TARGET .1 | grep ' = ' | grep -vc 'No more variables'"
 check "v2c walk ends at view end" 'No more variables left in this MIB View' snmpwalk $V2 $TARGET .1
 check "v2c walk order"          '1\.1\.0.*1\.7\.0.*63050\.1\.0.*63050\.3\.0' \
       bash -c "snmpwalk $V2 $TARGET .1 | cut -d' ' -f1 | tr '\n' ' '"
-check "bulkwalk all, 269 objects" '^269$' bash -c "snmpbulkwalk $V2 $TARGET .1 | grep ' = ' | grep -vc 'No more variables'"
+check "bulkwalk all, 272 objects" '^272$' bash -c "snmpbulkwalk $V2 $TARGET .1 | grep ' = ' | grep -vc 'No more variables'"
 check "bulkwalk = walk"         '^same$' bash -c "diff <(snmpwalk $V2 $TARGET .1 | grep ' = ' | cut -d' ' -f1) <(snmpbulkwalk $V2 $TARGET .1 | grep ' = ' | cut -d' ' -f1) >/dev/null && echo same"
 check "bulkget n1 r3"           '1\.1\.4\.0 = STRING.*1\.1\.1\.0 = STRING.*1\.1\.2\.0 = OID.*1\.1\.3\.0 = Timeticks' \
       snmpbulkget $V2 -Cn1 -Cr3 $TARGET 1.3.6.1.2.1.1.3.0 1.3.6.1.2.1.1
@@ -114,7 +114,10 @@ check "v1 fwUpdate walk, 5 objects, in order" '63050\.7\.1\.0 = INTEGER: 2.*6305
 check "v2c fwUpdate walk ends at the group" '63050\.7\.5\.0 = INTEGER: 2$' \
       bash -c "snmpwalk $V2 $TARGET 1.3.6.1.4.1.63050.7 | tr '\n' ' ' | sed 's/ *\$//'"
 check "getnext mainsPowerAlarm is fwRunningSlot" '63050\.7\.1\.0 = INTEGER: 2' snmpgetnext $SNMP_OPTS $TARGET 1.3.6.1.4.1.63050.6.0
-check "getnext after fwLastResult"  '6\.3\.1\.1\.6\.1\.0 = INTEGER: 0' snmpgetnext $SNMP_OPTS $TARGET 1.3.6.1.4.1.63050.7.5.0
+check "getnext after fwLastResult is updCheckinResult" '63050\.8\.1\.0 = INTEGER: 3' snmpgetnext $SNMP_OPTS $TARGET 1.3.6.1.4.1.63050.7.5.0
+check "updateSite walk, 3 objects, in order" '63050\.8\.1\.0 = INTEGER: 3.*63050\.8\.2\.0 = Gauge32: 95.*63050\.8\.3\.0 = Gauge32: 4$' \
+      bash -c "snmpwalk $SNMP_OPTS $TARGET 1.3.6.1.4.1.63050.8 | tr '\n' ' ' | sed 's/ *\$//'"
+check "getnext after updFailedInRow" '6\.3\.1\.1\.6\.1\.0 = INTEGER: 0' snmpgetnext $SNMP_OPTS $TARGET 1.3.6.1.4.1.63050.8.3.0
 check "v2c fwUpdate unknown object" '63050\.7\.6\.0 = No Such Object' snmpget $V2 $TARGET 1.3.6.1.4.1.63050.7.6.0
 
 # SNMPv2-MIB (RFC 3418): sysORTable, snmp group, snmpSetSerialNo, with net-snmp's names

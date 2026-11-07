@@ -16,6 +16,7 @@
 #include "net_stats.h"
 #include "syslog_service.h"
 #include "time_service.h"
+#include "update_service.h"
 #include "source_key.h"
 #include "version.h"
 
@@ -90,6 +91,7 @@ static SnmpDeviceState captureState() {
     s.fw.trial = fw.trial;
     memcpy(s.fw.slotVersion, fw.slotVersion, sizeof(s.fw.slotVersion));
     s.fw.lastResult = (uint8_t)fw.lastResult;
+    updateServiceSnmpState(s.update);
     // LLDP-MIB: a static copy (core 0 only), so the response never reads the table lwIP updates
     static SnmpLldpState lldp;
     if (lldpServiceSnmpState(lldp)) s.lldp = &lldp;

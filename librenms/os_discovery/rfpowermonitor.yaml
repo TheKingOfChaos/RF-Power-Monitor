@@ -51,6 +51,19 @@ modules:
                         - { descr: rolledBackCrash, value: 2, generic: 2 }
                         - { descr: rolledBackUnreachable, value: 3, generic: 2 }
                         - { descr: fallbackCrash, value: 4, generic: 2 }
+                -
+                    # Update site check-ins (3.6.0). Shown only: one failed check-in is retried in 5 minutes,
+                    # so the warning comes from updMinutesSinceGood below, after an hour without a good one
+                    oid: RF-POWER-MONITOR-MIB::updCheckinResult
+                    num_oid: '.1.3.6.1.4.1.63050.8.1.{{ $index }}'
+                    descr: 'Update site check-in'
+                    index: 'updCheckinResult.{{ $index }}'
+                    state_name: updCheckinResult
+                    states:
+                        - { descr: off, value: 0, generic: 3 }
+                        - { descr: never, value: 1, generic: 0 }
+                        - { descr: ok, value: 2, generic: 0 }
+                        - { descr: failed, value: 3, generic: 0 }
         temperature:
             data:
                 -
@@ -82,3 +95,12 @@ modules:
                     num_oid: '.1.3.6.1.4.1.63050.2.{{ $index }}'
                     descr: 'Mains power changes since boot'
                     index: 'mainsPowerChanges.{{ $index }}'
+                -
+                    # Check-ins every 30 minutes: over 60 minutes without a good one is a warning
+                    oid: RF-POWER-MONITOR-MIB::updMinutesSinceGood
+                    num_oid: '.1.3.6.1.4.1.63050.8.2.{{ $index }}'
+                    descr: 'Minutes since update site check-in'
+                    index: 'updMinutesSinceGood.{{ $index }}'
+                    low_limit: 0
+                    warn_limit: 60
+                    high_limit: 1440

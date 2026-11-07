@@ -16,6 +16,7 @@
  * is reported at the next check-in. Core 0 only; never blocks (src/http_fetch.h).
  */
 
+#include <snmp_mib.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <update_url.h>
@@ -48,6 +49,9 @@ const char* updateServicePhaseName();
 
 /// Fill out for the status screen and web page
 void updateServiceStatus(UpdateServiceStatus& out);
+
+/// The updateSite SNMP group (63050.8): result, minutes since the last good check-in, failures in a row
+void updateServiceSnmpState(SnmpUpdateState& out);
 
 /**
  * @brief The check-ins in words: "off", "no key", "bad url", "waiting for the first check-in",

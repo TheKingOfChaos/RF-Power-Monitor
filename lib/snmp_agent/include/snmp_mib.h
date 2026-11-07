@@ -178,6 +178,16 @@ struct SnmpFwState {
 };
 
 /**
+ * @brief The updateSite group (63050.8): check-ins with the update site
+ */
+struct SnmpUpdateState {
+    uint8_t result;             ///< updCheckinResult: 0 off, 1 never (not yet), 2 ok, 3 failed
+    uint32_t minutesSinceGood;  ///< updMinutesSinceGood: since the last good check-in (or since the
+                                ///< network came up when none yet); 0 when check-ins are off
+    uint32_t failedInRow;       ///< updFailedInRow: check-ins failed since the last good one
+};
+
+/**
  * @brief Everything the MIB reports, captured once per request
  */
 struct SnmpDeviceState {
@@ -187,6 +197,7 @@ struct SnmpDeviceState {
     uint32_t mainsLastChangeTicks; ///< uptimeTicks at the last change, 0 if none
     bool mainsAlarm;               ///< mainsPowerAlarm: mains lost for 60 s or more
     SnmpFwState fw;                ///< fwUpdate group (63050.7)
+    SnmpUpdateState update;        ///< updateSite group (63050.8)
     const char* sysDescr;
     const char* sysContact;
     const char* sysName;

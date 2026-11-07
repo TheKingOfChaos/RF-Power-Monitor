@@ -178,6 +178,12 @@ static SnmpValue getFwState(const SnmpDeviceState& s) {
 
 static SnmpValue getFwLastResult(const SnmpDeviceState& s) { return SnmpValue::makeInteger(s.fw.lastResult); }
 
+// ---- updateSite group (63050.8): update site check-ins ----
+
+static SnmpValue getUpdCheckinResult(const SnmpDeviceState& s) { return integer(s.update.result); }
+static SnmpValue getUpdMinutesSinceGood(const SnmpDeviceState& s) { return gauge(s.update.minutesSinceGood); }
+static SnmpValue getUpdFailedInRow(const SnmpDeviceState& s) { return gauge(s.update.failedInRow); }
+
 // ---- LLDP-MIB (IEEE 802.1AB-2005 Annex F): our one port and the one neighbour ----
 
 static const int32_t LLDP_PORT_ID_MAC = 3;
@@ -525,6 +531,7 @@ static bool dynamicInstance(const MibDynamicColumn& c, const SnmpIpAddress& a, O
 #define IFX(n) {{1, 3, 6, 1, 2, 1, 31, 1, 1, 1, n, 1}, 12}
 #define PRIVATE(n) {{1, 3, 6, 1, 4, 1, ENTERPRISE_NUMBER, n, 0}, 9}
 #define FW_UPDATE(n) {{1, 3, 6, 1, 4, 1, ENTERPRISE_NUMBER, 7, n, 0}, 10}
+#define UPDATE_SITE(n) {{1, 3, 6, 1, 4, 1, ENTERPRISE_NUMBER, 8, n, 0}, 10}
 // lldpLocPortTable row lldpLocPortNum 1; lldpRemTable row lldpRemTimeMark 0, lldpRemLocalPortNum 1, lldpRemIndex 1
 #define LLDP_LOC(n) {{1, 0, 8802, 1, 1, 2, 1, 3, 7, 1, n, 1}, 12}
 #define LLDP_REM(n) {{1, 0, 8802, 1, 1, 2, 1, 4, 1, 1, n, 0, 1, 1}, 14}
@@ -739,6 +746,9 @@ static const MibEntry MIB[] = {
     {FW_UPDATE(3), getFwSlotBVersion},
     {FW_UPDATE(4), getFwState},
     {FW_UPDATE(5), getFwLastResult},
+    {UPDATE_SITE(1), getUpdCheckinResult},
+    {UPDATE_SITE(2), getUpdMinutesSinceGood},
+    {UPDATE_SITE(3), getUpdFailedInRow},
 
     {SNMP_SET_SERIAL_NO, getSnmpSetSerialNo},
 };

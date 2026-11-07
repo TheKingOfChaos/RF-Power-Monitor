@@ -86,6 +86,9 @@ int main(int argc, char** argv) {
         strcpy(state.fw.slotVersion[0], "3.3.0");
         strcpy(state.fw.slotVersion[1], "3.4.0");
         state.fw.lastResult = 2;
+        state.update.result = 3;  // check-ins failing: 4 in a row, the last good one 95 minutes ago
+        state.update.minutesSinceGood = 95;
+        state.update.failedInRow = 4;
         state.sysDescr = "RF-Power-Monitor host test";
         state.sysContact = "ops@example.com";
         state.sysName = "host-agent";
