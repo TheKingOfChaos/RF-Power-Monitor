@@ -458,6 +458,9 @@ static void startUpload() {
     if (code != 0) {
         refusalCode = code;
         refusalText = code == 401 ? "not logged in" : code == 403 ? "bad CSRF token" : "busy or on trial";
+        // Without a login the client gets seconds, not the upload's 5 minutes, to send what it
+        // announced: otherwise anyone could hold the single web connection that long
+        if (code == 401 || code == 403) uploadBody.drainOnly();
         return;
     }
     const char* error = nullptr;

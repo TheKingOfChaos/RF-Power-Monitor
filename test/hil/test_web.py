@@ -592,6 +592,36 @@ class WebPageTest(unittest.TestCase):
         # And serves the next browser normally
         self.assertEqual(200, Web(self.ip).request("GET", "/")[0])
 
+    def test_trickled_upload_without_login_is_dropped_in_seconds(self):
+        # A refused upload's body is read and dropped so the client sees the answer, but without a
+        # login the client gets 20 s for it (STREAM_DRAIN_TOTAL_MS), not the upload's 5 minutes
+        s = socket.create_connection((self.ip, 80), timeout=10)
+        start = time.time()
+        closed_after = None
+        try:
+            s.sendall(b"POST /firmware/upload HTTP/1.1\r\nHost: x\r\n"
+                      b"Content-Type: application/octet-stream\r\nContent-Length: 800000\r\n\r\n")
+            s.settimeout(0.1)
+            while time.time() - start < 40:
+                try:
+                    s.sendall(b"x")  # one byte every 2 s: never idle for the 5 s drain idle limit
+                    if s.recv(100) == b"":
+                        closed_after = time.time() - start
+                        break
+                except socket.timeout:
+                    pass
+                except (ConnectionResetError, ConnectionAbortedError, BrokenPipeError):
+                    closed_after = time.time() - start
+                    break
+                time.sleep(1.9)
+        finally:
+            s.close()
+        self.assertIsNotNone(closed_after, "a trickling upload without login still held the connection after 40 s")
+        self.assertGreater(closed_after, 15)
+        self.assertLess(closed_after, 26)
+        # And serves the next browser normally
+        self.assertEqual(200, Web(self.ip).request("GET", "/")[0])
+
     def test_oversized_request_is_refused(self):
         status, _, _ = self.web.request("POST", "/login", {"user": "admin", "password": "x" * 3000})
         self.assertEqual(413, status)

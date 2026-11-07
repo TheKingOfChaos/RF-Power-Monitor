@@ -247,6 +247,13 @@ void StreamBody::begin(uint32_t length, uint32_t nowMs) {
     _left = length;
     _startMs = nowMs;
     _lastDataMs = nowMs;
+    _idleMs = STREAM_IDLE_TIMEOUT_MS;
+    _totalMs = STREAM_TOTAL_TIMEOUT_MS;
+}
+
+void StreamBody::drainOnly() {
+    _idleMs = STREAM_DRAIN_IDLE_MS;
+    _totalMs = STREAM_DRAIN_TOTAL_MS;
 }
 
 void StreamBody::consumed(uint32_t n, uint32_t nowMs) {
@@ -256,5 +263,5 @@ void StreamBody::consumed(uint32_t n, uint32_t nowMs) {
 
 bool StreamBody::expired(uint32_t nowMs) const {
     if (done()) return false;
-    return nowMs - _lastDataMs > STREAM_IDLE_TIMEOUT_MS || nowMs - _startMs > STREAM_TOTAL_TIMEOUT_MS;
+    return nowMs - _lastDataMs > _idleMs || nowMs - _startMs > _totalMs;
 }

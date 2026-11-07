@@ -131,6 +131,10 @@ private:
 static const uint32_t STREAM_IDLE_TIMEOUT_MS = 30000;
 /// and the whole body must be in within this time (a full update file takes well under a minute)
 static const uint32_t STREAM_TOTAL_TIMEOUT_MS = 5u * 60u * 1000u;
+/// A body that is only read to be dropped (an upload refused without a login) gets far less:
+/// enough for a full-size body at 100 KB/s, so the client still sees the answer
+static const uint32_t STREAM_DRAIN_IDLE_MS = 5000;
+static const uint32_t STREAM_DRAIN_TOTAL_MS = 20000;
 
 /**
  * @brief Reading a streamed request body (HttpParse::Streaming) to its end
@@ -139,13 +143,16 @@ static const uint32_t STREAM_TOTAL_TIMEOUT_MS = 5u * 60u * 1000u;
  * STREAM_IDLE_TIMEOUT_MS without data, or STREAM_TOTAL_TIMEOUT_MS after
  * begin(), so a client sending a byte now and then cannot hold the single
  * connection for long. Also used to read and drop the body of a refused
- * upload, so the client sees the answer instead of a reset connection.
+ * upload, so the client sees the answer instead of a reset connection;
+ * drainOnly() gives such a body the much shorter STREAM_DRAIN_* deadlines.
  * Times are millis() values; wrap-around is handled.
  */
 class StreamBody {
 public:
     /// Expect `length` body bytes (Content-Length minus what came with the headers), starting now
     void begin(uint32_t length, uint32_t nowMs);
+    /// The body is only read to be dropped: STREAM_DRAIN_* deadlines from begin() on, until the next begin()
+    void drainOnly();
     /// n more bytes were read (never counts below zero)
     void consumed(uint32_t n, uint32_t nowMs);
     /// Body bytes not read yet
@@ -159,4 +166,6 @@ private:
     uint32_t _left = 0;
     uint32_t _startMs = 0;
     uint32_t _lastDataMs = 0;
+    uint32_t _idleMs = STREAM_IDLE_TIMEOUT_MS;
+    uint32_t _totalMs = STREAM_TOTAL_TIMEOUT_MS;
 };

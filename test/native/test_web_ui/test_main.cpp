@@ -2280,6 +2280,47 @@ static void test_stream_body_done_never_expires() {
     TEST_ASSERT_FALSE(b.expired(STREAM_TOTAL_TIMEOUT_MS * 2));
 }
 
+static void test_stream_body_drain_expires_after_short_deadline_despite_trickle() {
+    // A refused upload without a login: a client sending now and then holds the connection
+    // for STREAM_DRAIN_TOTAL_MS, not the 5 minutes an accepted upload gets
+    StreamBody b;
+    b.begin(100000, 1000);
+    b.drainOnly();
+    uint32_t t = 1000;
+    while (t + 1000 <= 1000 + STREAM_DRAIN_TOTAL_MS) {
+        t += 1000;
+        b.consumed(1, t);
+        TEST_ASSERT_FALSE(b.expired(t));
+    }
+    TEST_ASSERT_TRUE(b.expired(1000 + STREAM_DRAIN_TOTAL_MS + 1));
+}
+
+static void test_stream_body_drain_expires_after_short_idle() {
+    StreamBody b;
+    b.begin(1000, 0);
+    b.drainOnly();
+    TEST_ASSERT_FALSE(b.expired(STREAM_DRAIN_IDLE_MS));
+    TEST_ASSERT_TRUE(b.expired(STREAM_DRAIN_IDLE_MS + 1));
+}
+
+static void test_stream_body_begin_restores_full_deadlines_after_drain() {
+    // The next upload on the static StreamBody gets the normal deadlines again
+    StreamBody b;
+    b.begin(1000, 0);
+    b.drainOnly();
+    b.begin(1000, 0);
+    TEST_ASSERT_FALSE(b.expired(STREAM_DRAIN_TOTAL_MS + 1));
+    TEST_ASSERT_FALSE(b.expired(STREAM_IDLE_TIMEOUT_MS));
+}
+
+static void test_stream_body_drain_deadline_fits_a_full_size_body() {
+    // A full-size refused body must still drain at a modest LAN rate (100 KB/s), so the
+    // client sees the answer; the deadline is not so short that real clients get a reset
+    TEST_ASSERT_TRUE(STREAM_DRAIN_TOTAL_MS >= HTTP_STREAM_MAX / 100);
+    TEST_ASSERT_TRUE(STREAM_DRAIN_TOTAL_MS < STREAM_TOTAL_TIMEOUT_MS / 10);
+    TEST_ASSERT_TRUE(STREAM_DRAIN_IDLE_MS < STREAM_DRAIN_TOTAL_MS);
+}
+
 // ---- Default password: two copies, lock (default_password.h) ----
 
 static void test_default_password_valid_needs_ten_alphabet_chars() {
@@ -2386,6 +2427,10 @@ int main() {
     RUN_TEST(test_stream_body_expires_after_total_deadline_despite_trickle);
     RUN_TEST(test_stream_body_timeouts_survive_millis_wrap);
     RUN_TEST(test_stream_body_done_never_expires);
+    RUN_TEST(test_stream_body_drain_expires_after_short_deadline_despite_trickle);
+    RUN_TEST(test_stream_body_drain_expires_after_short_idle);
+    RUN_TEST(test_stream_body_begin_restores_full_deadlines_after_drain);
+    RUN_TEST(test_stream_body_drain_deadline_fits_a_full_size_body);
     RUN_TEST(test_sha256_million_a);
     RUN_TEST(test_sha256_split_anywhere_equals_one_shot);
     RUN_TEST(test_password_rules);
