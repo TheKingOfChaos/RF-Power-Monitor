@@ -1,12 +1,14 @@
 // Host unit tests for lib/syslog: server settings codec and input checks.
 // Run: pio test -e native -f native/test_syslog
 
+#include <stdio.h>
 #include <string.h>
 
 #include <string>
 
 #include <unity.h>
 #include <log_settings.h>
+#include <syslog_message.h>
 
 void setUp() {}
 void tearDown() {}
@@ -202,6 +204,120 @@ static void test_classify_server_input() {
     TEST_ASSERT_TRUE(classifyServerInput(nullptr) == ServerInput::Invalid);
 }
 
+// ---- messages, queue, throttle ----
+
+static void test_syslog_format_rfc5424_layout() {
+    char buf[SYSLOG_PACKET_MAX];
+    size_t n = syslogFormat(buf, sizeof(buf), SyslogSeverity::Warning, true, 1762540930123ull, "rf-power-abcd", "MAINS",
+                            "mains power lost");
+    TEST_ASSERT_EQUAL_STRING("<28>1 2025-11-07T18:42:10.123Z rf-power-abcd rfpower - MAINS - mains power lost", buf);
+    TEST_ASSERT_EQUAL(strlen(buf), n);
+    syslogFormat(buf, sizeof(buf), SyslogSeverity::Critical, true, 1762540930123ull, "h", "MAINS", "x");
+    TEST_ASSERT_EQUAL_STRING("<26>1 2025-11-07T18:42:10.123Z h rfpower - MAINS - x", buf);
+}
+
+static void test_syslog_format_undated_uses_dash() {
+    char buf[SYSLOG_PACKET_MAX];
+    syslogFormat(buf, sizeof(buf), SyslogSeverity::Notice, false, 0, "", "", "boot");
+    TEST_ASSERT_EQUAL_STRING("<29>1 - - rfpower - - - boot", buf);
+}
+
+static void test_syslog_format_cuts_long_text() {
+    std::string text(300, 'x');
+    char buf[SYSLOG_PACKET_MAX];
+    size_t n = syslogFormat(buf, sizeof(buf), SyslogSeverity::Info, false, 0, "h", "WEB", text.c_str());
+    TEST_ASSERT_GREATER_THAN(0, n);
+    const char* body = strstr(buf, "WEB - ") + 6;
+    TEST_ASSERT_EQUAL(SYSLOG_TEXT_MAX, strlen(body));
+}
+
+static void test_syslog_format_replaces_control_chars() {
+    char buf[SYSLOG_PACKET_MAX];
+    syslogFormat(buf, sizeof(buf), SyslogSeverity::Info, false, 0, "h", "WEB", "a\r\nb\tc\x7f");
+    TEST_ASSERT_NOT_NULL(strstr(buf, " - a??b?c?"));
+}
+
+static void test_syslog_format_too_small_buffer_returns_zero() {
+    char buf[20];
+    TEST_ASSERT_EQUAL(0, syslogFormat(buf, sizeof(buf), SyslogSeverity::Info, true, 1762540930123ull, "host", "MAINS",
+                                      "mains power lost"));
+    TEST_ASSERT_EQUAL(0, syslogFormat(nullptr, 0, SyslogSeverity::Info, false, 0, "h", "M", "t"));
+}
+
+static SyslogEntry entry(uint32_t ms, const char* text) {
+    SyslogEntry e;
+    memset(&e, 0, sizeof(e));
+    e.uptimeMs = ms;
+    e.severity = SyslogSeverity::Notice;
+    strcpy(e.msgId, "TEST");
+    strcpy(e.text, text);
+    return e;
+}
+
+static void test_queue_keeps_order() {
+    static SyslogQueue q;
+    q = SyslogQueue();
+    SyslogEntry out;
+    TEST_ASSERT_FALSE(q.peek(out));
+    q.push(entry(1, "one"));
+    q.push(entry(2, "two"));
+    TEST_ASSERT_EQUAL(2, q.size());
+    TEST_ASSERT_TRUE(q.peek(out));
+    TEST_ASSERT_EQUAL_STRING("one", out.text);
+    q.pop();
+    TEST_ASSERT_TRUE(q.peek(out));
+    TEST_ASSERT_EQUAL_STRING("two", out.text);
+    q.pop();
+    TEST_ASSERT_EQUAL(0, q.size());
+    q.pop();  // popping an empty queue does nothing
+    TEST_ASSERT_EQUAL(0, q.size());
+}
+
+static void test_queue_full_drops_oldest_and_counts() {
+    static SyslogQueue q;
+    q = SyslogQueue();
+    char t[16];
+    for (int i = 0; i < SyslogQueue::CAPACITY + 3; i++) {
+        snprintf(t, sizeof(t), "e%d", i);
+        q.push(entry((uint32_t)i, t));
+    }
+    TEST_ASSERT_EQUAL(SyslogQueue::CAPACITY, q.size());
+    SyslogEntry out;
+    q.peek(out);
+    TEST_ASSERT_EQUAL_STRING("e3", out.text);
+    TEST_ASSERT_EQUAL_UINT32(3, q.takeDropped());
+    TEST_ASSERT_EQUAL_UINT32(0, q.takeDropped());
+}
+
+static void test_throttle_allows_five_per_minute_then_counts() {
+    SyslogThrottle t(5, 60000);
+    for (int i = 0; i < 5; i++) TEST_ASSERT_TRUE(t.allow(1000 + i));
+    TEST_ASSERT_FALSE(t.allow(2000));
+    TEST_ASSERT_FALSE(t.allow(60999));
+    TEST_ASSERT_EQUAL_UINT32(2, t.takeSuppressed());
+    TEST_ASSERT_EQUAL_UINT32(0, t.takeSuppressed());
+    TEST_ASSERT_TRUE(t.allow(61000));  // a new window
+}
+
+static void test_throttle_window_survives_millis_wrap() {
+    SyslogThrottle t(1, 60000);
+    TEST_ASSERT_TRUE(t.allow(0xFFFFFF00u));
+    TEST_ASSERT_FALSE(t.allow(0x00000100u));  // 512 ms later, across the wrap
+    TEST_ASSERT_TRUE(t.allow(0xFFFFFF00u + 60000u));
+}
+
+static void test_event_epoch_dated_from_uptime_not_sync_moment() {
+    // Event at uptime 5 s; the clock is set at uptime 65 s to E: the event happened at E - 60 s
+    const uint64_t E = 1762540930000ull;
+    TEST_ASSERT_EQUAL_UINT64(E - 60000, syslogEventEpochMs(5000, 65000, E));
+    TEST_ASSERT_EQUAL_UINT64(E, syslogEventEpochMs(65000, 65000, E));
+}
+
+static void test_event_epoch_survives_millis_wrap() {
+    const uint64_t E = 1762540930000ull;
+    TEST_ASSERT_EQUAL_UINT64(E - 0x200, syslogEventEpochMs(0xFFFFFF00u, 0x00000100u, E));
+}
+
 int main() {
     UNITY_BEGIN();
     RUN_TEST(test_log_settings_defaults_are_dhcp);
@@ -218,5 +334,16 @@ int main() {
     RUN_TEST(test_ntp_server_text_accepts_names_and_addresses);
     RUN_TEST(test_ntp_server_text_rejects_bad_names);
     RUN_TEST(test_classify_server_input);
+    RUN_TEST(test_syslog_format_rfc5424_layout);
+    RUN_TEST(test_syslog_format_undated_uses_dash);
+    RUN_TEST(test_syslog_format_cuts_long_text);
+    RUN_TEST(test_syslog_format_replaces_control_chars);
+    RUN_TEST(test_syslog_format_too_small_buffer_returns_zero);
+    RUN_TEST(test_queue_keeps_order);
+    RUN_TEST(test_queue_full_drops_oldest_and_counts);
+    RUN_TEST(test_throttle_allows_five_per_minute_then_counts);
+    RUN_TEST(test_throttle_window_survives_millis_wrap);
+    RUN_TEST(test_event_epoch_dated_from_uptime_not_sync_moment);
+    RUN_TEST(test_event_epoch_survives_millis_wrap);
     return UNITY_END();
 }
