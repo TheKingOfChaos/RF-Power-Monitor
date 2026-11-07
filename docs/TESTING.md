@@ -397,6 +397,12 @@ Uses `test/settings_a.json` and `test/settings_b.json`, never the real settings.
 ### `test/embedded/test_ethernet`: W5500 and lwIP
 - W5500 detected over SPI, link up, DHCP lease with a gateway, gateway answers ping
 
+### `test/embedded/test_fw_sha512`: the boot program's SHA-512 as the M0+ build runs it
+- `fw_sha512` gives Monocypher's hash over flash data, from an unaligned start (byte path) and after a
+  64-byte prefix from an aligned one (whole blocks read as words, as the slot check does)
+- It is faster than Monocypher; with `-v` the test prints both times per byte (~1.59 and ~2.01 us per byte)
+  and the fixed Ed25519 equation check (~118 ms)
+
 ### `test/embedded/test_fw_flash`: `src/fw_update_service.cpp` on the real flash
 Writes only the slot that is not running (left erased afterwards) and the two boot record sectors (saved and
 restored). `test_build_src` is off, so the test compiles the service, `boot_info.cpp` and `stack_watch.cpp` in.
@@ -456,6 +462,7 @@ restored). `test_build_src` is off, so the test compiles the service, `boot_info
 - Own password via serial option 6: masked echo, old sessions logged out, default refused, hashed check under 2 s, mismatch and short passwords change nothing, `-` restores the default
 - The Bootstrap stylesheet downloaded from the device unpacks to exactly Bootstrap 5.3.3 (official integrity hash), without slowing SNMP
 - With an own password set, SNMP stays under 100 ms while a login (right or wrong) hashes the password
+- An upload without a login that trickles its body (a byte every 2 s) is dropped after 20 s, not the upload's 5 minutes, and the next browser is served
 - A client that never finishes its request does not slow SNMP and is dropped after 5 s; 30 page loads keep SNMP under 100 ms and leave > 1 KB of core 0 stack never used; oversized request gets 413
 - Needs the device default web password (the suite skips otherwise)
 

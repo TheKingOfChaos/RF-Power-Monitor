@@ -194,7 +194,7 @@ An item is only ticked when it is implemented **and** its tests exist and pass (
 - [x] Set in serial option 4 and on the web page, validated, active immediately (DHCP renew, mDNS rename)
 - [x] Free-text sysName from older firmware keeps loading; a cleaned-up name is used for DHCP/mDNS
 - [ ] Check that the DHCP server really shows the name (needs access to the router's lease list)
-- [ ] SNMP latency spikes: on 2.0.1/2.1.0 about 3 % of requests took 50-97 ms (median 3.7 ms); on 2.3.0 (8 KB stacks, IPv6) 600 requests: median 3.8 ms, max 42.5 ms, none over 50 ms. One 116 ms sample in a full HIL run (not reproduced in 3 reruns); keep watching
+- [x] SNMP latency spikes: on 2.0.1/2.1.0 about 3 % of requests took 50-97 ms (median 3.7 ms); on 2.3.0 (8 KB stacks, IPv6) 600 requests: median 3.8 ms, max 42.5 ms, none over 50 ms. One 116 ms sample in a full HIL run (not reproduced in 3 reruns). On 3.5.1 (2026-11-07): 3000 requests at 20/s, median 3.2 ms, p99.9 5.1 ms, max 14.1 ms, none lost; 1500 more during five forced update-site check-ins, max 14.5 ms. Not reproduced: closed, `test_response_time_under_100ms` keeps watching
 
 ## 14. Hardware: carrier board (`hardware/pico-poe-mains-carrier`)
 - [x] Carrier PCB for the W5500-EVB-Pico-PoE: isolated mains detector on GP27, LEDs, TMP1075; KiCad 10, ERC/DRC, fab files (documented in the README)
@@ -248,8 +248,9 @@ An item is only ticked when it is implemented **and** its tests exist and pass (
 - [x] SNMP `fwUpdate` group (63050.7), traps `firmwareUpdateKept` and `firmwareRolledBack`, LibreNMS sensors — native `test_snmp_agent`, `test_snmp_trap`, net-snmp `host_agent_check.sh`, HIL, LibreNMS
 - [x] `tools/fw_keygen.py`, `fw_release.py`, `fw_update.py`, serial status lines, user and setup manuals — tool tests, native, HIL
 - [x] Final verification of 3.3.0: all native suites, sanitizers, net-snmp check, tool tests, on-device suites, full HIL and the opt-in firmware update set (see the task report and CHANGELOG)
-- [ ] Boot verification time: ~2.6 us per byte (943 ms for 359 KB, mostly SHA-512 on the M0+), so the 1.5 s budget runs out near 570 KB of firmware; `scripts/slot_build.py` warns above 550 KB. Speed up SHA-512 (or the verification) before the image gets there
-- [ ] Refused uploads (401/403) drain the body under the 5-minute upload deadline, so one client without a login can hold the single web connection that long; give unauthenticated drains a short deadline or a byte cap (SNMP still confirms trials meanwhile)
+- [x] Boot verification time (3.5.1): own SHA-512 for the M0+ (`lib/fw_image` `fw_sha512`), 921 ms instead of 1080 ms for 430 KB; the 1.5 s budget lasts to ~740 KB (was ~570 KB), `scripts/slot_build.py` warns from 700 KB — native `test_fw_image` (FIPS vectors, every length 0-400 and splits against Monocypher), embedded `test_fw_sha512` (M0+ build against Monocypher, speed), tool tests, HIL `BootProgramTest`
+- [ ] Later, if the image nears 700 KB: SHA-512 compression in Thumb-1 assembly (estimated ~2x on the hash; decided 2026-11-07 to keep the C version until then). Running the hash from RAM and `-O2` were measured and gain nothing (1080 -> 1074 ms, -O2 slower with the unrolled code)
+- [x] Refused uploads without a login (401/403) drain the body within 20 s, no pause over 5 s, instead of the 5-minute upload deadline (3.5.1) — native `test_web_ui` (`StreamBody::drainOnly`), HIL `test_trickled_upload_without_login_is_dropped_in_seconds`
 
 ## 21. Update site (3.4.0, plan docs/superpowers/plans/2026-11-06-update-server.md)
 - [x] Check-in wire format and keyed BLAKE2b MACs, device and site against shared vectors — native `test_update_protocol`, `update-server/tests/test_protocol.py`, sanitizers

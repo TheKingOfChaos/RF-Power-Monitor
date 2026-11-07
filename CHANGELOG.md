@@ -6,7 +6,17 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [3.5.1] - 2026-11-07
+
+A web upload without a login can no longer hold the web page for minutes, and the boot program verifies the firmware faster.
+
+### Fixed
+- An upload refused because the client is not logged in (401) or sent a bad CSRF token (403) still has its body read and dropped so the client sees the answer, but now within 20 s (and no pause over 5 s) instead of the 5 minutes an accepted upload gets. Before, one client without a login could hold the single web connection for 5 minutes by trickling the body (`StreamBody::drainOnly`, `STREAM_DRAIN_*`). Refusals of a logged-in user (busy, on trial, too large) keep the long deadline.
+
 ### Changed
+- The boot program's signature check hashes the image with its own SHA-512 (`lib/fw_image` `fw_sha512`, written for the M0+: eight rounds unrolled, sigma functions on 32-bit halves, whole blocks read as words) instead of Monocypher's: 1.59 instead of 2.01 us per byte on the device. Verifying the 430 KB image takes 921 ms instead of 1080 ms; the 1.5 s budget now lasts to about 740 KB (was about 570 KB). Signatures, keys and `.upd` files are unchanged. `scripts/slot_build.py` warns from 700 KB (was 550 KB) and estimates 118 ms plus 1.87 us per byte.
+- The firmware checks uploaded images with the same code, and the hash state is off the stack before the Ed25519 equation check, so peak stack use of the check does not grow.
+- Static RAM 49.6 % (130,108 of 262,144 bytes). Image 430,564 bytes, 23.5 % of the core's flash figure.
 - LibreNMS: the *Firmware* state sensor shows **normal** instead of **kept** for a confirmed firmware (`fwState` 1). The device, its web page and the MIB still call it kept.
 - LibreNMS: a rollback or fallback (*Firmware last update* rolledBackCrash, rolledBackUnreachable, fallbackCrash) is critical (red) instead of a warning, so the *State Sensor Critical* rule alerts; it clears with the next successful update.
 
@@ -76,7 +86,7 @@ Signed A/B firmware updates over the web page, with automatic rollback.
 ### Notes
 - Size of the normal build (`pio run -e pico`): firmware image 389,308 bytes, 44 % of a 880,640-byte slot (the 70 % limit); static RAM 48.8 % (128,044 of 262,144 bytes, PlatformIO's figure), within the 50 % limit. An upload allocates nothing: the update receiver writes flash a 256-byte page at a time and is a static 632 bytes, so the peak while an upload runs is the static figure (measured on the device: the status screen's `RAM used`, which also counts both stacks and the heap, was 138,568 bytes before and 138,624 bytes during an upload).
 - While an upload runs, each flash erase or write pauses both cores for tens of milliseconds, so mains detection can be late by up to one flash erase. The device is busy during an upload.
-- Boot verification time grows with the firmware (about 2.6 us per byte, mostly SHA-512 on the M0+); `scripts/slot_build.py` warns above 550 KB (TODO.md section 20).
+- Boot verification time grows with the firmware (about 2.6 us per byte, mostly SHA-512 on the M0+); `scripts/slot_build.py` warns above 550 KB (TODO.md section 20). Faster from 3.5.1.
 
 ## [3.2.0] - 2026-11-02
 
