@@ -96,18 +96,23 @@ class BootKeyCheckTests(unittest.TestCase):
 
 class VerifyTimeWarningTests(unittest.TestCase):
     def test_today_size_gives_no_warning(self):
-        self.assertIsNone(slot_build.verify_time_warning(359108))
+        self.assertIsNone(slot_build.verify_time_warning(430796))
 
-    def test_550_kb_exactly_gives_no_warning(self):
-        self.assertIsNone(slot_build.verify_time_warning(550 * 1024))
+    def test_700_kb_exactly_gives_no_warning(self):
+        self.assertIsNone(slot_build.verify_time_warning(700 * 1024))
 
-    def test_one_byte_over_550_kb_warns(self):
-        w = slot_build.verify_time_warning(550 * 1024 + 1)
+    def test_one_byte_over_700_kb_warns(self):
+        w = slot_build.verify_time_warning(700 * 1024 + 1)
         self.assertIsNotNone(w)
-        self.assertIn("550 KB", w)
+        self.assertIn("700 KB", w)
 
     def test_full_slot_warns_with_its_verify_time(self):
-        self.assertIn("2.3 s", slot_build.verify_time_warning(880640))
+        # 118 ms fixed (Ed25519 equation) + 1.87 us per byte (SHA-512), measured 2026-11-07
+        self.assertIn("1.8 s", slot_build.verify_time_warning(880640))
+
+    def test_warning_starts_below_the_budget(self):
+        self.assertLess(slot_build.verify_time_estimate_s(700 * 1024), 1.5)
+        self.assertGreater(slot_build.verify_time_estimate_s(760 * 1024), 1.5)
 
 
 def _header_text(*parts):

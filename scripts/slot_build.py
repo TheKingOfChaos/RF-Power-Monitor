@@ -145,11 +145,18 @@ def field_key():
     return os.environ.get("RFPOWER_FW_KEY", "") == "field"
 
 
-# The boot program verifies a slot at ~2.6 us per byte (measured 2026-11-06:
-# 943 ms for 359 KB, mostly SHA-512), so its 1.5 s boot budget runs out near
-# 570 KB of firmware: warn from 550 KB (TODO.md)
-VERIFY_WARN_BYTES = 550 * 1024
-VERIFY_US_PER_BYTE = 2.6
+# The boot program's check of a slot (measured 2026-11-07 with lib/fw_image
+# fw_sha512): ~118 ms for the Ed25519 equation plus ~1.87 us per byte of
+# SHA-512 (921 ms for 430 KB). Its 1.5 s boot budget runs out near 740 KB of
+# firmware: warn from 700 KB (TODO.md)
+VERIFY_WARN_BYTES = 700 * 1024
+VERIFY_FIXED_S = 0.118
+VERIFY_US_PER_BYTE = 1.87
+
+
+def verify_time_estimate_s(blob_len):
+    """The boot program's verification time for a `blob_len` byte slot, in seconds."""
+    return VERIFY_FIXED_S + blob_len * VERIFY_US_PER_BYTE / 1e6
 
 
 def verify_time_warning(blob_len):
@@ -158,7 +165,7 @@ def verify_time_warning(blob_len):
         return None
     return ("warning: slot A is %d KB; the boot program needs about %.1f s to verify it "
             "(budget 1.5 s, warning from %d KB)"
-            % (blob_len // 1024, blob_len * VERIFY_US_PER_BYTE / 1e6, VERIFY_WARN_BYTES // 1024))
+            % (blob_len // 1024, verify_time_estimate_s(blob_len), VERIFY_WARN_BYTES // 1024))
 
 
 def slot_blob(env):

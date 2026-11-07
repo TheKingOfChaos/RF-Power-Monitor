@@ -20,6 +20,7 @@ FW_IMAGE = os.path.join(ROOT, "lib", "fw_image")
 SOURCES = [
     os.path.join(ROOT, "tools", "fwsign", "fwsign.cpp"),
     os.path.join(FW_IMAGE, "src", "fw_image.cpp"),
+    os.path.join(FW_IMAGE, "src", "fw_sha512.cpp"),
     os.path.join(MONOCYPHER, "monocypher.c"),
     os.path.join(MONOCYPHER, "monocypher-ed25519.c"),
 ]

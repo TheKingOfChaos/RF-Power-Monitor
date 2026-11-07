@@ -2,7 +2,9 @@
 
 #include <string.h>
 
+#include "fw_sha512.h"
 #include "monocypher-ed25519.h"
+#include "monocypher.h"
 
 namespace {
 
@@ -67,6 +69,35 @@ SlotCheck slotHeaderParse(const uint8_t* bytes, size_t len, uint32_t expectedSlo
     return SlotCheck::Ok;
 }
 
+namespace {
+
+/// h_ram = SHA-512(R || A || M) reduced mod L, with fw_sha512: the hash over the
+/// whole image is nearly all of the boot program's verification time. Not
+/// inlined, so the hash state (~300 bytes) is off the stack again before the
+/// equation check, the deepest part of the verification
+__attribute__((noinline)) void ed25519HashRam(uint8_t hRam[32], const uint8_t signature[64],
+                                              const uint8_t publicKey[32], const uint8_t* message,
+                                              size_t messageLen) {
+    FwSha512 ctx;
+    fwSha512Init(ctx);
+    fwSha512Update(ctx, signature, 32);  // R
+    fwSha512Update(ctx, publicKey, 32);  // A
+    fwSha512Update(ctx, message, messageLen);
+    uint8_t hash[64];
+    fwSha512Final(ctx, hash);
+    crypto_eddsa_reduce(hRam, hash);
+}
+
+/// crypto_ed25519_check with fw_sha512; same result as Monocypher's (test_fw_image)
+bool ed25519Check(const uint8_t signature[64], const uint8_t publicKey[32], const uint8_t* message,
+                  size_t messageLen) {
+    uint8_t hRam[32];
+    ed25519HashRam(hRam, signature, publicKey, message, messageLen);
+    return crypto_eddsa_check_equation(signature, publicKey, hRam) == 0;
+}
+
+}  // namespace
+
 SlotCheck slotVerify(const uint8_t* slot, uint32_t expectedSlot,
                      const uint8_t publicKey[32], SlotHeader& out) {
     uint8_t keyId[8];
@@ -78,7 +109,7 @@ SlotCheck slotVerify(const uint8_t* slot, uint32_t expectedSlot,
 
     const uint8_t* message = slot + OFF_MAGIC;
     size_t messageLen = FW_SLOT_HEADER_SIZE - OFF_MAGIC + h.imageLength;
-    if (crypto_ed25519_check(slot + OFF_SIGNATURE, publicKey, message, messageLen) != 0) {
+    if (!ed25519Check(slot + OFF_SIGNATURE, publicKey, message, messageLen)) {
         return SlotCheck::BadSignature;
     }
     out = h;

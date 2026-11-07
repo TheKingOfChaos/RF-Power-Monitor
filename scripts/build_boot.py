@@ -50,6 +50,7 @@ BOOT_LIMIT = 0xE000  # boot record starts here
 # More sources compiled into the boot program (paths relative to the project)
 EXTRA_SOURCES = [
     "lib/fw_image/src/fw_image.cpp",
+    "lib/fw_image/src/fw_sha512.cpp",
     "lib/fw_update/src/boot_record.cpp",
     "lib/fw_update/src/boot_decision.cpp",
     "lib/monocypher/src/monocypher.c",
