@@ -185,7 +185,8 @@ See docs/TESTING.md for how to run each layer.
 
 2. Resource Usage
    - Must not exceed 70% of available flash
-   - Must not exceed 50% of available RAM
+   - Must not exceed 60% of available RAM (raised from 50% on 2026-11-07
+     for SNTP and syslog)
    - Must optimize network buffer usage
    - Must implement efficient memory management
 

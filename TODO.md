@@ -276,7 +276,7 @@ An item is only ticked when it is implemented **and** its tests exist and pass (
 
 ## Notes
 - SNMP must be v1 and v2c (no v3) and our own code; networking may use libraries
-- RAM after 3.4.0: static 49.6 % (130,040 bytes), about 1 KB below the 50 % limit. The next feature that needs RAM must first make room (e.g. move a rarely used static buffer to the heap while it is used)
-- Memory limits: 70 % flash, 50 % RAM (3.3.0: image 44 % of a slot, 21.3 % of the core's flash figure; static RAM 48.8 %, measured as PlatformIO's RAM line (.data + .bss); an upload allocates nothing more; built with -Os). About 3 KB of RAM is left below the 50 % limit: check the build's RAM line before adding buffers (the web page body and response alone are 22 KB)
+- RAM after 3.4.0: static 49.6 % (130,040 bytes), about 1 KB below the 50 % limit then. The limit was raised to 60 % on 2026-11-07 (about 27 KB of room) for SNTP and syslog
+- Memory limits: 70 % flash, 60 % RAM (50 % until 2026-11-07; 3.3.0: image 44 % of a slot, 21.3 % of the core's flash figure; static RAM 48.8 %, measured as PlatformIO's RAM line (.data + .bss); an upload allocates nothing more; built with -Os). About 3 KB of RAM is left below the 50 % limit: check the build's RAM line before adding buffers (the web page body and response alone are 22 KB)
 - Version: `include/version.h`; every user-visible change goes into CHANGELOG.md under [Unreleased]
 - Core 0 has an 8 KB stack (core1_separate_stack, since 2.3.0) shared with USB/lwIP/W5500 interrupts: keep big buffers static
