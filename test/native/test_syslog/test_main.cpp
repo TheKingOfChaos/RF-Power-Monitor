@@ -186,6 +186,20 @@ static void test_ntp_server_text_accepts_names_and_addresses() {
     TEST_ASSERT_TRUE(ntpServerTextIsValid(longest.c_str()));
 }
 
+static void test_link_local_ipv6_servers_are_refused() {
+    // fe80::/10 needs an interface zone the setting cannot carry: lwIP could not route it
+    const char* linkLocal[] = {"fe80::1", "[fe80::1]:514", "FE80::1cb2:cfff:fe4e:a22c", "febf::1"};
+    for (const char* t : linkLocal) {
+        SyslogTarget target;
+        TEST_ASSERT_FALSE_MESSAGE(parseSyslogTarget(t, target), t);
+    }
+    TEST_ASSERT_FALSE(ntpServerTextIsValid("fe80::1"));
+    TEST_ASSERT_FALSE(ntpServerTextIsValid("febf:ffff::1"));
+    SyslogTarget target;
+    TEST_ASSERT_TRUE(parseSyslogTarget("fec0::1", target));  // just outside fe80::/10
+    TEST_ASSERT_TRUE(ntpServerTextIsValid("fd00::123"));
+}
+
 static void test_ntp_server_text_rejects_bad_names() {
     const char* bad[] = {"", "-a.b", "a-.b", "a..b", ".a", "a b", "a_b", "ntp:123", "[::1]"};
     for (const char* b : bad) TEST_ASSERT_FALSE_MESSAGE(ntpServerTextIsValid(b), b);
@@ -348,6 +362,19 @@ static void test_throttle_allows_five_per_minute_then_counts() {
     TEST_ASSERT_TRUE(t.allow(61000));  // a new window
 }
 
+static void test_throttle_counts_refused_events_per_kind() {
+    // SNMP and web access events share the 5 a minute, but their counts are reported apart
+    SyslogThrottle t(5, 60000);
+    for (int i = 0; i < 5; i++) TEST_ASSERT_TRUE(t.allow(1000, i % 2));
+    TEST_ASSERT_FALSE(t.allow(2000, 0));
+    TEST_ASSERT_FALSE(t.allow(2000, 0));
+    TEST_ASSERT_FALSE(t.allow(2000, 1));
+    TEST_ASSERT_EQUAL_UINT32(2, t.takeSuppressed(0));
+    TEST_ASSERT_EQUAL_UINT32(1, t.takeSuppressed(1));
+    TEST_ASSERT_EQUAL_UINT32(0, t.takeSuppressed(0));
+    TEST_ASSERT_EQUAL_UINT32(0, t.takeSuppressed(1));
+}
+
 static void test_throttle_window_survives_millis_wrap() {
     SyslogThrottle t(1, 60000);
     TEST_ASSERT_TRUE(t.allow(0xFFFFFF00u));
@@ -424,6 +451,7 @@ int main() {
     RUN_TEST(test_parse_syslog_target_rejects_bad_input);
     RUN_TEST(test_ntp_server_text_accepts_names_and_addresses);
     RUN_TEST(test_ntp_server_text_rejects_bad_names);
+    RUN_TEST(test_link_local_ipv6_servers_are_refused);
     RUN_TEST(test_classify_server_input);
     RUN_TEST(test_apply_input_empty_keeps_values);
     RUN_TEST(test_apply_input_sets_modes);
@@ -441,6 +469,7 @@ int main() {
     RUN_TEST(test_next_on_empty_queue_is_nothing);
     RUN_TEST(test_throttle_allows_five_per_minute_then_counts);
     RUN_TEST(test_throttle_window_survives_millis_wrap);
+    RUN_TEST(test_throttle_counts_refused_events_per_kind);
     RUN_TEST(test_event_epoch_dated_from_uptime_not_sync_moment);
     RUN_TEST(test_event_epoch_survives_millis_wrap);
     return UNITY_END();

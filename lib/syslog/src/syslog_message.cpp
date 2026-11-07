@@ -75,7 +75,7 @@ void SyslogQueue::popNext() {
     }
 }
 
-bool SyslogThrottle::allow(uint32_t nowMs) {
+bool SyslogThrottle::allow(uint32_t nowMs, uint8_t kind) {
     if (!_started || nowMs - _windowStartMs >= _windowMs) {
         _started = true;
         _windowStartMs = nowMs;
@@ -85,13 +85,14 @@ bool SyslogThrottle::allow(uint32_t nowMs) {
         _used++;
         return true;
     }
-    _suppressed++;
+    _suppressed[kind < KINDS ? kind : 0]++;
     return false;
 }
 
-uint32_t SyslogThrottle::takeSuppressed() {
-    uint32_t s = _suppressed;
-    _suppressed = 0;
+uint32_t SyslogThrottle::takeSuppressed(uint8_t kind) {
+    if (kind >= KINDS) return 0;
+    uint32_t s = _suppressed[kind];
+    _suppressed[kind] = 0;
     return s;
 }
 

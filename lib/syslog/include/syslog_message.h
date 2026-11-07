@@ -60,14 +60,15 @@ private:
     uint32_t _dropped = 0;
 };
 
-/// At most `perWindow` events per `windowMs`; counts the ones it refused
+/// At most `perWindow` events per `windowMs`; counts the ones it refused, per kind
 class SyslogThrottle {
 public:
+    static const uint8_t KINDS = 2;  ///< e.g. 0 SNMP, 1 web: one shared limit, counted apart
     SyslogThrottle(uint8_t perWindow, uint32_t windowMs) : _perWindow(perWindow), _windowMs(windowMs) {}
-    /// true if an event may go out now (a new window starts when the old one has passed)
-    bool allow(uint32_t nowMs);
-    /// Events refused since the last call (and reset the count)
-    uint32_t takeSuppressed();
+    /// true if an event (of `kind` < KINDS) may go out now (a new window starts when the old one has passed)
+    bool allow(uint32_t nowMs, uint8_t kind = 0);
+    /// Events of `kind` refused since the last call (and reset that count)
+    uint32_t takeSuppressed(uint8_t kind = 0);
 
 private:
     uint8_t _perWindow;
@@ -75,7 +76,7 @@ private:
     bool _started = false;
     uint32_t _windowStartMs = 0;
     uint8_t _used = 0;
-    uint32_t _suppressed = 0;
+    uint32_t _suppressed[KINDS] = {0, 0};
 };
 
 /// Real time of an event that happened at `eventUptimeMs`, given the clock now (millis() wrap-safe)

@@ -1049,7 +1049,7 @@ static void handleLine(const char* line) {
 
     case CLI_SYSLOG_SERVER: {
         const char* error = "";
-        if (!syslogServiceSaveSettings(newNtpInput, line, error)) {
+        if (!syslogServiceSaveSettings(newNtpInput, line, "serial menu", error)) {
             Serial.println(error);
             promptSyslogServer();
             break;

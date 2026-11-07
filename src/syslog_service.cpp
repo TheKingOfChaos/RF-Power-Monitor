@@ -19,6 +19,8 @@ const uint32_t SUPPRESSED_REPORT_MS = 60000;  // how often a count of throttled 
 
 SyslogQueue queue;
 SyslogThrottle accessThrottle(5, 60000);
+const uint8_t ACCESS_SNMP = 0;  // accessThrottle kinds: reported as MSGID SNMP and WEB
+const uint8_t ACCESS_WEB = 1;
 WiFiUDP sock;
 
 bool typedValid = false;         // the typed server parsed (currentLogSettings.syslogMode == Typed)
@@ -119,11 +121,14 @@ void syslogServicePoll(bool netReady) {
     uint32_t now = millis();
     if (now - lastSuppressedReportMs >= SUPPRESSED_REPORT_MS) {
         lastSuppressedReportMs = now;
-        uint32_t n = accessThrottle.takeSuppressed();
-        if (n > 0) {
-            char t[48];
-            snprintf(t, sizeof(t), "%lu more access events not sent", (unsigned long)n);
-            pushText(SyslogSeverity::Notice, "SNMP", t);
+        static const char* const KIND_MSGID[SyslogThrottle::KINDS] = {"SNMP", "WEB"};  // ACCESS_* below
+        for (uint8_t kind = 0; kind < SyslogThrottle::KINDS; kind++) {
+            uint32_t n = accessThrottle.takeSuppressed(kind);
+            if (n > 0) {
+                char t[48];
+                snprintf(t, sizeof(t), "%lu more access events not sent", (unsigned long)n);
+                pushText(SyslogSeverity::Notice, KIND_MSGID[kind], t);
+            }
         }
     }
     // A full queue's drop count is sent as its own line ahead of the events (SyslogQueue::peekNext),
@@ -145,7 +150,8 @@ void syslogServicePoll(bool netReady) {
     if (failedOnce) lastFailMs = now;
 }
 
-bool syslogServiceSaveSettings(const char* ntpInput, const char* syslogInput, const char*& error) {
+bool syslogServiceSaveSettings(const char* ntpInput, const char* syslogInput, const char* origin,
+                               const char*& error) {
     LogSettings before = currentLogSettings;
     if (!logSettingsApplyInput(currentLogSettings, ntpInput, syslogInput, error)) return false;
     if (!saveLogSettings()) {
@@ -156,7 +162,7 @@ bool syslogServiceSaveSettings(const char* ntpInput, const char* syslogInput, co
     timeServiceApply();
     syslogServiceApply();
     const LogSettings& s = currentLogSettings;
-    syslogEvent(SyslogSeverity::Notice, "SETTINGS", "NTP server %s, syslog server %s",
+    syslogEvent(SyslogSeverity::Notice, "SETTINGS", "%s: NTP server %s, syslog server %s", origin,
                 s.ntpMode == ServerMode::Typed ? s.ntpServer : s.ntpMode == ServerMode::Dhcp ? "dhcp" : "none",
                 s.syslogMode == ServerMode::Typed ? s.syslogServer : s.syslogMode == ServerMode::Dhcp ? "dhcp" : "none");
     return true;
@@ -181,11 +187,11 @@ void syslogEvent(SyslogSeverity sev, const char* msgId, const char* fmt, ...) {
 }
 
 void syslogAccessEvent(const SourceKey& source, AccessEvent event) {
-    if (!accessThrottle.allow(millis())) return;
-    char ip[SOURCE_TEXT_MAX];
-    formatSource(source, ip);
     bool web = event == AccessEvent::WebLoginFailed || event == AccessEvent::WebLoginLocked ||
                event == AccessEvent::WebUploadRefused;
+    if (!accessThrottle.allow(millis(), web ? ACCESS_WEB : ACCESS_SNMP)) return;
+    char ip[SOURCE_TEXT_MAX];
+    formatSource(source, ip);
     syslogEvent(SyslogSeverity::Warning, web ? "WEB" : "SNMP", "%s from %s", accessEventName(event), ip);
 }
 

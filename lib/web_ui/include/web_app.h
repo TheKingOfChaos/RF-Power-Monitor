@@ -129,7 +129,7 @@ public:
     virtual bool disableWeb() = 0;
     /**
      * @brief Check, save and apply the NTP and syslog servers (as serial menu option 11)
-     * @param ntp, syslog Each "" (keep), "dhcp", "none" or a server, at most WEB_SERVER_TEXT_MAX characters
+     * @param ntp, syslog Each "dhcp", "none" or a server, at most WEB_SERVER_TEXT_MAX characters (the page refuses empty)
      * @param error On false: why, shown on the page
      * @return false when a value is refused or saving failed; nothing changes then
      */

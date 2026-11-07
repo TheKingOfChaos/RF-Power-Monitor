@@ -255,6 +255,7 @@ $env:RFPOWER_SYSLOG_PORT = "5514"          # optional, default 5514
 - The check-in body and the reply's keyed BLAKE2b MAC, byte for byte against Python's `hashlib` (`update-server/tests/vectors.json`); a reply is only read after its MAC and the check-in's nonce verify; every truncation, a changed byte, another nonce, CR/NUL, over 512 bytes and unknown status lines are refused.
 - The URL (`http://` only, host, `[IPv6]`, port 1-65535, path, 127 characters), the HTTP response head (status, one Content-Length, no chunked encoding, 1024-byte head limit, every truncation), the `.upd` header version (golden file) and version order.
 - Check-in timing (60 s after the network, 30 min, 5 min retry, 60 s report, millis() wrap-around), the update settings JSON (round trip, worst case, truncations) and how menu and web changes are applied (bad URL or key changes nothing; `clear` wipes the key).
+- Check-in history for the updateSite SNMP group (`CheckinStats`): off, never, ok, failed; minutes from when check-ins became due; a new update server starts the minutes again (no false LibreNMS warning after a change); failing and working-again transitions for syslog; millis() wrap.
 - A download: the running version is not downloaded again; the file's header and its **signed** slot header must name the version the site asked for; failures are reported once (`<v> download <why>`, `<v> refused <why>`).
 
 ### `test/native/test_clock`: civil time and local time (`lib/clock`)
@@ -561,6 +562,7 @@ restored). `test_build_src` is off, so the test compiles the service, `boot_info
 - The test network works with any firmware: an O-flag advertisement makes lwIP's stateless client send an Information-request, Kea replies, and the device's SLAAC address is unchanged
 - With the M flag the device gets an address from Kea's pool, marked `(dhcpv6)`, that answers ping6 and SNMP; the lease is renewed; the address is removed when Kea stops; an address this PC already uses is declined; core 0 keeps > 1 KB of stack; this PC's IPv6 default routes are unchanged
 - Each test reboots the device first (option 2, DHCP unchanged); needs community `public`
+- The NTP server from DHCPv6 option 31 (SNTP servers): Kea serves `2001:db8::123` (global option, since lwIP's Information-request has no client id); the status screen shows `NTP 2001:DB8::123 from DHCP`, and after `none` and back to `dhcp` it returns (with RAs every 3 s the test cannot tell the device's own new request from the next RA)
 
 ### `test/hil/test_watchdog.py`: the hardware watchdog
 - The hidden menu commands `stall0` and `stall1` hang core 0 (interrupts off) or core 1 for good; the device restarts within 8 s (core 1: 9 s), and the status screen shows `Last restart: watchdog` with the watchdog restart count one higher The core 1 restart time is taken from when the device stops answering SNMP (core 0 answers until the restart): Windows sometimes reports the USB drop 2 s late, which made the old USB-based timing fail now and then (9.1 s or 11.1 s against an 11 s limit). The core 0 time still comes from the USB drop, as core 0 stops answering at once.

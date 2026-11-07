@@ -6,6 +6,9 @@
     "preferred-lifetime": @PREFERRED@,
     "renew-timer": @RENEW@,
     "rebind-timer": @REBIND@,
+    "option-data": [
+      { "name": "sntp-servers", "data": "2001:db8::123" }
+    ],
     "client-classes": [
       { "name": "DROP", "test": "not (pkt.src == 0x@DEVLLHEX@)" },
       { "name": "rfpower-device", "test": "option[1].hex == 0x@DUID@" }

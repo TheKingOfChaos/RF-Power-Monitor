@@ -251,7 +251,7 @@ public:
     }
 
     bool saveTimeLog(const char* ntp, const char* syslog, const char*& error) override {
-        return syslogServiceSaveSettings(ntp, syslog, error);
+        return syslogServiceSaveSettings(ntp, syslog, "web page", error);
     }
 
     void requestReboot() override { rebootRequested = true; }

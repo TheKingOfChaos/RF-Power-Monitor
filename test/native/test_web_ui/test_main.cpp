@@ -1043,6 +1043,19 @@ static void test_timelog_overlong_or_missing_value_is_refused_before_the_backend
     TEST_ASSERT_EQUAL(0, fb->timeLogSaves);
 }
 
+static void test_timelog_empty_field_is_refused_with_a_reason() {
+    // The fields show the current value; a cleared field means the user wants something else
+    // (the serial menu's "Enter keeps" does not fit a form), so say what to type
+    webSetUp();
+    std::string csrf;
+    std::string token = logIn(csrf);
+    std::string resp = post("/timelog", "csrf=" + csrf + "&ntp=&syslog=none", token);
+    TEST_ASSERT_EQUAL(400, statusCode(resp));
+    TEST_ASSERT_TRUE(resp.find("Enter a server, dhcp or none in both fields.") != std::string::npos);
+    TEST_ASSERT_EQUAL(400, statusCode(post("/timelog", "csrf=" + csrf + "&ntp=dhcp&syslog=", token)));
+    TEST_ASSERT_EQUAL(0, fb->timeLogSaves);
+}
+
 static void test_main_page_shows_time_rows_and_card() {
     webSetUp();
     std::string csrf;
@@ -2581,6 +2594,7 @@ int main() {
     RUN_TEST(test_timelog_saves_through_backend);
     RUN_TEST(test_timelog_bad_value_shows_error_and_saves_nothing);
     RUN_TEST(test_timelog_overlong_or_missing_value_is_refused_before_the_backend);
+    RUN_TEST(test_timelog_empty_field_is_refused_with_a_reason);
     RUN_TEST(test_main_page_shows_time_rows_and_card);
     RUN_TEST(test_change_hostname);
     RUN_TEST(test_invalid_hostname_is_not_saved);

@@ -71,5 +71,32 @@ class Dhcp6TestNetTest(unittest.TestCase):
         self.assertEqual(ipv6_addresses(before)[1], ipv6_addresses(self.dev.status()["raw"])[1])
 
 
+    def test_option_31_gives_the_ntp_server_and_comes_back_after_none(self):
+        # lwIP's SNTP takes DHCPv6 option 31 (SNTP servers) from the stateless reply; Kea serves
+        # 2001:db8::123 (kea-dhcp6.conf.in), which nobody answers: only the source is checked
+        self.dev.keep_time_syslog(self)
+        self.dev.set_time_syslog("dhcp", "")
+
+        def wait_for_server(timeout):
+            deadline = time.time() + timeout
+            line = ""
+            while time.time() < deadline:
+                self.dev.wait_for_menu(timeout=10)
+                line = self.dev.status()["time"] or ""
+                if re.search(r"NTP 2001:db8::123 from DHCP", line, re.IGNORECASE):  # lwIP prints it in capitals
+                    return line
+                time.sleep(2)
+            self.fail("no NTP server from DHCPv6 option 31: %s" % line)
+
+        with TestNet(self.mac, self.ll, self.glob) as net:
+            net.start(managed=False, other=True)
+            wait_for_server(40)
+            # "none" clears the servers; back to dhcp, the DHCPv6 one returns without a new lease
+            self.dev.set_time_syslog("none", "")
+            self.assertIn("NTP off", self.dev.status()["time"])
+            self.dev.set_time_syslog("dhcp", "")
+            wait_for_server(20)
+
+
 if __name__ == "__main__":
     unittest.main(verbosity=2)

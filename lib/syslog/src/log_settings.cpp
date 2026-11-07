@@ -45,6 +45,11 @@ bool parsePort(const char* s, uint16_t& out) {
     return true;
 }
 
+/// fe80::/10: needs an interface zone the setting cannot carry, so lwIP could not route it
+bool isLinkLocalIPv6(const uint8_t a[16]) {
+    return a[0] == 0xfe && (a[1] & 0xc0) == 0x80;
+}
+
 bool isLabelChar(char c) {
     return (c >= 'a' && c <= 'z') || (c >= 'A' && c <= 'Z') || (c >= '0' && c <= '9') || c == '-';
 }
@@ -129,10 +134,10 @@ bool parseSyslogTarget(const char* text, SyslogTarget& out) {
             return false;
         }
         t.ipv6 = true;
-        if (!parseIPv6(host, t.addr)) return false;
+        if (!parseIPv6(host, t.addr) || isLinkLocalIPv6(t.addr)) return false;
     } else if (strchr(text, ':') != strrchr(text, ':')) {  // two or more colons: a bare IPv6 address
         t.ipv6 = true;
-        if (!parseIPv6(text, t.addr)) return false;
+        if (!parseIPv6(text, t.addr) || isLinkLocalIPv6(t.addr)) return false;
     } else {
         const char* colon = strchr(text, ':');
         size_t n = colon ? (size_t)(colon - text) : strlen(text);
@@ -150,7 +155,8 @@ bool ntpServerTextIsValid(const char* text) {
     size_t len = strlen(text);
     if (len == 0 || len > LOG_HOST_MAX) return false;
     uint8_t addr[16];
-    if (parseIPv4(text, addr) || parseIPv6(text, addr)) return true;
+    if (parseIPv4(text, addr)) return true;
+    if (parseIPv6(text, addr)) return !isLinkLocalIPv6(addr);
     if (text[len - 1] == '.') len--;  // one trailing dot: a fully qualified name
     size_t label = 0;
     for (size_t i = 0; i <= len; i++) {

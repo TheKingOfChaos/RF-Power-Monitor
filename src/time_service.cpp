@@ -5,6 +5,7 @@
 #include <log_settings_store.h>
 #include <lwip/apps/sntp.h>
 #include <lwip/dhcp.h>
+#include <lwip/dhcp6.h>
 #include <lwip/netif.h>
 #include <lwip/ip_addr.h>
 #include <sys/time.h>
@@ -65,11 +66,14 @@ void timeServiceApply() {
         DriverLock lock;
         configure();
     }
-    // A DHCP server may offer option 42 only in a new lease: renew now, like options 224, 225 and 7
+    // A DHCP server may offer option 42 only in a new lease: renew now, like options 224, 225 and 7.
+    // configure() cleared the servers, also one learned by DHCPv6 (option 31): ask again too, rather than
+    // wait for the router's next advertisement (no answer without a DHCPv6 server is harmless)
     if (currentLogSettings.ntpMode == ServerMode::Dhcp) {
         DriverLock lock;
         for (netif* n = netif_list; n != nullptr; n = n->next) {
             if (dhcp_supplied_address(n)) dhcp_renew(n);
+            if (netif_dhcp6_data(n) != nullptr) dhcp6_nd6_ra_trigger(n, 0, 1);
         }
     }
 }
@@ -86,7 +90,11 @@ bool timeServiceSynced() {
 
 uint64_t timeServiceEpochMs() {
     struct timeval tv;
-    gettimeofday(&tv, nullptr);
+    {
+        // lwIP's SNTP sets the core's 64-bit clock offset (timeServiceSetTime): not halfway through a read
+        DriverLock lock;
+        gettimeofday(&tv, nullptr);
+    }
     return (uint64_t)tv.tv_sec * 1000u + (uint64_t)tv.tv_usec / 1000u;
 }
 

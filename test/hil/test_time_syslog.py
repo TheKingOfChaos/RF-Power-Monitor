@@ -184,6 +184,12 @@ class SyslogTest(unittest.TestCase):
         for m in msgs:
             self.assertNotIn(self.community, m["raw"].split(" - ", 2)[-1], "community in a syslog message")
 
+    def test_option_11_change_says_where_it_came_from(self):
+        self.dev.set_time_syslog("", "")  # saves the same values: still a settings event
+        msgs = [m for m in self.receive(10, until="SETTINGS") if m["msgid"] == "SETTINGS"]
+        self.assertTrue(msgs, "no SETTINGS line")
+        self.assertTrue(msgs[0]["text"].startswith("serial menu: NTP server "), msgs[0]["text"])
+
     def test_bad_community_burst_is_throttled(self):
         # The access log folds repeats of one event from one source into one entry (one syslog line),
         # so alternate two kinds of bad request: every packet is then a new entry

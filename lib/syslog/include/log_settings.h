@@ -41,9 +41,9 @@ struct SyslogTarget {
     uint16_t port;
 };
 
-/// Parse a typed syslog server; DNS names are not accepted
+/// Parse a typed syslog server; DNS names and link-local IPv6 addresses (fe80::/10) are not accepted
 bool parseSyslogTarget(const char* text, SyslogTarget& out);
-/// An IPv4 or IPv6 address, or a DNS name (labels of 1-63 [A-Za-z0-9-] not
+/// An IPv4 or IPv6 address (not link-local fe80::/10), or a DNS name (labels of 1-63 [A-Za-z0-9-] not
 /// starting or ending with '-', one trailing dot allowed, at most LOG_HOST_MAX characters)
 bool ntpServerTextIsValid(const char* text);
 

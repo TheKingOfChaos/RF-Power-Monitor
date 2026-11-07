@@ -290,7 +290,7 @@ Syslog: 10.10.6.65:514 (typed), 0 sent, 1 waiting
 ```
 
 - NTP server: an IPv4 or IPv6 address, a DNS name (`pool.ntp.org`), `dhcp` (DHCP option 42, or DHCPv6 option 31) or `none`.
-- Syslog server: an IPv4 address with an optional port (`10.10.6.65:5140`), an IPv6 address (`2001:db8::514`, or `[2001:db8::514]:5140` with a port), `dhcp` (DHCP option 7) or `none`. Port 514 unless given. No DNS names.
+- Syslog server: an IPv4 address with an optional port (`10.10.6.65:5140`), an IPv6 address (`2001:db8::514`, or `[2001:db8::514]:5140` with a port), `dhcp` (DHCP option 7) or `none`. Port 514 unless given. No DNS names, and no link-local IPv6 (`fe80::`) for either server.
 - A factory reset sets both back to `dhcp`.
 
 ## Web page

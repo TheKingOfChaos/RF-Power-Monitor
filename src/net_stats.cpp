@@ -351,7 +351,9 @@ void netStatsRequestDhcpLogServer(bool on) {
     DriverLock lock;
     bool changed = dhcpLogRequestOn != on;
     dhcpLogRequestOn = on;
-    if (!changed || !on) return;
+    if (!changed) return;
+    dhcpHasLogServer = false;  // an old lease's value must not be used: only the next accepted ACK counts
+    if (!on) return;
     for (netif* n = netif_list; n != nullptr; n = n->next) {
         if (dhcp_supplied_address(n)) dhcp_renew(n);  // ask now, not at the next renewal
     }

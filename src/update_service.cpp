@@ -1,6 +1,7 @@
 #include "syslog_service.h"
 #include "update_service.h"
 
+#include <checkin_stats.h>
 #include <Arduino.h>
 #include <stdio.h>
 #include <string.h>
@@ -48,25 +49,23 @@ size_t replyLen = 0;
 char lastResult[48] = "off";
 bool checkedIn = false;
 uint32_t lastCheckinMs = 0;
-bool goodCheckin = false;       // a check-in has succeeded since boot
-uint32_t lastGoodCheckinMs = 0;
-uint32_t failedInRow = 0;       // check-ins failed since the last good one
-bool active = false;            // configured and the network is up: check-ins are due
-uint32_t activeSinceMs = 0;     // since when (updMinutesSinceGood before the first good check-in)
+CheckinStats stats;            // updateSite SNMP group: results, minutes since the last good one
 
 /// A check-in ended: schedule the next, count, and syslog when it starts failing or works again
 void checkinFinished(bool ok, uint32_t now) {
     scheduler.checkinDone(ok, now);
-    if (ok) {
-        if (failedInRow > 0) syslogEvent(SyslogSeverity::Notice, "UPDATE", "update server check-in works again");
-        goodCheckin = true;
-        lastGoodCheckinMs = now;
-        failedInRow = 0;
-    } else {
-        if (failedInRow == 0) syslogEvent(SyslogSeverity::Warning, "UPDATE", "update server check-in failed: %s", lastResult);
-        failedInRow++;
+    switch (stats.done(ok, now)) {
+    case CheckinChange::StartedFailing:
+        syslogEvent(SyslogSeverity::Warning, "UPDATE", "update server check-in failed: %s", lastResult);
+        break;
+    case CheckinChange::WorksAgain:
+        syslogEvent(SyslogSeverity::Notice, "UPDATE", "update server check-in works again");
+        break;
+    case CheckinChange::None:
+        break;
     }
 }
+
 uint32_t restartAtMs = 0;
 
 // Download
@@ -377,8 +376,7 @@ void updateServicePoll(bool netReady) {
         setResult(urlText[0] == '\0' ? "off" : !urlOk ? "bad url" : !currentUpdateSettings.hasKey ? "no key" : "waiting");
     }
     scheduler.netReady(netReady && configured, now);
-    if (netReady && configured && !active) activeSinceMs = now;
-    active = netReady && configured;
+    stats.active(netReady && configured, now);
 
     switch (phase) {
     case Phase::Idle:
@@ -400,16 +398,10 @@ void updateServicePoll(bool netReady) {
 }
 
 void updateServiceSnmpState(SnmpUpdateState& out) {
-    uint32_t now = millis();
-    bool configured = urlOk && currentUpdateSettings.hasKey;
-    if (!configured) {
-        out = {0, 0, 0};  // off
-        return;
-    }
-    out.failedInRow = failedInRow;
-    out.result = failedInRow > 0 ? 3 : goodCheckin ? 2 : 1;  // failed, ok, never
-    uint32_t sinceMs = goodCheckin ? lastGoodCheckinMs : activeSinceMs;
-    out.minutesSinceGood = (goodCheckin || active) ? (now - sinceMs) / 60000 : 0;
+    CheckinSnapshot n = stats.snapshot(urlOk && currentUpdateSettings.hasKey, millis());
+    out.result = n.result;
+    out.minutesSinceGood = n.minutesSinceGood;
+    out.failedInRow = n.failedInRow;
 }
 
 void updateServiceForceCheckin() {
@@ -442,8 +434,7 @@ bool updateServiceSave(const char* url, bool fromDhcp, const char* keyHex, bool 
     // Start over with the new settings: first check-in 60 s from the next poll
     scheduler.netReady(false, millis());
     checkedIn = false;
-    goodCheckin = false;  // a new server: its own history for SNMP
-    failedInRow = 0;
+    stats.restart(millis());  // a new server: its own history for SNMP, minutes from now
     syslogEvent(SyslogSeverity::Notice, "SETTINGS", "update server set to %s%s",
                 currentUpdateSettings.fromDhcp ? "dhcp" : currentUpdateSettings.url[0] ? currentUpdateSettings.url : "none",
                 clearKey ? ", key removed" : (keyHex != nullptr && keyHex[0]) ? ", new key" : "");  // never the key

@@ -534,6 +534,9 @@ const char* WebApp::timeLog(const HttpRequest& req, size_t slot, WebBackend& bac
         strlen(ntp) > WEB_SERVER_TEXT_MAX || strlen(syslog) > WEB_SERVER_TEXT_MAX) {
         return mainPage(400, "Bad Request", slot, backend, "Each server is at most 63 characters.", true, len);
     }
+    if (ntp[0] == '\0' || syslog[0] == '\0') {  // the form shows the values: empty is not "keep" here
+        return mainPage(400, "Bad Request", slot, backend, "Enter a server, dhcp or none in both fields.", true, len);
+    }
     const char* error = "Saving failed, nothing changed.";
     if (!backend.saveTimeLog(ntp, syslog, error)) {
         return mainPage(400, "Bad Request", slot, backend, error, true, len);

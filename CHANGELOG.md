@@ -17,6 +17,8 @@ Real time from NTP, events to a syslog server, and the update site's state over 
 - **SNMP updateSite group** (`63050.8`): `updCheckinResult` (off, never, ok, failed), `updMinutesSinceGood`, `updFailedInRow`. LibreNMS shows the check-in state and warns after 60 minutes without a good check-in.
 - LibreNMS test setup: a `syslogng` receiver. The image's port 514 source does not parse RFC 5424, so `librenms/test/syslog-ng-rfc5424.conf` adds one on UDP 5140 that keeps the message's hostname (Docker Desktop hides the sender); LibreNMS needs `enable_syslog` on (docs/LIBRENMS.md).
 
+- Link-local IPv6 addresses (`fe80::/10`) are refused for both servers (they need an interface zone the setting cannot carry). On the web page both fields need a value (`dhcp`, `none` or a server); in the serial menu Enter still keeps the value.
+
 ### Changed
 - The RAM limit in the project rules is 60 % (was 50 %). Static RAM 52.8 % (138,540 of 262,144 bytes; the syslog queue is ~1.9 KB, the web page buffer is 13 KB instead of 11 KB for the new card). Image 443,612 bytes, 24.2 % of the core's flash figure; the boot program verifies it in about 0.95 s.
 

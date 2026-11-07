@@ -6,6 +6,7 @@
 #include <string.h>
 
 #include <unity.h>
+#include <checkin_stats.h>
 #include <http_response.h>
 #include <update_job.h>
 #include <update_schedule.h>
@@ -681,6 +682,69 @@ static void test_scheduler_force_waits_for_network() {
     TEST_ASSERT_TRUE(s.due(5000));
 }
 
+// ---- CheckinStats: the updateSite SNMP group ----
+
+static const uint32_t MIN = 60000;
+
+static void test_checkin_stats_off_when_not_configured() {
+    CheckinStats s;
+    s.active(false, 0);
+    CheckinSnapshot n = s.snapshot(false, 90 * MIN);
+    TEST_ASSERT_EQUAL_UINT8(0, n.result);
+    TEST_ASSERT_EQUAL_UINT32(0, n.minutesSinceGood);
+    TEST_ASSERT_EQUAL_UINT32(0, n.failedInRow);
+}
+
+static void test_checkin_stats_never_counts_from_when_due() {
+    CheckinStats s;
+    s.active(false, 0);
+    s.active(true, 10 * MIN);   // the network came up 10 minutes after boot
+    s.active(true, 20 * MIN);   // still due: the clock does not restart
+    CheckinSnapshot n = s.snapshot(true, 35 * MIN);
+    TEST_ASSERT_EQUAL_UINT8(1, n.result);
+    TEST_ASSERT_EQUAL_UINT32(25, n.minutesSinceGood);
+}
+
+static void test_checkin_stats_ok_then_failing_then_works_again() {
+    CheckinStats s;
+    s.active(true, 0);
+    TEST_ASSERT_TRUE(s.done(true, 1 * MIN) == CheckinChange::None);  // the first good one: nothing failed before
+    CheckinSnapshot n = s.snapshot(true, 31 * MIN);
+    TEST_ASSERT_EQUAL_UINT8(2, n.result);
+    TEST_ASSERT_EQUAL_UINT32(30, n.minutesSinceGood);
+    TEST_ASSERT_TRUE(s.done(false, 31 * MIN) == CheckinChange::StartedFailing);
+    TEST_ASSERT_TRUE(s.done(false, 36 * MIN) == CheckinChange::None);  // still failing: no new line
+    n = s.snapshot(true, 70 * MIN);
+    TEST_ASSERT_EQUAL_UINT8(3, n.result);
+    TEST_ASSERT_EQUAL_UINT32(2, n.failedInRow);
+    TEST_ASSERT_EQUAL_UINT32(69, n.minutesSinceGood);
+    TEST_ASSERT_TRUE(s.done(true, 71 * MIN) == CheckinChange::WorksAgain);
+    n = s.snapshot(true, 71 * MIN);
+    TEST_ASSERT_EQUAL_UINT8(2, n.result);
+    TEST_ASSERT_EQUAL_UINT32(0, n.failedInRow);
+}
+
+static void test_checkin_stats_restart_counts_minutes_from_the_change() {
+    // Up for days, then a new update server: minutes count from the change, not from boot,
+    // so LibreNMS does not warn before the new server had its chance
+    CheckinStats s;
+    s.active(true, 0);
+    s.done(true, 1 * MIN);
+    s.done(false, 3000 * MIN);
+    s.restart(3000 * MIN);
+    CheckinSnapshot n = s.snapshot(true, 3002 * MIN);
+    TEST_ASSERT_EQUAL_UINT8(1, n.result);
+    TEST_ASSERT_EQUAL_UINT32(2, n.minutesSinceGood);
+    TEST_ASSERT_EQUAL_UINT32(0, n.failedInRow);
+}
+
+static void test_checkin_stats_survive_millis_wrap() {
+    CheckinStats s;
+    s.active(true, 0xFFFFFFFFu - 5 * MIN);
+    CheckinSnapshot n = s.snapshot(true, 5 * MIN);  // 10 minutes later, across the wrap
+    TEST_ASSERT_EQUAL_UINT32(10, n.minutesSinceGood);
+}
+
 int main(int, char**) {
     UNITY_BEGIN();
     RUN_TEST(test_url_accepts_name_port_path);
@@ -748,5 +812,10 @@ int main(int, char**) {
     RUN_TEST(test_download_deadline_scales_with_size);
     RUN_TEST(test_scheduler_force_survives_net_ready_edge);
     RUN_TEST(test_scheduler_force_waits_for_network);
+    RUN_TEST(test_checkin_stats_off_when_not_configured);
+    RUN_TEST(test_checkin_stats_never_counts_from_when_due);
+    RUN_TEST(test_checkin_stats_ok_then_failing_then_works_again);
+    RUN_TEST(test_checkin_stats_restart_counts_minutes_from_the_change);
+    RUN_TEST(test_checkin_stats_survive_millis_wrap);
     return UNITY_END();
 }

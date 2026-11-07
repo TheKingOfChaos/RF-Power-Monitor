@@ -35,10 +35,12 @@ void syslogAccessEvent(const SourceKey& source, AccessEvent event);
  * @brief Change the NTP and syslog servers (serial menu option 11, web page)
  *
  * Inputs as logSettingsApplyInput(): empty keeps, dhcp, none, or a server.
- * Saves, applies to NTP and syslog at once, and logs the change.
+ * Saves, applies to NTP and syslog at once, and logs the change, starting with `origin`
+ * ("serial menu" or "web page") like the other settings events.
  * @return false with `error` set when an input is invalid or saving failed (nothing changes)
  */
-bool syslogServiceSaveSettings(const char* ntpInput, const char* syslogInput, const char*& error);
+bool syslogServiceSaveSettings(const char* ntpInput, const char* syslogInput, const char* origin,
+                               const char*& error);
 
 /// Before a planned restart: send what is queued now (at most a few ms per event)
 void syslogServiceFlush();
