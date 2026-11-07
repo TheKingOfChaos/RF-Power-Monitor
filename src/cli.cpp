@@ -21,6 +21,8 @@
 #include "web_service.h"
 #include <web_auth.h>
 #include <bench_info.h>
+#include <monocypher.h>
+#include <new>
 #include "version.h"
 
 extern CountingW5500lwIP eth;  // main.cpp
@@ -104,6 +106,18 @@ static void printUpdateServerLine() {
     Serial.printf("Update server: %s (%s), key %s, %s\r\n", st.urlInUse[0] ? st.urlInUse : "none yet",
                   currentUpdateSettings.fromDhcp ? "DHCP option 225" : "fixed",
                   currentUpdateSettings.hasKey ? "set" : "not set", state);
+}
+
+/// "Update server default: <url>, key set|not set (a factory reset restores it)", only when the bench set one
+static void printUpdateDefaultLine() {
+    UpdateSettings* d = new (std::nothrow) UpdateSettings;  // heap: core 0's stack is small
+    if (d == nullptr) return;
+    if (loadUpdateBenchDefaults(*d)) {
+        Serial.printf("Update server default: %s, key %s (a factory reset restores it)\r\n",
+                      d->fromDhcp ? "dhcp" : d->url[0] ? d->url : "none", d->hasKey ? "set" : "not set");
+    }
+    crypto_wipe(d, sizeof(*d));  // it held the shared key
+    delete d;
 }
 
 /// Ask for the update server URL (option 10)
@@ -286,6 +300,7 @@ static void printStatus() {
         Serial.printf("Firmware key: %s\r\n", fw.keyFingerprint);
     }
     printUpdateServerLine();
+    printUpdateDefaultLine();
 
     Serial.printf("Mode: %s\r\n", currentSettings.dhcpEnabled ? "DHCP" : "Static");
     Serial.printf("Stored static IP: %s / %s, gateway %s\r\n",
@@ -321,24 +336,40 @@ static void printStatus() {
  * @brief Print the device data block for the bench tool (hidden command benchinfo, lib/bench_info)
  */
 static void printBenchInfo() {
-    static WebFirmware fw;              // static: not on core 0's small stack
-    static char block[BENCH_INFO_MAX];  // same
-    memset(&fw, 0, sizeof(fw));
-    fwUpdateStatus(fw);
+    // On the heap while it runs: not on core 0's small stack, and static RAM is at its limit
+    struct Work {
+        WebFirmware fw;
+        UpdateSettings updateDefault;
+        char block[BENCH_INFO_MAX];
+    };
+    Work* w = new (std::nothrow) Work;
+    if (w == nullptr) {
+        Serial.println("benchinfo: out of memory");
+        return;
+    }
+    memset(&w->fw, 0, sizeof(w->fw));
+    fwUpdateStatus(w->fw);
+    bool haveDefault = loadUpdateBenchDefaults(w->updateDefault);
     BenchInfo info{};
     info.hostname = hostnameCurrent();
     eth.macAddress(info.mac);
     info.serial = hostStatsSnapshot().serialNumber;
     info.firmware = FIRMWARE_VERSION;
-    info.fwKey = fw.keyFingerprint;
+    info.fwKey = w->fw.keyFingerprint;
     info.password = webDefaultPassword();
     info.locked = webDefaultPasswordLocked();
     info.passwordLost = webDefaultPasswordLost();
-    if (formatBenchInfo(info, block, sizeof(block)) == 0) {
-        Serial.println("benchinfo: does not fit");
-        return;
+    if (haveDefault) {
+        info.updateDefault = w->updateDefault.fromDhcp ? "dhcp" : w->updateDefault.url[0] ? w->updateDefault.url : "none";
+        info.updateDefaultKey = w->updateDefault.hasKey;
     }
-    Serial.print(block);
+    if (formatBenchInfo(info, w->block, sizeof(w->block)) == 0) {
+        Serial.println("benchinfo: does not fit");
+    } else {
+        Serial.print(w->block);
+    }
+    crypto_wipe(&w->updateDefault, sizeof(w->updateDefault));  // it held the shared key
+    delete w;
 }
 
 /**
@@ -649,6 +680,17 @@ static void handleLine(const char* line) {
         } else if (strcmp(line, "benchinfo") == 0) {
             // Hidden bench tool command (tools/bench_provision.py): device data for the label
             printBenchInfo();
+            Serial.print("> ");
+        } else if (strcmp(line, "updatedefault") == 0) {
+            // Hidden bench tool command: keep the update server settings (option 10) through factory resets
+            bool any = currentUpdateSettings.url[0] || currentUpdateSettings.fromDhcp || currentUpdateSettings.hasKey;
+            if (!saveUpdateBenchDefaults()) {
+                Serial.println("Failed to save the update server default");
+            } else if (any) {
+                Serial.println("Update server default saved (a factory reset restores it)");
+            } else {
+                Serial.println("Update server default removed (a factory reset turns check-ins off)");
+            }
             Serial.print("> ");
         } else if (strcmp(line, "pwlock") == 0 || strcmp(line, "pwunlock") == 0) {
             // Hidden bench tool commands: lock the default web password once it is on the label, or unlock it

@@ -64,3 +64,32 @@ bool saveUpdateSettings();
 
 /// Remove the stored update settings and reset currentUpdateSettings to the defaults
 bool clearUpdateSettings();
+
+/// Paths of the bench defaults (hidden menu command updatedefault): kept through a factory reset
+extern const char* const UPDATE_BENCH_DEFAULTS_FILE_A;
+extern const char* const UPDATE_BENCH_DEFAULTS_FILE_B;
+
+/**
+ * @brief Update settings after a factory reset: the bench defaults when stored, else none
+ *
+ * The current copies are always removed (a key set in the field does not stay in
+ * flash); with bench defaults those are saved as the new current settings.
+ * @param current  Store of the settings in use
+ * @param defaults Store of the bench defaults (left unchanged)
+ * @param out      Receives the settings now in use
+ * @return false if removing or saving failed
+ */
+bool factoryResetUpdateSettings(UpdateSettingsStore& current, UpdateSettingsStore& defaults, UpdateSettings& out);
+
+/// factoryResetUpdateSettings on the default stores, into currentUpdateSettings (factory reset)
+bool resetUpdateSettingsToBenchDefaults();
+
+/**
+ * @brief Keep currentUpdateSettings as the bench defaults (hidden command updatedefault)
+ *
+ * With no URL, DHCP or key set, the bench defaults are removed instead.
+ */
+bool saveUpdateBenchDefaults();
+
+/// The bench defaults into out; false (out = defaults) if none are stored
+bool loadUpdateBenchDefaults(UpdateSettings& out);

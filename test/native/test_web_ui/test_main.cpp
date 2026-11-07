@@ -2354,6 +2354,14 @@ static void test_default_password_lost_marker_keeps_reporting_after_reboot() {
     TEST_ASSERT_TRUE(c.lostWhileLocked);
 }
 
+static void test_default_password_copies_differ_while_locked_is_lost() {
+    // Firmware before 3.5.0 (after a rollback) replaces only copy A in option 7
+    DefaultPasswordChoice c = chooseDefaultPassword("k7mq2xr9tp", "abcdefghij", true, false);
+    TEST_ASSERT_TRUE(c.source == DefaultPasswordSource::CopyA);
+    TEST_ASSERT_TRUE(c.writeB);
+    TEST_ASSERT_TRUE(c.lostWhileLocked);
+}
+
 static void test_default_password_lost_marker_ignored_when_unlocked() {
     DefaultPasswordChoice c = chooseDefaultPassword("k7mq2xr9tp", "k7mq2xr9tp", false, true);
     TEST_ASSERT_FALSE(c.lostWhileLocked);
@@ -2523,5 +2531,6 @@ int main() {
     RUN_TEST(test_made_default_password_is_valid);
     RUN_TEST(test_default_password_lost_marker_keeps_reporting_after_reboot);
     RUN_TEST(test_default_password_lost_marker_ignored_when_unlocked);
+    RUN_TEST(test_default_password_copies_differ_while_locked_is_lost);
     return UNITY_END();
 }

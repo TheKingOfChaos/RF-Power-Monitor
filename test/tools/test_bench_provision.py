@@ -14,37 +14,12 @@ sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import bench_device  # noqa: E402
 import bench_log  # noqa: E402
 import bench_provision  # noqa: E402
+from bench_fakes import FakeBoard  # noqa: E402
 from test_bench_device import write_release  # noqa: E402
 
 NOW = datetime.datetime(2026, 11, 7, 10, 30, 0)
-
-
-class FakeBoard:
-    """The device's serial menu: benchinfo answers follow pwlock."""
-
-    def __init__(self, **values):
-        self.values = {"hostname": "RF-Power-A1B2C3", "mac": "2C:CF:67:A1:B2:C3", "serial": "E6614103E7A1B2C3",
-                       "firmware": "3.5.0",
-                       "fwkey": bench_device.field_key_id(), "password": "k7mq2xr9tp", "locked": "0", "lost": "0"}
-        self.values.update(values)
-        self.sent = []
-        self.closed = False
-
-    def wait_for_menu(self, timeout=40.0):
-        pass
-
-    def command(self, line, until, timeout=5.0):
-        self.sent.append(line)
-        if line == "pwlock":
-            self.values["locked"] = "1"
-            return "Default web password locked (it is on the device label)\r\n"
-        if line == "benchinfo":
-            lines = "".join("%s=%s\r\n" % (k, self.values[k]) for k in bench_device.BENCH_KEYS)
-            return "BENCHINFO BEGIN\r\n" + lines + "BENCHINFO END\r\n> "
-        raise AssertionError("unexpected command " + line)
-
-    def close(self):
-        self.closed = True
+UPDATE_URL = "http://10.132.0.45:8074"
+UPDATE_KEY = "e5" * 32
 
 
 class FakeIO:
@@ -85,12 +60,21 @@ class ProvisionTests(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.out = os.path.join(self.tmp.name, "bench")
         self.log = os.path.join(self.out, "devices.csv")
+        self.settings = os.path.join(self.tmp.name, "bench.ini")  # absent unless a test writes it
+        # The dummy releases here are not really signed: test_bench_device checks signatures
+        self.real_verify_signature = bench_device.verify_signature
+        bench_device.verify_signature = lambda fw: None
+        self.addCleanup(setattr, bench_device, "verify_signature", self.real_verify_signature)
 
     def run_main(self, argv, fake):
         err, out = io.StringIO(), io.StringIO()
         with contextlib.redirect_stderr(err), contextlib.redirect_stdout(out):
-            code = bench_provision.main(argv + ["--out", self.out], io=fake)
+            code = bench_provision.main(argv + ["--out", self.out, "--settings", self.settings], io=fake)
         return code, out.getvalue(), err.getvalue()
+
+    def write_settings(self, url=UPDATE_URL, key=UPDATE_KEY):
+        with open(self.settings, "w", encoding="utf-8") as f:
+            f.write("[update]\nurl = %s\nkey = %s\n" % (url, key))
 
     def release(self, key_id=None, version="3.5.0"):
         return write_release(self.tmp.name, name="rf-power-monitor-%s-usb.uf2" % version, version=version,
@@ -246,6 +230,71 @@ class ProvisionTests(unittest.TestCase):
         code, _, err = self.run_main(["--no-flash"], FakeIO(OldBoard(), ports_before=["COM4"]))
         self.assertEqual(1, code)
         self.assertIn("3.5.0", err)
+
+    def test_settings_file_sets_update_server_default(self):
+        self.write_settings()
+        board = FakeBoard()
+        code, out, err = self.run_main(["--uf2", self.release()], FakeIO(board))
+        self.assertEqual(0, code, err)
+        self.assertEqual((UPDATE_URL, UPDATE_KEY), (board.update_url, board.update_key))
+        self.assertEqual(UPDATE_URL, board.values["updatedefault"])
+        self.assertEqual(UPDATE_URL, bench_log.latest(self.log, "RF-Power-A1B2C3")["update"])
+        self.assertIn(UPDATE_URL, out)
+        self.assertNotIn(UPDATE_KEY, out + err)
+        with open(self.log, encoding="utf-8") as f:
+            self.assertNotIn(UPDATE_KEY, f.read())
+
+    def test_missing_settings_file_is_noted_and_the_run_continues(self):
+        board = FakeBoard()
+        code, out, err = self.run_main(["--uf2", self.release()], FakeIO(board))
+        self.assertEqual(0, code, err)
+        self.assertIn("bench.ini", out)
+        self.assertNotIn("10", board.sent)
+
+    def test_settings_file_with_bad_key_refused_before_bootsel(self):
+        self.write_settings(key="0011")
+        fake = FakeIO(FakeBoard())
+        code, _, err = self.run_main(["--uf2", self.release()], fake)
+        self.assertEqual(1, code)
+        self.assertIn("key", err)
+        self.assertFalse(fake.drive_asked)
+
+    def test_settings_file_without_update_section_refused(self):
+        with open(self.settings, "w", encoding="utf-8") as f:
+            f.write("[other]\nx = 1\n")
+        code, _, err = self.run_main(["--uf2", self.release()], FakeIO(FakeBoard()))
+        self.assertEqual(1, code)
+        self.assertIn("[update]", err)
+
+    def test_unwritable_log_refused_before_bootsel(self):
+        os.makedirs(self.log)  # a folder where devices.csv should be: cannot be opened for writing
+        fake = FakeIO(FakeBoard())
+        code, _, err = self.run_main(["--uf2", self.release()], fake)
+        self.assertEqual(1, code)
+        self.assertIn("devices.csv", err)
+        self.assertFalse(fake.drive_asked)
+
+    def test_two_new_ports_after_the_copy_refused(self):
+        fake = FakeIO(FakeBoard(), ports_after=["COM9", "COM10"])
+        code, _, err = self.run_main(["--uf2", self.release()], fake)
+        self.assertEqual(1, code)
+        self.assertIn("COM10", err)
+        self.assertIsNone(fake.opened)
+
+    def test_hostname_unsafe_as_file_name_refused(self):
+        board = FakeBoard(hostname="..\\..\\evil")
+        code, _, err = self.run_main(["--no-flash"], FakeIO(board, ports_before=["COM4"]))
+        self.assertEqual(1, code)
+        self.assertIn("hostname", err)
+        self.assertNotIn("pwlock", board.sent)
+
+    def test_bad_signature_refused_before_bootsel(self):
+        bench_device.verify_signature = self.real_verify_signature
+        fake = FakeIO(FakeBoard())
+        code, _, err = self.run_main(["--uf2", self.release()], fake)  # field key id, dummy signature
+        self.assertEqual(1, code)
+        self.assertIn("signature", err)
+        self.assertFalse(fake.drive_asked)
 
     def test_default_uf2_is_highest_version(self):
         for v in ("3.9.0", "3.10.0", "3.2.1"):

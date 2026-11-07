@@ -8,7 +8,7 @@ default web passwords: it lives in the gitignored bench/ folder.
 import csv
 import os
 
-FIELDS = ["time", "hostname", "mac", "serial", "firmware", "revision", "password", "label"]
+FIELDS = ["time", "hostname", "mac", "serial", "firmware", "revision", "update", "password", "label"]
 
 
 def append(path: str, row: dict) -> None:

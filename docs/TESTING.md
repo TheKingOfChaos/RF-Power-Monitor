@@ -133,7 +133,7 @@ $env:RFPOWER_STATIC_IPV6_GATEWAY = "fe80::1"         # optional: gateway for tha
 
 ### Bench tool commands (`test_bench.py`)
 
-`test/hil/test_bench.py` checks the hidden menu commands the bench tool uses: `benchinfo` (its values match the status screen), `pwlock` (option 7 refuses, the lock and the password survive a reboot) and `pwunlock` (option 7 works again). Only the serial port is needed; each test restores the lock state it found. `test_unlock_allows_option_7_again` replaces the device default web password. That the lock and the password survive a factory reset is checked in the manual `test_factory_reset.py` (`RFPOWER_MANUAL_BUTTON=1`).
+`test/hil/test_bench.py` checks the hidden menu commands the bench tool uses: `benchinfo` (its values match the status screen), `pwlock` (option 7 refuses, the lock and the password survive a reboot) and `pwunlock` (option 7 works again; skipped on a board whose password is locked, i.e. on a label) and `updatedefault` (option 10 kept as the bench default; needs `RFPOWER_UPDATE_KEY` when the device has a key). `test/embedded/test_settings_store` checks that a factory reset restores the bench update default, clears option 10 without one, and keeps the default itself. Only the serial port is needed; each test restores the lock state it found. `test_unlock_allows_option_7_again` replaces the device default web password. That the lock and the password survive a factory reset is checked in the manual `test_factory_reset.py` (`RFPOWER_MANUAL_BUTTON=1`).
 
 ### Mains tests with a smart plug
 

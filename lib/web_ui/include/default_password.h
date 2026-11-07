@@ -44,6 +44,8 @@ struct DefaultPasswordChoice {
  *
  * A valid copy A wins; the other copy is rewritten when it is invalid or
  * differs. With no valid copy both are written (with a new password).
+ * While locked, two valid copies that differ also count as a loss: firmware
+ * before 3.5.0 (after a rollback) knows no lock and replaces copy A only.
  * A loss is reported until the bench locks the password again: the boot that
  * made the new password leaves a marker (lostBefore), because the next boot
  * finds both new copies valid.

@@ -12,12 +12,22 @@ script copies the file to the RPI-RP2 drive and waits for the board's serial
 port. --no-flash does the same on a board that already runs the firmware.
 --reprint makes the label again from bench/devices.csv without a device.
 
+With secret/bench.ini (or --settings) the board also gets the update site:
+
+    [update]
+    url = http://10.132.0.45:8074
+    key = <the site's 64 hex character shared key>
+
+set in menu option 10 and kept as its bench default (hidden command
+updatedefault), which a factory reset restores. The key is never printed.
+
 Output in --out (default bench/, gitignored): <hostname>.png to print from
 the NIIMBOT app (40 x 40 mm label, white ribbon), <hostname>-preview.png, and
 devices.csv, which holds the default web passwords.
 """
 
 import argparse
+import configparser
 import datetime
 import glob
 import os
@@ -35,11 +45,13 @@ from bench_device import BenchError  # noqa: E402
 ROOT = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 RELEASE_DIR = os.path.join(ROOT, "release")
 DEFAULT_OUT = os.path.join(ROOT, "bench")
+DEFAULT_SETTINGS = os.path.join(ROOT, "secret", "bench.ini")
 DEFAULT_REVISION = "rev 2"
 BOOTSEL_TIMEOUT_S = 120
 PORT_TIMEOUT_S = 60
 POLL_S = 0.5
 PASSWORD_RE = re.compile(r"^[a-km-np-z2-9]{10}$")  # lib/web_ui default_password.h alphabet
+HOSTNAME_RE = re.compile(r"^[A-Za-z0-9-]{1,32}$")   # what the firmware makes (netconfig); also the file name
 
 
 class RealIO:
@@ -108,10 +120,47 @@ def expected_hostname(mac):
     return "RF-Power-" + mac.replace(":", "").upper()[-6:]
 
 
+def load_settings(path):
+    """The [update] url and key from the bench settings file, or None when the file does not exist.
+
+    BenchError for a file without [update], or values the device would refuse;
+    messages never hold the key.
+    """
+    if not os.path.exists(path):
+        return None
+    parser = configparser.ConfigParser()
+    try:
+        parser.read(path, encoding="utf-8")
+    except configparser.Error:
+        raise BenchError("%s is not a settings file ([update] with url and key)" % path)
+    if not parser.has_section("update"):
+        raise BenchError("%s has no [update] section with url and key" % path)
+    url = parser.get("update", "url", fallback="").strip()
+    key = parser.get("update", "key", fallback="").strip()
+    if len(url) > bench_device.UPDATE_URL_MAX or not bench_device.UPDATE_URL_RE.match(url):
+        raise BenchError("%s: [update] url is not http://host[:port][/path]" % path)
+    if not bench_device.UPDATE_KEY_RE.match(key):
+        raise BenchError("%s: [update] key is not 64 hex characters" % path)
+    return {"url": url, "key": key.lower()}
+
+
+def _check_log_writable(path):
+    """BenchError unless the log can be appended to (e.g. not open in Excel), before the board is touched."""
+    try:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "a", encoding="utf-8"):
+            pass
+    except OSError as e:
+        raise BenchError("cannot write %s (open in another program?): %s" % (path, e))
+
+
 def _wait_new_port(io, before):
-    """The Pico port that appears after the copy."""
+    """The Pico port that appears after the copy; BenchError if none or several appear."""
     for _ in range(int(PORT_TIMEOUT_S / POLL_S)):
         new = sorted(set(io.pico_ports()) - set(before))
+        if len(new) > 1:
+            raise BenchError("several boards appeared after the copy (%s): connect one board at a time"
+                             % ", ".join(new))
         if new:
             return new[0]
         io.sleep(POLL_S)
@@ -133,6 +182,9 @@ def _single_port(io, port):
 def _check(info, fw, dev, flashed):
     """Refuse device data that must not go on a label; warn about the rest."""
     bench_device.check_key(info["fwkey"], dev, "the device firmware")
+    if not HOSTNAME_RE.match(info["hostname"]):
+        raise BenchError("hostname %r cannot be used (1-32 letters, digits and '-'; it is also the label's file "
+                         "name)" % info["hostname"])
     if fw is not None and info["firmware"] != fw.version:
         raise BenchError("the device runs %s, but %s was flashed" % (info["firmware"], fw.version))
     if not PASSWORD_RE.match(info["password"]):
@@ -148,8 +200,8 @@ def _check(info, fw, dev, flashed):
               "the new label has the new password, replace the old label")
 
 
-def _label_and_log(info, revision, out, io):
-    """Save the label and append the log row; return the label paths."""
+def _label_and_log(info, revision, update_url, out, io):
+    """Save the label and append the log row (update_url: the update server set, or ""); return the label paths."""
     now = io.now()
     data = bench_label.LabelData(hostname=info["hostname"], mac=info["mac"].upper(), serial=info["serial"],
                                  firmware=info["firmware"], password=info["password"], revision=revision,
@@ -157,13 +209,15 @@ def _label_and_log(info, revision, out, io):
     ink, preview = bench_label.save_label(data, out)
     bench_log.append(os.path.join(out, "devices.csv"),
                      dict(time=now.isoformat(timespec="seconds"), hostname=data.hostname, mac=data.mac,
-                          serial=data.serial, firmware=data.firmware, revision=revision, password=data.password,
-                          label=ink))
+                          serial=data.serial, firmware=data.firmware, revision=revision, update=update_url,
+                          password=data.password, label=ink))
     return ink, preview
 
 
 def _device_run(args, io):
-    """Flash (unless --no-flash), read, check, lock, label, log."""
+    """Flash (unless --no-flash), read, check, lock, set the update server, label, log."""
+    settings = load_settings(args.settings)  # refused here, before the board is touched
+    _check_log_writable(os.path.join(args.out, "devices.csv"))
     fw = None
     if not args.no_flash:
         path = args.uf2 or newest_release(RELEASE_DIR)
@@ -187,10 +241,17 @@ def _device_run(args, io):
         info = bench_device.read_info(ser)
         _check(info, fw, args.dev, flashed=fw is not None)
         bench_device.lock(ser)
+        if settings:
+            bench_device.set_update_default(ser, settings["url"], settings["key"])
     finally:
         ser.close()
-    ink, preview = _label_and_log(info, args.revision, args.out, io)
+    update_url = settings["url"] if settings else ""
+    ink, preview = _label_and_log(info, args.revision, update_url, args.out, io)
     print("%s  MAC %s  firmware %s  password locked" % (info["hostname"], info["mac"], info["firmware"]))
+    if settings:
+        print("Update server: %s with the site's key (a factory reset keeps it)" % update_url)
+    else:
+        print("Update server not set: no %s" % args.settings)
     print("Label:   %s" % ink)
     print("Preview: %s" % preview)
     print("Print the label from the NIIMBOT app (40 x 40 mm, white ribbon on black labels)")
@@ -220,6 +281,8 @@ def main(argv=None, *, io=None) -> int:
     p.add_argument("--port", help="serial port with --no-flash, when several boards are connected")
     p.add_argument("--revision", default=DEFAULT_REVISION, help='board revision on the label (default "rev 2")')
     p.add_argument("--out", default=DEFAULT_OUT, help="folder for labels and devices.csv (default bench/)")
+    p.add_argument("--settings", default=DEFAULT_SETTINGS,
+                   help="update site URL and key for the board (default secret/bench.ini; skipped if absent)")
     args = p.parse_args(argv)
     try:
         if args.reprint:

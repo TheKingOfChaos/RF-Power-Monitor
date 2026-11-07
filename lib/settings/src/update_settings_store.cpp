@@ -13,7 +13,11 @@ const char* const UPDATE_SETTINGS_FILE_B = "data/update_b.json";
 
 UpdateSettings currentUpdateSettings;
 
+const char* const UPDATE_BENCH_DEFAULTS_FILE_A = "data/update_default_a.json";
+const char* const UPDATE_BENCH_DEFAULTS_FILE_B = "data/update_default_b.json";
+
 static UpdateSettingsStore defaultStore(UPDATE_SETTINGS_FILE_A, UPDATE_SETTINGS_FILE_B);
+static UpdateSettingsStore benchStore(UPDATE_BENCH_DEFAULTS_FILE_A, UPDATE_BENCH_DEFAULTS_FILE_B);
 
 /// Work buffers for one load or save, on the heap only while it runs: static RAM
 /// is near its 50 % limit, and these are needed rarely (boot, a settings change)
@@ -106,4 +110,39 @@ bool saveUpdateSettings() {
 bool clearUpdateSettings() {
     updateSettingsDefaults(currentUpdateSettings);
     return defaultStore.clear();
+}
+
+/// true if s points somewhere: a URL, DHCP option 225 or a key
+static bool updateSettingsSet(const UpdateSettings& s) {
+    return s.url[0] != '\0' || s.fromDhcp || s.hasKey;
+}
+
+bool factoryResetUpdateSettings(UpdateSettingsStore& current, UpdateSettingsStore& defaults, UpdateSettings& out) {
+    bool haveDefaults = defaults.load(out) != SettingsSlot::None && updateSettingsSet(out);
+    bool ok = current.clear();  // the field values (and key) go in any case
+    if (haveDefaults) {
+        ok = current.save(out) && ok;
+    } else {
+        updateSettingsDefaults(out);
+    }
+    return ok;
+}
+
+bool resetUpdateSettingsToBenchDefaults() {
+    return factoryResetUpdateSettings(defaultStore, benchStore, currentUpdateSettings);
+}
+
+bool saveUpdateBenchDefaults() {
+    UpdateSettings* s = new (std::nothrow) UpdateSettings;  // heap: core 0's stack is small
+    if (s == nullptr) return false;
+    benchStore.load(*s);  // the store learns its active copy and sequence
+    *s = currentUpdateSettings;
+    bool ok = updateSettingsSet(*s) ? benchStore.save(*s) : benchStore.clear();
+    crypto_wipe(s, sizeof(*s));
+    delete s;
+    return ok;
+}
+
+bool loadUpdateBenchDefaults(UpdateSettings& out) {
+    return benchStore.load(out) != SettingsSlot::None && updateSettingsSet(out);
 }

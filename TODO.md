@@ -268,6 +268,8 @@ An item is only ticked when it is implemented **and** its tests exist and pass (
 - [x] `benchinfo` block — `test/native/test_bench_info`, HIL `test_bench.py`
 - [ ] Lock survives a factory reset — manual HIL `test_factory_reset.py` (needs the button pressed)
 - [x] Bench tool: release UF2 check, label, log, flash/no-flash/reprint — `test/tools/test_bench_*.py`; tried with `--no-flash` on the test device (2026-11-07)
+- [x] Update server default from `secret/bench.ini`, restored by a factory reset — `test/embedded/test_settings_store`, HIL `test_bench.py`, `test/tools/test_bench_*.py`; tried with `--no-flash` on the test device (2026-11-07)
+- [x] Review minors: signature check of the release, log writable before flashing, one new port at a time, hostname check, older-firmware option 7 detected, HIL tests restore option 10 and the lock
 - [ ] First real rev 2 board through the bench tool, label printed on the NIIMBOT M2
 - [ ] Print straight from the script to the M2 (once the printer is here; NiimBlue does not list the M2_H as tested)
 

@@ -79,11 +79,15 @@ class FactoryResetTest(unittest.TestCase):
 
     def test_2_ten_second_hold_resets_to_defaults(self):
         d = self.dev
+        # A reset sets option 10 to the bench default (or off): the device's own setting comes back afterwards
+        saved_update = d.save_update_server()  # SkipTest if its key cannot be restored
+        self.addCleanup(d.set_update_server, *saved_update)
+        # The default password is on the device label: a reset keeps it and its lock
+        before = d.bench_info()
+        self.addCleanup(d.lock_web_default_password, before["locked"] == "1")
         try:
             # Non-default values so the reset is visible
             d.set_snmp(RESET_COMMUNITY, "hil-before-reset", "x@example.com", "bench")
-            # The default password is on the device label: a reset keeps it and its lock
-            was_locked = d.bench_info()["locked"] == "1"
             d.lock_web_default_password(True)
             password = d.bench_info()["password"]
             print("\n>>> Press and HOLD the reset button for 12 seconds; the LED blinks fast at 10 s (40 s)...",
@@ -112,8 +116,11 @@ class FactoryResetTest(unittest.TestCase):
             info = d.bench_info()
             self.assertEqual(password, info["password"])
             self.assertEqual("1", info["locked"])
-            if not was_locked:
-                d.lock_web_default_password(False)
+            # Option 10 is the bench default now (kept by the reset), or off without one
+            self.assertEqual(before["updatedefault"], info["updatedefault"])
+            url, key_set = d.update_server_setting()
+            self.assertEqual(before["updatedefault"], url)
+            self.assertEqual(before["updatedefaultkey"] == "1", key_set)
         finally:
             self._restore()
 

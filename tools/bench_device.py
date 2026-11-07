@@ -11,6 +11,7 @@ import os
 import re
 import struct
 import sys
+import tempfile
 import time
 from dataclasses import dataclass
 
@@ -24,7 +25,11 @@ DEV_HEADER = os.path.join(ROOT, "include", "fw_dev_public_key.h")
 FLASH_START = 0x10000000
 SLOT_A = FLASH_START + 0x10000  # FW_SLOT_OFFSET[0], lib/fw_image/include/fw_layout.h
 SLOT_MAGIC = 0x57464652          # "RFFW"
-BENCH_KEYS = ("hostname", "mac", "serial", "firmware", "fwkey", "password", "locked", "lost")
+BENCH_KEYS = ("hostname", "mac", "serial", "firmware", "fwkey", "password", "locked", "lost",
+              "updatedefault", "updatedefaultkey")
+UPDATE_URL_MAX = 127  # lib/update_client update_settings.h
+UPDATE_URL_RE = re.compile(r"^http://\S+$")
+UPDATE_KEY_RE = re.compile(r"^[0-9a-fA-F]{64}$")
 BAUD = 115200
 PROMPT = "> "
 PICO_VID = 0x2E8A
@@ -36,10 +41,11 @@ class BenchError(Exception):
 
 @dataclass
 class UF2Firmware:
-    """A release UF2 file: its path, firmware version and signing key id (16 hex)."""
+    """A release UF2 file: its path, firmware version, signing key id (16 hex) and slot A blob."""
     path: str
     version: str
     key_id: str
+    blob: bytes = b""  # signed header + image, as the boot program checks it
 
 
 def parse_bench_info(text: str) -> dict:
@@ -101,7 +107,17 @@ def read_release_uf2(path: str) -> UF2Firmware:
         version = raw.decode("ascii")
     except UnicodeDecodeError:
         raise BenchError("%s: slot A version is not text" % name)
-    return UF2Firmware(path=path, version=version, key_id=header[96:104].hex())
+    image_len = struct.unpack_from("<I", header, 76)[0]
+    total = 256 + image_len
+    if image_len > 0xD7000:
+        raise BenchError("%s: slot A image length does not fit the slot" % name)
+    parts = []
+    for addr in range(SLOT_A, SLOT_A + total, 256):
+        page = pages.get(addr)
+        if page is None or len(page) != 256:
+            raise BenchError("%s: slot A is incomplete (no data at 0x%08x)" % (name, addr))
+        parts.append(page)
+    return UF2Firmware(path=path, version=version, key_id=header[96:104].hex(), blob=b"".join(parts)[:total])
 
 
 def field_key_id() -> str:
@@ -126,9 +142,28 @@ def check_key(key_id: str, dev: bool, what: str) -> None:
     raise BenchError("%s uses an unknown key (id %s)" % (what, key_id))
 
 
+def verify_signature(fw: UF2Firmware) -> None:
+    """BenchError unless slot A's signature verifies with the key its header names (fwsign verify,
+    the boot program's own check), so a damaged or forged file is refused before flashing."""
+    header = DEV_HEADER if fw.key_id == dev_key_id() else fwtool.FIELD_HEADER
+    pub = fwtool.header_public_key(header)
+    fd, blob_path = tempfile.mkstemp(suffix=".blob")
+    try:
+        with os.fdopen(fd, "wb") as f:
+            f.write(fw.blob)
+        fwtool._run([fwtool.fwsign_path(), "verify", pub.hex(), "0", blob_path])
+    except RuntimeError:
+        raise BenchError("%s: slot A signature does not verify (damaged or not signed with key %s)"
+                         % (os.path.basename(fw.path), fw.key_id))
+    finally:
+        os.remove(blob_path)
+
+
 def check_signed_for(fw: UF2Firmware, dev: bool) -> None:
-    """BenchError unless the UF2 is signed with the field key (or the development key when dev)."""
+    """BenchError unless the UF2 is signed with the field key (or the development key when dev)
+    and its signature verifies."""
     check_key(fw.key_id, dev, os.path.basename(fw.path))
+    verify_signature(fw)
 
 
 class BenchSerial:
@@ -209,6 +244,28 @@ def lock(ser) -> None:
     ser.command("pwlock", r"(Default web password locked|Failed to lock).*\r?\n")
     if read_info(ser)["locked"] != "1":
         raise BenchError("the device did not lock its default web password")
+
+
+def set_update_default(ser, url: str, key: str) -> None:
+    """Set menu option 10 to url and key, keep it as the bench default (updatedefault) and check it.
+
+    BenchError for a value the device would refuse (checked before anything is
+    sent) or when the device does not report it kept; messages never hold the key.
+    """
+    if len(url) > UPDATE_URL_MAX or not UPDATE_URL_RE.match(url):
+        raise BenchError("update server URL %r is not http://host[:port][/path] of at most %d characters"
+                         % (url, UPDATE_URL_MAX))
+    if not UPDATE_KEY_RE.match(key):
+        raise BenchError("update server key is not 64 hex characters")
+    ser.command("10", r"Update server URL [^\n]*\]: ")
+    ser.command(url, r"Shared key [^\n]*\]: ")
+    out = ser.command(key, r"(saved|failed|must)[\s\S]*> ")
+    if "Update server settings saved" not in out:
+        raise BenchError("the device did not take the update server settings")
+    ser.command("updatedefault", r"(Update server default (saved|removed)|Failed).*\r?\n")
+    info = read_info(ser)
+    if info["updatedefault"] != url or info["updatedefaultkey"] != "1":
+        raise BenchError("the device did not keep the update server as its default")
 
 
 def pico_ports() -> list:

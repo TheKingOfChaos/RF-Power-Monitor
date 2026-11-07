@@ -14,12 +14,16 @@ static const char* const PATH_B = "test/settings_b.json";
 
 static const char* const UPDATE_PATH_A = "test/update_a.json";
 static const char* const UPDATE_PATH_B = "test/update_b.json";
+static const char* const UPDATE_DEFAULT_PATH_A = "test/update_default_a.json";
+static const char* const UPDATE_DEFAULT_PATH_B = "test/update_default_b.json";
 
 static void removeTestFiles() {
     LittleFS.remove(PATH_A);
     LittleFS.remove(PATH_B);
     LittleFS.remove(UPDATE_PATH_A);
     LittleFS.remove(UPDATE_PATH_B);
+    LittleFS.remove(UPDATE_DEFAULT_PATH_A);
+    LittleFS.remove(UPDATE_DEFAULT_PATH_B);
 }
 
 static void writeRaw(const char* path, const char* content) {
@@ -378,6 +382,60 @@ static void test_update_store_save_after_clear_starts_over() {
     TEST_ASSERT_EQUAL_STRING("http://10.0.0.3:8071", loaded.url);
 }
 
+// ---- bench defaults for the update server (kept through a factory reset) ----
+
+static void test_factory_reset_restores_bench_update_defaults() {
+    static UpdateSettings s, out, loaded;
+    UpdateSettingsStore current(UPDATE_PATH_A, UPDATE_PATH_B);
+    UpdateSettingsStore defaults(UPDATE_DEFAULT_PATH_A, UPDATE_DEFAULT_PATH_B);
+    current.load(s);
+    defaults.load(s);
+    fillUpdateSettings(s, "http://10.132.0.45:8074", 7);
+    TEST_ASSERT_TRUE(defaults.save(s));
+    fillUpdateSettings(s, "http://10.0.0.9:8071", 1);  // changed later in the field
+    TEST_ASSERT_TRUE(current.save(s));
+
+    TEST_ASSERT_TRUE(factoryResetUpdateSettings(current, defaults, out));
+    TEST_ASSERT_EQUAL_STRING("http://10.132.0.45:8074", out.url);
+    TEST_ASSERT_TRUE(out.hasKey);
+    TEST_ASSERT_EQUAL_UINT8(7, out.key[0]);
+    UpdateSettingsStore fresh(UPDATE_PATH_A, UPDATE_PATH_B);
+    TEST_ASSERT_NOT_EQUAL(SettingsSlot::None, fresh.load(loaded));
+    TEST_ASSERT_EQUAL_STRING("http://10.132.0.45:8074", loaded.url);
+    TEST_ASSERT_EQUAL_UINT8(7, loaded.key[0]);
+}
+
+static void test_factory_reset_without_bench_defaults_clears_update_settings() {
+    static UpdateSettings s, out, loaded;
+    UpdateSettingsStore current(UPDATE_PATH_A, UPDATE_PATH_B);
+    UpdateSettingsStore defaults(UPDATE_DEFAULT_PATH_A, UPDATE_DEFAULT_PATH_B);
+    current.load(s);
+    fillUpdateSettings(s, "http://10.0.0.9:8071", 1);
+    TEST_ASSERT_TRUE(current.save(s));
+
+    TEST_ASSERT_TRUE(factoryResetUpdateSettings(current, defaults, out));
+    TEST_ASSERT_EQUAL_STRING("", out.url);
+    TEST_ASSERT_FALSE(out.hasKey);
+    TEST_ASSERT_FALSE(LittleFS.exists(UPDATE_PATH_A));  // the field key does not stay in flash
+    TEST_ASSERT_FALSE(LittleFS.exists(UPDATE_PATH_B));
+    UpdateSettingsStore fresh(UPDATE_PATH_A, UPDATE_PATH_B);
+    TEST_ASSERT_EQUAL(SettingsSlot::None, fresh.load(loaded));
+}
+
+static void test_bench_update_defaults_survive_factory_reset() {
+    static UpdateSettings s, out, loaded;
+    UpdateSettingsStore current(UPDATE_PATH_A, UPDATE_PATH_B);
+    UpdateSettingsStore defaults(UPDATE_DEFAULT_PATH_A, UPDATE_DEFAULT_PATH_B);
+    defaults.load(s);
+    fillUpdateSettings(s, "http://10.132.0.45:8074", 7);
+    TEST_ASSERT_TRUE(defaults.save(s));
+    TEST_ASSERT_TRUE(factoryResetUpdateSettings(current, defaults, out));
+    TEST_ASSERT_TRUE(factoryResetUpdateSettings(current, defaults, out));  // a second reset too
+    UpdateSettingsStore fresh(UPDATE_DEFAULT_PATH_A, UPDATE_DEFAULT_PATH_B);
+    TEST_ASSERT_NOT_EQUAL(SettingsSlot::None, fresh.load(loaded));
+    TEST_ASSERT_EQUAL_STRING("http://10.132.0.45:8074", loaded.url);
+}
+
 static void updateSaveAndLoadOnce() {
     static UpdateSettingsStore store(UPDATE_PATH_A, UPDATE_PATH_B);
     static UpdateSettings s;
@@ -432,6 +490,9 @@ void setup() {
     RUN_TEST(test_factory_reset_clears_update_settings);
     RUN_TEST(test_update_store_save_after_clear_starts_over);
     RUN_TEST(test_update_save_and_load_use_little_stack);
+    RUN_TEST(test_factory_reset_restores_bench_update_defaults);
+    RUN_TEST(test_factory_reset_without_bench_defaults_clears_update_settings);
+    RUN_TEST(test_bench_update_defaults_survive_factory_reset);
 
     LittleFS.rmdir("test");
     UNITY_END();

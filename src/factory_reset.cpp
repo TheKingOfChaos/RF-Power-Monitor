@@ -72,7 +72,8 @@ void factoryResetPoll() {
     Serial.printf("\r\nFactory reset after %lu ms hold\r\n", (unsigned long)lastEventHeldMs);
     settingsDefaults(currentSettings);
     bool saved = saveSettings();
-    if (!clearUpdateSettings()) saved = false;  // update server URL and shared key
+    // Update server URL and shared key: back to the bench defaults (updatedefault), else off
+    if (!resetUpdateSettingsToBenchDefaults()) saved = false;
     Serial.printf("Factory defaults %s in %lu ms, rebooting\r\n", saved ? "saved" : "NOT saved",
                   (unsigned long)(millis() - start));
     Serial.flush();

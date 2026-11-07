@@ -16,14 +16,17 @@
  *     password=k7mq2xr9tp
  *     locked=1
  *     lost=0
+ *     updatedefault=http://10.132.0.45:8074
+ *     updatedefaultkey=1
  *     BENCHINFO END
  */
 
 #include <stddef.h>
 #include <stdint.h>
 
-/// Room for the whole block with the longest values (32-character hostname, 16-character version)
-static const size_t BENCH_INFO_MAX = 256;
+/// Room for the whole block with the longest values (32-character hostname, 16-character
+/// version, 127-character update URL)
+static const size_t BENCH_INFO_MAX = 400;
 
 /// What the bench tool needs from the device; nullptr strings print as empty values
 struct BenchInfo {
@@ -35,6 +38,8 @@ struct BenchInfo {
     const char* password;  // device default web password
     bool locked;           // default password locked (on the label)
     bool passwordLost;     // no valid copy was found at boot while locked
+    const char* updateDefault;  // update server kept through a factory reset: URL or "dhcp"; nullptr prints "none"
+    bool updateDefaultKey;      // that default has the shared key (the key itself is never printed)
 };
 
 /**

@@ -18,6 +18,8 @@ static const char EXPECTED[] =
     "password=k7mq2xr9tp\r\n"
     "locked=1\r\n"
     "lost=0\r\n"
+    "updatedefault=http://10.132.0.45:8074\r\n"
+    "updatedefaultkey=1\r\n"
     "BENCHINFO END\r\n";
 
 static BenchInfo sample() {
@@ -31,6 +33,8 @@ static BenchInfo sample() {
     info.password = "k7mq2xr9tp";
     info.locked = true;
     info.passwordLost = false;
+    info.updateDefault = "http://10.132.0.45:8074";
+    info.updateDefaultKey = true;
     return info;
 }
 
@@ -75,6 +79,27 @@ static void test_format_bench_info_null_fields_print_empty() {
     TEST_ASSERT_NOT_NULL(strstr(out, "\r\npassword=\r\n"));
 }
 
+static void test_format_bench_info_no_update_default_prints_none() {
+    BenchInfo info = sample();
+    info.updateDefault = nullptr;
+    info.updateDefaultKey = false;
+    char out[BENCH_INFO_MAX];
+    TEST_ASSERT_TRUE(formatBenchInfo(info, out, sizeof(out)) > 0);
+    TEST_ASSERT_NOT_NULL(strstr(out, "\r\nupdatedefault=none\r\nupdatedefaultkey=0\r\n"));
+}
+
+static void test_format_bench_info_longest_values_fit() {
+    static char url[128];
+    memset(url, 'u', 127);  // UPDATE_URL_MAX characters
+    url[127] = '\0';
+    BenchInfo info = sample();
+    info.hostname = "abcdefghijklmnopqrstuvwxyz012345";
+    info.firmware = "3.5.0-rc.12345678";
+    info.updateDefault = url;
+    char out[BENCH_INFO_MAX];
+    TEST_ASSERT_TRUE(formatBenchInfo(info, out, sizeof(out)) > 0);
+}
+
 static void test_format_bench_info_longest_hostname_fits() {
     BenchInfo info = sample();
     info.hostname = "abcdefghijklmnopqrstuvwxyz012345";  // 32, HOSTNAME_MAX_LENGTH
@@ -92,5 +117,7 @@ int main() {
     RUN_TEST(test_format_bench_info_zero_size_writes_nothing);
     RUN_TEST(test_format_bench_info_null_fields_print_empty);
     RUN_TEST(test_format_bench_info_longest_hostname_fits);
+    RUN_TEST(test_format_bench_info_no_update_default_prints_none);
+    RUN_TEST(test_format_bench_info_longest_values_fit);
     return UNITY_END();
 }

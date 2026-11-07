@@ -246,7 +246,7 @@ Each new entry is also printed on the serial port when it happens (`SNMP access:
 
 **6. Web password** sets the password for the web page (see [Web page](#web-page)), or `-` returns to the device default password. The password is asked twice and shown as `*` while typing.
 
-**7. New default web password** replaces the device default password with a new random one after you confirm with `y`, and shows it. Use it if the default password became known to someone else: the old one stops working at once (browsers logged in with it are logged out), and the new one is kept across restarts. An own password set with option 6 stays in use. A board set up with the bench tool has its default password printed on its label and locked: option 7 then refuses (`... locked because it is printed on the device label`). Unlock it at the bench with the hidden command `pwunlock` and print a new label afterwards (see [Bench setup of a new board](#bench-setup-of-a-new-board)). The lock, like the password, survives a factory reset and firmware updates.
+**7. New default web password** replaces the device default password with a new random one after you confirm with `y`, and shows it. Use it if the default password became known to someone else: the old one stops working at once (browsers logged in with it are logged out), and the new one is kept across restarts. An own password set with option 6 stays in use. A board set up with the bench tool has its default password printed on its label and locked: option 7 then refuses (`... locked because it is printed on the device label`). Unlock it at the bench with the hidden command `pwunlock` and print a new label afterwards (see [Bench setup of a new board](#bench-setup-of-a-new-board)). The lock, like the password, survives a factory reset and firmware updates. Firmware older than 3.5.0 (after a rollback) does not know the lock; if its option 7 is used, 3.5.0 notices at the next start (the two password copies differ) and reports `Default web password LOST: label is wrong, relabel at the bench`.
 
 **8. Web interface on/off** switches the web page on or off after you confirm with `y`. Off closes TCP port 80, logs every browser out and stops announcing the page over mDNS; SNMP and the serial menu are not affected. The setting is kept across restarts; a factory reset turns the web interface on again. Turning it on takes effect at once; the status screen shows `Web interface: on (TCP port 80)`.
 
@@ -387,7 +387,7 @@ After the restart the device sends a coldStart trap as after any start, and the 
 
 1. Press and hold the button on GPIO22. The onboard LED blinks slowly (2 Hz) while it is held, and the serial log prints `Factory reset button pressed`.
 2. After 10 seconds the LED blinks fast, and the log prints `Factory reset after 10000 ms hold`. You can release the button.
-3. Settings return to defaults: DHCP on (stored static IP back to `192.168.1.100`), no static IPv6 address, community `public`, sysName not set (the device uses `RF-Power-<MAC tail>`), empty sysContact and sysLocation, no trap destination (fixed), the web interface on, and the web page back on the device default password (the default password itself stays the same).
+3. Settings return to defaults: DHCP on (stored static IP back to `192.168.1.100`), no static IPv6 address, community `public`, sysName not set (the device uses `RF-Power-<MAC tail>`), empty sysContact and sysLocation, no trap destination (fixed), the web interface on, and the web page back on the device default password (the default password itself stays the same). The update server (option 10) goes back to the URL and key the bench tool set (see [Bench setup of a new board](#bench-setup-of-a-new-board)), or off on a board without them.
 4. The device reboots, well within 2 seconds of the trigger.
 
 Releasing the button earlier cancels the reset (`released after ... ms, no reset`). The device keeps working normally while the button is held: SNMP answers, the menu responds and mains monitoring continues. A button held down while the device starts is ignored until it has been released once, so a stuck button cannot cause a reset loop.
@@ -432,14 +432,22 @@ The project's `data/` folder is **not** needed: the firmware creates its setting
 `tools/bench_provision.py` sets up a new board in one run: it flashes the first firmware, reads the device, locks its default web password and makes its label. Install its Python packages once: `python -m pip install -r tools/requirements-bench.txt` (pyserial, Pillow, segno).
 
 1. Build the release files with the field key: `python tools/fw_release.py --field`.
-2. Run `python tools/bench_provision.py`, then hold BOOTSEL and plug in the board. The script takes the newest `release/rf-power-monitor-<version>-usb.uf2` (or `--uf2 FILE`), refuses a `firmware.uf2` and anything signed with the development key, copies the file to the `RPI-RP2` drive and waits for the board's serial port.
+2. Run `python tools/bench_provision.py`, then hold BOOTSEL and plug in the board. The script takes the newest `release/rf-power-monitor-<version>-usb.uf2` (or `--uf2 FILE`), refuses a `firmware.uf2` and anything signed with the development key, checks the file's signature with the boot program's own check, copies it to the `RPI-RP2` drive and waits for the board's serial port (one board at a time).
 3. It reads the hostname (`RF-Power-<last 6 MAC digits>`), MAC, serial number, firmware version and default web password (hidden menu command `benchinfo`), checks them and locks the password (`pwlock`), so menu option 7 cannot make the label wrong.
-4. It writes, in `bench/` (gitignored): `<hostname>.png` to print, `<hostname>-preview.png`, and a row in `devices.csv`. **`devices.csv` holds the default web passwords**: keep it safe.
-5. Print `<hostname>.png` from the NIIMBOT app on a 40 x 40 mm black label with white ribbon (NIIMBOT M2). The image is black on white because the printer puts ribbon wherever the image is dark; the preview shows the real look, white on black.
+4. With `secret/bench.ini` (gitignored; `--settings` names another file) it also sets the update site: menu option 10 gets the file's URL and key, and the hidden command `updatedefault` keeps them as the board's bench default, which a factory reset restores. The status screen then shows `Update server default: <url>, key set (a factory reset restores it)`. Without the file the update server is left off. The file:
+
+   ```ini
+   [update]
+   url = http://10.132.0.45:8074
+   key = <the site's 64 hex character shared key>
+   ```
+
+5. It writes, in `bench/` (gitignored): `<hostname>.png` to print, `<hostname>-preview.png`, and a row in `devices.csv` (with the update server URL, never the key). **`devices.csv` holds the default web passwords**: keep it safe. The script checks it can write `devices.csv` before it touches the board.
+6. Print `<hostname>.png` from the NIIMBOT app on a 40 x 40 mm black label with white ribbon (NIIMBOT M2). The image is black on white because the printer puts ribbon wherever the image is dark; the preview shows the real look, white on black.
 
 The label shows `RF Power Monitor`, the board revision (`--revision`, default `rev 2`), the hostname, MAC, user `admin`, the password, and the serial number, firmware version and date the board was set up, with a QR code (`RFPM;H=<hostname>;M=<MAC>;S=<serial>;FW=<version>`; no password).
 
-- `--no-flash [--port COMx]`: the same for a board that already runs the firmware, e.g. after `pwunlock` and option 7, or an older carrier board. A hostname set by hand is kept on the label. The new `devices.csv` row wins over older rows for that board.
+- `--no-flash [--port COMx]`: the same for a board that already runs firmware 3.5.0 or later, e.g. after `pwunlock` and option 7, or an older carrier board. A hostname set by hand is kept on the label. The new `devices.csv` row wins over older rows for that board.
 - `--reprint <hostname|MAC|serial>`: the label again from the newest `devices.csv` row, without the device.
 - `--dev`: accept development-signed firmware, only for testing the tool.
 

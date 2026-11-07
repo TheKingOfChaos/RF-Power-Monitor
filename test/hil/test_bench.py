@@ -7,7 +7,10 @@ Run:
 
 Only the serial port is needed. Each test restores the lock state it found.
 test_unlock_allows_option_7_again replaces the device default web password
-(like test_web.py's test_new_default_password_from_serial_menu).
+(like test_web.py's test_new_default_password_from_serial_menu); it skips on a
+board whose password is locked, i.e. printed on its label.
+test_updatedefault_keeps_option_10_as_the_bench_default changes option 10 and
+puts it back (needs RFPOWER_UPDATE_KEY when the device has a key, see device.py).
 """
 
 import re
@@ -31,8 +34,8 @@ class BenchCommandsTest(unittest.TestCase):
 
     def setUp(self):
         self.dev.wait_for_menu(timeout=10)
-        was = self.dev.bench_info()["locked"] == "1"
-        self.addCleanup(lambda: self.dev.lock_web_default_password(was))
+        self.was_locked = self.dev.bench_info()["locked"] == "1"
+        self.addCleanup(self.dev.lock_web_default_password, self.was_locked)
 
     def test_benchinfo_reports_hostname_mac_and_default_password(self):
         st = self.dev.status()
@@ -58,6 +61,8 @@ class BenchCommandsTest(unittest.TestCase):
         self.assertRegex(self.dev.status()["raw"], r"Default web password: locked \(on the label\)")
 
     def test_unlock_allows_option_7_again(self):
+        if self.was_locked:
+            self.skipTest("the default password is locked, so it is on a label: this test would replace it")
         self.dev.lock_web_default_password(True)
         self.assertIn("Default web password unlocked", self.dev.lock_web_default_password(False))
         self.assertEqual("0", self.dev.bench_info()["locked"])
@@ -67,6 +72,23 @@ class BenchCommandsTest(unittest.TestCase):
         new = re.search(r'New default web password: "(\w+)"', out).group(1)
         self.assertNotEqual(old, new)
         self.assertEqual(new, self.dev.bench_info()["password"])
+
+    def test_updatedefault_keeps_option_10_as_the_bench_default(self):
+        before = self.dev.bench_info()
+        if before["updatedefault"] != "none":
+            self.skipTest("the device has a bench update server default; this test would replace it")
+        self.dev.keep_update_server(self)  # option 10 back afterwards (cleanups run last-in, first-out)
+        self.addCleanup(self.dev.send, "updatedefault", r"Update server default (saved|removed)")
+        self.dev.set_update_server("http://192.0.2.9:8074", "c7" * 32)
+        self.addCleanup(self.dev.set_update_server, "none", "clear")
+        out = self.dev.send("updatedefault", expect=r"Update server default saved.*\r?\n")
+        self.assertIn("a factory reset restores it", out)
+        info = self.dev.bench_info()
+        self.assertEqual("http://192.0.2.9:8074", info["updatedefault"])
+        self.assertEqual("1", info["updatedefaultkey"])
+        self.assertNotIn("c7c7", self.dev.log)  # the key is never printed
+        self.assertRegex(self.dev.status()["raw"],
+                         r"Update server default: http://192\.0\.2\.9:8074, key set \(a factory reset restores it\)")
 
     def test_lock_and_password_survive_reboot(self):
         if self.dev.status()["mode"] != "DHCP":

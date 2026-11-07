@@ -23,7 +23,10 @@ DefaultPasswordChoice chooseDefaultPassword(const char* a, const char* b, bool l
     if (aValid) {
         c.source = DefaultPasswordSource::CopyA;
         c.writeA = false;
-        c.writeB = !bValid || strcmp(a, b) != 0;
+        bool differ = bValid && strcmp(a, b) != 0;
+        c.writeB = !bValid || differ;
+        // Both valid but different: firmware before 3.5.0 replaced copy A only (option 7 ignores the lock there)
+        if (locked && differ) c.lostWhileLocked = true;
     } else if (bValid) {
         c.source = DefaultPasswordSource::CopyB;
         c.writeA = true;
