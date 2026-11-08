@@ -7,6 +7,10 @@ on:
   push:
   pull_request:
 
+# Read-only token: the jobs only check out, test, build and upload an artifact
+permissions:
+  contents: read
+
 jobs:
   host:
     name: Unit tests, sanitizers, net-snmp check

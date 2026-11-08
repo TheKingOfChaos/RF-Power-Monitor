@@ -10,6 +10,7 @@
 
 #include <lwip/ip_addr.h>
 #include <lwip/netif.h>
+#include <monocypher.h>
 
 #include <update_job.h>
 #include <update_protocol.h>
@@ -418,11 +419,11 @@ bool updateServiceSave(const char* url, bool fromDhcp, const char* keyHex, bool 
     if (!updateSettingsApply(currentUpdateSettings, url, fromDhcp, keyHex, clearKey, error)) return false;
     if (!saveUpdateSettings()) {
         currentUpdateSettings = before;
-        memset(&before, 0, sizeof(before));
+        crypto_wipe(&before, sizeof(before));  // it held the shared key; a plain memset may be optimised away
         error = "Saving failed, nothing changed.";
         return false;
     }
-    memset(&before, 0, sizeof(before));
+    crypto_wipe(&before, sizeof(before));
     // A running check-in was sent with the old URL and key: its answer would be checked
     // against the new key and read as "not authenticated". End it; a download goes on.
     if (phase == Phase::Checkin) {

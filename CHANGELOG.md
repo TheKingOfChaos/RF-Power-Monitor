@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Security
+- The copy of the update site settings (with the shared key) that a save keeps for undoing is now wiped with `crypto_wipe`, which the compiler cannot remove; a plain `memset` just before the copy goes out of scope may be optimised away (CodeQL `cpp/memset-may-be-deleted`).
+- CI workflow: the jobs run with a read-only token (`permissions: contents: read`; CodeQL `actions/missing-workflow-permissions`).
+
 ## [3.6.1] - 2026-11-08
 
 NTP from DHCPv6 also on networks that hand out addresses by DHCPv6 only.
