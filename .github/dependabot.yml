@@ -1,0 +1,8 @@
+# Weekly pull requests when the GitHub Actions used in .github/workflows have new versions.
+# The firmware and the update site have no package dependencies for Dependabot to follow.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: weekly

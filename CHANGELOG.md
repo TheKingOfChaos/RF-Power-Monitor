@@ -8,6 +8,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ### Security
 - The copy of the update site settings (with the shared key) that a save keeps for undoing is now wiped with `crypto_wipe`, which the compiler cannot remove; a plain `memset` just before the copy goes out of scope may be optimised away (CodeQL `cpp/memset-may-be-deleted`).
+- Security policy (`SECURITY.md`): supported versions, private reporting through GitHub, a first answer within 7 days, known limits by design. Dependabot follows the GitHub Actions used in CI (`.github/dependabot.yml`).
 - CI workflow: the jobs run with a read-only token (`permissions: contents: read`; CodeQL `actions/missing-workflow-permissions`).
 
 ## [3.6.1] - 2026-11-08

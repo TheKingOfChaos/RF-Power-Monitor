@@ -67,6 +67,7 @@ If upload fails, hold BOOTSEL while plugging in the Pico and copy `.pio\build\pi
 | [hardware/rf-power-monitor-rev2/](hardware/rf-power-monitor-rev2/README.md) | Rev 2 board, RP2040 and W5500 on the board (ordered 2026-11-07, not built yet): differences from rev 1, pins, isolation, known limits, fab files |
 | [docs/diagrams/](docs/diagrams/README.md) | Excalidraw diagrams (editable) of the system, firmware, SNMP, mains flow, settings, tests and the update site |
 | [CHANGELOG.md](CHANGELOG.md) | What changed in each version |
+| [SECURITY.md](SECURITY.md) | Supported versions, how to report a vulnerability privately, known limits by design |
 | [.clinerules](.clinerules) | Project and test rules |
 
 ## Safety
