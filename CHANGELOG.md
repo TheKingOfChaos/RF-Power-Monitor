@@ -6,6 +6,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Added
+- **Mains soak test** (`test/hil/mains_soak.py`): cuts mains through the Dirigera outlet at random for days (7 by default) and checks every outage over SNMP (loss and restore seen, the 60 s alarm, the change counter, no restart), plus SNMP and web answers between cuts. Results, a running summary and an HTML report in `soak/`. No firmware change.
+
 ## [3.6.0] - 2026-11-07
 
 Real time from NTP, events to a syslog server, and the update site's state over SNMP.
