@@ -132,7 +132,13 @@ void Dhcp6Client::bind(const Dhcp6In& m) {
     _serverIdLen = m.serverIdLen;
     _lease = m.lease;
     _haveLease = true;
-    _pendingAdd = true;  // add, or refresh the lifetimes of the address lwIP already has
+    _pendingAdd = true;
+    // A Reply without option 31 leaves the servers as they were, as lwIP's own DHCPv6 does
+    if (m.ntpCount > 0 && (m.ntpCount != _ntpCount || memcmp(m.ntp, _ntp, (size_t)m.ntpCount * 16) != 0)) {
+        _ntpCount = m.ntpCount;
+        memcpy(_ntp, m.ntp, (size_t)m.ntpCount * 16);
+        _ntpVersion++;
+    }  // add, or refresh the lifetimes of the address lwIP already has
 
     // T1/T2 0 leave the times to us; a deprecated address (preferred 0) uses the valid lifetime,
     // or T1 would be now and the client would renew once per round trip

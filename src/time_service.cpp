@@ -10,6 +10,7 @@
 #include <lwip/ip_addr.h>
 #include <sys/time.h>
 
+#include "dhcp6_service.h"
 #include "net_stats.h"
 
 extern "C" void __setSystemTime(unsigned long long sec, unsigned long usec);  // the core (posix.cpp)
@@ -68,8 +69,10 @@ void timeServiceApply() {
     }
     // A DHCP server may offer option 42 only in a new lease: renew now, like options 224, 225 and 7.
     // configure() cleared the servers, also one learned by DHCPv6 (option 31): ask again too, rather than
-    // wait for the router's next advertisement (no answer without a DHCPv6 server is harmless)
+    // wait for the router's next advertisement (no answer without a DHCPv6 server is harmless), and hand
+    // over again the ones our stateful client got (M flag networks)
     if (currentLogSettings.ntpMode == ServerMode::Dhcp) {
+        dhcp6NtpRefresh();
         DriverLock lock;
         for (netif* n = netif_list; n != nullptr; n = n->next) {
             if (dhcp_supplied_address(n)) dhcp_renew(n);

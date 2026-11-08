@@ -43,7 +43,7 @@ The standard MIB-II, IP-MIB, HOST-RESOURCES-MIB and ENTITY-MIB objects are in th
 
 | OID | Name | Type | Value |
 |---|---|---|---|
-| `1.3.6.1.2.1.1.1.0` | sysDescr | OCTET STRING | `RF-Power-Monitor 3.6.0 mains power monitor (RP2040, W5500)` (with the firmware version) |
+| `1.3.6.1.2.1.1.1.0` | sysDescr | OCTET STRING | `RF-Power-Monitor 3.6.1 mains power monitor (RP2040, W5500)` (with the firmware version) |
 | `1.3.6.1.2.1.1.2.0` | sysObjectID | OBJECT IDENTIFIER | `1.3.6.1.4.1.63050` |
 | `1.3.6.1.2.1.1.3.0` | sysUpTime | TimeTicks | Hundredths of a second since boot |
 | `1.3.6.1.2.1.1.4.0` | sysContact | OCTET STRING | From the settings (menu option 4 or web page), default empty |

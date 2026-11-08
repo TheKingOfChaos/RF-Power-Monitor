@@ -11,6 +11,7 @@ static const uint16_t OPT_ORO = 6;
 static const uint16_t OPT_PREFERENCE = 7;
 static const uint16_t OPT_ELAPSED_TIME = 8;
 static const uint16_t OPT_STATUS_CODE = 13;
+static const uint16_t OPT_SNTP_SERVERS = 31;  // RFC 4075
 static const uint16_t OPT_CLIENT_FQDN = 39;
 static const uint16_t OPT_SOL_MAX_RT = 82;
 
@@ -113,6 +114,7 @@ size_t dhcp6Build(const Dhcp6Out& m, const uint8_t mac[6], uint8_t* out, size_t 
         at = w.begin(OPT_ORO);
         if (fqdn) w.u16(OPT_CLIENT_FQDN);
         w.u16(OPT_SOL_MAX_RT);
+        w.u16(OPT_SNTP_SERVERS);
         w.end(at);
     }
 
@@ -165,11 +167,29 @@ static bool readIaNa(const uint8_t* p, size_t len, Dhcp6In& in) {
     return true;
 }
 
+/// An address a device can use as its NTP server: not unspecified, loopback, multicast or link-local
+static bool usableNtp(const uint8_t a[16]) {
+    static const uint8_t zero[15] = {0};
+    if (memcmp(a, zero, 15) == 0 && a[15] <= 1) return false;  // :: and ::1
+    if (a[0] == 0xff) return false;                            // multicast
+    if (a[0] == 0xfe && (a[1] & 0xc0) == 0x80) return false;   // fe80::/10, needs a zone
+    return true;
+}
+
+/// SNTP Servers option: a list of addresses; one of another length is ignored (the lease still counts)
+static void readNtp(const uint8_t* v, uint16_t len, Dhcp6In& in) {
+    in.ntpCount = 0;
+    if (len == 0 || len % 16 != 0) return;
+    for (uint16_t i = 0; i < len && in.ntpCount < DHCP6_NTP_MAX; i += 16) {
+        if (usableNtp(v + i)) memcpy(in.ntp[in.ntpCount++], v + i, 16);
+    }
+}
+
 Dhcp6Parse dhcp6Parse(const uint8_t* msg, size_t len, const uint8_t mac[6], Dhcp6In& out) {
     if (msg == nullptr || len < 4) return Dhcp6Parse::Malformed;
     if (msg[0] != DHCP6_ADVERTISE && msg[0] != DHCP6_REPLY) return Dhcp6Parse::NotServerMessage;
 
-    // Built in a static copy (about 190 bytes): out is written only on success, and core 0's stack is small
+    // Built in a static copy (about 220 bytes): out is written only on success, and core 0's stack is small
     static Dhcp6In in;
     memset(&in, 0, sizeof(in));
     in.type = msg[0];
@@ -209,6 +229,9 @@ Dhcp6Parse dhcp6Parse(const uint8_t* msg, size_t len, const uint8_t mac[6], Dhcp
             in.solMaxRt = s >= 60 && s <= 86400 ? s : 0;  // RFC 8415 21.24: others are ignored
             break;
         }
+        case OPT_SNTP_SERVERS:
+            readNtp(v, olen, in);
+            break;
         case OPT_IA_NA:
             if (olen < 12) return Dhcp6Parse::Malformed;
             if (rd32(v) == DHCP6_IAID && !readIaNa(v, olen, in)) return Dhcp6Parse::Malformed;

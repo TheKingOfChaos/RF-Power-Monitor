@@ -37,6 +37,9 @@ constexpr size_t DHCP6_SERVER_ID_MAX = 130;
 /// The one IA_NA used by this client
 constexpr uint32_t DHCP6_IAID = 1;
 
+/// SNTP servers kept from one message (option 31, RFC 4075); lwIP's SNTP uses at most this many
+static const uint8_t DHCP6_NTP_MAX = 2;
+
 /**
  * @brief An address lease: lifetimes and timers in seconds as the server sent them
  */
@@ -82,6 +85,8 @@ struct Dhcp6In {
     uint32_t solMaxRt;                     ///< SOL_MAX_RT option in seconds (60-86400), 0 when absent or out of range
     bool hasLease;                         ///< Our IA_NA held a usable address
     Dhcp6Lease lease;                      ///< Valid only with hasLease
+    uint8_t ntpCount;                      ///< SNTP Servers option (31): usable addresses in ntp, 0 when absent or unusable
+    uint8_t ntp[DHCP6_NTP_MAX][16];        ///< In the server's order; unspecified, loopback, multicast and link-local skipped
 };
 
 /**

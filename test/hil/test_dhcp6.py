@@ -122,6 +122,22 @@ class Dhcp6Test(unittest.TestCase):
             data, _ = s.recvfrom(2048)
         self.assertIn(b"RF-Power-Monitor", data)
 
+    def test_managed_flag_alone_gives_ntp_server_from_option_31(self):
+        # M flag only: lwIP's stateless DHCPv6 stays silent, so the NTP server can only come from our own
+        # client's Reply (option 31 in its Option Request). Kea serves 2001:db8::123 (kea-dhcp6.conf.in),
+        # which nobody answers: only the source is checked
+        self.dev.keep_time_syslog(self)
+        self.dev.set_time_syslog("dhcp", "")
+        self.net.start(managed=True, other=False, valid_s=120, preferred_s=60)
+        self.wait_bound()
+        server = re.compile(r"NTP 2001:db8::123 from DHCP", re.IGNORECASE)  # lwIP prints it in capitals
+        self.wait_for(lambda st: server.search(st["time"] or ""), 20, "the NTP server from option 31")
+        # After "none" and back to dhcp the device hands the server from the lease over again
+        self.dev.set_time_syslog("none", "")
+        self.assertIn("NTP off", self.dev.status()["time"])
+        self.dev.set_time_syslog("dhcp", "")
+        self.wait_for(lambda st: server.search(st["time"] or ""), 20, "the NTP server again after none")
+
     def test_lease_is_renewed(self):
         self.net.start(managed=True, other=False, valid_s=120, preferred_s=60)  # T1 30 s, T2 48 s
         addr = self.wait_bound()["dhcp6Address"]

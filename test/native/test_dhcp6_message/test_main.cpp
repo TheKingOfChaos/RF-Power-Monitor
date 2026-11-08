@@ -77,7 +77,7 @@ static void test_build_solicit_matches_rfc_layout() {
         0x01, 0x12, 0x34, 0x56,
         0x00, 0x01, 0x00, 0x0a, 0x00, 0x03, 0x00, 0x01, 0x1e, 0xb2, 0xcf, 0x4e, 0xa2, 0x2c,  // Client ID, DUID-LL
         0x00, 0x03, 0x00, 0x0c, 0x00, 0x00, 0x00, 0x01, 0, 0, 0, 0, 0, 0, 0, 0,                // IA_NA, IAID 1
-        0x00, 0x06, 0x00, 0x04, 0x00, 0x27, 0x00, 0x52,                                        // ORO: FQDN, SOL_MAX_RT
+        0x00, 0x06, 0x00, 0x06, 0x00, 0x27, 0x00, 0x52, 0x00, 0x1f,                            // ORO: FQDN, SOL_MAX_RT, SNTP
         0x00, 0x08, 0x00, 0x02, 0x00, 0x00,                                                    // Elapsed Time
         0x00, 0x27, 0x00, 0x12, 0x01, 0x10, 'r', 'f', '-', 'p', 'o', 'w', 'e', 'r', '-', 'm', 'o', 'n', 'i', 't', 'o', 'r',
     };
@@ -383,6 +383,119 @@ static void test_parse_rejects_sol_max_rt_with_wrong_length() {
     TEST_ASSERT_EQUAL(Dhcp6Parse::Malformed, dhcp6Parse(m.b, m.len, LAB_MAC_C1, in));
 }
 
+static void test_build_asks_for_sntp_servers_except_in_decline() {
+    // RFC 4075: option 31 in the Option Request of every message that has one
+    const uint8_t types[] = {DHCP6_SOLICIT, DHCP6_REQUEST, DHCP6_RENEW, DHCP6_REBIND, DHCP6_CONFIRM};
+    for (uint8_t type : types) {
+        Dhcp6Out o = {type, 7, 0, KEA_DUID, sizeof(KEA_DUID), type == DHCP6_SOLICIT ? nullptr : LEASED, "rf"};
+        uint8_t buf[256];
+        size_t n = dhcp6Build(o, DEVICE_MAC, buf, sizeof(buf));
+        uint16_t l;
+        const uint8_t* oro = findOption(buf, n, 6, &l);
+        TEST_ASSERT_NOT_NULL_MESSAGE(oro, "no Option Request");
+        bool asked = false;
+        for (uint16_t i = 0; i + 1 < l; i += 2) asked |= (oro[i] << 8 | oro[i + 1]) == 31;
+        TEST_ASSERT_TRUE_MESSAGE(asked, "option 31 not requested");
+    }
+}
+
+static const uint8_t NTP_A[16] = {0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x01, 0x23};
+static const uint8_t NTP_B[16] = {0xfd, 0x00, 0x00, 0xd6, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x00, 0x7b};
+static const uint8_t NTP_LL[16] = {0xfe, 0x80, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x01};
+static const uint8_t NTP_MC[16] = {0xff, 0x02, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x01};
+static const uint8_t NTP_ANY[16] = {0};
+static const uint8_t NTP_LOOP[16] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x01};
+
+/// Kea's Reply to a Request with an SNTP Servers option (31) of these addresses appended
+static Msg replyWithSntp(std::initializer_list<const uint8_t*> addrs, int lenAdjust = 0) {
+    Msg m = payloadOf(KEA_REPLY_REQUEST, KEA_REPLY_REQUEST_LEN);
+    uint16_t len = (uint16_t)(16 * addrs.size() + lenAdjust);
+    const uint8_t head[] = {0x00, 0x1f, (uint8_t)(len >> 8), (uint8_t)len};
+    memcpy(m.b + m.len, head, sizeof(head));
+    m.len += sizeof(head);
+    size_t start = m.len;
+    for (const uint8_t* a : addrs) {
+        memcpy(m.b + m.len, a, 16);
+        m.len += 16;
+    }
+    m.len = start + len;
+    return m;
+}
+
+static void test_parse_reads_sntp_servers() {
+    Msg m = replyWithSntp({NTP_A, NTP_B});
+    Dhcp6In in;
+    TEST_ASSERT_EQUAL(Dhcp6Parse::Ok, dhcp6Parse(m.b, m.len, LAB_MAC_C1, in));
+    TEST_ASSERT_TRUE(in.hasLease);
+    TEST_ASSERT_EQUAL_UINT8(2, in.ntpCount);
+    TEST_ASSERT_EQUAL_HEX8_ARRAY(NTP_A, in.ntp[0], 16);
+    TEST_ASSERT_EQUAL_HEX8_ARRAY(NTP_B, in.ntp[1], 16);
+}
+
+static void test_parse_sntp_absent_is_zero() {
+    Msg m = payloadOf(KEA_REPLY_REQUEST, KEA_REPLY_REQUEST_LEN);
+    Dhcp6In in;
+    TEST_ASSERT_EQUAL(Dhcp6Parse::Ok, dhcp6Parse(m.b, m.len, LAB_MAC_C1, in));
+    TEST_ASSERT_EQUAL_UINT8(0, in.ntpCount);
+}
+
+static void test_parse_keeps_first_sntp_servers_up_to_max() {
+    Msg m = replyWithSntp({NTP_B, NTP_A, NTP_B, NTP_A});
+    Dhcp6In in;
+    TEST_ASSERT_EQUAL(Dhcp6Parse::Ok, dhcp6Parse(m.b, m.len, LAB_MAC_C1, in));
+    TEST_ASSERT_EQUAL_UINT8(DHCP6_NTP_MAX, in.ntpCount);
+    TEST_ASSERT_EQUAL_HEX8_ARRAY(NTP_B, in.ntp[0], 16);
+    TEST_ASSERT_EQUAL_HEX8_ARRAY(NTP_A, in.ntp[1], 16);
+}
+
+static void test_parse_skips_unusable_sntp_addresses() {
+    // Link-local needs a zone the device would have to guess; the others are never a server
+    Msg m = replyWithSntp({NTP_ANY, NTP_LOOP, NTP_MC, NTP_LL, NTP_A});
+    Dhcp6In in;
+    TEST_ASSERT_EQUAL(Dhcp6Parse::Ok, dhcp6Parse(m.b, m.len, LAB_MAC_C1, in));
+    TEST_ASSERT_EQUAL_UINT8(1, in.ntpCount);
+    TEST_ASSERT_EQUAL_HEX8_ARRAY(NTP_A, in.ntp[0], 16);
+}
+
+static void test_parse_ignores_sntp_option_with_bad_length_but_keeps_lease() {
+    // A broken optional option must not cost the address: the option is dropped, the Reply used
+    const int adjust[] = {-1, 1, -16};
+    for (int a : adjust) {
+        Msg m = replyWithSntp({NTP_A}, a);
+        Dhcp6In in;
+        TEST_ASSERT_EQUAL(Dhcp6Parse::Ok, dhcp6Parse(m.b, m.len, LAB_MAC_C1, in));
+        TEST_ASSERT_TRUE(in.hasLease);
+        TEST_ASSERT_EQUAL_UINT8(0, in.ntpCount);
+    }
+}
+
+static void test_parse_rejects_sntp_option_running_past_the_end() {
+    Msg m = replyWithSntp({NTP_A});
+    Dhcp6In in;
+    TEST_ASSERT_EQUAL(Dhcp6Parse::Malformed, dhcp6Parse(m.b, m.len - 1, LAB_MAC_C1, in));
+}
+
+static void test_parse_sntp_reply_survives_truncation_and_corruption() {
+    Msg m = replyWithSntp({NTP_A, NTP_B});
+    for (size_t n = 0; n < m.len; n++) {
+        uint8_t* cut = new uint8_t[n + 1];
+        memcpy(cut, m.b, n);
+        Dhcp6In in;
+        if (dhcp6Parse(cut, n, LAB_MAC_C1, in) == Dhcp6Parse::Ok) TEST_ASSERT_TRUE(in.ntpCount <= DHCP6_NTP_MAX);
+        delete[] cut;
+    }
+    for (size_t i = 0; i < m.len; i++) {
+        for (uint8_t v : {(uint8_t)0x00, (uint8_t)0xff, (uint8_t)(m.b[i] ^ 0x80)}) {
+            uint8_t* bad = new uint8_t[m.len];
+            memcpy(bad, m.b, m.len);
+            bad[i] = v;
+            Dhcp6In in;
+            if (dhcp6Parse(bad, m.len, LAB_MAC_C1, in) == Dhcp6Parse::Ok) TEST_ASSERT_TRUE(in.ntpCount <= DHCP6_NTP_MAX);
+            delete[] bad;
+        }
+    }
+}
+
 struct Fixture {
     const uint8_t* frame;
     size_t len;
@@ -449,6 +562,7 @@ int main() {
     RUN_TEST(test_build_confirm_has_address_and_no_server_id_or_fqdn);
     RUN_TEST(test_build_returns_zero_when_buffer_too_small);
     RUN_TEST(test_build_rejects_hostname_that_is_not_one_label);
+    RUN_TEST(test_build_asks_for_sntp_servers_except_in_decline);
     RUN_TEST(test_parse_kea_advertise);
     RUN_TEST(test_parse_kea_reply);
     RUN_TEST(test_parse_noaddrsavail_has_no_lease_and_status_2);
@@ -465,6 +579,13 @@ int main() {
     RUN_TEST(test_parse_sol_max_rt_absent_is_zero);
     RUN_TEST(test_parse_ignores_sol_max_rt_out_of_range);
     RUN_TEST(test_parse_rejects_sol_max_rt_with_wrong_length);
+    RUN_TEST(test_parse_reads_sntp_servers);
+    RUN_TEST(test_parse_sntp_absent_is_zero);
+    RUN_TEST(test_parse_keeps_first_sntp_servers_up_to_max);
+    RUN_TEST(test_parse_skips_unusable_sntp_addresses);
+    RUN_TEST(test_parse_ignores_sntp_option_with_bad_length_but_keeps_lease);
+    RUN_TEST(test_parse_rejects_sntp_option_running_past_the_end);
+    RUN_TEST(test_parse_sntp_reply_survives_truncation_and_corruption);
     RUN_TEST(test_parse_survives_every_truncation);
     RUN_TEST(test_parse_survives_every_single_byte_corruption);
     RUN_TEST(test_parse_leaves_output_untouched_on_failure);

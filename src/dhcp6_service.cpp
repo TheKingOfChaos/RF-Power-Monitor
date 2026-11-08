@@ -4,6 +4,7 @@
 #include <new>
 #include <string.h>
 #include <lwip/netif.h>
+#include <lwip/dhcp6.h>
 #include <dhcp6_frame.h>
 #include <dhcp6_message.h>
 #include "hostname.h"
@@ -27,6 +28,9 @@ static uint8_t message[256];
 static uint8_t frame[DHCP6_FRAME_HEADER + sizeof(message)];
 static int slot = -1;
 static const char* problem = "";
+// SNTP servers last handed to lwIP: the client's ntpVersion(); ntpForce hands them over again
+static uint32_t ntpApplied = 0;
+static volatile bool ntpForce = false;
 
 static uint32_t random32() {
     return rp2040.hwrand32();
@@ -151,6 +155,30 @@ static void keepLifetimes(uint32_t now) {
     netif_ip6_addr_set_state(dhcpNetif, slot, dhcp6RefreshedState(netif_ip6_addr_state(dhcpNetif, slot), preferred));
 }
 
+/**
+ * @brief Give lwIP's SNTP the servers from option 31 when they change, the way lwIP's own stateless DHCPv6
+ * does (dhcp6_set_ntp_servers: used only while NTP is set to dhcp; the last of DHCPv4 and DHCPv6 wins)
+ */
+static void applyNtp() {
+    bool force = ntpForce;
+    ntpForce = false;
+    uint8_t n = client->ntpCount();
+    if (n == 0 || (client->ntpVersion() == ntpApplied && !force)) return;
+    ntpApplied = client->ntpVersion();
+    ip_addr_t addrs[DHCP6_NTP_MAX];
+    for (uint8_t i = 0; i < n; i++) {
+        ip6_addr_t a;
+        toLwip(client->ntpServer(i), a);
+        ip_addr_copy_from_ip6(addrs[i], a);
+    }
+    DriverLock lock;
+    dhcp6_set_ntp_servers(n, addrs);
+}
+
+void dhcp6NtpRefresh() {
+    ntpForce = true;
+}
+
 static void send(size_t len) {
     uint8_t ll[16];
     {
@@ -196,6 +224,7 @@ void dhcp6Poll() {
         if (a.kind == Dhcp6Action::DeprecateAddress) deprecateAddress(a);
     }
     keepLifetimes(now);
+    applyNtp();
 }
 
 bool dhcp6IsSlot(int i) {
@@ -222,6 +251,7 @@ void dhcp6GetStatus(Dhcp6Status& out) {
 void dhcp6Begin(netif*) {}
 void dhcp6Poll() {}
 void dhcp6InspectFrame(const uint8_t*, size_t) {}
+void dhcp6NtpRefresh() {}
 bool dhcp6IsSlot(int) { return false; }
 void dhcp6GetStatus(Dhcp6Status& out) { memset(&out, 0, sizeof(out)); out.problem = ""; }
 #endif

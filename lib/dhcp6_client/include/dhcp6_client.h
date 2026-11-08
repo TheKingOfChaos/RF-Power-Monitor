@@ -96,6 +96,13 @@ public:
     /// Seconds left of the lease's preferred lifetime (0 without a lease or once deprecated, 0xFFFFFFFF for infinity)
     uint32_t preferredLeftS(uint32_t nowMs);
 
+    /// SNTP servers from the last Reply that bound or extended the lease and held option 31
+    uint8_t ntpCount() const { return _ntpCount; }
+    /// Server i (0 to ntpCount() - 1), 16 bytes
+    const uint8_t* ntpServer(uint8_t i) const { return _ntp[i]; }
+    /// Changes whenever the SNTP servers change, so the caller hands them to lwIP once
+    uint32_t ntpVersion() const { return _ntpVersion; }
+
     uint32_t sent() const { return _sent; }
     uint32_t accepted() const { return _accepted; }
     uint32_t ignored() const { return _ignored; }
@@ -147,6 +154,11 @@ private:
     bool _pendingRemove = false;
     uint8_t _removeAddr[16];
     bool _pendingAdd = false;
+
+    // SNTP servers (option 31)
+    uint8_t _ntpCount = 0;
+    uint8_t _ntp[DHCP6_NTP_MAX][16];
+    uint32_t _ntpVersion = 0;
 
     uint32_t _sent = 0, _accepted = 0, _ignored = 0;
 };

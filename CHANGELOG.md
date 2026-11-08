@@ -6,6 +6,13 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [3.6.1] - 2026-11-08
+
+NTP from DHCPv6 also on networks that hand out addresses by DHCPv6 only.
+
+### Fixed
+- **NTP server from DHCPv6 on M-flag networks**: the device's own DHCPv6 address client now asks for option 31 (SNTP servers, RFC 4075) and gives the servers from its Reply to the NTP client, when NTP is set to `dhcp`. Before, option 31 came only through lwIP's stateless DHCPv6, so only when the router advertisement set the O flag. Up to two global or ULA addresses are taken; link-local, multicast, loopback and unspecified ones are skipped, and a wrongly sized option is ignored without losing the address lease. A Renew reply without the option keeps the servers. As before, when both DHCP (option 42) and DHCPv6 give a server, the one that arrived last is used.
+
 ### Added
 - **Mains soak test** (`test/hil/mains_soak.py`): cuts mains through the Dirigera outlet at random for days (7 by default) and checks every outage over SNMP (loss and restore seen, the 60 s alarm, the change counter, no restart), plus SNMP and web answers between cuts. Results, a running summary and an HTML report in `soak/`. No firmware change.
 

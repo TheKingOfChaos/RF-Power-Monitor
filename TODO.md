@@ -286,11 +286,11 @@ An item is only ticked when it is implemented **and** its tests exist and pass (
 - [x] Web page: Time and Syslog rows, card *Time and syslog* (`/timelog`) — native `test_web_ui` (`test_timelog_*`), HIL `test_time_and_syslog_from_web_page_apply`
 - [x] SNMP `updateSite` group (63050.8: updCheckinResult, updMinutesSinceGood, updFailedInRow), LibreNMS sensors "Update site check-in" and "Minutes since update site check-in" (warning above 60) — native `test_snmp_agent` (`test_update_site_group_*`), net-snmp `host_agent_check.sh`, HIL `test_snmp.py` walks
 - [x] LibreNMS syslog receiver in the Docker test setup: `syslogng` sidecar, RFC 5424 source on UDP 5140 (`librenms/test/syslog-ng-rfc5424.conf`), `enable_syslog` — device messages on its Logs → Syslog tab (2026-11-07, docs/LIBRENMS.md)
-- [ ] DHCPv6 option 31 (SNTP servers, RFC 4075) only through lwIP's stateless DHCPv6, i.e. when the router advertisement sets the O flag; a network with only the M flag gives no NTP server over DHCPv6
+- [x] DHCPv6 option 31 (SNTP servers, RFC 4075) also on networks with only the M flag: the device's own DHCPv6 client asks for it and hands the servers to lwIP's SNTP (3.6.1) — native `test_dhcp6_message` (`test_build_asks_for_sntp_servers_*`, `test_parse_*sntp*`, truncation and corruption), `test_dhcp6_client` (`*sntp*`), sanitizers, HIL `test_dhcp6.py` `test_managed_flag_alone_gives_ntp_server_from_option_31`
 
 ## Notes
 - SNMP must be v1 and v2c (no v3) and our own code; networking may use libraries
-- RAM after 3.4.0: static 49.6 % (130,040 bytes), about 1 KB below the 50 % limit then. The limit was raised to 60 % on 2026-11-07 (about 27 KB of room) for SNTP and syslog; static RAM with them (3.6.0): 52.8 %
+- RAM after 3.4.0: static 49.6 % (130,040 bytes), about 1 KB below the 50 % limit then. The limit was raised to 60 % on 2026-11-07 (about 27 KB of room) for SNTP and syslog; static RAM with them (3.6.0): 52.8 %, 3.6.1: 52.9 %
 - Memory limits: 70 % flash, 60 % RAM (50 % until 2026-11-07; 3.3.0: image 44 % of a slot, 21.3 % of the core's flash figure; static RAM 48.8 %, measured as PlatformIO's RAM line (.data + .bss); an upload allocates nothing more; built with -Os). About 3 KB of RAM is left below the 50 % limit: check the build's RAM line before adding buffers (the web page body and response alone are 22 KB)
 - Version: `include/version.h`; every user-visible change goes into CHANGELOG.md under [Unreleased]
 - Core 0 has an 8 KB stack (core1_separate_stack, since 2.3.0) shared with USB/lwIP/W5500 interrupts: keep big buffers static

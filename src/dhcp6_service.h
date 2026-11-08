@@ -31,6 +31,14 @@ void dhcp6Poll();
  */
 void dhcp6InspectFrame(const uint8_t* frame, size_t len);
 
+/**
+ * @brief Hand the SNTP servers from the last Reply (option 31) to lwIP again at the next dhcp6Poll()
+ *
+ * For timeServiceApply(), which clears lwIP's servers when NTP is set to dhcp. lwIP ignores them
+ * unless NTP is set to dhcp.
+ */
+void dhcp6NtpRefresh();
+
 /// True if lwIP address slot i holds the DHCPv6 address (status screen)
 bool dhcp6IsSlot(int i);
 

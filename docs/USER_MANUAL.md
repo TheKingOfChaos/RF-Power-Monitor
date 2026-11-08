@@ -218,9 +218,9 @@ RAM used: 133444 of 262144 bytes
 LittleFS used: 32768 of 262144 bytes
 Serial number: E6641CB2CF4CA22C
 Last restart: reboot (0 watchdog restarts since power-on)
-Firmware: slot A, 3.6.0, kept
+Firmware: slot A, 3.6.1, kept
 Other slot: B, 3.5.1
-Last update: installed 3.6.0
+Last update: installed 3.6.1
 Firmware key: 0123456789abcdef
 Update server: http://192.0.2.45:8071 (fixed), key set, last check-in 4 min ago: ok
 Time: 2026-11-07 19:42:10 CET (NTP pool.ntp.org, synced 3 min ago)

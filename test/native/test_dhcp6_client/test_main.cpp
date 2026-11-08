@@ -417,6 +417,99 @@ static void test_renew_reply_extends_lease() {
     TEST_ASSERT_TRUE(c.hasLease());
 }
 
+static const uint8_t NTP_1[16] = {0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x01, 0x23};
+static const uint8_t NTP_2[16] = {0x20, 0x01, 0x0d, 0xb8, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0x04, 0x56};
+
+static Dhcp6In withNtp(Dhcp6In m, const uint8_t* ntp) {
+    m.ntpCount = 1;
+    memcpy(m.ntp[0], ntp, 16);
+    return m;
+}
+
+static void test_reply_sntp_servers_are_kept_with_the_lease() {
+    Dhcp6Client c(MAC, fakeRandom);
+    uint32_t now = 0;
+    TEST_ASSERT_EQUAL_UINT8(0, c.ntpCount());
+    uint32_t before = c.ntpVersion();
+    c.start(now);
+    until(c, &now, 2000);
+    c.received(serverMsg(DHCP6_ADVERTISE, sentXid(), SRV_A, 255, ADDR_A, 60, 120, 0, 0), now);
+    next(c, now);
+    c.received(withNtp(serverMsg(DHCP6_REPLY, sentXid(), SRV_A, 0, ADDR_A, 60, 120, 0, 0), NTP_1), now);
+    TEST_ASSERT_EQUAL(Dhcp6State::Bound, c.state());
+    TEST_ASSERT_EQUAL_UINT8(1, c.ntpCount());
+    TEST_ASSERT_EQUAL_HEX8_ARRAY(NTP_1, c.ntpServer(0), 16);
+    TEST_ASSERT_NOT_EQUAL(before, c.ntpVersion());
+}
+
+static void test_advertise_sntp_servers_are_not_used() {
+    // Only the Reply that binds counts; the Advertise may come from a server not chosen
+    Dhcp6Client c(MAC, fakeRandom);
+    uint32_t now = 0;
+    c.start(now);
+    until(c, &now, 2000);
+    c.received(withNtp(serverMsg(DHCP6_ADVERTISE, sentXid(), SRV_A, 255, ADDR_A, 60, 120, 0, 0), NTP_1), now);
+    next(c, now);
+    c.received(serverMsg(DHCP6_REPLY, sentXid(), SRV_A, 0, ADDR_A, 60, 120, 0, 0), now);
+    TEST_ASSERT_EQUAL(Dhcp6State::Bound, c.state());
+    TEST_ASSERT_EQUAL_UINT8(0, c.ntpCount());
+}
+
+static void test_ignored_reply_does_not_change_sntp_servers() {
+    Dhcp6Client c(MAC, fakeRandom);
+    uint32_t now = 0;
+    c.start(now);
+    until(c, &now, 2000);
+    c.received(serverMsg(DHCP6_ADVERTISE, sentXid(), SRV_A, 255, ADDR_A, 60, 120, 0, 0), now);
+    next(c, now);
+    uint32_t before = c.ntpVersion();
+    c.received(withNtp(serverMsg(DHCP6_REPLY, (sentXid() + 1) & 0xFFFFFF, SRV_A, 0, ADDR_A, 60, 120, 0, 0), NTP_1), now);
+    TEST_ASSERT_EQUAL_UINT8(0, c.ntpCount());
+    TEST_ASSERT_EQUAL_UINT32(before, c.ntpVersion());
+}
+
+/// Bound with NTP_1 from the first Reply, then renewed at T1 with `renewReply`; returns the version after binding
+static uint32_t renewWith(Dhcp6Client& c, const uint8_t* ntpInRenew) {
+    uint32_t now = 0;
+    c.start(now);
+    until(c, &now, 2000);
+    c.received(serverMsg(DHCP6_ADVERTISE, sentXid(), SRV_A, 255, ADDR_A, 20, 40, 6, 12), now);
+    next(c, now);
+    c.received(withNtp(serverMsg(DHCP6_REPLY, sentXid(), SRV_A, 0, ADDR_A, 20, 40, 6, 12), NTP_1), now);
+    next(c, now);  // AddAddress
+    uint32_t bound = c.ntpVersion();
+    Dhcp6Action a = next(c, now + 6000);
+    TEST_ASSERT_EQUAL(Dhcp6Action::Send, a.kind);
+    TEST_ASSERT_EQUAL_UINT8(DHCP6_RENEW, buf[0]);
+    Dhcp6In r = serverMsg(DHCP6_REPLY, sentXid(), SRV_A, 0, ADDR_A, 20, 40, 6, 12);
+    c.received(ntpInRenew ? withNtp(r, ntpInRenew) : r, now + 6100);
+    TEST_ASSERT_EQUAL(Dhcp6State::Bound, c.state());
+    return bound;
+}
+
+static void test_renew_reply_without_sntp_keeps_servers() {
+    // lwIP does the same: a reply without option 31 leaves the servers alone
+    Dhcp6Client c(MAC, fakeRandom);
+    uint32_t bound = renewWith(c, nullptr);
+    TEST_ASSERT_EQUAL_UINT8(1, c.ntpCount());
+    TEST_ASSERT_EQUAL_HEX8_ARRAY(NTP_1, c.ntpServer(0), 16);
+    TEST_ASSERT_EQUAL_UINT32(bound, c.ntpVersion());
+}
+
+static void test_renew_reply_with_same_sntp_keeps_version() {
+    Dhcp6Client c(MAC, fakeRandom);
+    uint32_t bound = renewWith(c, NTP_1);
+    TEST_ASSERT_EQUAL_UINT32(bound, c.ntpVersion());
+}
+
+static void test_renew_reply_with_other_sntp_replaces_servers() {
+    Dhcp6Client c(MAC, fakeRandom);
+    uint32_t bound = renewWith(c, NTP_2);
+    TEST_ASSERT_EQUAL_UINT8(1, c.ntpCount());
+    TEST_ASSERT_EQUAL_HEX8_ARRAY(NTP_2, c.ntpServer(0), 16);
+    TEST_ASSERT_NOT_EQUAL(bound, c.ntpVersion());
+}
+
 static void test_moved_address_is_deprecated_then_removed_at_its_valid_end() {
     // The server moves us to ADDR_B at the first Renew: ADDR_A lives out its valid lifetime (RFC 8415 18.2.10.1)
     Dhcp6Client c(MAC, fakeRandom);
@@ -667,6 +760,12 @@ int main() {
     RUN_TEST(test_lease_removed_at_valid_end_while_requesting_after_nobinding);
     RUN_TEST(test_rebind_reply_from_another_server_extends_lease);
     RUN_TEST(test_renew_reply_extends_lease);
+    RUN_TEST(test_reply_sntp_servers_are_kept_with_the_lease);
+    RUN_TEST(test_advertise_sntp_servers_are_not_used);
+    RUN_TEST(test_ignored_reply_does_not_change_sntp_servers);
+    RUN_TEST(test_renew_reply_without_sntp_keeps_servers);
+    RUN_TEST(test_renew_reply_with_same_sntp_keeps_version);
+    RUN_TEST(test_renew_reply_with_other_sntp_replaces_servers);
     RUN_TEST(test_moved_address_is_deprecated_then_removed_at_its_valid_end);
     RUN_TEST(test_moving_back_to_the_old_address_does_not_remove_it);
     RUN_TEST(test_address_removed_at_valid_end);
