@@ -22,6 +22,7 @@ The project rules are in `.clinerules` and apply to all work here, including its
 | On-device tests | `pio test -e pico` (replaces the firmware, reflash afterwards) |
 | HIL tests | `%USERPROFILE%\.platformio\penv\Scripts\python.exe -m unittest discover -s test/hil -v` |
 | Sanitizers | `wsl -d Ubuntu-24.04 -- bash scripts/sanitize.sh` (after `pio test -e native`) |
+| Fuzzing | `wsl -d Ubuntu-24.04 -- bash scripts/fuzz.sh [seconds] [harness...]` (clang; harnesses in `test/fuzz`, failing inputs in `.pio/fuzz/crashes`) |
 | SNMP vs net-snmp, no hardware | `wsl -d Ubuntu-24.04 -- bash scripts/host_agent_check.sh` |
 | SNMP HIL only | `... python.exe -m unittest discover -s test/hil -p "test_snmp.py" -v` |
 | Update site | tests `python -m unittest discover -s update-server/tests`; run `docker compose up -d --build` in `update-server/` (port 8071); HIL `RFPOWER_UPDATE_SERVER_TEST=1` `test_update_server.py` |
@@ -67,4 +68,4 @@ Details and setup are in `docs/TESTING.md`.
 - `lib/bench_info` (pure): the `benchinfo` block for the bench tool; `lib/web_ui` `default_password.h` (pure): the default web password's two copies (`data/web_default.txt`, `_b.txt`), the bench lock (`data/web_default.lock`) and the lost marker (`data/web_default.lost`), loaded at boot before Ethernet. Hidden menu commands `benchinfo`, `pwlock`, `pwunlock`, `updatedefault` (option 10 kept as the bench default in `data/update_default_*.json`, restored by a factory reset). HIL `test/hil/test_bench.py`
 - `lib/update_client` (pure): update site check-in format and keyed BLAKE2b MACs, URL and HTTP response parsing, check-in timing, update settings codec, download decisions; `src/http_fetch.cpp` (non-blocking HTTP on lwIP raw TCP, 2-segment window), `src/update_service.cpp` (check-ins, downloads into `fw_update_service`); URL and key in their own A/B files (`lib/settings` `update_settings_store.h`); DHCP option 225 in `src/net_stats.cpp`. Hidden menu commands `checkin`, `fetchtest <url>`
 - `update-server/`: the update site (Python stdlib, Docker, port 8071): device list, admin login, releases, assignments, shared key; `tests/vectors.json` shared with `test/native/test_update_protocol`
-- `test/native`, `test/embedded`, `test/hil`, `test/tools`: the four test layers
+- `test/native`, `test/embedded`, `test/hil`, `test/tools`: the four test layers; `test/fuzz`: libFuzzer harnesses for the parsers of network and flash input (`scripts/fuzz.sh`, seeds from `make_seeds.py`)

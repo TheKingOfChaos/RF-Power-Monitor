@@ -153,6 +153,12 @@ See docs/TESTING.md for how to run each layer.
    - Code that parses input from the network or flash (BER, SNMP messages,
      settings) must have tests with truncated and corrupted input, and all
      native suites must pass `scripts/sanitize.sh` (ASan + UBSan in WSL)
+   - Such a parser also has a libFuzzer harness in `test/fuzz` (listed in
+     `scripts/fuzz.sh`, seeds in `test/fuzz/make_seeds.py`) that checks the
+     parser's documented promises, not only memory safety; a change to a
+     parser runs its harness (`scripts/fuzz.sh 60 <harness>`) before the
+     commit. An input the fuzzer finds becomes a native unit test that fails
+     before the fix
    - Protocol tests use byte vectors captured from real tools (net-snmp)
      where possible, not only values the code itself produced
    - Tests that change device state (reboot, static IP) restore it, and

@@ -10,6 +10,7 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - The copy of the update site settings (with the shared key) that a save keeps for undoing is now wiped with `crypto_wipe`, which the compiler cannot remove; a plain `memset` just before the copy goes out of scope may be optimised away (CodeQL `cpp/memset-may-be-deleted`).
 - Security policy (`SECURITY.md`): supported versions, private reporting through GitHub, a first answer within 7 days, known limits by design. Dependabot follows the GitHub Actions used in CI (`.github/dependabot.yml`).
 - CI workflow: the jobs run with a read-only token (`permissions: contents: read`; CodeQL `actions/missing-workflow-permissions`).
+- Fuzzing of every parser of network and flash input (`test/fuzz`, `scripts/fuzz.sh`, libFuzzer with ASan and UBSan): SNMP and BER, the web page's HTTP parser and pages (also logged in), the firmware update receiver, slot header and boot record, DHCP and DHCPv6 (with the DHCPv6 client), LLDP, the update site's replies, the settings files and the typed menu and form input. Besides memory safety the harnesses check the parsers' promises, e.g. an update never writes flash outside its slot and settings load back as saved. CI fuzzes each for 30 s on every push.
 
 ## [3.6.1] - 2026-11-08
 

@@ -48,6 +48,25 @@ jobs:
       - name: Unit tests under AddressSanitizer + UBSan
         run: bash scripts/sanitize.sh
 
+      # The inputs earlier runs found are kept, so each run fuzzes on from there
+      - name: Cache fuzz corpus
+        uses: actions/cache@v6
+        with:
+          path: .pio/fuzz/corpus
+          key: fuzz-corpus-${{ github.run_id }}
+          restore-keys: fuzz-corpus-
+
+      - name: Fuzz the parsers (libFuzzer, 30 s per harness)
+        run: bash scripts/fuzz.sh 30
+
+      - name: Keep the inputs that failed
+        if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: fuzz-crashes
+          path: .pio/fuzz/crashes
+          if-no-files-found: ignore
+
       - name: Install net-snmp tools
         run: |
           sudo apt-get update

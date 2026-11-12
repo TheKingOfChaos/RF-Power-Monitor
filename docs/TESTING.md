@@ -15,7 +15,7 @@ The rules for writing tests are in [.clinerules](../.clinerules), section *Testi
 
 ## CI
 
-[.github/workflows/tests.yml](../.github/workflows/tests.yml) runs on every push and pull request on GitHub: the native unit tests, the same tests under AddressSanitizer/UBSan, the SNMP agent against net-snmp (`scripts/host_agent_check.sh`, including MIB validation), the tool tests (`test/tools`), and a firmware build that uploads `firmware_full.uf2` (boot program and slot A, the file for the BOOTSEL drive) as an artifact. It also compiles the on-device test programs. The on-device and HIL tests need the Pico and are run locally.
+[.github/workflows/tests.yml](../.github/workflows/tests.yml) runs on every push and pull request on GitHub: the native unit tests, the same tests under AddressSanitizer/UBSan, 30 s of fuzzing per parser (`scripts/fuzz.sh`, the corpus kept between runs in the Actions cache, failing inputs uploaded as the `fuzz-crashes` artifact), the SNMP agent against net-snmp (`scripts/host_agent_check.sh`, including MIB validation), the tool tests (`test/tools`), and a firmware build that uploads `firmware_full.uf2` (boot program and slot A, the file for the BOOTSEL drive) as an artifact. It also compiles the on-device test programs. The on-device and HIL tests need the Pico and are run locally.
 
 ## One-time setup
 
@@ -95,6 +95,35 @@ wsl -d Ubuntu-24.04 -- bash scripts/sanitize.sh
 ```
 
 Every native suite must be listed in `scripts/sanitize.sh`; the script fails if one is missing.
+
+### Fuzzing the parsers (`test/fuzz`)
+
+The unit tests feed the parsers chosen bad input (every truncation, single-byte corruptions); fuzzing finds the cases nobody thought of. `scripts/fuzz.sh` builds one libFuzzer harness per parser with clang, AddressSanitizer and UBSan, and runs each for a while (60 s by default):
+
+```powershell
+wsl -d Ubuntu-24.04 -- sudo apt-get install -y clang    # once
+& $pio test -e native                                   # once, downloads ArduinoJson
+wsl -d Ubuntu-24.04 -- bash scripts/fuzz.sh             # all harnesses, 60 s each
+wsl -d Ubuntu-24.04 -- bash scripts/fuzz.sh 600 snmp_agent web_app   # longer, chosen harnesses
+```
+
+| Harness | Input | Checks besides memory safety |
+|---|---|---|
+| `snmp_ber` | BER bytes, dotted OID text | |
+| `snmp_agent` | UDP payload on port 161, with or without LLDP, IP and host MIB data | every response is one well-formed BER message within `SNMP_MAX_MESSAGE` |
+| `http_request` | a request in TCP-sized pieces | path, body and stream prefix within their limits |
+| `web_app` | a request, optionally after a login (`@S`/`@C` in the input become the session cookie and CSRF token), and the LLDP switch name shown on the page | every response is one complete text response within `WEB_RESPONSE_MAX` |
+| `fw_update` | an update file in pieces, with the announced length right, short or long; the same bytes as a slot header and a boot record (CRC made valid) | flash is never erased or written outside the slot or unaligned; a decoded boot record has a valid active and trial slot |
+| `dhcp` | an Ethernet frame (checksums made valid, or as given) as a DHCP ACK (options 224, 225, 7, 42) and as a request to edit | option 225 text is printable and terminated |
+| `dhcp6` | frames and bare messages; parsed ones drive a running client with its own transaction id | the client never hands out a preferred lifetime above the valid one |
+| `lldp` | an Ethernet frame | texts terminated and printable, raw IDs within their arrays |
+| `update_client` | an HTTP response from the update site, the body signed with the shared key or not; the same bytes as a site URL and key | an `update` reply's path starts with `/`; the status word is `[a-z0-9-]` only |
+| `settings` | a settings, update site or NTP/syslog settings file | what loads saves within its buffer and loads back the same |
+| `text_input` | what is typed in the menu and forms: addresses, mask, gateway, servers, hostname | IPv6 and trap addresses format and parse back the same; `hostnameFromText()` always gives a valid hostname; option 11 input is all or nothing |
+
+The harnesses make checksums (IPv4, UDP, ICMPv6) and the update site's MAC valid before calling the parser, as random bytes would almost never pass them and the fuzzer would never reach the code behind; one input bit keeps them as given so the rejection is fuzzed too. The starting inputs are written by `test/fuzz/make_seeds.py` (real-shaped requests, frames and files, not committed); what the fuzzer finds is kept in `.pio/fuzz/corpus/` and used again on the next run.
+
+A failure prints the sanitizer report and leaves the input in `.pio/fuzz/crashes/`. Run `.pio/fuzz/bin/fuzz_<harness> <file>` to repeat it, then turn it into a native unit test that fails before fixing the parser. Every `test/fuzz/fuzz_*.cpp` must be listed in `scripts/fuzz.sh`; the script fails if one is missing. A harness must pass the parser the same kind of buffer the firmware does (the firmware never passes `nullptr`, so a harness skips empty pieces rather than passing an empty vector's `data()`).
 
 ### SNMP agent against net-snmp, without hardware
 
