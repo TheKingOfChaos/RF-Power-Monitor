@@ -51,6 +51,7 @@ declare -A SUITES=(
     [test_update_client]="update_client netconfig monocypher fw_update fw_image"
     [test_clock]="clock"
     [test_syslog]="syslog clock netconfig"
+    [test_cli_input]="cli_input netconfig settings_codec update_client monocypher fw_update fw_image"
 )
 
 failed=0

@@ -46,6 +46,7 @@ Details and setup are in `docs/TESTING.md`.
 ## Layout
 
 - `src/`: firmware entry (`main.cpp`), serial menu (`cli.cpp`), factory reset
+- `lib/cli_input` (pure): the serial menu's line editor (printable only, CR LF, backspace, overflow refuses the line, `*` echo) and each prompt's input rule with its message; `src/cli.cpp` keeps the state machine and the serial port
 - `include/pins.h`: all GPIO assignments
 - `lib/netconfig`, `lib/settings_codec`: pure C++, host tested
 - `lib/settings`: LittleFS A/B storage on top of `settings_codec`

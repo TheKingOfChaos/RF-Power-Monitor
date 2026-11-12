@@ -23,6 +23,7 @@
 #include "web_service.h"
 #include <web_auth.h>
 #include <bench_info.h>
+#include <cli_input.h>
 #include <monocypher.h>
 #include <new>
 #include "version.h"
@@ -59,9 +60,8 @@ enum CliState {
 };
 
 static CliState state = CLI_MENU;
-static char lineBuf[144];  // room for a 127-character URL after a command word
-static uint8_t lineLen = 0;
-static bool lineOverflow = false;  // More characters were typed than lineBuf holds
+static LineEditor editor;         // the line being typed (lib/cli_input)
+static char inputMsg[CLI_MSG_MAX];  // why an input was refused; static: off core 0's stack
 static Settings settingsBackup;    // restored when a save fails; static: too big for core 0's stack
 
 // Update server values being entered (option 10), saved after the key
@@ -412,18 +412,17 @@ static void prompt(const char* name, const char* current) {
 }
 
 /**
- * @brief Accept an IPv4 address line, empty keeps the current value
- * @return true if dest now holds a valid address
+ * @brief Print why an input was refused (lib/cli_input put it in inputMsg)
+ * @return ok, so a take*() wrapper can return it
  */
+static bool reportInput(bool ok) {
+    if (!ok) Serial.println(inputMsg);
+    return ok;
+}
+
+/// IPv4 address line, empty keeps the current value (cliTakeAddress)
 static bool takeAddress(const char* input, const char* current, char* dest) {
-    const char* value = input[0] ? input : current;
-    uint8_t octets[4];
-    if (!parseIPv4(value, octets)) {
-        Serial.printf("'%s' is not a valid IPv4 address\r\n", value);
-        return false;
-    }
-    strlcpy(dest, value, 16);
-    return true;
+    return reportInput(cliTakeAddress(input, current, dest, inputMsg, sizeof(inputMsg)));
 }
 
 /**
@@ -434,57 +433,14 @@ static void startStaticEntry() {
     state = CLI_STATIC_IP;
 }
 
-/**
- * @brief Accept a text line for an SNMP setting
- *
- * Empty input keeps the current value; "-" clears it when empty is allowed.
- * The menu only accepts printable characters, so length is the main check.
- *
- * @return true if dest now holds a valid value
- */
+/// Text line for an SNMP setting: empty keeps, "-" clears when allowed (cliTakeText)
 static bool takeText(const char* input, const char* current, char* dest, size_t maxLength, bool allowEmpty) {
-    const char* value = input;
-    if (input[0] == '\0') {
-        value = current;
-    } else if (strcmp(input, "-") == 0) {
-        value = "";
-    }
-    if (value[0] == '\0' && !allowEmpty) {
-        Serial.println("Must not be empty");
-        return false;
-    }
-    if (strlen(value) > maxLength) {
-        Serial.printf("Too long, at most %u characters\r\n", (unsigned)maxLength);
-        return false;
-    }
-    if (!settingsTextIsValid(value, maxLength, allowEmpty)) {
-        Serial.println("Only printable ASCII characters are allowed");
-        return false;
-    }
-    strlcpy(dest, value, maxLength + 1);
-    return true;
+    return reportInput(cliTakeText(input, current, dest, maxLength, allowEmpty, inputMsg, sizeof(inputMsg)));
 }
 
-/**
- * @brief Accept the hostname (also sysName): Enter keeps the current value, '-' goes back to the default
- *        (RF-Power-<MAC tail>), else it must be a valid hostname
- */
+/// The hostname (also sysName): empty keeps, '-' goes back to the default (cliTakeHostname)
 static bool takeHostname(const char* input, const char* current, char* dest) {
-    if (input[0] == '\0') {
-        strlcpy(dest, current, SYS_TEXT_MAX_LENGTH + 1);  // may be free text from older firmware
-        return true;
-    }
-    if (strcmp(input, "-") == 0) {
-        dest[0] = '\0';  // not set: the default name
-        return true;
-    }
-    if (!hostnameIsValid(input)) {
-        Serial.printf("Not a valid hostname: 1-%u letters, digits and '-', not starting or ending with '-'\r\n",
-                      (unsigned)HOSTNAME_MAX_LENGTH);
-        return false;
-    }
-    strlcpy(dest, input, SYS_TEXT_MAX_LENGTH + 1);
-    return true;
+    return reportInput(cliTakeHostname(input, current, dest, inputMsg, sizeof(inputMsg)));
 }
 
 /**
@@ -504,34 +460,10 @@ static void promptSnmp() {
     }
 }
 
-/**
- * @brief Accept the trap destination: empty keeps, "-" turns traps off, "dhcp" takes it from
- *        DHCP option 224, else an IPv4 or IPv6 address (IPv6 stored in RFC 5952 form)
- */
+/// The trap destination into newTrapTarget / newTrapFromDhcp (cliTakeTrapTarget)
 static bool takeTrapTarget(const char* input) {
-    // The fixed address is kept while DHCP is chosen, for switching back
-    strlcpy(newTrapTarget, currentSettings.trapTarget, sizeof(newTrapTarget));
-    if (input[0] == '\0') {
-        newTrapFromDhcp = currentSettings.trapFromDhcp;
-        return true;
-    }
-    if (strcmp(input, "dhcp") == 0 || strcmp(input, "DHCP") == 0) {
-        newTrapFromDhcp = true;
-        return true;
-    }
-    newTrapFromDhcp = false;
-    if (strcmp(input, "-") == 0) {
-        newTrapTarget[0] = '\0';
-        return true;
-    }
-    TrapAddress address;
-    TrapTargetError err = parseTrapTarget(input, address);
-    if (err != TrapTargetError::None) {
-        Serial.printf("'%s': %s\r\n", input, trapTargetErrorMessage(err));
-        return false;
-    }
-    formatTrapAddress(address, newTrapTarget);
-    return true;
+    return reportInput(cliTakeTrapTarget(input, currentSettings.trapTarget, currentSettings.trapFromDhcp,
+                                         newTrapTarget, newTrapFromDhcp, inputMsg, sizeof(inputMsg)));
 }
 
 /**
@@ -585,23 +517,9 @@ static void askConfirm() {
     state = CLI_CONFIRM;
 }
 
-/**
- * @brief Accept an IPv6 line: Enter keeps current, "-" clears, else IPv6 text stored in RFC 5952 form
- * @return true if dest now holds an empty or well-formed value (usability is checked by the caller)
- */
+/// An IPv6 line: empty keeps, "-" clears; usability is checked by the caller (cliTakeIPv6)
 static bool takeIPv6(const char* input, const char* current, char* dest) {
-    const char* value = input[0] == '\0' ? current : strcmp(input, "-") == 0 ? "" : input;
-    if (value[0] == '\0') {
-        dest[0] = '\0';
-        return true;
-    }
-    uint8_t bytes[16];
-    if (!parseIPv6(value, bytes)) {
-        Serial.printf("'%s' is not a valid IPv6 address (write it without /64, e.g. fd00::10)\r\n", value);
-        return false;
-    }
-    formatIPv6(bytes, dest);
-    return true;
+    return reportInput(cliTakeIPv6(input, current, dest, inputMsg, sizeof(inputMsg)));
 }
 
 static void promptIPv6Address() {
@@ -635,7 +553,7 @@ static void promptWebPassword() {
 /// Leave the web password entry, wiping what was typed
 static void endWebPassword(const char* message) {
     memset(newWebPassword, 0, sizeof(newWebPassword));
-    memset(lineBuf, 0, sizeof(lineBuf));
+    editor.wipe();
     Serial.println(message);
     state = CLI_MENU;
     printMenu();
@@ -796,7 +714,7 @@ static void handleLine(const char* line) {
     }
 
     case CLI_IPV6_CONFIRM:
-        if (line[0] == 'y' || line[0] == 'Y') {
+        if (cliConfirmed(line)) {
             settingsBackup = currentSettings;
             strlcpy(currentSettings.ipv6Address, newIPv6, sizeof(currentSettings.ipv6Address));
             strlcpy(currentSettings.ipv6Gateway, newIPv6Gateway, sizeof(currentSettings.ipv6Gateway));
@@ -861,7 +779,7 @@ static void handleLine(const char* line) {
     }
 
     case CLI_CONFIRM:
-        if (line[0] == 'y' || line[0] == 'Y') {
+        if (cliConfirmed(line)) {
             settingsBackup = currentSettings;
             currentSettings.dhcpEnabled = newDhcp;
             strlcpy(currentSettings.staticIP, newIP, sizeof(currentSettings.staticIP));
@@ -921,14 +839,8 @@ static void handleLine(const char* line) {
         break;
 
     case CLI_SNMP_TRAP_VER:
-        if (line[0] == '\0') {
-            newTrapVersion = currentSettings.trapVersion;
-        } else if (strcmp(line, "1") == 0) {
-            newTrapVersion = TRAP_VERSION_V1;
-        } else if (strcmp(line, "2c") == 0 || strcmp(line, "2C") == 0) {
-            newTrapVersion = TRAP_VERSION_V2C;
-        } else {
-            Serial.println("Enter 1 or 2c");
+        if (!reportInput(cliTakeTrapVersion(line, currentSettings.trapVersion, newTrapVersion, inputMsg,
+                                            sizeof(inputMsg)))) {
             promptSnmp();
             break;
         }
@@ -941,7 +853,7 @@ static void handleLine(const char* line) {
         break;
 
     case CLI_SNMP_CONFIRM:
-        if (line[0] == 'y' || line[0] == 'Y') {
+        if (cliConfirmed(line)) {
             settingsBackup = currentSettings;
             bool communityChanged = strcmp(currentSettings.community, newCommunity) != 0;
             strlcpy(currentSettings.community, newCommunity, sizeof(currentSettings.community));
@@ -996,7 +908,7 @@ static void handleLine(const char* line) {
         break;
 
     case CLI_WEB_REGENERATE:
-        if (line[0] == 'y' || line[0] == 'Y') {
+        if (cliConfirmed(line)) {
             bool saved = webRegenerateDefaultPassword();
             Serial.printf("New default web password: \"%s\"%s\r\n", webDefaultPassword(),
                           saved ? "" : " (NOT saved, a new one is generated at the next boot)");
@@ -1010,29 +922,14 @@ static void handleLine(const char* line) {
         printMenu();
         break;
 
-    case CLI_UPDATE_URL: {
-        UpdateUrl parsed;
-        if (line[0] == '\0') {
-            strlcpy(newUpdateUrl, currentUpdateSettings.url, sizeof(newUpdateUrl));
-            newUpdateFromDhcp = currentUpdateSettings.fromDhcp;
-        } else if (strcmp(line, "none") == 0) {
-            newUpdateUrl[0] = '\0';
-            newUpdateFromDhcp = false;
-        } else if (strcmp(line, "dhcp") == 0) {
-            strlcpy(newUpdateUrl, currentUpdateSettings.url, sizeof(newUpdateUrl));  // kept for later
-            newUpdateFromDhcp = true;
-        } else if (strlen(line) > UPDATE_URL_MAX || !parseUpdateUrl(line, parsed)) {
-            Serial.printf("'%s': not an http://host[:port][/path] URL of at most %u characters\r\n", line,
-                          (unsigned)UPDATE_URL_MAX);
-            promptUpdateUrl();
-            break;
+    case CLI_UPDATE_URL:
+        if (reportInput(cliTakeUpdateUrl(line, currentUpdateSettings.url, currentUpdateSettings.fromDhcp, newUpdateUrl,
+                                         newUpdateFromDhcp, inputMsg, sizeof(inputMsg)))) {
+            promptUpdateKey();
         } else {
-            strlcpy(newUpdateUrl, line, sizeof(newUpdateUrl));
-            newUpdateFromDhcp = false;
+            promptUpdateUrl();
         }
-        promptUpdateKey();
         break;
-    }
 
     case CLI_NTP_SERVER: {
         LogSettings check = currentLogSettings;
@@ -1074,14 +971,14 @@ static void handleLine(const char* line) {
         } else {
             Serial.println(error);
         }
-        memset(lineBuf, 0, sizeof(lineBuf));  // the key was typed here
+        editor.wipe();  // the key was typed here
         state = CLI_MENU;
         printMenu();
         break;
     }
 
     case CLI_WEB_TOGGLE:
-        if (line[0] == 'y' || line[0] == 'Y') {
+        if (cliConfirmed(line)) {
             bool on = !webEnabled();
             if (webSetEnabled(on)) {
                 Serial.println(on ? "Web interface on" : "Web interface off; browsers logged out");
@@ -1125,53 +1022,35 @@ void cliBegin() {
 }
 
 void cliProcess() {
-    static bool lastWasCR = false;
     pollFetchTest();
 
     while (Serial.available()) {
-        char c = Serial.read();
-
-        // Ignore the \n of a \r\n pair
-        bool skip = (c == '\n' && lastWasCR);
-        lastWasCR = (c == '\r');
-        if (skip) continue;
-
-        if (c == '\r' || c == '\n') {
+        // Never echo a password or key; terminals like PuTTY don't echo locally
+        bool secret = state == CLI_WEB_PASSWORD || state == CLI_WEB_REPEAT || state == CLI_UPDATE_KEY;
+        switch (editor.feed((char)Serial.read(), secret)) {
+        case LineEvent::None: break;
+        case LineEvent::Echo: Serial.print(editor.echo()); break;
+        case LineEvent::Erase: Serial.print("\b \b"); break;
+        case LineEvent::Line:
             Serial.println();
-            lineBuf[lineLen] = '\0';
-            lineLen = 0;
-            if (lineOverflow) {
-                // Never act on a silently truncated value
-                lineOverflow = false;
-                Serial.printf("Input too long (max %u characters), ignored\r\n", (unsigned)(sizeof(lineBuf) - 1));
-                if (state == CLI_MENU) {
-                    Serial.print("> ");
-                } else if (state >= CLI_SNMP_COMMUNITY && state <= CLI_SNMP_TRAP_VER) {
-                    promptSnmp();
-                } else if (state == CLI_WEB_PASSWORD || state == CLI_WEB_REPEAT) {
-                    memset(newWebPassword, 0, sizeof(newWebPassword));
-                    promptWebPassword();
-                } else {
-                    state = CLI_MENU;
-                    printMenu();
-                }
-                continue;
-            }
-            handleLine(lineBuf);
-        } else if (c == '\b' || c == 0x7F) {
-            if (lineLen > 0) {
-                lineLen--;
-                Serial.print("\b \b");
-            }
-        } else if (isprint((unsigned char)c)) {
-            if (lineLen < sizeof(lineBuf) - 1) {
-                lineBuf[lineLen++] = c;
-                // Echo, terminals like PuTTY don't echo locally; never echo a password
-                bool secret = state == CLI_WEB_PASSWORD || state == CLI_WEB_REPEAT || state == CLI_UPDATE_KEY;
-                Serial.print(secret ? '*' : c);
+            handleLine(editor.line());
+            break;
+        case LineEvent::Overflow:
+            // Never act on a silently truncated value (the editor has wiped it)
+            Serial.println();
+            Serial.printf("Input too long (max %u characters), ignored\r\n", (unsigned)LineEditor::MAX_CHARS);
+            if (state == CLI_MENU) {
+                Serial.print("> ");
+            } else if (state >= CLI_SNMP_COMMUNITY && state <= CLI_SNMP_TRAP_VER) {
+                promptSnmp();
+            } else if (state == CLI_WEB_PASSWORD || state == CLI_WEB_REPEAT) {
+                memset(newWebPassword, 0, sizeof(newWebPassword));
+                promptWebPassword();
             } else {
-                lineOverflow = true;
+                state = CLI_MENU;
+                printMenu();
             }
+            break;
         }
     }
 }

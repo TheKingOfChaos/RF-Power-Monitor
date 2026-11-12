@@ -42,6 +42,7 @@ declare -A HARNESSES=(
     [update_client]="update_client netconfig monocypher fw_update fw_image"
     [settings]="settings_codec netconfig update_client monocypher fw_update fw_image syslog clock"
     [text_input]="netconfig syslog clock"
+    [cli_input]="cli_input netconfig settings_codec update_client monocypher fw_update fw_image"
 )
 
 # Every harness file must be listed (as scripts/sanitize.sh does for the suites)

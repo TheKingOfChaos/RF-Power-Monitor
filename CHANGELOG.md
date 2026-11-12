@@ -12,6 +12,9 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 - CI workflow: the jobs run with a read-only token (`permissions: contents: read`; CodeQL `actions/missing-workflow-permissions`).
 - Fuzzing of every parser of network and flash input (`test/fuzz`, `scripts/fuzz.sh`, libFuzzer with ASan and UBSan): SNMP and BER, the web page's HTTP parser and pages (also logged in), the firmware update receiver, slot header and boot record, DHCP and DHCPv6 (with the DHCPv6 client), LLDP, the update site's replies, the settings files and the typed menu and form input. Besides memory safety the harnesses check the parsers' promises, e.g. an update never writes flash outside its slot and settings load back as saved. CI fuzzes each for 30 s on every push.
 
+### Changed
+- The serial menu's input handling moved from `src/cli.cpp` into the pure library `lib/cli_input`: the line editor (printable characters only, CR LF, backspace, a too-long line refused whole, passwords echoed as `*`) and the rules of each prompt (Enter keeps, `-` clears, `dhcp` / `none`, addresses, hostname, trap version, update URL). It now has native tests and a fuzz harness instead of only HIL coverage. The menu behaves and reads exactly as before; one difference: a too-long line is now wiped from memory at once, so a password typed past the limit no longer stays in the line buffer.
+
 ## [3.6.1] - 2026-11-08
 
 NTP from DHCPv6 also on networks that hand out addresses by DHCPv6 only.

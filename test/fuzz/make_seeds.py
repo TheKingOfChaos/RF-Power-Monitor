@@ -316,6 +316,19 @@ def text_seeds():
     }
 
 
+def cli_seeds():
+    """Typed bytes for fuzz_cli_input.cpp: 0xFF toggles secret echo"""
+    return {
+        "menu": b"1\r\n3\r10.0.0.5\r255.255.255.0\r10.0.0.1\ry\r",
+        "snmp": b"4\rrfit\rrack-4\r-\rRack 4\rDHCP\r2c\rn\r",
+        "edit": b"abc\b\x7fd\x1b[A\r\n\n",
+        "ipv6": b"9\rFD00:0000::0010\r-\r",
+        "update": b"10\rhttp://[fd00::45]:8074/site\r\xff" + b"ab" * 32 + b"\r\xff",
+        "password": b"6\r\xffsecret12\rsecret12\r\xff",
+        "overflow": b"x" * 150 + b"\r1\r",
+    }
+
+
 def main():
     if len(sys.argv) != 2:
         sys.exit(__doc__)
@@ -333,6 +346,7 @@ def main():
         "update_client": update_client_seeds(),
         "settings": settings_seeds(),
         "text_input": text_seeds(),
+        "cli_input": cli_seeds(),
     }
     for harness, files in seeds.items():
         d = os.path.join(out, harness)

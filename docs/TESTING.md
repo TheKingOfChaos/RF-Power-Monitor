@@ -120,6 +120,7 @@ wsl -d Ubuntu-24.04 -- bash scripts/fuzz.sh 600 snmp_agent web_app   # longer, c
 | `update_client` | an HTTP response from the update site, the body signed with the shared key or not; the same bytes as a site URL and key | an `update` reply's path starts with `/`; the status word is `[a-z0-9-]` only |
 | `settings` | a settings, update site or NTP/syslog settings file | what loads saves within its buffer and loads back the same |
 | `text_input` | what is typed in the menu and forms: addresses, mask, gateway, servers, hostname | IPv6 and trap addresses format and parse back the same; `hostnameFromText()` always gives a valid hostname; option 11 input is all or nothing |
+| `cli_input` | bytes typed on the serial port (0xFF toggles secret echo), each line through every prompt's rule | lines are printable and at most 143 characters; secrets echo `*`; an overflowed line leaves nothing in the buffer; accepted values are terminated, hostnames valid, URLs parse |
 
 The harnesses make checksums (IPv4, UDP, ICMPv6) and the update site's MAC valid before calling the parser, as random bytes would almost never pass them and the fuzzer would never reach the code behind; one input bit keeps them as given so the rejection is fuzzed too. The starting inputs are written by `test/fuzz/make_seeds.py` (real-shaped requests, frames and files, not committed); what the fuzzer finds is kept in `.pio/fuzz/corpus/` and used again on the next run.
 
@@ -320,6 +321,10 @@ The update server URL is read as text from an accepted DHCPACK (1-127 printable 
 ### `test/native/test_dhcp_option`: option 7 (syslog server)
 
 The first address of option 7 is read from an accepted DHCPACK, also when it lists three; lengths that are not a multiple of 4 or 0 are refused, ACKs for another client are ignored, and every truncation and corruption of the frame is safe. Option 7 is added to the request list once.
+
+### `test/native/test_cli_input`: serial menu input (`lib/cli_input`)
+- Line editor: CR, LF and CR LF each end one line (LF LF and CR CR are two empty lines); backspace and DEL erase, nothing on an empty line; control characters, NUL and bytes above ASCII dropped; exactly 143 characters accepted, one more refuses the whole line at Enter (also after a backspace) and wipes the buffer; the next line works; secret input echoes `*` but keeps the characters; `wipe()` clears a typed password
+- Prompt rules (Enter keeps, `-` clears or restores the default, keywords) with the exact messages the menu prints: IPv4 addresses, community and SNMP texts (at most 31 / 63 printable characters), hostname (free text from older firmware kept on Enter), trap destination (`dhcp` keeps the fixed address, IPv6 in RFC 5952 form, link-local refused), trap version `1` / `2c` / `2C`, static IPv6 (no `/64`), update server URL (`none`, `dhcp`, http only, at most 127 characters); messages are cut to the buffer
 
 ### `test/native/test_netconfig`: `lib/netconfig`
 - IPv4 parsing: valid addresses, octet range, octet count, stray characters, signs, whitespace, empty and null input, output left untouched on failure
